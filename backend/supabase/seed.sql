@@ -111,23 +111,26 @@ BEGIN
             encrypted_password = EXCLUDED.encrypted_password,
             email = EXCLUDED.email;
 
-        -- Create Supabase identities for email login provider
-        INSERT INTO auth.identities (
-            id,
-            user_id,
-            identity_data,
-            provider,
-            last_sign_in_at,
-            created_at,
-            updated_at
-        ) VALUES 
-        ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000001', 'email', 'admin@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
-        ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000002', 'email', 'se.pondicherry@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
-        ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000003', 'email', 'ee.distribution@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
-        ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000004', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000004', 'email', 'ae.substation@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
-        ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000005', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000005', 'email', 'je.field@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
-        ('00000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000006', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000006', 'email', 'guest@powergis.gov.in'), 'email', NOW(), NOW(), NOW())
-        ON CONFLICT (provider, id) DO NOTHING;
+        -- Create Supabase identities safely (works across all Supabase Auth versions)
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_schema = 'auth' AND table_name = 'identities' AND column_name = 'provider_id') THEN
+            EXECUTE 'INSERT INTO auth.identities (id, user_id, identity_data, provider, provider_id, last_sign_in_at, created_at, updated_at) VALUES 
+            (''00000000-0000-0000-0000-000000000001'', ''00000000-0000-0000-0000-000000000001'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000001'', ''email'', ''admin@powergis.gov.in''), ''email'', ''00000000-0000-0000-0000-000000000001'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000002'', ''00000000-0000-0000-0000-000000000002'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000002'', ''email'', ''se.pondicherry@powergis.gov.in''), ''email'', ''00000000-0000-0000-0000-000000000002'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000003'', ''00000000-0000-0000-0000-000000000003'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000003'', ''email'', ''ee.distribution@powergis.gov.in''), ''email'', ''00000000-0000-0000-0000-000000000003'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000004'', ''00000000-0000-0000-0000-000000000004'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000004'', ''email'', ''ae.substation@powergis.gov.in''), ''email'', ''00000000-0000-0000-0000-000000000004'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000005'', ''00000000-0000-0000-0000-000000000005'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000005'', ''email'', ''je.field@powergis.gov.in''), ''email'', ''00000000-0000-0000-0000-000000000005'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000006'', ''00000000-0000-0000-0000-000000000006'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000006'', ''email'', ''guest@powergis.gov.in''), ''email'', ''00000000-0000-0000-0000-000000000006'', NOW(), NOW(), NOW())
+            ON CONFLICT DO NOTHING';
+        ELSE
+            EXECUTE 'INSERT INTO auth.identities (id, user_id, identity_data, provider, last_sign_in_at, created_at, updated_at) VALUES 
+            (''00000000-0000-0000-0000-000000000001'', ''00000000-0000-0000-0000-000000000001'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000001'', ''email'', ''admin@powergis.gov.in''), ''email'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000002'', ''00000000-0000-0000-0000-000000000002'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000002'', ''email'', ''se.pondicherry@powergis.gov.in''), ''email'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000003'', ''00000000-0000-0000-0000-000000000003'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000003'', ''email'', ''ee.distribution@powergis.gov.in''), ''email'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000004'', ''00000000-0000-0000-0000-000000000004'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000004'', ''email'', ''ae.substation@powergis.gov.in''), ''email'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000005'', ''00000000-0000-0000-0000-000000000005'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000005'', ''email'', ''je.field@powergis.gov.in''), ''email'', NOW(), NOW(), NOW()),
+            (''00000000-0000-0000-0000-000000000006'', ''00000000-0000-0000-0000-000000000006'', jsonb_build_object(''sub'', ''00000000-0000-0000-0000-000000000006'', ''email'', ''guest@powergis.gov.in''), ''email'', NOW(), NOW(), NOW())
+            ON CONFLICT DO NOTHING';
+        END IF;
     END IF;
 END $$;
 

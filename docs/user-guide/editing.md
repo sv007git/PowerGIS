@@ -20,7 +20,7 @@ a project clears it. Undo does not reverse files already written by an export.
 ## Modifying features
 
 <figure markdown="span">
-  ![Edit Vertices on Lake Victoria: square vertex handles and round midpoint handles around the selected lake](https://assets.rustgis.app/images/editing.webp)
+  ![Edit Vertices on Lake Victoria: square vertex handles and round midpoint handles around the selected lake](https://assets.powergis.app/images/editing.webp)
   <figcaption>Edit Vertices: drag a square handle to move a vertex, a round one to add a vertex.</figcaption>
 </figure>
 

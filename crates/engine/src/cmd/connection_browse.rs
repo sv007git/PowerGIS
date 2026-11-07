@@ -11,7 +11,7 @@ use std::borrow::Cow;
 
 use super::super::{b, ps};
 use crate::connections::{Connection, DESKTOP_ONLY};
-use crate::render::rustgis_tiles::{address, s3, stac};
+use crate::render::powergis_tiles::{address, s3, stac};
 use crate::{CmdResult, Session};
 
 /// The most children of a non-database level; database levels use the provider's catalog.
@@ -135,7 +135,7 @@ fn s3_login(s: &mut Session, c: &Connection, level: &Level) -> Result<Option<s3:
 fn fetch_url(s: &Session, c: &Connection, level: &Level, conn: Option<&s3::Connection>) -> Result<Option<String>, String> {
     Ok(match level {
         Level::Database | Level::DatabaseSchema { .. } => None,
-        Level::Service { url, kind } => Some(rustgis_data::ogc::capabilities_url(url, kind.as_deref())),
+        Level::Service { url, kind } => Some(powergis_data::ogc::capabilities_url(url, kind.as_deref())),
         Level::Catalogue => Some(super::super::service::records_request(s, &json!({"url": c.address}))?),
         Level::StacRoot { api } => Some(if stac::catalog::is_static(api) { api.clone() } else { stac::collections_url(api) }),
         Level::StacCollection { api, id } => {
@@ -160,7 +160,7 @@ fn fetch_url(s: &Session, c: &Connection, level: &Level, conn: Option<&s3::Conne
 /// What a level reads, fetched here (waiting for it).
 #[cfg(not(target_arch = "wasm32"))]
 fn download(url: &str) -> Result<String, String> {
-    let bytes = crate::render::rustgis_tiles::cache::download_blocking(url)?;
+    let bytes = crate::render::powergis_tiles::cache::download_blocking(url)?;
     Ok(String::from_utf8(bytes).unwrap_or_else(|e| String::from_utf8_lossy(e.as_bytes()).into_owned()))
 }
 

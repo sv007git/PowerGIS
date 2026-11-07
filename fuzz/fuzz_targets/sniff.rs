@@ -4,8 +4,8 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use rustgis_data::io::{read_layers, sniff_extension};
-use rustgis_data::raster;
+use powergis_data::io::{read_layers, sniff_extension};
+use powergis_data::raster;
 
 fuzz_target!(|data: &[u8]| {
     if let Some(ext) = sniff_extension(data) {

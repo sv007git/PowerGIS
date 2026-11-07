@@ -7,7 +7,7 @@
 //! thread and the browser sends with its `fetch`.
 
 use crate::Error;
-use rustgis_engine::data::secrets::{Secret, SecretError, SecretStore};
+use powergis_engine::data::secrets::{Secret, SecretError, SecretStore};
 use serde_json::{Map, Value, json};
 
 /// A wire format.
@@ -187,7 +187,7 @@ impl Config {
             client_id: String::new(),
             session: String::new(),
             reasoning: None,
-            tool_output_token_limit: env("RUSTGIS_ASSISTANT_TOOL_OUTPUT_TOKEN_LIMIT")
+            tool_output_token_limit: env("powergis_ASSISTANT_TOOL_OUTPUT_TOKEN_LIMIT")
                 .and_then(|s| s.parse().ok())
                 .filter(|n| *n > 0)
                 .unwrap_or(crate::tools::DEFAULT_OUTPUT_TOKENS),
@@ -1109,7 +1109,7 @@ fn openai_reply(v: &Value) -> Result<Reply, String> {
 // OpenAI Responses (a ChatGPT plan's sign-in)
 
 /// The namespace the assistant's tools are grouped in (a ChatGPT plan takes namespaced tools).
-pub const TOOL_NAMESPACE: &str = "rustgis";
+pub const TOOL_NAMESPACE: &str = "powergis";
 
 fn responses_headers(cfg: &Config) -> Vec<(String, String)> {
     vec![header("Authorization", &format!("Bearer {}", cfg.key.trim()))]
@@ -1459,7 +1459,7 @@ fn gemini_schema(v: &Value) -> Value {
 }
 
 /// The prefix of call ids made up for Gemini calls that came without one.
-const MADE_UP: &str = "rustgis-call-";
+const MADE_UP: &str = "powergis-call-";
 
 fn gemini_request(cfg: &Config, system: &str, turns: &[Turn], tools: &[ToolDef]) -> HttpRequest {
     let mut contents = Vec::new();

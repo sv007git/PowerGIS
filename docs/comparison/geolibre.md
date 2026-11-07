@@ -100,14 +100,14 @@ differences in the short answer, in platform, technology and focus, are the ones
   GeoPackage, GeoParquet, FlatGeobuf and Shapefile files are read a view at a time rather
   than loaded whole; the cloud-native readers also work in the browser.
 - **Commands for scripts and AI agents.** Ribbon actions dispatch commands with ids and JSON
-  parameters. Engine commands run from [`rustgis-cli`](../cli.md), the
-  [`rustgis` Python package](../python.md), notebooks, models, the Script pane, the
+  parameters. Engine commands run from [`powergis-cli`](../cli.md), the
+  [`powergis` Python package](../python.md), notebooks, models, the Script pane, the
   [MCP server](../mcp.md) and the AI Assistant. UI-only pane/dialog commands stay in the app.
   A batch of maps can be rendered in CI with one
   command line. GeoLibre is driven through its interface, its Python and R packages and its MCP
   server; it has no general command-line tool.
 - **Sandboxed WebAssembly plugins.** These PowerGIS [plugins](../plugins.md) use declared,
-  approved permissions and run on desktop, in `rustgis-cli` and in the browser.
+  approved permissions and run on desktop, in `powergis-cli` and in the browser.
   Plugins can add commands, tools, ribbon tabs, panels and assistant skills. Native process
   plugins, including Python environments managed by PowerGIS, are also supported on desktop
   and CLI, but are not sandboxed. GeoLibre's TypeScript plugin API states that its plugins
@@ -175,7 +175,7 @@ runner in the browser. The available tools come from that runner's manifests. Se
 
 A common split is to explore, share and collaborate in GeoLibre, especially from a browser,
 a phone or a notebook, and to use PowerGIS for repeatable desktop work: a project scripted
-command by command, maps rendered by `rustgis-cli` in CI, data with domains and attribute rules,
+command by command, maps rendered by `powergis-cli` in CI, data with domains and attribute rules,
 or reports and map series printed to PDF.
 
 ## Common questions

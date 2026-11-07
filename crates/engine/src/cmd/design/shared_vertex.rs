@@ -1,8 +1,8 @@
 //! Moves every polygon vertex stored at the source coordinate, within one layer.
 //! Exact coordinate equality includes point-only contacts; no edge remapping or tolerance.
 
-use rustgis_data::{Geometry, VertexId};
-use rustgis_geom::Coord;
+use powergis_data::{Geometry, VertexId};
+use powergis_geom::Coord;
 use serde_json::{Value, json};
 
 use super::{Change, apply};

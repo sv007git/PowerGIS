@@ -1,6 +1,6 @@
 name: Python tests
 
-# The `rustgis` Python package built and tested on each runner in `os` (a JSON list): Linux on
+# The `powergis` Python package built and tested on each runner in `os` (a JSON list): Linux on
 # every supported Python, other platforms on the newest. For the Python package workflow and
 # CI on label.
 
@@ -51,14 +51,14 @@ jobs:
       - uses: actions/setup-python@v7
         with:
           python-version: ${{ matrix.python }}
-      # rustgis.qt's tests need Qt WebEngine: one Linux job installs it (a large download) and
+      # powergis.qt's tests need Qt WebEngine: one Linux job installs it (a large download) and
       # fails, rather than skips them, when it can't be imported.
       - name: Install Qt system libraries
         if: runner.os == 'Linux' && matrix.python == '3.12'
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends libegl1 libxkbcommon0 libnss3 libxcomposite1 libxdamage1 libxrandr2 libxtst6 libxkbfile1 libasound2t64
-          echo "RUSTGIS_TEST_QT=1" >> "$GITHUB_ENV"
+          echo "powergis_TEST_QT=1" >> "$GITHUB_ENV"
       # Inject stores only in this test build; distributed wheels keep default features.
       - name: Build and install
         shell: bash
@@ -67,8 +67,8 @@ jobs:
           # pyogrio, which geopandas needs, has no Windows ARM64 wheel and won't build without GDAL.
           extras="test"
           if [ "$RUNNER_OS $RUNNER_ARCH" != "Windows ARM64" ]; then extras="$extras,geopandas"; fi
-          if [ "${RUSTGIS_TEST_QT:-}" = "1" ]; then extras="$extras,qt"; fi
-          python -m pip install "./apps/rustgis-python[$extras]" --config-settings="build-args=--features test-stores"
+          if [ "${powergis_TEST_QT:-}" = "1" ]; then extras="$extras,qt"; fi
+          python -m pip install "./apps/powergis-python[$extras]" --config-settings="build-args=--features test-stores"
       - name: Test
-        working-directory: apps/rustgis-python
+        working-directory: apps/powergis-python
         run: python -m pytest -q

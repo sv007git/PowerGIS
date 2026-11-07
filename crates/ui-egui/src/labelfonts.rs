@@ -8,7 +8,7 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use egui::{FontData, FontFamily};
-use rustgis_engine::render::families;
+use powergis_engine::render::families;
 
 /// Fonts asked for, by egui family name: the pass each was set in, or `None` when its file
 /// couldn't be read (not asked for again).

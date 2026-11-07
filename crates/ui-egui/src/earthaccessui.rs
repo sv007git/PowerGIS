@@ -5,11 +5,11 @@
 //! this computer (`earthdata.login` with `remember`). Requests go off the frame through the tile
 //! cache's downloads, and the remembered token is read off the frame too.
 
-use rustgis_engine::render::rustgis_tiles::cache;
-use rustgis_engine::render::rustgis_tiles::earthdata::{self, Collection, Granule};
+use powergis_engine::render::powergis_tiles::cache;
+use powergis_engine::render::powergis_tiles::earthdata::{self, Collection, Granule};
 use serde_json::{Value, json};
 
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -109,7 +109,7 @@ fn fetch(url: &str) -> Answer {
 }
 
 /// Lands the preview pictures fetched, as small textures.
-fn poll_thumbs(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll_thumbs(app: &mut powergisApp, ctx: &egui::Context) {
     let mut waiting = false;
     for (url, thumb) in app.ui.earthaccess.thumbs.iter_mut() {
         let Thumb::Loading(slot) = thumb else { continue };
@@ -134,7 +134,7 @@ fn poll_thumbs(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Lands the answers.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     poll_thumbs(app, ctx);
     let Some((_, slot)) = &app.ui.earthaccess.waiting else { return };
     let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
@@ -179,7 +179,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Draws the granules listed as one footprints layer, replacing the one drawn before.
-fn draw_footprints(app: &mut RustGisApp) -> Result<(), String> {
+fn draw_footprints(app: &mut powergisApp) -> Result<(), String> {
     if let Some(id) = app.ui.earthaccess.footprints.take()
         && app.session.map().layer(id).is_some()
     {
@@ -197,7 +197,7 @@ fn draw_footprints(app: &mut RustGisApp) -> Result<(), String> {
 }
 
 /// Takes the footprints layer drawn off the map, with the granules it showed.
-fn clear_granules(app: &mut RustGisApp) {
+fn clear_granules(app: &mut powergisApp) {
     if let Some(id) = app.ui.earthaccess.footprints.take()
         && app.session.map().layer(id).is_some()
     {
@@ -210,16 +210,16 @@ fn clear_granules(app: &mut RustGisApp) {
 }
 
 /// Picks a dataset: its granules are searched next.
-fn choose(app: &mut RustGisApp, c: Collection) {
+fn choose(app: &mut powergisApp, c: Collection) {
     clear_granules(app);
     app.ui.earthaccess.collection = Some(c);
 }
 
-fn search_collections(app: &mut RustGisApp, more: bool) {
+fn search_collections(app: &mut powergisApp, more: bool) {
     let st = &mut app.ui.earthaccess;
     st.error = None;
     let page = if more { st.collections_page + 1 } else { 1 };
-    match rustgis_engine::cmd::earthdata::collections_query(
+    match powergis_engine::cmd::earthdata::collections_query(
         &json!({"keyword": st.keyword, "cloudHosted": st.cloud, "limit": 20, "page": page}),
     ) {
         Ok(url) => {
@@ -229,12 +229,12 @@ fn search_collections(app: &mut RustGisApp, more: bool) {
     }
 }
 
-fn search_granules(app: &mut RustGisApp, more: bool) {
+fn search_granules(app: &mut powergisApp, more: bool) {
     let Some(c) = app.ui.earthaccess.collection.clone() else { return };
     let st = &app.ui.earthaccess;
     let page = if more { st.page + 1 } else { 1 };
     let p = json!({"collection": c.id, "start": st.start, "end": st.end, "limit": PAGE, "page": page});
-    match rustgis_engine::cmd::earthdata::granules_query(&app.session, &p) {
+    match powergis_engine::cmd::earthdata::granules_query(&app.session, &p) {
         Ok(url) => {
             let st = &mut app.ui.earthaccess;
             st.error = None;
@@ -305,7 +305,7 @@ fn heading(ui: &mut egui::Ui, text: &str) {
 }
 
 /// The NASA Earthaccess pane.
-pub fn pane(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn pane(app: &mut powergisApp, ui: &mut egui::Ui) {
     let t = crate::theme::Tokens::get(ui.ctx());
     ui.label(egui::RichText::new(tl!("NASA Earthdata through Earthaccess's search: find a dataset, then its granules where the map is, drawn as footprints. GeoTIFFs are added as COGs, read in place. Searching needs no account.")).weak());
     let busy = app.ui.earthaccess.waiting.is_some();
@@ -417,7 +417,7 @@ pub fn pane(app: &mut RustGisApp, ui: &mut egui::Ui) {
 }
 
 /// The Earthdata Login section: the token kept for the session or remembered on this computer.
-fn auth(app: &mut RustGisApp, ui: &mut egui::Ui, w: f32) {
+fn auth(app: &mut powergisApp, ui: &mut egui::Ui, w: f32) {
     restore(app, ui.ctx());
     let expiry = earthdata::token_expiry();
     let now = web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map(|d| d.as_secs() as i64).unwrap_or(0);
@@ -476,7 +476,7 @@ fn auth(app: &mut RustGisApp, ui: &mut egui::Ui, w: f32) {
 
 /// Reads the token remembered on this computer, once, off the frame: the system may ask for its
 /// store to be unlocked.
-fn restore(app: &mut RustGisApp, ctx: &egui::Context) {
+fn restore(app: &mut powergisApp, ctx: &egui::Context) {
     if app.ui.earthaccess.restoring || app.services.secrets.is_none() {
         return;
     }
@@ -497,14 +497,14 @@ fn restore(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Shows what a login or logout said: its error, or the warning it gave.
-fn logged_in(app: &mut RustGisApp, r: Result<Value, String>) {
+fn logged_in(app: &mut powergisApp, r: Result<Value, String>) {
     app.ui.earthaccess.error = match r {
         Ok(v) => v.get("warning").and_then(Value::as_str).map(str::to_string),
         Err(e) => Some(e),
     };
 }
 
-fn status(app: &RustGisApp, ui: &mut egui::Ui, t: &crate::theme::Tokens) {
+fn status(app: &powergisApp, ui: &mut egui::Ui, t: &crate::theme::Tokens) {
     if app.ui.earthaccess.waiting.is_some() {
         ui.horizontal(|ui| {
             ui.spinner();
@@ -521,7 +521,7 @@ fn status(app: &RustGisApp, ui: &mut egui::Ui, t: &crate::theme::Tokens) {
 
 /// The granules found, as cards: name, date · size · cloud · files, then Add, Files, Zoom and
 /// Details.
-fn granules(app: &mut RustGisApp, ui: &mut egui::Ui, t: &crate::theme::Tokens, w: f32) {
+fn granules(app: &mut powergisApp, ui: &mut egui::Ui, t: &crate::theme::Tokens, w: f32) {
     let st = &app.ui.earthaccess;
     if !st.searched {
         return;

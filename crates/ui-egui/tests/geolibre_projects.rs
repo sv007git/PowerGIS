@@ -1,6 +1,6 @@
 //! Import entry points through the actual app frame and file-picker completion boundary.
 use egui_kittest::kittest::Queryable;
-use rustgis_ui_egui::{RustGisApp, Services};
+use powergis_ui_egui::{powergisApp, Services};
 use serde_json::json;
 use std::sync::{Arc, Mutex};
 
@@ -13,7 +13,7 @@ fn project() -> Vec<u8> {
 fn geolibre_card_picker_completion_imports_a_map_without_replacing_work() {
     let calls = Arc::new(Mutex::new(Vec::new()));
     let picked = calls.clone();
-    let mut app = RustGisApp::with_sample().with_services(Services {
+    let mut app = powergisApp::with_sample().with_services(Services {
         open_async: Some(Box::new(move |purpose| picked.lock().unwrap().push(purpose.to_string()))),
         ..Default::default()
     });
@@ -21,7 +21,7 @@ fn geolibre_card_picker_completion_imports_a_map_without_replacing_work() {
     let maps = app.session.project.maps.len();
     app.ui.backstage = true;
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1800.0, 1000.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -44,11 +44,11 @@ fn geolibre_card_picker_completion_imports_a_map_without_replacing_work() {
 #[test]
 fn geolibre_drop_and_legacy_name_share_the_import_path() {
     for name in ["MAP.GEOLIBRE", "map.geolibre.json", "plan#2.geolibre", "plan?2.geolibre.json"] {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let maps = app.session.project.maps.len();
         app.open_bytes(name, &project()).unwrap();
         assert_eq!(app.session.project.maps.len(), maps + 1);
         assert_eq!(app.session.map().name, "GeoLibre map");
-        assert_eq!(rustgis_engine::project::open_command(name), "project.importGeolibre");
+        assert_eq!(powergis_engine::project::open_command(name), "project.importGeolibre");
     }
 }

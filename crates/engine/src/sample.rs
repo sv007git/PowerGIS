@@ -1,18 +1,18 @@
 //! The built-in sample project: a world map from Natural Earth (public domain) data.
 
-use rustgis_data::io::read_geojson;
-use rustgis_geom::{Coord, lonlat_to_merc};
-use rustgis_map::{Bookmark, Camera, ClassMethod, Marker, Ramp, Renderer, Rgba, Symbol};
+use powergis_data::io::read_geojson;
+use powergis_geom::{Coord, lonlat_to_merc};
+use powergis_map::{Bookmark, Camera, ClassMethod, Marker, Ramp, Renderer, Rgba, Symbol};
 
 use crate::Project;
 
-pub use rustgis_render::sample_data::{CITIES, COUNTRIES, COUNTRIES_CHN, LAKES, RIVERS, Worldview, countries, set_worldview, worldview};
+pub use powergis_render::sample_data::{CITIES, COUNTRIES, COUNTRIES_CHN, LAKES, RIVERS, Worldview, countries, set_worldview, worldview};
 
-/// The worldview this system calls for: `RUSTGIS_WORLDVIEW` (`default` or `china`) when set, else
+/// The worldview this system calls for: `powergis_WORLDVIEW` (`default` or `china`) when set, else
 /// China when the system's time zone or first locale is mainland China's. Nothing is looked up
 /// over the network. Test builds of the engine don't look at the system.
 pub fn system_worldview() -> Worldview {
-    if let Some(w) = std::env::var("RUSTGIS_WORLDVIEW").ok().and_then(|v| Worldview::from_code(&v)) {
+    if let Some(w) = std::env::var("powergis_WORLDVIEW").ok().and_then(|v| Worldview::from_code(&v)) {
         return w;
     }
     if cfg!(test) {
@@ -62,6 +62,7 @@ pub fn swap_countries(s: &mut crate::Session, from: Worldview, to: Worldview) ->
     true
 }
 
+
 /// Slate gray country borders: visible against both the near-white lowest population class and the ocean.
 const COUNTRY_BORDER: Rgba = Rgba::rgb(0x7D, 0x8C, 0x96);
 
@@ -70,7 +71,8 @@ pub fn world_project() -> Project {
     let mut p = Project::new("World Atlas");
     let map = p.map_mut();
     map.name = "World".into();
-    map.basemap = rustgis_map::Basemap::Ocean;
+    map.basemap = powergis_map::Basemap::Ocean;
+    map.tiles.clear();
     let mut add = |name: &str, text: &str| read_geojson(text, name).ok().map(|(ds, _)| map.add_dataset(ds));
     let countries = add("Countries", countries());
     let lakes = add("Lakes", LAKES);
@@ -129,25 +131,13 @@ pub fn world_project() -> Project {
         l.labels.default.color = Rgba::rgb(0x5A, 0x2A, 0x14);
         l.max_scale = None;
     }
-    let mut google_tiles = rustgis_map::tiles::TileLayer::new(
-        "Google Maps",
-        rustgis_map::tiles::TileKind::Raster,
-        "http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}",
-    );
-    google_tiles.id = "google-maps".to_string();
-    google_tiles.attribution = "Google Maps © Google".to_string();
-    google_tiles.max_zoom = 20;
-    map.tiles.push(google_tiles);
-
     map.bookmarks = vec![
-        Bookmark::new("Pondicherry, India", cam(79.8083, 11.9416, 250.0)),
         Bookmark::new("World", cam(10.0, 15.0, 26_000.0)),
         Bookmark::new("Europe", cam(12.0, 50.0, 5_200.0)),
         Bookmark::new("Africa", cam(19.0, 2.0, 8_500.0)),
         Bookmark::new("Americas", cam(-80.0, 12.0, 15_000.0)),
         Bookmark::new("East Asia", cam(118.0, 32.0, 6_500.0)),
     ];
-    // Default camera points to Pondicherry, India region
-    map.camera = cam(79.8083, 11.9416, 250.0);
+    map.camera = cam(10.0, 15.0, 26_000.0);
     p
 }

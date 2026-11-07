@@ -15,7 +15,7 @@ fn bad(e: impl std::fmt::Display) -> DataError {
 impl Ordered {
     pub fn new() -> Result<Self> {
         let mut builder = tempfile::Builder::new();
-        builder.prefix("rustgis-render-");
+        builder.prefix("powergis-render-");
         #[cfg(unix)]
         {
             use std::os::unix::fs::PermissionsExt;

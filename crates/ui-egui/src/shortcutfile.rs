@@ -1,6 +1,6 @@
 //! Portable shortcut overrides and atomic, previewed merges into device preferences.
 use crate::{
-    RustGisApp, SHORTCUT_FILE_MAX_BYTES as MAX_FILE_BYTES, dialogs,
+    powergisApp, SHORTCUT_FILE_MAX_BYTES as MAX_FILE_BYTES, dialogs,
     keymap::{Change, Chord, Keymap},
     shortcutui,
 };
@@ -10,7 +10,7 @@ use serde_json::{Value, json};
 #[derive(Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 struct Document {
-    rustgis_shortcuts: u32,
+    powergis_shortcuts: u32,
     #[serde(deserialize_with = "import_bindings")]
     bindings: Vec<Change>,
 }
@@ -38,12 +38,12 @@ pub(crate) struct Preview {
 }
 
 /// Route picker and dropped shortcut bytes without allocating a base64 copy of oversized input.
-pub(crate) fn picked(app: &mut RustGisApp, bytes: &[u8]) -> Result<Value, String> {
+pub(crate) fn picked(app: &mut powergisApp, bytes: &[u8]) -> Result<Value, String> {
     picked_bytes(app, bytes).inspect_err(|error| app.session.notify(error.clone(), true))
 }
 
 /// Validate raw picker bytes before constructing command parameters.
-fn picked_bytes(app: &mut RustGisApp, bytes: &[u8]) -> Result<Value, String> {
+fn picked_bytes(app: &mut powergisApp, bytes: &[u8]) -> Result<Value, String> {
     if bytes.len() > MAX_FILE_BYTES {
         return Err(tl!("Shortcut file exceeds the size limit.").into());
     }
@@ -88,16 +88,16 @@ fn input(p: &Value) -> Result<String, String> {
 }
 
 /// Validate every record before exposing a preview or changing the live map.
-fn merge(app: &RustGisApp, text: &str) -> Result<(Keymap, Value), String> {
+fn merge(app: &powergisApp, text: &str) -> Result<(Keymap, Value), String> {
     if text.len() > MAX_FILE_BYTES {
         return Err(tl!("Shortcut file exceeds the size limit.").into());
     }
     let value: Value = serde_json::from_str(text).map_err(|e| e.to_string())?;
-    if value.get("rustgis_shortcuts").and_then(Value::as_u64).is_some_and(|version| version != 1) {
+    if value.get("powergis_shortcuts").and_then(Value::as_u64).is_some_and(|version| version != 1) {
         return Err(tl!("Unsupported shortcut file version.").into());
     }
     let doc: Document = serde_json::from_value(value).map_err(|e| e.to_string())?;
-    if doc.rustgis_shortcuts != 1 {
+    if doc.powergis_shortcuts != 1 {
         return Err(tl!("Unsupported shortcut file version.").into());
     }
     let changes = serde_json::to_string(&doc.bindings).map_err(|e| e.to_string())?;
@@ -134,9 +134,9 @@ fn merge(app: &RustGisApp, text: &str) -> Result<(Keymap, Value), String> {
 }
 
 /// Include UI actions outside Command Search when recognizing portable command ids.
-fn known(app: &RustGisApp, id: &str) -> bool {
+fn known(app: &powergisApp, id: &str) -> bool {
     app.session.registry.get(id).is_some()
-        || rustgis_engine::plugins::command(id).is_some()
+        || powergis_engine::plugins::command(id).is_some()
         || crate::chrome::UI_COMMANDS.iter().any(|(c, _, _)| *c == id)
         || matches!(
             id,
@@ -155,10 +155,10 @@ fn known(app: &RustGisApp, id: &str) -> bool {
 }
 
 /// Export just the overrides, leaving future defaults free to arrive on another device.
-fn document(app: &RustGisApp) -> Result<String, String> {
+fn document(app: &powergisApp) -> Result<String, String> {
     let changes = app.ui.keymap.preferences(&Keymap::new(&app.session.registry)).ok_or(tl!("Too many shortcut changes to save."))?;
     let bindings = serde_json::from_str(&changes).map_err(|e| e.to_string())?;
-    let text = serde_json::to_string(&Document { rustgis_shortcuts: 1, bindings }).map_err(|e| e.to_string())?;
+    let text = serde_json::to_string(&Document { powergis_shortcuts: 1, bindings }).map_err(|e| e.to_string())?;
     // Compact output and the metadata allowance let every valid saved configuration export.
     if text.len() > MAX_FILE_BYTES {
         return Err(tl!("Shortcut file exceeds the size limit.").into());
@@ -167,7 +167,7 @@ fn document(app: &RustGisApp) -> Result<String, String> {
 }
 
 /// UI command boundary: file import previews by default; confirmation commits a complete merge.
-pub fn run(app: &mut RustGisApp, id: &str, p: &Value) -> Result<Value, String> {
+pub fn run(app: &mut powergisApp, id: &str, p: &Value) -> Result<Value, String> {
     match id {
         "ui.shortcuts.import" => {
             if p.is_null() || p.as_object().is_some_and(|o| o.is_empty()) {
@@ -200,7 +200,7 @@ pub fn run(app: &mut RustGisApp, id: &str, p: &Value) -> Result<Value, String> {
             let text = document(app)?;
             if let Some(path) = p.get("path").and_then(Value::as_str) {
                 #[cfg(not(target_arch = "wasm32"))]
-                rustgis_engine::data::io::write_atomic(std::path::Path::new(path), text.as_bytes()).map_err(|e| e.to_string())?;
+                powergis_engine::data::io::write_atomic(std::path::Path::new(path), text.as_bytes()).map_err(|e| e.to_string())?;
                 #[cfg(target_arch = "wasm32")]
                 {
                     let _ = path;
@@ -208,9 +208,9 @@ pub fn run(app: &mut RustGisApp, id: &str, p: &Value) -> Result<Value, String> {
                 }
             } else if !p.get("text").and_then(Value::as_bool).unwrap_or(false) {
                 if let Some(download) = &app.services.download {
-                    download("rustgis-shortcuts.json", text.as_bytes().to_vec())?;
-                } else if let Some(path) = dialogs::pick_save("rustgis-shortcuts.json", &["json"], tl!("Keyboard shortcuts")) {
-                    rustgis_engine::data::io::write_atomic(std::path::Path::new(&path), text.as_bytes()).map_err(|e| e.to_string())?;
+                    download("powergis-shortcuts.json", text.as_bytes().to_vec())?;
+                } else if let Some(path) = dialogs::pick_save("powergis-shortcuts.json", &["json"], tl!("Keyboard shortcuts")) {
+                    powergis_engine::data::io::write_atomic(std::path::Path::new(&path), text.as_bytes()).map_err(|e| e.to_string())?;
                 }
             }
             Ok(json!({"text":text}))

@@ -1,12 +1,12 @@
 //! Real pointer releases must not apply an old vertex preview to changed source rows.
 use egui::{Event, Modifiers, PointerButton, Pos2};
 use egui_kittest::Harness;
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{Dataset, Feature, Geometry, VertexId},
     geom::{Coord, merc_to_lonlat},
 };
-use rustgis_ui_egui::RustGisApp;
+use powergis_ui_egui::powergisApp;
 use serde_json::json;
 
 /// Places synthetic metre-based fixtures in the source longitude/latitude coordinate system.
@@ -15,12 +15,12 @@ fn c(x: f64, y: f64) -> Coord {
 }
 
 /// Shows one selected line in the normal application, with snapping disabled for exact ownership assertions.
-fn harness() -> Harness<'static, RustGisApp> {
+fn harness() -> Harness<'static, powergisApp> {
     harness_with(line(0.))
 }
 
 /// Gives lines and polygon rings the same production map/command path without changing their topology.
-fn harness_with(geometry: Geometry) -> Harness<'static, RustGisApp> {
+fn harness_with(geometry: Geometry) -> Harness<'static, powergisApp> {
     let mut session = Session::new(Project::new("Vertex drag ownership"));
     let mut data = Dataset::new("Paths", geometry.kind(), vec![]);
     data.features = vec![Feature { id: 1, geometry: Some(geometry), attrs: vec![] }].into();
@@ -29,12 +29,12 @@ fn harness_with(geometry: Geometry) -> Harness<'static, RustGisApp> {
     session.map_mut().camera.center = Coord::new(80., 80.);
     session.map_mut().camera.res = 1.;
     session.map_mut().editing.snapping.enabled = false;
-    let mut app = RustGisApp::new(session);
+    let mut app = powergisApp::new(session);
     app.run("tool.set", json!({"tool":"editVertices"})).unwrap();
     app.ui.tab = "Edit".into();
     app.session.clear_history();
     let mut h = Harness::builder().with_accessibility_check(false).with_size(egui::vec2(1480., 900.)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -53,7 +53,7 @@ fn line(x: f64) -> Geometry {
 }
 
 /// Converts source coordinates through the actual map rectangle and camera.
-fn screen(h: &Harness<'_, RustGisApp>, at: Coord) -> Pos2 {
+fn screen(h: &Harness<'_, powergisApp>, at: Coord) -> Pos2 {
     let rect = h.state().map.view_rect.unwrap().0;
     let map = h.state().session.map();
     let (x, y) = map.camera.to_screen(map.to_map(at).unwrap(), rect.width() as f64, rect.height() as f64);
@@ -61,7 +61,7 @@ fn screen(h: &Harness<'_, RustGisApp>, at: Coord) -> Pos2 {
 }
 
 /// Starts a held production drag, leaving the stored feature untouched until release.
-fn drag(h: &mut Harness<'_, RustGisApp>, insert: bool) -> Pos2 {
+fn drag(h: &mut Harness<'_, powergisApp>, insert: bool) -> Pos2 {
     let from = screen(h, c(0., if insert { 80. } else { 0. }));
     let to = screen(h, c(90., 40.));
     h.event(Event::PointerMoved(from));
@@ -76,7 +76,7 @@ fn drag(h: &mut Harness<'_, RustGisApp>, insert: bool) -> Pos2 {
 }
 
 /// Delivers a queued release to mapview rather than directly invoking the commit helper.
-fn release(h: &mut Harness<'_, RustGisApp>, at: Pos2) {
+fn release(h: &mut Harness<'_, powergisApp>, at: Pos2) {
     h.event(Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
     for _ in 0..3 {
         h.step();
@@ -84,7 +84,7 @@ fn release(h: &mut Harness<'_, RustGisApp>, at: Pos2) {
 }
 
 /// Reads the source node, independently of the drag overlay.
-fn first(h: &Harness<'_, RustGisApp>) -> Coord {
+fn first(h: &Harness<'_, powergisApp>) -> Coord {
     h.state().session.map().layers[0].dataset.features[0].geometry.as_ref().unwrap().vertex(VertexId::new(0, 0, 0)).unwrap()
 }
 

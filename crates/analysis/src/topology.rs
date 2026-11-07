@@ -2,8 +2,8 @@
 //! dangles, coverage). Computed in Web Mercator metres.
 
 use geo::{Area, BooleanOps, BoundingRect, Contains, Intersects, Orient, orient::Direction};
-use rustgis_data::{Dataset, Geometry};
-use rustgis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
+use powergis_data::{Dataset, Geometry};
+use powergis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
 
 use crate::convert::{from_multipolygon, to_multipolygon};
 
@@ -275,14 +275,14 @@ pub fn dangles(ds: &Dataset, rows: &[usize], tol_m: f64) -> Checked {
                 // back onto itself, like a 6, doesn't dangle there).
                 let at_start = part.first() == Some(end);
                 let own_rest = rest_of_part(part, at_start, 2.0 * tol);
-                let touches = !own_rest.is_empty() && rustgis_data::geometry::seg_dist2(&own_rest, *end) <= tol * tol
+                let touches = !own_rest.is_empty() && powergis_data::geometry::seg_dist2(&own_rest, *end) <= tol * tol
                     || near.iter().any(|&(oli, opi)| {
                         work += 1;
                         (oli != li || opi != pi)
                             && lines
                                 .get(oli)
                                 .and_then(|(_, ps)| ps.get(opi))
-                                .is_some_and(|op| op.len() >= 2 && rustgis_data::geometry::seg_dist2(op, *end) <= tol * tol)
+                                .is_some_and(|op| op.len() >= 2 && powergis_data::geometry::seg_dist2(op, *end) <= tol * tol)
                     });
                 if work > MAX_WORK {
                     return Checked::partial(out);
@@ -342,7 +342,7 @@ pub fn not_covered(ds: &Dataset, rows: &[usize], by: &Dataset) -> Checked {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::GeometryType;
+    use powergis_data::GeometryType;
 
     fn square(x: f64, y: f64, s: f64) -> Geometry {
         Geometry::Polygon(vec![vec![vec![

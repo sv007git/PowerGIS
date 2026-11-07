@@ -11145,7 +11145,7 @@ and Topo from cmocean (MIT). The matplotlib colour map library (matplotlib.rs), 
 256-colour tables (https://github.com/cogeotiff/rio-tiler), each reduced to the fewest stops that
 reproduce it: matplotlib's maps (among them the ColorBrewer maps, Apache-2.0, and the gist maps from
 Yorick), cmocean's, and rio-tiler's cfastie, rplumbo and schwarzwald.
-In rustgis-map: crates/map/src/color/scientific.rs, crates/map/src/color/matplotlib.rs
+In powergis-map: crates/map/src/color/scientific.rs, crates/map/src/color/matplotlib.rs
 ====================================================================================================
 
 License agreement for matplotlib versions 1.3.0 and later
@@ -11403,7 +11403,7 @@ SOFTWARE.
 ====================================================================================================
 The meridian distance of the sinusoidal projection and its inverse, after pj_enfn, pj_mlfn and
 pj_inv_mlfn in PROJ (https://proj.org).
-In rustgis-geom: crates/geom/src/sinusoidal.rs
+In powergis-geom: crates/geom/src/sinusoidal.rs
 ====================================================================================================
 
 All source, data files and other contents of the PROJ package are
@@ -11443,7 +11443,7 @@ Copyright information can be found in source files.
 ====================================================================================================
 Where a label goes in an area (pole_of_inaccessibility), after polylabel 1.x
 (https://github.com/mapbox/polylabel).
-In rustgis-tiles: crates/tiles/src/symbols.rs
+In powergis-tiles: crates/tiles/src/symbols.rs
 ====================================================================================================
 
 ISC License
@@ -11465,7 +11465,7 @@ SOFTWARE.
 Telling a style's expression filters from its legacy ones (is_expression_filter), after
 isExpressionFilter in the MapLibre style specification
 (https://github.com/maplibre/maplibre-style-spec).
-In rustgis-tiles: crates/tiles/src/style.rs
+In powergis-tiles: crates/tiles/src/style.rs
 ====================================================================================================
 
 Copyright (c) 2020, MapLibre contributors
@@ -11590,7 +11590,7 @@ ESRI coordinate system codes: Esri's projected coordinate systems from projectio
 (https://github.com/Esri/projection-engine-db-doc), as imported into the PROJ 9.7.1 database and
 written as PROJ definitions by PROJ 9.7.1 (PROJ's licence is above). The notice below is the
 licensing section of the project's README, at commit aa34139.
-In rustgis-data: crates/data/src/raster/esri.rs
+In powergis-data: crates/data/src/raster/esri.rs
 ====================================================================================================
 
 Copyright © 2010-2026 Esri
@@ -11615,5 +11615,5 @@ of use, https://epsg.org/terms-of-use.html. The definitions were converted to PR
 (crs-definitions' through PostGIS) and the axis orders read through PROJ: they are not the EPSG
 Dataset itself, and some definitions only approximate it. The EPSG Dataset is provided "as is",
 without warranty of any kind.
-In rustgis-data: crates/data/src/raster/epsg_gap.rs, crates/data/src/raster/epsg_axes.rs
+In powergis-data: crates/data/src/raster/epsg_gap.rs, crates/data/src/raster/epsg_axes.rs
 ====================================================================================================

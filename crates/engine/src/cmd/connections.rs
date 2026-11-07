@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 
 use super::{b, ps};
 use crate::connections::{Connection, DATABASE_KINDS, DESKTOP_ONLY, KINDS};
-use crate::render::rustgis_tiles::{s3, stac};
+use crate::render::powergis_tiles::{s3, stac};
 use crate::s3_keys as keys;
 use crate::{CmdResult, CommandSpec as C, Session};
 
@@ -301,7 +301,7 @@ fn delete_account(logins: &mut crate::connections::DatabaseLogins, c: &Connectio
 fn clear_identity(s: &mut Session, id: &str) {
     s.database_logins.forget_connection(id);
     #[cfg(not(target_arch = "wasm32"))]
-    rustgis_data::source::duckdb::forget_connection_password(id);
+    powergis_data::source::duckdb::forget_connection_password(id);
 }
 
 /// The databases an address names (empty for kinds that read no database).
@@ -310,7 +310,7 @@ fn address_keys(address: &str) -> Vec<(&'static str, String)> {
 }
 
 /// The database a layer reads, as its driver names it (the same key `resolve_project` groups by).
-pub(crate) fn layer_keys(src: &rustgis_map::source::SourceLayer) -> Vec<(&'static str, String)> {
+pub(crate) fn layer_keys(src: &powergis_map::source::SourceLayer) -> Vec<(&'static str, String)> {
     let Some((_, database)) = crate::connections::layer_database(src) else { return Vec::new() };
     crate::connections::database_key(&crate::sources::redact(database)).into_iter().collect()
 }
@@ -325,7 +325,7 @@ fn forget_password(s: &mut Session, p: &Value) -> CmdResult {
     s.database_logins.forget_saved(&c.id);
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::duckdb;
+        use powergis_data::source::duckdb;
         let key = crate::connections::database_key(&c.address).map(|(_, key)| key);
         let was_active = key.as_ref().is_some_and(|key| duckdb::has_connection_password(key, &c.id));
         duckdb::forget_connection_password(&c.id);
@@ -396,7 +396,7 @@ fn reopen(s: &mut Session, c: &Connection, saved: bool, session: bool, all_unope
             s.database_logins.reject_session_password(c);
         }
         if saved || session {
-            rustgis_data::source::duckdb::forget_connection_password(&c.id);
+            powergis_data::source::duckdb::forget_connection_password(&c.id);
             s.database_logins.drop_activation(&key.1);
         }
         let layers = s
@@ -517,7 +517,7 @@ fn login(s: &mut Session, c: &Connection, p: &Value) -> Result<Reopened, String>
                 s.database_logins.retry_saved(&c.id);
             }
             // A password typed for this address wins over any saved one (explicit input first).
-            let address_typed = typed.is_none() && rustgis_data::source::duckdb::has_explicit_password(&key.1);
+            let address_typed = typed.is_none() && powergis_data::source::duckdb::has_explicit_password(&key.1);
             let (password, saved) = match typed {
                 Some(_) => (None, false),
                 None if address_typed => (None, false),
@@ -531,7 +531,7 @@ fn login(s: &mut Session, c: &Connection, p: &Value) -> Result<Reopened, String>
             let all_unopened = s.database_logins.requests(s.opened).any(|r| r.kind == key.0 && r.key == key.1);
             let mut result = if let Some(pw) = typed {
                 // Keep selection and activation unchanged until this attempt is accepted.
-                rustgis_data::source::duckdb::try_connection_password(
+                powergis_data::source::duckdb::try_connection_password(
                     &key.1,
                     &c.id,
                     pw,
@@ -541,7 +541,7 @@ fn login(s: &mut Session, c: &Connection, p: &Value) -> Result<Reopened, String>
             } else {
                 // Another saved ID's activation is not authority to read this connection;
                 // a password typed for the address itself stays.
-                rustgis_data::source::duckdb::set_connection_password(&key.1, &c.id, None);
+                powergis_data::source::duckdb::set_connection_password(&key.1, &c.id, None);
                 s.database_logins.drop_activation(&key.1);
                 s.database_logins.select(key.0, &key.1, &c.id);
                 if let Some(password) = &password {
@@ -706,7 +706,7 @@ fn resolve_s3(s: &mut Session, p: &Value) -> CmdResult {
 #[cfg(not(target_arch = "wasm32"))]
 fn activate(s: &mut Session, c: &Connection, password: &str) {
     if let Some((_, key)) = crate::connections::database_key(&c.address) {
-        rustgis_data::source::duckdb::set_connection_password(&key, &c.id, Some(password));
+        powergis_data::source::duckdb::set_connection_password(&key, &c.id, Some(password));
         s.database_logins.note_activation(&key, &c.id);
     }
 }
@@ -719,7 +719,7 @@ fn activate(s: &mut Session, c: &Connection, password: &str) {
 /// password, so a project can't name a new address to receive it. The flag is `true` for a saved
 /// password (the server's refusal rejects it), `false` for the others.
 #[cfg(not(target_arch = "wasm32"))]
-fn credential(s: &mut Session, c: &Connection) -> Result<Option<(rustgis_data::secrets::Secret, bool)>, String> {
+fn credential(s: &mut Session, c: &Connection) -> Result<Option<(powergis_data::secrets::Secret, bool)>, String> {
     if let Some(pw) = s.database_logins.session_password(&c.id) {
         return Ok(Some((pw.clone(), false)));
     }
@@ -762,8 +762,8 @@ fn first_bucket(c: &Connection) -> Option<String> {
 fn probe_url(s: &Session, c: &Connection) -> Result<Option<String>, String> {
     let url = match c.kind.as_str() {
         "postgres" | "mysql" | "sqlserver" => return Ok(None),
-        "service" => rustgis_data::ogc::capabilities_url(&c.address, None),
-        "wms" | "wmts" | "wfs" | "wcs" | "ogcapi" | "arcgis" => rustgis_data::ogc::capabilities_url(&c.address, Some(&c.kind)),
+        "service" => powergis_data::ogc::capabilities_url(&c.address, None),
+        "wms" | "wmts" | "wfs" | "wcs" | "ogcapi" | "arcgis" => powergis_data::ogc::capabilities_url(&c.address, Some(&c.kind)),
         "csw" => super::service::records_request(s, &json!({"url": c.address}))?,
         "stac" => {
             let api = stac::api(Some(&c.address))?;

@@ -7,7 +7,7 @@
 //!
 //! - `THIRD-PARTY-LICENSES.txt`: every crate in the workspace (the desktop app, the command line
 //!   and the web app);
-//! - `apps/rustgis-python/THIRD-PARTY-LICENSES.txt`: the crates in the Python package.
+//! - `apps/powergis-python/THIRD-PARTY-LICENSES.txt`: the crates in the Python package.
 //!
 //! Each distinct licence text appears once, with the crates under it (by name, not version, so a
 //! routine version bump leaves the files alone), followed by the crates' NOTICE files (Apache-2.0
@@ -30,7 +30,7 @@ pub const STALE: u8 = 2;
 /// (output file, package manifest or "" for the whole workspace, what it covers).
 const FILES: &[(&str, &str, &str)] = &[
     ("THIRD-PARTY-LICENSES.txt", "", "PowerGIS (the desktop app, the command line and the web app)"),
-    ("apps/rustgis-python/THIRD-PARTY-LICENSES.txt", "apps/rustgis-python/Cargo.toml", "the rustgis Python package"),
+    ("apps/powergis-python/THIRD-PARTY-LICENSES.txt", "apps/powergis-python/Cargo.toml", "the powergis Python package"),
 ];
 
 /// Code or data that one of PowerGIS's own crates takes from another project. Cargo doesn't see
@@ -64,7 +64,7 @@ const INCLUDED: &[Included] = &[
                rio-tiler's 256-colour tables (https://github.com/cogeotiff/rio-tiler), each reduced to the \
                fewest stops that reproduce it: matplotlib's maps (among them the ColorBrewer maps, Apache-2.0, \
                and the gist maps from Yorick), cmocean's, and rio-tiler's cfastie, rplumbo and schwarzwald.",
-        krate: "rustgis-map",
+        krate: "powergis-map",
         paths: &["crates/map/src/color/scientific.rs", "crates/map/src/color/matplotlib.rs"],
         notices: &[
             "matplotlib-LICENSE.txt",
@@ -78,14 +78,14 @@ const INCLUDED: &[Included] = &[
     Included {
         what: "The meridian distance of the sinusoidal projection and its inverse, after pj_enfn, pj_mlfn and \
                pj_inv_mlfn in PROJ (https://proj.org).",
-        krate: "rustgis-geom",
+        krate: "powergis-geom",
         paths: &["crates/geom/src/sinusoidal.rs"],
         notices: &["PROJ-COPYING.txt"],
     },
     Included {
         what: "Where a label goes in an area (pole_of_inaccessibility), after polylabel 1.x \
                (https://github.com/mapbox/polylabel).",
-        krate: "rustgis-tiles",
+        krate: "powergis-tiles",
         paths: &["crates/tiles/src/symbols.rs"],
         notices: &["polylabel-LICENSE.txt"],
     },
@@ -93,7 +93,7 @@ const INCLUDED: &[Included] = &[
         what: "Telling a style's expression filters from its legacy ones (is_expression_filter), after \
                isExpressionFilter in the MapLibre style specification \
                (https://github.com/maplibre/maplibre-style-spec).",
-        krate: "rustgis-tiles",
+        krate: "powergis-tiles",
         paths: &["crates/tiles/src/style.rs"],
         notices: &["maplibre-style-spec-LICENSE.txt"],
     },
@@ -102,7 +102,7 @@ const INCLUDED: &[Included] = &[
                (https://github.com/Esri/projection-engine-db-doc), as imported into the PROJ 9.7.1 database and \
                written as PROJ definitions by PROJ 9.7.1 (PROJ's licence is above). The notice below is the \
                licensing section of the project's README, at commit aa34139.",
-        krate: "rustgis-data",
+        krate: "powergis-data",
         paths: &["crates/data/src/raster/esri.rs"],
         notices: &["projection-engine-db-doc-README-licensing.txt"],
     },
@@ -114,7 +114,7 @@ const INCLUDED: &[Included] = &[
                by PROJ (crs-definitions' through PostGIS) and the axis orders read through PROJ: they are not \
                the EPSG Dataset itself, and some definitions only approximate it. The EPSG Dataset is provided \
                \"as is\", without warranty of any kind.",
-        krate: "rustgis-data",
+        krate: "powergis-data",
         paths: &["crates/data/src/raster/epsg_gap.rs", "crates/data/src/raster/epsg_axes.rs"],
         notices: &[],
     },
@@ -333,7 +333,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn render_merges_texts_and_skips_rustgis_crates() {
+    fn render_merges_texts_and_skips_powergis_crates() {
         let krate = |name: &str, source: Value| serde_json::json!({"crate": {"name": name, "version": "1.0.0", "source": source}});
         let reg = Value::from("registry+https://github.com/rust-lang/crates.io-index");
         let about = serde_json::json!({
@@ -341,11 +341,11 @@ mod tests {
                 {"name": "MIT License", "id": "MIT", "text": "Copyright A\r\n\r\nPermission is granted.  \r\n", "used_by": [krate("b", reg.clone()), krate("a", reg.clone())]},
                 // The same text wrapped differently: one entry.
                 {"name": "MIT License", "id": "MIT", "text": "Copyright A\n\nPermission\nis granted.", "used_by": [krate("a", reg.clone()), krate("c", reg.clone())]},
-                {"name": "Apache License 2.0", "id": "Apache-2.0", "text": "Apache text", "used_by": [krate("rustgis-geom", Value::Null)]},
+                {"name": "Apache License 2.0", "id": "Apache-2.0", "text": "Apache text", "used_by": [krate("powergis-geom", Value::Null)]},
             ],
             "crates": [
                 {"package": {"name": "a", "source": reg.clone(), "manifest_path": "/a/Cargo.toml"}},
-                {"package": {"name": "rustgis-geom", "source": Value::Null, "manifest_path": "/g/Cargo.toml"}},
+                {"package": {"name": "powergis-geom", "source": Value::Null, "manifest_path": "/g/Cargo.toml"}},
             ],
         });
         let notice = |m: &str| if m == "/a/Cargo.toml" { vec![("NOTICE".to_string(), "Notice of a\n".to_string())] } else { Vec::new() };
@@ -354,7 +354,7 @@ mod tests {
         assert_eq!(out.matches("MIT License\nUsed by: a, b, c\n").count(), 1);
         assert!(out.contains("Copyright A\n\nPermission is granted.\n"));
         // Only PowerGIS's own crates use that Apache text, so it is left out.
-        assert!(!out.contains("Apache text") && !out.contains("rustgis-geom"));
+        assert!(!out.contains("Apache text") && !out.contains("powergis-geom"));
         assert!(out.ends_with(&format!("NOTICE of a\n{}\n\nNotice of a\n", "=".repeat(100))));
     }
 
@@ -364,20 +364,20 @@ mod tests {
     fn render_adds_included_material_of_the_package_crates() {
         let about = serde_json::json!({
             "licenses": [],
-            "crates": [{"package": {"name": "rustgis-map", "source": Value::Null, "manifest_path": "/m/Cargo.toml"}}],
+            "crates": [{"package": {"name": "powergis-map", "source": Value::Null, "manifest_path": "/m/Cargo.toml"}}],
         });
         let inc = |krate: &str, heading: &str, texts: &[&str]| {
             (krate.to_string(), heading.to_string(), texts.iter().map(|t| t.to_string()).collect())
         };
         let included = [
-            inc("rustgis-map", "Colour maps\nIn rustgis-map: a.rs", &["MIT text  \r\n", "BSD text"]),
-            inc("rustgis-tiles", "Labels", &["ISC text"]),
+            inc("powergis-map", "Colour maps\nIn powergis-map: a.rs", &["MIT text  \r\n", "BSD text"]),
+            inc("powergis-tiles", "Labels", &["ISC text"]),
         ];
         let out = render(&about, "PowerGIS", &|_| Vec::new(), &included);
         let rule = "=".repeat(100);
         let dashes = "-".repeat(100);
-        assert!(out.ends_with(&format!("{rule}\nColour maps\nIn rustgis-map: a.rs\n{rule}\n\nMIT text\n\n{dashes}\n\nBSD text\n")));
-        // rustgis-tiles isn't in this package.
+        assert!(out.ends_with(&format!("{rule}\nColour maps\nIn powergis-map: a.rs\n{rule}\n\nMIT text\n\n{dashes}\n\nBSD text\n")));
+        // powergis-tiles isn't in this package.
         assert!(!out.contains("Labels") && !out.contains("ISC text"));
     }
 
@@ -389,10 +389,10 @@ mod tests {
         let entries = included(root).unwrap();
         assert_eq!(entries.len(), INCLUDED.len());
         for inc in INCLUDED {
-            assert!(inc.krate.starts_with("rustgis-") && !inc.paths.is_empty(), "{}", inc.what);
-            let manifest = root.join("crates").join(inc.krate.trim_start_matches("rustgis-")).join("Cargo.toml");
+            assert!(inc.krate.starts_with("powergis-") && !inc.paths.is_empty(), "{}", inc.what);
+            let manifest = root.join("crates").join(inc.krate.trim_start_matches("powergis-")).join("Cargo.toml");
             assert!(manifest.is_file(), "no crate {}", inc.krate);
-            let dir = format!("crates/{}/", inc.krate.trim_start_matches("rustgis-"));
+            let dir = format!("crates/{}/", inc.krate.trim_start_matches("powergis-"));
             assert!(inc.paths.iter().all(|p| p.starts_with(&dir)), "{:?} aren't all in {dir}", inc.paths);
         }
     }

@@ -40,7 +40,7 @@ pub mod sqlserver;
 
 use crate::raster::{Crs, Transformer};
 use crate::{DataError, Dataset, Feature, Field, Geometry, GeometryType, ReadReport, Result};
-use rustgis_geom::{Coord, Extent};
+use powergis_geom::{Coord, Extent};
 use std::path::Path;
 
 /// One kind of geometry, for a layer that mixes them.
@@ -354,7 +354,7 @@ pub fn is_remote_name(url: &str) -> bool {
     let lower = crate::s3_address::inner(url).to_ascii_lowercase();
     let path = lower.split(['?', '#']).next().unwrap_or(&lower);
     // `s3://` too: the app's fetchers check it and read it from its bucket's web address (signed
-    // only for a connection that serves the bucket, see rustgis_tiles::s3).
+    // only for a connection that serves the bucket, see powergis_tiles::s3).
     (lower.starts_with("https://") || lower.starts_with("http://") || lower.starts_with("s3://"))
         && [".fgb", ".parquet", ".geoparquet"].iter().any(|e| path.ends_with(e))
 }

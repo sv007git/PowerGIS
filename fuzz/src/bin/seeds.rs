@@ -6,11 +6,11 @@
 //! cargo run --release --bin seeds
 //! ```
 
-use rustgis_data::io::{READ_EXTENSIONS, write_bytes, write_path};
-use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff, wkt};
-use rustgis_data::{Dataset, wkb};
-use rustgis_engine::{Project, Session};
-use rustgis_tiles::mvt;
+use powergis_data::io::{READ_EXTENSIONS, write_bytes, write_path};
+use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff, wkt};
+use powergis_data::{Dataset, wkb};
+use powergis_engine::{Project, Session};
+use powergis_tiles::mvt;
 use std::path::{Path, PathBuf};
 
 /// Features kept from each sample layer: seeds stay small, which libFuzzer mutates faster.

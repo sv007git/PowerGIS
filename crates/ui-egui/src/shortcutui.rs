@@ -1,6 +1,6 @@
 //! User customization of keyboard shortcuts.
 use crate::{
-    RustGisApp,
+    powergisApp,
     keymap::{self, Chord, Keymap},
 };
 use egui::{Context, Event};
@@ -34,7 +34,7 @@ impl Editor {
 }
 
 /// Persist only valid differences, preserving unreadable preferences until an explicit reset.
-pub(crate) fn save(app: &mut RustGisApp) {
+pub(crate) fn save(app: &mut powergisApp) {
     if app.ui.shortcut_preferences_blocked {
         return;
     }
@@ -50,7 +50,7 @@ pub(crate) fn save(app: &mut RustGisApp) {
     }
 }
 
-pub fn load(app: &mut RustGisApp) {
+pub fn load(app: &mut powergisApp) {
     if let Some(changes) = app.services.load_pref.as_ref().and_then(|load| load(PREF)) {
         app.ui.shortcut_preferences_blocked = !app.ui.keymap.apply_preferences(&changes);
     }
@@ -60,7 +60,7 @@ pub fn load(app: &mut RustGisApp) {
 }
 
 /// Whether the native menu bar keeps a key combination for itself.
-fn reserved(app: &RustGisApp, chord: Chord) -> bool {
+fn reserved(app: &powergisApp, chord: Chord) -> bool {
     app.ui.reserved_shortcuts.iter().any(|k| {
         (k.modifiers.command || k.modifiers.mac_cmd) == chord.command
             && k.modifiers.alt == chord.alt
@@ -69,7 +69,7 @@ fn reserved(app: &RustGisApp, chord: Chord) -> bool {
     })
 }
 
-fn assign(app: &mut RustGisApp, editor: &mut Editor, chord: Chord, target: Target) {
+fn assign(app: &mut powergisApp, editor: &mut Editor, chord: Chord, target: Target) {
     if keymap::is_clipboard(chord) {
         editor.notice_clipboard = true;
     } else if reserved(app, chord) {
@@ -84,7 +84,7 @@ fn assign(app: &mut RustGisApp, editor: &mut Editor, chord: Chord, target: Targe
 /// UI commands that need parameters only their dialog supplies, so a bare shortcut would fail.
 const NEEDS_DIALOG: &[&str] = &["ui.importShapefile"];
 
-fn rows(app: &RustGisApp, web: bool) -> Vec<(String, Value, String)> {
+fn rows(app: &powergisApp, web: bool) -> Vec<(String, Value, String)> {
     let mut rows = Vec::new();
     for c in &app.session.registry.commands {
         if !c.needs_input() && !matches!(c.id, "edit.copy" | "edit.cut" | "edit.paste") {
@@ -96,7 +96,7 @@ fn rows(app: &RustGisApp, web: bool) -> Vec<(String, Value, String)> {
             rows.push((id.to_string(), Value::Null, tl!(label).to_string()));
         }
     }
-    for c in rustgis_engine::plugins::commands() {
+    for c in powergis_engine::plugins::commands() {
         let label = c.plugin.manifest.translate(app.lang().code(), &c.decl.label).to_string();
         rows.push((c.id, Value::Null, label));
     }
@@ -116,7 +116,7 @@ fn rows(app: &RustGisApp, web: bool) -> Vec<(String, Value, String)> {
 }
 
 /// Whether Command Search can open a matching row in the editor.
-pub fn can_customize(app: &RustGisApp, id: &str) -> bool {
+pub fn can_customize(app: &powergisApp, id: &str) -> bool {
     if !crate::chrome::command_available(id, cfg!(target_arch = "wasm32"))
         || matches!(id, "edit.copy" | "edit.cut" | "edit.paste")
         || NEEDS_DIALOG.contains(&id)
@@ -125,7 +125,7 @@ pub fn can_customize(app: &RustGisApp, id: &str) -> bool {
     }
     crate::chrome::UI_COMMANDS.iter().any(|(command, _, _)| *command == id)
         || app.session.registry.commands.iter().any(|c| c.id == id && !c.needs_input())
-        || rustgis_engine::plugins::command(id).is_some()
+        || powergis_engine::plugins::command(id).is_some()
         || app.ui.keymap.bindings.iter().any(|b| b.command == id)
 }
 
@@ -144,7 +144,7 @@ fn captured_chord(event: &Event) -> Option<Chord> {
 }
 
 /// Draws the editor after the normal map and dialogs.
-pub fn show(app: &mut RustGisApp, ctx: &Context) {
+pub fn show(app: &mut powergisApp, ctx: &Context) {
     let mut editor = std::mem::take(&mut app.ui.shortcut_editor);
     let was_capturing = editor.capture.is_some();
     if !editor.open {
@@ -341,11 +341,11 @@ pub fn show(app: &mut RustGisApp, ctx: &Context) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_engine::{Project, Session};
+    use powergis_engine::{Project, Session};
 
     #[test]
     fn web_rows_exclude_desktop_commands_even_with_existing_bindings() {
-        let mut app = RustGisApp::new(Session::new(Project::default()));
+        let mut app = powergisApp::new(Session::new(Project::default()));
         for id in ["ui.checkUpdate", "ui.mcpRelay"] {
             app.ui.keymap.assign(Chord::parse("F8").unwrap(), id, Value::Null);
             assert!(!crate::chrome::command_available(id, true));
@@ -357,7 +357,7 @@ mod tests {
 
     #[test]
     fn conflicting_and_clipboard_keys_are_not_changed_without_confirmation() {
-        let mut app = RustGisApp::new(Session::new(Project::default()));
+        let mut app = powergisApp::new(Session::new(Project::default()));
         let mut editor = Editor::default();
         let target = Target { command: "select.clear".into(), params: Value::Null };
         let chord = Chord::parse("Mod+T").unwrap();
@@ -397,7 +397,7 @@ mod tests {
 
     #[test]
     fn search_customize_requires_an_editor_row() {
-        let mut app = RustGisApp::new(Session::new(Project::default()));
+        let mut app = powergisApp::new(Session::new(Project::default()));
         assert!(can_customize(&app, "ui.theme"));
         assert!(!can_customize(&app, "layer.addData"));
         assert!(!can_customize(&app, "edit.copy"));
@@ -410,14 +410,14 @@ mod tests {
     /// and every command that can be customized has a row.
     #[test]
     fn search_customize_agrees_with_the_editor_rows() {
-        let app = RustGisApp::new(Session::new(Project::default()));
+        let app = powergisApp::new(Session::new(Project::default()));
         let ids: std::collections::HashSet<String> = rows(&app, false).into_iter().map(|(id, _, _)| id).collect();
         for id in &ids {
             assert!(can_customize(&app, id), "{id} has an editor row but Command Search cannot customize it");
         }
         let registry = app.session.registry.commands.iter().map(|c| c.id.to_string());
         let ui = crate::chrome::UI_COMMANDS.iter().map(|&(id, _, _)| id.to_string());
-        let plugins = rustgis_engine::plugins::commands().into_iter().map(|c| c.id);
+        let plugins = powergis_engine::plugins::commands().into_iter().map(|c| c.id);
         let bound = app.ui.keymap.bindings.iter().map(|b| b.command.clone());
         for id in registry.chain(ui).chain(plugins).chain(bound) {
             assert_eq!(can_customize(&app, &id), ids.contains(&id), "{id}");

@@ -220,7 +220,7 @@ mod tests {
 
     #[test]
     fn workspace_budget_stops_child_and_cleans_up() {
-        const WORKER: &str = "RUSTGIS_WORKSPACE_BUDGET_WORKER";
+        const WORKER: &str = "powergis_WORKSPACE_BUDGET_WORKER";
         if let Some(root) = std::env::var_os(WORKER) {
             let root = PathBuf::from(root);
             let work = root.join("work");

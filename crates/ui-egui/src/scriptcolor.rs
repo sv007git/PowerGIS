@@ -7,8 +7,8 @@ use std::ops::Range;
 
 use egui::text::{LayoutJob, TextFormat};
 use egui::{Color32, FontId, Stroke};
-use rustgis_engine::cmd::workflows::{MAX_SCRIPT_LINES, refused_in_script};
-use rustgis_engine::string_end;
+use powergis_engine::cmd::workflows::{MAX_SCRIPT_LINES, refused_in_script};
+use powergis_engine::string_end;
 
 /// What a piece of a script is.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -253,10 +253,10 @@ pub type Cache = egui::cache::FrameCache<LayoutJob, Highlighter>;
 /// `unknown_ids`, worked out again only when the script or the loaded plugins change (a plugin
 /// turned on or off shows at once); otherwise one hash of the script per frame. The built-in
 /// commands don't change while the app runs.
-pub fn unknown_ids_cached(ui: &egui::Ui, session: &rustgis_engine::Session, script: &str) -> std::sync::Arc<Vec<String>> {
+pub fn unknown_ids_cached(ui: &egui::Ui, session: &powergis_engine::Session, script: &str) -> std::sync::Arc<Vec<String>> {
     type Kept = (u64, u64, std::sync::Arc<Vec<String>>);
     let key = egui::Id::unique("script_unknown_ids");
-    let (text, plugins) = (egui::util::hash(script), rustgis_engine::plugins::revision());
+    let (text, plugins) = (egui::util::hash(script), powergis_engine::plugins::revision());
     if let Some((t, p, ids)) = ui.data(|d| d.get_temp::<Kept>(key))
         && (t, p) == (text, plugins)
     {
@@ -269,10 +269,10 @@ pub fn unknown_ids_cached(ui: &egui::Ui, session: &rustgis_engine::Session, scri
 
 /// The ids `script`'s lines name (as far as Run reads) that no command has, built-in or a
 /// plugin's, each once and sorted.
-pub fn unknown_ids(session: &rustgis_engine::Session, script: &str) -> Vec<String> {
+pub fn unknown_ids(session: &powergis_engine::Session, script: &str) -> Vec<String> {
     let known = |id: &str| {
         session.registry.get(id).is_some()
-            || (id.starts_with(rustgis_engine::plugins::PREFIX) && rustgis_engine::plugins::command(id).is_some())
+            || (id.starts_with(powergis_engine::plugins::PREFIX) && powergis_engine::plugins::command(id).is_some())
     };
     let lines = script.lines().take(MAX_SCRIPT_LINES);
     let mut out: Vec<String> = lines.filter_map(line_id).filter(|id| !known(id)).map(String::from).collect();
@@ -416,7 +416,7 @@ mod tests {
     /// The ids no command has: built-in ones and plugins' are known, each unknown one listed once.
     #[test]
     fn unknown_ids_are_the_ones_no_command_has() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let script = "nope.cmd {}\nmap.zoomFull\n# x.y\nnope.cmd\nplugin:none/cmd {}\nlabels.style= {}\nlabels.style={}";
         // `labels.style={}` is one word, as Run reads it: no command has that id.
         assert_eq!(super::unknown_ids(&app.session, script), ["labels.style={}", "nope.cmd", "plugin:none/cmd"]);
@@ -426,11 +426,11 @@ mod tests {
     #[test]
     fn the_script_pane_keeps_the_text_it_colours() {
         use egui_kittest::kittest::Queryable;
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         let script = "# zoom\nnope.cmd {\"a\": \"é\"}\nlabels.style {\"size\": }\n";
         app.workflow.script = script.into();
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(500.0, 400.0)).build_ui_state(
-            |ui, app: &mut crate::RustGisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
+            |ui, app: &mut crate::powergisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
             app,
         );
         h.run();
@@ -478,10 +478,10 @@ mod tests {
     #[test]
     fn a_long_script_keeps_run_in_view() {
         use egui_kittest::kittest::Queryable;
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         app.workflow.script = "map.zoomFull\n".repeat(300);
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(500.0, 700.0)).build_ui_state(
-            |ui, app: &mut crate::RustGisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
+            |ui, app: &mut crate::powergisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
             app,
         );
         h.run();
@@ -494,10 +494,10 @@ mod tests {
     #[test]
     fn a_short_script_keeps_a_small_box() {
         use egui_kittest::kittest::Queryable;
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         app.workflow.script = "map.zoomFull".into();
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(500.0, 700.0)).build_ui_state(
-            |ui, app: &mut crate::RustGisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
+            |ui, app: &mut crate::powergisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
             app,
         );
         h.run();
@@ -527,12 +527,12 @@ mod tests {
     #[test]
     fn long_results_stay_in_view() {
         use egui_kittest::kittest::Queryable;
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         app.workflow.script = "map.zoomFull\n".repeat(300);
         app.workflow.script_out = (0..12).map(|i| (format!("line {i}: {}", "a long error ".repeat(30)), true)).collect();
         app.workflow.script_last = Some(crate::analysispane::ScriptRun { n: 1, secs: 0.5, at: 1_800_000_000 });
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(500.0, 700.0)).build_ui_state(
-            |ui, app: &mut crate::RustGisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
+            |ui, app: &mut crate::powergisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
             app,
         );
         h.run();
@@ -560,7 +560,7 @@ mod tests {
     /// The kept unknown ids follow the script: a change is read again, the same script isn't.
     #[test]
     fn kept_unknown_ids_follow_the_script() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let ctx = egui::Context::default();
         let mut out = ctx.run_ui(Default::default(), |ui| {
             let first = super::unknown_ids_cached(ui, &app.session, "nope.a {}");
@@ -578,10 +578,10 @@ mod tests {
     #[test]
     fn a_short_pane_scrolls_as_a_whole() {
         use egui_kittest::kittest::Queryable;
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         app.workflow.script = "map.zoomFull\n".repeat(300);
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(500.0, 150.0)).build_ui_state(
-            |ui, app: &mut crate::RustGisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
+            |ui, app: &mut crate::powergisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
             app,
         );
         h.run();
@@ -594,12 +594,12 @@ mod tests {
     /// Past the lines Run reads, nothing is coloured or looked up: those lines won't run.
     #[test]
     fn lines_run_doesnt_read_are_dimmed() {
-        let max = rustgis_engine::cmd::workflows::MAX_SCRIPT_LINES;
+        let max = powergis_engine::cmd::workflows::MAX_SCRIPT_LINES;
         let script = format!("{}nope.cmd {{}}\n", "map.zoomFull\n".repeat(max));
         let sp = spans(&script, &[]);
         let last = sp.last().unwrap();
         assert_eq!((last.kind, &script[last.range.clone()]), (Kind::Unread, "nope.cmd {}\n"));
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         assert!(super::unknown_ids(&app.session, &script).is_empty(), "an unread line's id isn't looked up");
     }
 
@@ -608,10 +608,10 @@ mod tests {
     #[test]
     fn resizing_the_pane_keeps_the_box_focused() {
         use egui_kittest::kittest::Queryable;
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         app.workflow.script = "map.zoomFull\n".repeat(30);
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(500.0, 700.0)).build_ui_state(
-            |ui, app: &mut crate::RustGisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
+            |ui, app: &mut crate::powergisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
             app,
         );
         h.run();

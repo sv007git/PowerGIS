@@ -5,11 +5,11 @@
 //! Requests go off the frame: the flowtrace is a POST, the rest the tile cache's downloads.
 
 use egui::{Pos2, Rect, Stroke};
-use rustgis_engine::geom::Coord;
-use rustgis_engine::render::rustgis_tiles::{cache, nldi};
+use powergis_engine::geom::Coord;
+use powergis_engine::render::powergis_tiles::{cache, nldi};
 use serde_json::{Value, json};
 
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -111,18 +111,18 @@ fn post(url: &str, body: String) -> Answer {
 }
 
 /// Whether the pane is open and waiting for a map click.
-fn active(app: &RustGisApp) -> bool {
+fn active(app: &powergisApp) -> bool {
     app.ui.right == Some(crate::RightPane::WebData) && app.ui.web_data == "nldi"
 }
 
 /// Whether a map click goes to the NLDI (the crosshair shows).
-pub fn wants_click(app: &RustGisApp) -> bool {
+pub fn wants_click(app: &powergisApp) -> bool {
     // Other map tools (measuring, selecting, zooming, editing) keep their clicks.
-    active(app) && app.ui.nldi.picking && app.ui.nldi.waiting.is_none() && app.session.tool == rustgis_engine::Tool::Explore
+    active(app) && app.ui.nldi.picking && app.ui.nldi.waiting.is_none() && app.session.tool == powergis_engine::Tool::Explore
 }
 
 /// A map click while the pane waits for one: traces the flowline there.
-pub fn click(app: &mut RustGisApp, c: Coord) -> bool {
+pub fn click(app: &mut powergisApp, c: Coord) -> bool {
     if !wants_click(app) {
         return false;
     }
@@ -134,7 +134,7 @@ pub fn click(app: &mut RustGisApp, c: Coord) -> bool {
 }
 
 /// Traces the flowline at a point: the flowtrace, then (if it fails) the hydrolocation.
-fn trace(app: &mut RustGisApp, lon: f64, lat: f64) {
+fn trace(app: &mut powergisApp, lon: f64, lat: f64) {
     let st = &mut app.ui.nldi;
     st.error = None;
     st.info = None;
@@ -152,7 +152,7 @@ fn trace(app: &mut RustGisApp, lon: f64, lat: f64) {
 }
 
 /// Runs an `nldi.*` command with an answer, keeping the layers it adds.
-fn add(app: &mut RustGisApp, id: &str, p: Value) -> Result<Value, String> {
+fn add(app: &mut powergisApp, id: &str, p: Value) -> Result<Value, String> {
     let v = app.run(id, p)?;
     for k in ["layer", "raindrop"] {
         if let Some(l) = v[k].as_u64().and_then(|l| u32::try_from(l).ok()) {
@@ -163,7 +163,7 @@ fn add(app: &mut RustGisApp, id: &str, p: Value) -> Result<Value, String> {
 }
 
 /// Lands the answers and moves the steps along.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let Some((_, slot)) = &app.ui.nldi.waiting else { return };
     let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
         ctx.request_repaint_after(std::time::Duration::from_millis(100));
@@ -224,7 +224,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// A flowline added: its COMID, for the basin and navigation.
-fn landed(app: &mut RustGisApp, v: &Value) {
+fn landed(app: &mut powergisApp, v: &Value) {
     app.ui.nldi.comid = v["comid"].as_u64();
     if app.ui.nldi.comid.is_none() {
         app.ui.nldi.error = Some(tl!("No COMID was returned for this point.").to_string());
@@ -232,7 +232,7 @@ fn landed(app: &mut RustGisApp, v: &Value) {
 }
 
 /// Plots the source picked along the navigation, loading the sources first.
-fn navigate(app: &mut RustGisApp) {
+fn navigate(app: &mut powergisApp) {
     let st = &mut app.ui.nldi;
     st.error = None;
     let Some(comid) = st.comid else {
@@ -256,7 +256,7 @@ fn navigate(app: &mut RustGisApp) {
 }
 
 /// The NLDI pane.
-pub fn pane(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn pane(app: &mut powergisApp, ui: &mut egui::Ui) {
     let t = crate::theme::Tokens::get(ui.ctx());
     ui.label(egui::RichText::new(tl!("USGS NLDI network tools: choose a flowline direction and click the map (or trace the point below). Then get the basin, or choose a navigation method and press Load sources & plot to plot its flowlines, or pick a catalog such as stream gages or wells and plot it too. The NLDI covers the United States' NHDPlus network.")).weak());
     let busy = app.ui.nldi.waiting.is_some();
@@ -300,7 +300,7 @@ pub fn pane(app: &mut RustGisApp, ui: &mut egui::Ui) {
     });
     if let Some(centre) = go {
         let point = if centre.is_some() {
-            rustgis_engine::cmd::catalogs::area(&app.session, &Value::Null).map(|[w, s, e, n]| ((w + e) / 2.0, (s + n) / 2.0))
+            powergis_engine::cmd::catalogs::area(&app.session, &Value::Null).map(|[w, s, e, n]| ((w + e) / 2.0, (s + n) / 2.0))
         } else {
             let st = &app.ui.nldi;
             match (st.lon.trim().parse::<f64>(), st.lat.trim().parse::<f64>()) {
@@ -401,7 +401,7 @@ pub fn pane(app: &mut RustGisApp, ui: &mut egui::Ui) {
 }
 
 /// The point traced, on the map while the pane is open.
-pub fn paint(app: &RustGisApp, p: &egui::Painter, rect: Rect, t: &crate::theme::Tokens, to_screen: impl Fn(Coord) -> Option<Pos2>) {
+pub fn paint(app: &powergisApp, p: &egui::Painter, rect: Rect, t: &crate::theme::Tokens, to_screen: impl Fn(Coord) -> Option<Pos2>) {
     if !active(app) {
         return;
     }

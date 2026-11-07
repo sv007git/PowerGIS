@@ -1,8 +1,8 @@
 //! Fetches parts of files read in place by their web address (FlatGeobuf and GeoParquet, see
-//! [`rustgis_data::source::remote`]) through the tile cache's fetchers: threads natively, the
+//! [`powergis_data::source::remote`]) through the tile cache's fetchers: threads natively, the
 //! browser's fetch on the web. Every address is checked first.
 
-use rustgis_data::source::remote::{self, Failed, Want};
+use powergis_data::source::remote::{self, Failed, Want};
 
 use crate::cache::{DOWNLOAD, DROPPED, NO_RANGES, RANGE, TAIL};
 

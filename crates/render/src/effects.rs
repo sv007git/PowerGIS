@@ -4,9 +4,9 @@
 
 use std::collections::BTreeMap;
 
-use rustgis_data::{Dataset, Geometry};
-use rustgis_map::effects::{Aggregation, Extrusion};
-use rustgis_map::{Ramp, Rgba, Symbol};
+use powergis_data::{Dataset, Geometry};
+use powergis_map::effects::{Aggregation, Extrusion};
+use powergis_map::{Ramp, Rgba, Symbol};
 use tiny_skia::{FillRule, GradientStop, LinearGradient, Paint, PathBuilder, Pixmap, PixmapPaint, Point, SpreadMode, Stroke, Transform};
 
 use crate::{Ctx, View, paint};
@@ -28,7 +28,7 @@ impl AggregationBins {
             if rows.get(row) != Some(&true) {
                 continue;
             }
-            let pts: Vec<rustgis_geom::Coord> = match g {
+            let pts: Vec<powergis_geom::Coord> = match g {
                 Geometry::Point(c) => vec![*c],
                 Geometry::MultiPoint(v) => v.clone(),
                 _ => continue,
@@ -244,10 +244,10 @@ fn paint_shapes(pm: &mut Pixmap, ctx: &Ctx, x: &Extrusion, shapes: &[Shape], sha
 // Store float bits as integers so JSON cannot turn a non-finite height or symbol into null.
 // This is a disposable internal payload, not a persisted file format.
 #[cfg(not(target_arch = "wasm32"))]
-type StoredShape = (u32, Vec<Vec<(u32, u32)>>, u32, Rgba, Rgba, u32, u32, rustgis_map::Marker);
+type StoredShape = (u32, Vec<Vec<(u32, u32)>>, u32, Rgba, Rgba, u32, u32, powergis_map::Marker);
 
 #[cfg(not(target_arch = "wasm32"))]
-fn encode_shape(shape: &Shape) -> rustgis_data::Result<Vec<u8>> {
+fn encode_shape(shape: &Shape) -> powergis_data::Result<Vec<u8>> {
     let (cy, rings, hp, sym) = shape;
     let stored: StoredShape = (
         cy.to_bits(),
@@ -259,13 +259,13 @@ fn encode_shape(shape: &Shape) -> rustgis_data::Result<Vec<u8>> {
         sym.size.to_bits(),
         sym.marker,
     );
-    serde_json::to_vec(&stored).map_err(|e| rustgis_data::DataError::Format(e.to_string()))
+    serde_json::to_vec(&stored).map_err(|e| powergis_data::DataError::Format(e.to_string()))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn decode_shape(bytes: &[u8]) -> rustgis_data::Result<Shape> {
+fn decode_shape(bytes: &[u8]) -> powergis_data::Result<Shape> {
     let (cy, rings, hp, fill, stroke, width, size, marker): StoredShape =
-        serde_json::from_slice(bytes).map_err(|e| rustgis_data::DataError::Format(e.to_string()))?;
+        serde_json::from_slice(bytes).map_err(|e| powergis_data::DataError::Format(e.to_string()))?;
     Ok((
         f32::from_bits(cy),
         rings.into_iter().map(|r| r.into_iter().map(|(x, y)| (f32::from_bits(x), f32::from_bits(y))).collect()).collect(),
@@ -277,7 +277,7 @@ fn decode_shape(bytes: &[u8]) -> rustgis_data::Result<Shape> {
 /// Global painter ordering and a separate shadow pass, without retaining every feature.
 pub(crate) struct ExtrusionSpool {
     #[cfg(not(target_arch = "wasm32"))]
-    disk: rustgis_data::source::spill::Ordered,
+    disk: powergis_data::source::spill::Ordered,
     #[cfg(target_arch = "wasm32")]
     shapes: Vec<Shape>,
 }
@@ -287,20 +287,20 @@ thread_local! {
 }
 
 #[cfg(test)]
-fn check_spool_failure(stage: &str) -> rustgis_data::Result<()> {
+fn check_spool_failure(stage: &str) -> powergis_data::Result<()> {
     if SPOOL_FAILURE.with(|s| s.get() == Some(stage)) {
-        return Err(rustgis_data::DataError::Format(format!("injected spool {stage} failure")));
+        return Err(powergis_data::DataError::Format(format!("injected spool {stage} failure")));
     }
     Ok(())
 }
 
 impl ExtrusionSpool {
-    pub fn new() -> rustgis_data::Result<Self> {
+    pub fn new() -> powergis_data::Result<Self> {
         #[cfg(test)]
         check_spool_failure("create")?;
         Ok(Self {
             #[cfg(not(target_arch = "wasm32"))]
-            disk: rustgis_data::source::spill::Ordered::new()?,
+            disk: powergis_data::source::spill::Ordered::new()?,
             #[cfg(target_arch = "wasm32")]
             shapes: Vec::new(),
         })
@@ -314,7 +314,7 @@ impl ExtrusionSpool {
         x: &Extrusion,
         px_per_m: f64,
         symbol: impl Fn(usize) -> Symbol,
-    ) -> rustgis_data::Result<()> {
+    ) -> powergis_data::Result<()> {
         #[cfg(test)]
         check_spool_failure("insert")?;
         for shape in shapes(ctx, ds, geoms, rows, x, px_per_m, symbol) {
@@ -325,7 +325,7 @@ impl ExtrusionSpool {
         }
         Ok(())
     }
-    pub fn draw(&mut self, pm: &mut Pixmap, ctx: &Ctx, x: &Extrusion) -> rustgis_data::Result<()> {
+    pub fn draw(&mut self, pm: &mut Pixmap, ctx: &Ctx, x: &Extrusion) -> powergis_data::Result<()> {
         #[cfg(test)]
         check_spool_failure("draw")?;
         #[cfg(not(target_arch = "wasm32"))]
@@ -356,7 +356,7 @@ pub(crate) fn extrusion_metres(ds: &Dataset, x: &Extrusion, row: usize) -> f64 {
 pub const LIGHT: (f64, f64, f64) = (-0.25, -0.43, 0.87);
 
 /// The part of the polygon `pts` (ground px) down the view no farther than `v_max`: what stands
-/// in front of the eye ([`rustgis_map::Camera::near_v`]). Sutherland–Hodgman against one edge.
+/// in front of the eye ([`powergis_map::Camera::near_v`]). Sutherland–Hodgman against one edge.
 /// A polygon wholly behind the eye (or with no number in it) comes back empty: nothing of it is
 /// drawn. Where an edge crosses the limit its ends differ in v, so the division is safe.
 pub fn clip_near(pts: &[(f64, f64)], v_max: f64) -> Vec<(f64, f64)> {
@@ -400,12 +400,12 @@ pub struct TiltedWall {
     pub foot: f64,
 }
 
-/// The walls of a feature whose outer `rings` (ground px, [`rustgis_map::Camera::ground_px`])
+/// The walls of a feature whose outer `rings` (ground px, [`powergis_map::Camera::ground_px`])
 /// are raised `up` px, in a tilted `w`×`h` view of `cam`, far first: with `culling`, only those
 /// facing the eye; with `lighting`, lit by the way they face MapLibre's default light and
 /// darker toward their foot. Both the settled frame and the moving view's mesh draw these.
 pub fn tilted_walls(
-    cam: &rustgis_map::Camera,
+    cam: &powergis_map::Camera,
     w: f64,
     h: f64,
     rings: &[Vec<(f64, f64)>],
@@ -462,7 +462,7 @@ pub fn shadow_shift(up: f64) -> (f64, f64) {
 /// convex polygon (screen, logical px) between each edge of its outer `rings` (ground px) and the
 /// edge moved by [`shadow_shift`], cut where it reaches behind the eye. Its footprint moved by
 /// the same shift completes it.
-pub fn tilted_shadow_quads(cam: &rustgis_map::Camera, w: f64, h: f64, rings: &[Vec<(f64, f64)>], up: f64) -> Vec<Vec<(f64, f64)>> {
+pub fn tilted_shadow_quads(cam: &powergis_map::Camera, w: f64, h: f64, rings: &[Vec<(f64, f64)>], up: f64) -> Vec<Vec<(f64, f64)>> {
     let (du, dv) = shadow_shift(up);
     let at = |p: (f64, f64)| cam.project_raised(p.0, p.1, 0.0, w, h).filter(|p| p.0.is_finite() && p.1.is_finite());
     let v_max = cam.near_v(0.0, h);
@@ -495,14 +495,14 @@ pub(crate) fn extrude_tilted(
     geoms: &[Option<&Geometry>],
     rows: &[bool],
     x: &Extrusion,
-    m_per_unit: impl Fn(rustgis_geom::Coord) -> f64,
+    m_per_unit: impl Fn(powergis_geom::Coord) -> f64,
     fog: Rgba,
     symbol: impl Fn(usize) -> Symbol,
 ) {
     let cam = view.camera;
     let (w, h) = (view.width, view.height);
     let ppp = view.pixels_per_point as f32;
-    let far = rustgis_map::camera::FAR;
+    let far = powergis_map::camera::FAR;
     type Rings = Vec<Vec<(f64, f64)>>;
     // (centroid depth along the view, outer rings and holes in ground px, height in ground px,
     // fog, row)
@@ -514,7 +514,7 @@ pub(crate) fn extrude_tilted(
         }
         // Thinned on screen: a point closer than about a pixel to the last kept adds a sliver.
         let mut rings = Vec::new();
-        let (mut sum, mut n) = (rustgis_geom::Coord::new(0.0, 0.0), 0.0);
+        let (mut sum, mut n) = (powergis_geom::Coord::new(0.0, 0.0), 0.0);
         // Drawn while any of its outline is in front of the eye and within the view's reach.
         let mut in_reach = false;
         let mut holes = Vec::new();
@@ -533,7 +533,7 @@ pub(crate) fn extrude_tilted(
                     last = s;
                 }
                 if k == 0 {
-                    sum = rustgis_geom::Coord::new(sum.x + c.x, sum.y + c.y);
+                    sum = powergis_geom::Coord::new(sum.x + c.x, sum.y + c.y);
                     n += 1.0;
                 }
                 in_reach |= cam.depth_scale(*c, h).is_some_and(|k| k * far >= 1.0);
@@ -545,7 +545,7 @@ pub(crate) fn extrude_tilted(
         if rings.is_empty() || n == 0.0 || !in_reach {
             continue;
         }
-        let centroid = rustgis_geom::Coord::new(sum.x / n, sum.y / n);
+        let centroid = powergis_geom::Coord::new(sum.x / n, sum.y / n);
         // At the feature's own scale (Web Mercator stretches the ground toward the poles).
         let up = (extrusion_metres(ds, x, row) / m_per_unit(centroid).max(1e-9) / cam.res.max(1e-9)).clamp(0.0, 1e7);
         // Fog on the way to the view's reach, by the middle of the feature.
@@ -644,7 +644,7 @@ mod spool_tests {
     use super::*;
     #[test]
     fn spool_payload_preserves_all_float_bits_and_large_finite_centres() {
-        let symbol = Symbol { stroke_width: f32::NAN, size: f32::INFINITY, ..Symbol::default_for(rustgis_data::GeometryType::Polygon, 1) };
+        let symbol = Symbol { stroke_width: f32::NAN, size: f32::INFINITY, ..Symbol::default_for(powergis_data::GeometryType::Polygon, 1) };
         let shape = (1.0, vec![vec![(f32::MAX, -0.0)]], f32::NAN, symbol);
         let decoded = decode_shape(&encode_shape(&shape).unwrap()).unwrap();
         assert_eq!(decoded.0.to_bits(), shape.0.to_bits());
@@ -657,30 +657,30 @@ mod spool_tests {
             width: 100.0,
             height: 100.0,
             pixels_per_point: 1.0,
-            camera: rustgis_map::Camera::new(rustgis_geom::Coord::new(0.0, 0.0), 1.0),
+            camera: powergis_map::Camera::new(powergis_geom::Coord::new(0.0, 0.0), 1.0),
             sky: false,
         };
         let ctx = Ctx {
             view: &view,
             ppp: 1.0,
             wireframe: false,
-            cull: rustgis_geom::Extent::EMPTY,
+            cull: powergis_geom::Extent::EMPTY,
             globe: None,
             sprites: Default::default(),
             bursts: Default::default(),
         };
         let geom = Geometry::Polygon(vec![vec![vec![
-            rustgis_geom::Coord::new(0.0, -2e38),
-            rustgis_geom::Coord::new(1.0, -2e38),
-            rustgis_geom::Coord::new(1.0, -2e38),
-            rustgis_geom::Coord::new(0.0, -2e38),
+            powergis_geom::Coord::new(0.0, -2e38),
+            powergis_geom::Coord::new(1.0, -2e38),
+            powergis_geom::Coord::new(1.0, -2e38),
+            powergis_geom::Coord::new(0.0, -2e38),
         ]]]);
-        let ds = Dataset::new("large", rustgis_data::GeometryType::Polygon, vec![]);
+        let ds = Dataset::new("large", powergis_data::GeometryType::Polygon, vec![]);
         let x = Extrusion { height: 1.0, field: None, factor: 1.0, face_culling: true, lighting: true, shadows: true };
         let got = shapes(&ctx, &ds, &[Some(&geom)], &[true], &x, 1.0, |_| symbol);
         assert_eq!(got.len(), 1);
         assert!(got[0].0.is_finite());
-        let ordered = rustgis_data::source::spill::Ordered::new().unwrap();
+        let ordered = powergis_data::source::spill::Ordered::new().unwrap();
         ordered.insert(f64::from(got[0].0), &encode_shape(&got[0]).unwrap()).unwrap();
         ordered
             .visit(|bytes| {

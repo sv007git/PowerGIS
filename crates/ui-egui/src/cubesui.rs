@@ -5,10 +5,10 @@
 //! one.
 
 use egui::vec2;
-use rustgis_engine::render::rustgis_tiles::cubes::{self, Entry, Source};
+use powergis_engine::render::powergis_tiles::cubes::{self, Entry, Source};
 use serde_json::json;
 
-use crate::RustGisApp;
+use crate::powergisApp;
 
 /// The pane's filters and period, and what the last action said.
 pub struct State {
@@ -31,8 +31,8 @@ impl Default for State {
 }
 
 /// The map's extent, in longitude/latitude within the globe.
-fn view_bbox(app: &RustGisApp) -> Option<[f64; 4]> {
-    let e = rustgis_engine::cmd::workspace::view_extent(&app.session);
+fn view_bbox(app: &powergisApp) -> Option<[f64; 4]> {
+    let e = powergis_engine::cmd::workspace::view_extent(&app.session);
     (!e.is_empty()).then(|| [e.min_x.max(-180.0), e.min_y.max(-90.0), e.max_x.min(180.0), e.max_y.min(90.0)])
 }
 
@@ -46,7 +46,7 @@ fn period(e: &Entry) -> String {
 }
 
 /// The pane.
-pub fn pane(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn pane(app: &mut powergisApp, ui: &mut egui::Ui) {
     // The hosted list, asked for once a run of the app; not in tests, which keep to the built-in
     // one.
     #[cfg(not(test))]
@@ -157,7 +157,7 @@ pub fn pane(app: &mut RustGisApp, ui: &mut egui::Ui) {
 }
 
 /// The period typed, if any: both ends, or neither.
-fn typed_period(app: &RustGisApp) -> Result<Option<(String, String)>, String> {
+fn typed_period(app: &powergisApp) -> Result<Option<(String, String)>, String> {
     let st = &app.ui.cubes;
     match (st.start.trim(), st.end.trim()) {
         ("", "") => Ok(None),
@@ -167,7 +167,7 @@ fn typed_period(app: &RustGisApp) -> Result<Option<(String, String)>, String> {
 }
 
 /// Adds a cube (`cube.open`): a STAC cube where the map is, a Zarr variable whole.
-fn add(app: &mut RustGisApp, e: &Entry) {
+fn add(app: &mut powergisApp, e: &Entry) {
     app.ui.cubes.info = None;
     let mut p = json!({"id": e.id});
     if matches!(e.source, Source::Stac { .. }) {
@@ -205,7 +205,7 @@ fn add(app: &mut RustGisApp, e: &Entry) {
 }
 
 /// Takes a cube to Trend Analysis, with the period typed (a trend needs one).
-fn trend(app: &mut RustGisApp, e: &Entry) {
+fn trend(app: &mut powergisApp, e: &Entry) {
     app.ui.cubes.info = None;
     let period = match typed_period(app) {
         Ok(p) => p,
@@ -231,10 +231,10 @@ mod tests {
     use super::*;
     use egui_kittest::kittest::Queryable;
 
-    fn harness(app: RustGisApp, draw: fn(&mut RustGisApp, &mut egui::Ui)) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn harness(app: powergisApp, draw: fn(&mut powergisApp, &mut egui::Ui)) -> egui_kittest::Harness<'static, powergisApp> {
         let mut fonts = false;
         egui_kittest::Harness::builder().with_size(vec2(520.0, 2400.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -250,7 +250,7 @@ mod tests {
     /// only where the map is), and refuses half a period before anything runs.
     #[test]
     fn the_pane_lists_cubes_by_theme_and_words() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("ui.dialog", json!({"name": "dataCubes"})).unwrap();
         assert_eq!(app.ui.web_data, "dataCubes");
         (app.ui.cubes.theme, app.ui.cubes.here) = ("water".into(), false);
@@ -285,7 +285,7 @@ mod tests {
     /// cube, asks for a period before it runs, and goes back to layers when asked.
     #[test]
     fn a_cube_goes_to_trend_analysis() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         (app.ui.cubes.start, app.ui.cubes.end) = ("2001".into(), "2024".into());
         let e = cubes::find("bdc-mod13q1-ndvi").unwrap();
         trend(&mut app, &e);

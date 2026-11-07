@@ -1,11 +1,11 @@
-# Publishes the latest release's files to the opengeos/rustgis-downloads GitHub Pages repository
-# (https://downloads.rustgis.app) after every release build. The hosting repository holds only
+# Publishes the latest release's files to the opengeos/powergis-downloads GitHub Pages repository
+# (https://downloads.powergis.app) after every release build. The hosting repository holds only
 # the generated site; the page templates and the builder live in packaging/downloads.
 #
 # Required repository secret:
 #   DOWNLOADS_DEPLOY_KEY - private half of an SSH deploy key with write access to
-#                          opengeos/rustgis-downloads
-name: Sync downloads.rustgis.app
+#                          opengeos/powergis-downloads
+name: Sync downloads.powergis.app
 
 on:
   # The app's packages (Release) and the Python wheels (Python package) are attached by separate
@@ -46,7 +46,7 @@ jobs:
     timeout-minutes: 30
     env:
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      DESTINATION_REPOSITORY: opengeos/rustgis-downloads
+      DESTINATION_REPOSITORY: opengeos/powergis-downloads
     steps:
       - uses: actions/checkout@v7
         with:
@@ -91,10 +91,10 @@ jobs:
             exit 1
           fi
           install -d -m 700 "$HOME/.ssh"
-          printf '%s\n' "$DOWNLOADS_DEPLOY_KEY" > "$HOME/.ssh/rustgis-downloads"
-          chmod 600 "$HOME/.ssh/rustgis-downloads"
+          printf '%s\n' "$DOWNLOADS_DEPLOY_KEY" > "$HOME/.ssh/powergis-downloads"
+          chmod 600 "$HOME/.ssh/powergis-downloads"
           gh api meta --jq '.ssh_keys[] | "github.com " + .' > "$HOME/.ssh/known_hosts"
-          printf 'Host github.com\n  IdentityFile ~/.ssh/rustgis-downloads\n  IdentitiesOnly yes\n' > "$HOME/.ssh/config"
+          printf 'Host github.com\n  IdentityFile ~/.ssh/powergis-downloads\n  IdentitiesOnly yes\n' > "$HOME/.ssh/config"
           chmod 600 "$HOME/.ssh/known_hosts" "$HOME/.ssh/config"
 
       - name: Build the candidate manifest
@@ -146,4 +146,4 @@ jobs:
           git commit -m "Mirror PowerGIS ${TAG}"
           # Parentless snapshots keep old release files out of the hosting repository's history.
           git push --force origin HEAD:main
-          echo "Published ${TAG} to https://downloads.rustgis.app"
+          echo "Published ${TAG} to https://downloads.powergis.app"

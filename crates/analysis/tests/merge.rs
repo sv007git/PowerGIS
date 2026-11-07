@@ -1,5 +1,5 @@
-use rustgis_analysis::{Inputs, Output};
-use rustgis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value};
+use powergis_analysis::{Inputs, Output};
+use powergis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value};
 use serde_json::json;
 use std::collections::HashMap;
 
@@ -17,7 +17,7 @@ impl Inputs for Layers {
     }
 }
 fn output(layers: &Layers, params: serde_json::Value) -> Dataset {
-    match rustgis_analysis::run("merge", layers, &params).unwrap().output {
+    match powergis_analysis::run("merge", layers, &params).unwrap().output {
         Output::Layer(ds) => ds,
         _ => panic!("expected a vector layer"),
     }
@@ -118,8 +118,8 @@ fn rejects_bad_lists_tables_and_mixed_geometry_types() {
         json!({"inputs":"table"}),
         json!({"inputs":"A","attributes":"yes"}),
     ] {
-        assert!(rustgis_analysis::run("merge", &layers, &p).is_err(), "{p}");
+        assert!(powergis_analysis::run("merge", &layers, &p).is_err(), "{p}");
     }
     layers.data.get_mut("A").unwrap().push_next(Some(Geometry::Line(vec![vec![Coord::new(0.0, 0.0)]])), vec![]);
-    assert!(rustgis_analysis::run("merge", &layers, &json!({"inputs":"A"})).is_err());
+    assert!(powergis_analysis::run("merge", &layers, &json!({"inputs":"A"})).is_err());
 }

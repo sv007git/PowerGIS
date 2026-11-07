@@ -1,14 +1,14 @@
 //! Exercise ordered lists through the real Tools pane, including run/history round trips.
 use egui_kittest::{Harness, kittest::Queryable};
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{Dataset, Field, FieldType, GeometryType, Value},
 };
-use rustgis_ui_egui::RustGisApp;
+use powergis_ui_egui::powergisApp;
 use serde_json::json;
 
 /// A standalone table and a spatial layer with different schemas reveal incorrect field sourcing.
-fn harness(tool: &str, values: serde_json::Value) -> Harness<'static, RustGisApp> {
+fn harness(tool: &str, values: serde_json::Value) -> Harness<'static, powergisApp> {
     let mut session = Session::new(Project::default());
     let mut table = Dataset::new(
         "Records",
@@ -19,10 +19,10 @@ fn harness(tool: &str, values: serde_json::Value) -> Harness<'static, RustGisApp
     table.push(None, vec![Value::Text("North".into()), Value::Text("A".into()), Value::Float(2.0)]);
     session.project.add_table(table);
     session.map_mut().add_dataset(Dataset::new("Target", GeometryType::Point, vec![Field::new("target_only", FieldType::Text)]));
-    let mut app = RustGisApp::new(session);
+    let mut app = powergisApp::new(session);
     app.run("ui.gp.open", json!({"tool": tool, "values": values})).unwrap();
     let mut h = Harness::builder().with_size(egui::vec2(1500.0, 1400.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -34,7 +34,7 @@ fn harness(tool: &str, values: serde_json::Value) -> Harness<'static, RustGisApp
 }
 
 /// AccessKit labels distinguish the list's field and statistic selectors from other tool inputs.
-fn choose(h: &mut Harness<'_, RustGisApp>, label: &str, value: &str) {
+fn choose(h: &mut Harness<'_, powergisApp>, label: &str, value: &str) {
     h.get_by_role_and_label(egui::accesskit::Role::ComboBox, label).click();
     h.run_steps(2);
     h.get_by_label(value).click_accesskit();
@@ -130,7 +130,7 @@ fn missing_fields_and_malformed_history_are_kept_until_edited() {
 
 #[test]
 fn model_lists_accept_future_fields_and_undo_the_edit() {
-    use rustgis_engine::project::{ModelNode, ModelNodeKind};
+    use powergis_engine::project::{ModelNode, ModelNodeKind};
     let mut h = harness("summaryStatistics", json!({}));
     h.state_mut().run("ui.pane.geoprocessing", json!({})).unwrap();
     h.state_mut().run("ui.modelBuilder", json!({})).unwrap();
@@ -191,7 +191,7 @@ fn malformed_row_field_json_can_be_repaired_across_frames() {
 
 #[test]
 fn model_merge_fields_follow_the_wired_join_input() {
-    use rustgis_engine::project::{ModelEdge, ModelNode, ModelNodeKind};
+    use powergis_engine::project::{ModelEdge, ModelNode, ModelNodeKind};
     let mut h = harness("spatialJoin", json!({}));
     h.state_mut().run("ui.pane.geoprocessing", json!({})).unwrap();
     h.state_mut().run("ui.modelBuilder", json!({})).unwrap();
@@ -308,8 +308,8 @@ fn merge_picker_resolves_case_variants_and_duplicate_headers_like_execution() {
 /// An unrun tool's output schema is unknown while editing, but the typed field must execute.
 #[test]
 fn model_typed_statistic_runs_on_an_unrun_tools_new_field() {
-    use rustgis_engine::project::{ModelEdge, ModelNode, ModelNodeKind};
-    use rustgis_engine::{data::Geometry, geom::Coord};
+    use powergis_engine::project::{ModelEdge, ModelNode, ModelNodeKind};
+    use powergis_engine::{data::Geometry, geom::Coord};
     let mut h = harness("summaryStatistics", json!({}));
     h.state_mut().session.map_mut().layers[0]
         .dataset
@@ -358,7 +358,7 @@ fn model_typed_statistic_runs_on_an_unrun_tools_new_field() {
 /// A numeric model input must use that table's schema even when a map layer has its ID as a name.
 #[test]
 fn model_numeric_table_input_filters_statistics_by_its_own_fields() {
-    use rustgis_engine::project::{ModelNode, ModelNodeKind};
+    use powergis_engine::project::{ModelNode, ModelNodeKind};
     let mut h = harness("summaryStatistics", json!({}));
     let id = h.state().session.project.tables[0].id;
     h.state_mut().session.map_mut().add_dataset(Dataset::new(

@@ -5,7 +5,7 @@
 //! optional download run as a subprocess (see `runner`). In the browser it is geolibre-rust's
 //! WASI runner, which the web app loads on demand and runs asynchronously
 //! ([`set_manifests`], then `external_start` → `Services::geolibre_run` → `external_complete`
-//! → `gp.finish` in the engine). [`register`] adds the tools to [`rustgis_analysis`], which
+//! → `gp.finish` in the engine). [`register`] adds the tools to [`powergis_analysis`], which
 //! lists them next to the built-in tools under "GeoLibre ›" toolboxes; without a runner there
 //! are none. Their forms come from the runner's manifests: each parameter says whether it is a
 //! raster or vector input, an output, a choice, a number or a switch.
@@ -34,21 +34,21 @@ use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
 
-use rustgis_analysis::{Inputs, Output, OutputLayer, ParamKind, ParamSpec, ToolResult, ToolSpec};
-use rustgis_data::raster::{Crs, Transformer};
-use rustgis_data::{Coord, Dataset, Extent, Geometry};
+use powergis_analysis::{Inputs, Output, OutputLayer, ParamKind, ParamSpec, ToolResult, ToolSpec};
+use powergis_data::raster::{Crs, Transformer};
+use powergis_data::{Coord, Dataset, Extent, Geometry};
 use serde_json::{Value, json};
 
 /// Tool ids get this prefix, so they never clash with the built-in tools.
 pub const PREFIX: &str = "geolibre:";
 
-/// The key the suite registers its tools under ([`rustgis_analysis::register_external`]).
+/// The key the suite registers its tools under ([`powergis_analysis::register_external`]).
 pub const SOURCE: &str = "geolibre";
 
 /// Adds the suite to the geoprocessing tools. The runner is found and its manifests read the
 /// first time the tools are listed.
 pub fn register() {
-    rustgis_analysis::register_external(SOURCE, specs, run);
+    powergis_analysis::register_external(SOURCE, specs, run);
 }
 
 /// Uses `exe` as the runner (`None`: look in the usual places), and reloads the tool list.
@@ -56,7 +56,7 @@ pub fn register() {
 #[cfg(not(target_arch = "wasm32"))]
 pub fn set_runner(exe: Option<std::path::PathBuf>) -> Result<Option<(std::path::PathBuf, String)>, String> {
     let found = runner::choose(exe)?;
-    rustgis_analysis::reload_external_of(SOURCE);
+    powergis_analysis::reload_external_of(SOURCE);
     Ok(found)
 }
 
@@ -72,7 +72,7 @@ pub fn set_manifests(json: &str) -> Result<usize, String> {
     if let Ok(mut m) = MANIFESTS.lock() {
         *m = Some(v);
     }
-    rustgis_analysis::reload_external_of(SOURCE);
+    powergis_analysis::reload_external_of(SOURCE);
     Ok(n)
 }
 
@@ -286,7 +286,7 @@ fn spec_of(m: &Value) -> Option<(ToolSpec, Meta)> {
         toolbox: leak(toolbox_of(m, &category)),
         summary: leak(summary),
         params: Box::leak(params.into_boxed_slice()),
-        run: rustgis_analysis::external_placeholder,
+        run: powergis_analysis::external_placeholder,
     };
     Some((spec, Meta { category, params: meta }))
 }
@@ -345,7 +345,7 @@ fn vector_bytes(ds: &Dataset, rows: &[usize], crs: Crs, tf: &Transformer) -> Res
         out.features = rows.iter().filter_map(|&r| ds.features.get(r).cloned()).collect();
     }
     let lost = if crs != Crs::LonLat { convert_features(&mut out, |c| tf.from_lonlat(c)) } else { 0 };
-    let mut json = rustgis_data::io::to_geojson(&out);
+    let mut json = powergis_data::io::to_geojson(&out);
     if crs != Crs::LonLat
         && let Some(o) = json.as_object_mut()
     {
@@ -449,17 +449,17 @@ fn stage(inputs: &dyn Inputs, value: &str, data: Data, tf: &Transformer, job: &m
             return Ok(FileRef::Path(p.to_string()));
         }
         // The parts of a large GeoTIFF the web app read are PowerGIS's own: written out below instead.
-        if let Some((file_name, bytes)) = r.embedded.filter(|(_, b)| !rustgis_data::raster::cog::Sparse::is_container(b)) {
+        if let Some((file_name, bytes)) = r.embedded.filter(|(_, b)| !powergis_data::raster::cog::Sparse::is_container(b)) {
             // The tools tell formats apart by extension.
             let ext = Path::new(file_name).extension().and_then(|e| e.to_str()).map(safe).unwrap_or_else(|| "tif".into());
             return Ok(job.stage(value, &ext, bytes.to_vec()));
         }
-        let bytes = rustgis_data::raster::geotiff::write(r.raster, 0).map_err(|e| format!("{value}: {e}"))?;
+        let bytes = powergis_data::raster::geotiff::write(r.raster, 0).map_err(|e| format!("{value}: {e}"))?;
         return Ok(job.stage(value, "tif", bytes));
     }
     if let Some(ds) = inputs.dataset(value) {
         if data == Data::Table || (ds.features.iter().all(|f| f.geometry.is_none()) && data != Data::Vector) {
-            let text = rustgis_data::io::to_csv(ds).map_err(|e| format!("{value}: {e}"))?;
+            let text = powergis_data::io::to_csv(ds).map_err(|e| format!("{value}: {e}"))?;
             return Ok(job.stage(value, "csv", text.into_bytes()));
         }
         let (bytes, lost) = vector_bytes(ds, inputs.selection(value), job.crs, tf)?;
@@ -515,7 +515,7 @@ fn option_value(v: &Value, data: Data) -> Value {
 }
 
 /// Prepares a run of `spec` (a GeoLibre tool) on the map's layers, with `params` already
-/// resolved (defaults filled, required ones present: see `rustgis_analysis::resolve_params`).
+/// resolved (defaults filled, required ones present: see `powergis_analysis::resolve_params`).
 pub fn prepare(spec: &ToolSpec, inputs: &dyn Inputs, params: &Value) -> Result<Job, String> {
     let id = spec.id.strip_prefix(PREFIX).ok_or("not a GeoLibre tool")?;
     let meta =
@@ -598,7 +598,7 @@ fn looks_projected(ds: &Dataset) -> bool {
 fn load(file_name: &str, bytes: &[u8], layer_name: &str, job: &Job, dir: Option<&Path>, messages: &mut Vec<String>) -> Option<OutputLayer> {
     let ext = Path::new(file_name).extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
     match ext.as_str() {
-        "tif" | "tiff" | "asc" => match rustgis_data::raster::read_bytes(file_name, bytes) {
+        "tif" | "tiff" | "asc" => match powergis_data::raster::read_bytes(file_name, bytes) {
             Ok(_) => Some(OutputLayer::Raster { name: layer_name.to_string(), file_name: file_name.to_string(), bytes: bytes.to_vec() }),
             Err(e) => {
                 messages.push(format!("{layer_name}: {e}"));
@@ -607,8 +607,8 @@ fn load(file_name: &str, bytes: &[u8], layer_name: &str, job: &Job, dir: Option<
         },
         "geojson" | "json" | "shp" | "csv" => {
             let read = match (ext.as_str(), dir) {
-                ("shp", Some(d)) => rustgis_data::io::read_path(&d.join(file_name)),
-                _ => rustgis_data::io::read_bytes(file_name, bytes),
+                ("shp", Some(d)) => powergis_data::io::read_path(&d.join(file_name)),
+                _ => powergis_data::io::read_bytes(file_name, bytes),
             };
             match read {
                 Ok((mut ds, _)) => {

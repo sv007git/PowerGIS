@@ -9,12 +9,12 @@
 use std::sync::{Arc, Mutex};
 
 use egui::{Align2, CornerRadius, Stroke, vec2};
-use rustgis_engine::plugins::{self as rp, Manifest, Package, registry::Entry};
+use powergis_engine::plugins::{self as rp, Manifest, Package, registry::Entry};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, semibold};
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 /// The largest package the web app keeps in its preferences (browser storage is small).
 const MAX_SAVED: usize = 1536 * 1024;
@@ -95,7 +95,7 @@ struct EnvJob {
 
 /// Starts making a plugin's Python environment on a background thread (desktop).
 #[cfg(not(target_arch = "wasm32"))]
-fn prepare_env(app: &mut RustGisApp, id: &str) {
+fn prepare_env(app: &mut powergisApp, id: &str) {
     if app.plugins.envs.get(id).is_some_and(|j| j.lock().is_ok_and(|j| j.done.is_none())) {
         return;
     }
@@ -114,7 +114,7 @@ fn prepare_env(app: &mut RustGisApp, id: &str) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn prepare_env(_: &mut RustGisApp, _: &str) {}
+fn prepare_env(_: &mut powergisApp, _: &str) {}
 
 /// Whether a plugin uses a Python environment and it's ready (`None`: it doesn't use one).
 fn env_ready(id: &str) -> Option<bool> {
@@ -130,7 +130,7 @@ fn env_ready(id: &str) -> Option<bool> {
 }
 
 /// A Python plugin's environment, on its card: being made, ready, or not (with Prepare).
-fn env_status(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens, id: &str) {
+fn env_status(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens, id: &str) {
     let Some(ready) = env_ready(id) else { return };
     let job = app.plugins.envs.get(id).and_then(|j| j.lock().ok().map(|j| (j.now.clone(), j.done.clone())));
     match job {
@@ -221,7 +221,7 @@ impl PluginsState {
 }
 
 /// Downloads `url` off the frame.
-pub(crate) fn fetch(app: &RustGisApp, url: &str, limit: usize, ctx: Option<egui::Context>) -> Download {
+pub(crate) fn fetch(app: &powergisApp, url: &str, limit: usize, ctx: Option<egui::Context>) -> Download {
     let slot: Download = Slot::default();
     // The same rule on every platform: HTTPS, or plain HTTP to this computer.
     if !rp::registry::allowed_url(url) {
@@ -267,17 +267,17 @@ fn keeps_prefs() -> bool {
     cfg!(target_arch = "wasm32")
 }
 
-fn saved(app: &RustGisApp) -> Vec<Saved> {
+fn saved(app: &powergisApp) -> Vec<Saved> {
     app.services.load_pref.as_ref().and_then(|l| l("plugins_web")).and_then(|t| serde_json::from_str(&t).ok()).unwrap_or_default()
 }
 
-fn save(app: &RustGisApp, list: &[Saved]) {
+fn save(app: &powergisApp, list: &[Saved]) {
     if let (Some(s), Ok(text)) = (&app.services.save_pref, serde_json::to_string(list)) {
         s("plugins_web", &text);
     }
 }
 
-fn update_saved(app: &RustGisApp, f: impl FnOnce(&mut Vec<Saved>)) {
+fn update_saved(app: &powergisApp, f: impl FnOnce(&mut Vec<Saved>)) {
     if !keeps_prefs() {
         return;
     }
@@ -287,7 +287,7 @@ fn update_saved(app: &RustGisApp, f: impl FnOnce(&mut Vec<Saved>)) {
 }
 
 /// Loads the plugins the web app installed in earlier visits.
-pub fn restore(app: &mut RustGisApp) {
+pub fn restore(app: &mut powergisApp) {
     if !keeps_prefs() {
         return;
     }
@@ -310,7 +310,7 @@ pub fn restore(app: &mut RustGisApp) {
     app.plugins.jobs.push(Job::Blocklist { registry, slot });
 }
 
-fn finish_restore(app: &mut RustGisApp, s: &Saved, got: Result<Vec<u8>, String>) {
+fn finish_restore(app: &mut powergisApp, s: &Saved, got: Result<Vec<u8>, String>) {
     let r = got.and_then(|bytes| {
         let sha = rp::package::sha256_hex(&bytes);
         if !sha.eq_ignore_ascii_case(&s.sha256) {
@@ -319,7 +319,7 @@ fn finish_restore(app: &mut RustGisApp, s: &Saved, got: Result<Vec<u8>, String>)
                 &[("id", &s.id)],
             ));
         }
-        rustgis_engine::cmd::plugins::install_bytes(&bytes)
+        powergis_engine::cmd::plugins::install_bytes(&bytes)
     });
     match r {
         Ok(p) if !s.enabled => {
@@ -331,7 +331,7 @@ fn finish_restore(app: &mut RustGisApp, s: &Saved, got: Result<Vec<u8>, String>)
 }
 
 /// Checks a package that arrived (a file, a download) and asks the user to accept it.
-pub fn received(app: &mut RustGisApp, bytes: Vec<u8>, from: Option<Box<Entry>>) {
+pub fn received(app: &mut powergisApp, bytes: Vec<u8>, from: Option<Box<Entry>>) {
     let r = (|| {
         if let Some(e) = &from {
             let sha = rp::package::sha256_hex(&bytes);
@@ -346,7 +346,7 @@ pub fn received(app: &mut RustGisApp, bytes: Vec<u8>, from: Option<Box<Entry>>) 
         // The browser can't start programs.
         if cfg!(target_arch = "wasm32") && pkg.manifest.runtime == rp::Runtime::Process {
             return Err(crate::i18n::fmt(
-                "{name} runs as a program on your computer: it needs the desktop app or rustgis-cli.",
+                "{name} runs as a program on your computer: it needs the desktop app or powergis-cli.",
                 &[("name", &pkg.manifest.name)],
             ));
         }
@@ -376,9 +376,9 @@ pub fn received(app: &mut RustGisApp, bytes: Vec<u8>, from: Option<Box<Entry>>) 
 }
 
 /// Installs the package the user accepted.
-fn install_confirmed(app: &mut RustGisApp) {
+fn install_confirmed(app: &mut powergisApp) {
     let Some(c) = app.plugins.confirm.take() else { return };
-    match rustgis_engine::cmd::plugins::install_bytes(&c.bytes) {
+    match powergis_engine::cmd::plugins::install_bytes(&c.bytes) {
         Ok(p) => {
             let entry = Saved {
                 id: p.manifest.id.clone(),
@@ -416,7 +416,7 @@ fn install_confirmed(app: &mut RustGisApp) {
     }
 }
 
-fn uninstall(app: &mut RustGisApp, id: &str) {
+fn uninstall(app: &mut powergisApp, id: &str) {
     match app.run("plugin.uninstall", json!({"id": id})) {
         Ok(_) => {
             update_saved(app, |list| list.retain(|s| s.id != id));
@@ -426,7 +426,7 @@ fn uninstall(app: &mut RustGisApp, id: &str) {
     }
 }
 
-fn set_enabled(app: &mut RustGisApp, id: &str, on: bool) {
+fn set_enabled(app: &mut powergisApp, id: &str, on: bool) {
     match app.run("plugin.enable", json!({"id": id, "enabled": on})) {
         Ok(_) => update_saved(app, |list| {
             if let Some(s) = list.iter_mut().find(|s| s.id == id) {
@@ -438,7 +438,7 @@ fn set_enabled(app: &mut RustGisApp, id: &str, on: bool) {
 }
 
 /// Fetches the registry (and its blocklist).
-fn refresh(app: &mut RustGisApp, ctx: &egui::Context) {
+fn refresh(app: &mut powergisApp, ctx: &egui::Context) {
     let url = app.plugins.registry_url();
     if app.plugins.jobs.iter().any(|j| matches!(j, Job::Registry { .. })) {
         return;
@@ -447,11 +447,11 @@ fn refresh(app: &mut RustGisApp, ctx: &egui::Context) {
     app.plugins.jobs.push(Job::Registry { url, slot });
 }
 
-fn download(app: &mut RustGisApp, e: &Entry, ctx: &egui::Context) {
+fn download(app: &mut powergisApp, e: &Entry, ctx: &egui::Context) {
     // Not downloaded only to be refused (the Browse row offers no Install for it either).
     if !runs_here(e.runtime, cfg!(target_arch = "wasm32")) {
         let msg =
-            crate::i18n::fmt("{name} runs as a program on your computer: it needs the desktop app or rustgis-cli.", &[("name", &e.name)]);
+            crate::i18n::fmt("{name} runs as a program on your computer: it needs the desktop app or powergis-cli.", &[("name", &e.name)]);
         app.plugins.message = Some((false, msg));
         return;
     }
@@ -462,7 +462,7 @@ fn download(app: &mut RustGisApp, e: &Entry, ctx: &egui::Context) {
 
 /// Picks a package file to install (or reads `path`, from scripts), then asks before
 /// installing it.
-pub fn install_from_file(app: &mut RustGisApp, path: Option<&str>) {
+pub fn install_from_file(app: &mut powergisApp, path: Option<&str>) {
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(path) = path {
         match std::fs::read(path) {
@@ -489,7 +489,7 @@ pub fn install_from_file(app: &mut RustGisApp, path: Option<&str>) {
 }
 
 /// Applies finished downloads.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     if app.plugins.jobs.is_empty() {
         return;
     }
@@ -593,7 +593,7 @@ fn card(ui: &mut egui::Ui, t: &Tokens, add: impl FnOnce(&mut egui::Ui)) {
     ui.add_space(6.0);
 }
 
-fn installed_tab(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
+fn installed_tab(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens) {
     let plugins = rp::list();
     if plugins.is_empty() {
         ui.add_space(12.0);
@@ -664,7 +664,7 @@ fn installed_tab(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
 /// ones are laid out).
 const ROW_H: f32 = 104.0;
 
-fn browse_tab(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
+fn browse_tab(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens) {
     if app.plugins.registry.is_none() && !app.plugins.busy() {
         refresh(app, ui.ctx());
     }
@@ -761,7 +761,7 @@ fn browse_row(ui: &mut egui::Ui, t: &Tokens, e: &Entry, web: bool) -> bool {
                 // Listed rather than hidden, so the web app's list is the registry's, and says
                 // where the plugin can be installed.
                 ui.label(egui::RichText::new(tl!("Desktop and command line only")).color(t.text_dim)).on_hover_text(crate::i18n::fmt(
-                    "{name} runs as a program on your computer: it needs the desktop app or rustgis-cli.",
+                    "{name} runs as a program on your computer: it needs the desktop app or powergis-cli.",
                     &[("name", e.translate(lang, &e.name))],
                 ));
             } else {
@@ -821,7 +821,7 @@ fn browse_row(ui: &mut egui::Ui, t: &Tokens, e: &Entry, web: bool) -> bool {
     clicked
 }
 
-fn settings_tab(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
+fn settings_tab(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens) {
     card(ui, t, |ui| {
         ui.label(egui::RichText::new(tl!("Install from a file")).font(semibold(13.0)));
         ui.label(
@@ -891,14 +891,14 @@ fn settings_tab(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
         ui.add(
             egui::Hyperlink::from_label_and_url(
                 egui::RichText::new(tl!("Write a plugin")).size(11.5),
-                "https://plugins.rustgis.app/develop/",
+                "https://plugins.powergis.app/develop/",
             )
             .open_in_new_tab(true),
         );
     });
 }
 
-fn confirm(app: &mut RustGisApp, ctx: &egui::Context, t: &Tokens) {
+fn confirm(app: &mut powergisApp, ctx: &egui::Context, t: &Tokens) {
     let Some(c) = &app.plugins.confirm else { return };
     let m = c.manifest.clone();
     let mut decision = None;
@@ -990,7 +990,7 @@ fn confirm(app: &mut RustGisApp, ctx: &egui::Context, t: &Tokens) {
 }
 
 /// The Plugin Manager window, and the install prompt.
-pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn show(app: &mut powergisApp, ctx: &egui::Context) {
     let t = Tokens::get(ctx);
     confirm(app, ctx, &t);
     if !app.plugins.open {

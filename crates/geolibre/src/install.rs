@@ -32,7 +32,7 @@ pub fn target() -> Option<&'static str> {
 
 /// Where an installed runner lives: a `geolibre` folder in the app's data folder.
 pub fn install_dir() -> Option<PathBuf> {
-    rustgis_data::dirs::app_data_dir().map(|b| b.join("geolibre"))
+    powergis_data::dirs::app_data_dir().map(|b| b.join("geolibre"))
 }
 
 fn agent() -> ureq::Agent {

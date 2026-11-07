@@ -3,7 +3,7 @@
 //! Enables native spatial rendering, styling, filtering, selection, and attribute table
 //! inspection of grid infrastructure across PowerGIS desktop and web maps.
 
-use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
+use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
 
 use super::model::{GridAssetType, UserRole};
 use super::topology::ElectricalNetwork;
@@ -84,7 +84,7 @@ pub fn power_lines_dataset(network: &ElectricalNetwork) -> Dataset {
         Field::new("max_current_a", FieldType::Double),
     ];
 
-    let mut ds = Dataset::new("Power Lines & Segments", GeometryType::Line, fields);
+    let mut ds = Dataset::new("Power Lines & Segments", GeometryType::Polyline, fields);
 
     for edge in &network.edges {
         let geom = if edge.path.len() >= 2 {

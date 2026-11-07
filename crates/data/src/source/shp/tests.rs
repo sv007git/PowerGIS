@@ -5,7 +5,7 @@ use crate::source::open_path;
 fn dir() -> PathBuf {
     static SERIAL: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
     let path = std::env::temp_dir().join(format!(
-        "rustgis-shp-index-test-{}-{}",
+        "powergis-shp-index-test-{}-{}",
         std::process::id(),
         SERIAL.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
     ));

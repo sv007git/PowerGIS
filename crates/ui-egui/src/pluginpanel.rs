@@ -1,7 +1,7 @@
 //! A plugin's panel (`panel` in its `plugin.json`): a right pane of texts, checkboxes, sliders,
 //! buttons and trees bound to the plugin's commands.
 //!
-//! The session keeps the panel's state ([`rustgis_engine::plugins::PanelState`]); this draws it
+//! The session keeps the panel's state ([`powergis_engine::plugins::PanelState`]); this draws it
 //! and turns the user's changes into commands: a widget with a command runs
 //! `plugin:<plugin>/<command>` with `{"panel": {"<widget>": value}}`, one without sets the value
 //! with `plugin.panel`. A slider runs its command when it is let go (or stepped, or moved with
@@ -10,11 +10,11 @@
 use egui::{Align2, CornerRadius, RichText, Sense, Stroke, Ui, pos2, vec2};
 use std::collections::{HashMap, HashSet};
 
-use rustgis_engine::plugins::{Manifest, PanelItemDecl, PanelState, TreeNode, command_id};
+use powergis_engine::plugins::{Manifest, PanelItemDecl, PanelState, TreeNode, command_id};
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, regular, semibold};
-use crate::{RightPane, RustGisApp, icons};
+use crate::{RightPane, powergisApp, icons};
 
 /// The pane's state in the front end.
 #[derive(Default)]
@@ -33,20 +33,20 @@ pub struct State {
 }
 
 /// The panel's title (its tab), in the interface language.
-pub fn title(app: &RustGisApp) -> String {
+pub fn title(app: &powergisApp) -> String {
     let lang = app.lang().code();
     app.ui
         .plugin_panel
         .plugin
         .as_deref()
-        .and_then(rustgis_engine::plugins::get)
+        .and_then(powergis_engine::plugins::get)
         .and_then(|p| p.manifest.panel.as_ref().map(|d| p.manifest.translate(lang, &d.title).to_string()))
         .unwrap_or_else(|| tl!("Plugin").to_string())
 }
 
 /// `ui.pane.plugin`: `{"id": plugin}` opens that plugin's panel (running its state command) or,
 /// when it is in view, closes it; with no id, shows or hides the panel last opened.
-pub fn open(app: &mut RustGisApp, p: &Value) -> Result<Value, String> {
+pub fn open(app: &mut powergisApp, p: &Value) -> Result<Value, String> {
     let Some(id) = p.get("id").and_then(Value::as_str) else {
         if app.ui.plugin_panel.plugin.is_none() {
             return Err("name the plugin whose panel to open: {\"id\": plugin id}".into());
@@ -58,7 +58,7 @@ pub fn open(app: &mut RustGisApp, p: &Value) -> Result<Value, String> {
         app.ui.close_right(RightPane::Plugin);
         return Ok(Value::Null);
     }
-    let plugin = rustgis_engine::plugins::get(id).ok_or_else(|| format!("no plugin '{id}'"))?;
+    let plugin = powergis_engine::plugins::get(id).ok_or_else(|| format!("no plugin '{id}'"))?;
     if !plugin.enabled {
         return Err(format!("the plugin {} is disabled", plugin.manifest.name));
     }
@@ -74,14 +74,14 @@ pub fn open(app: &mut RustGisApp, p: &Value) -> Result<Value, String> {
     Ok(Value::Null)
 }
 
-fn run(app: &mut RustGisApp, id: &str, p: Value) {
+fn run(app: &mut powergisApp, id: &str, p: Value) {
     if let Err(e) = app.run(id, p) {
         app.session.notify(e, true);
     }
 }
 
 /// Sends widget `id`'s new value: through its command, or kept for the plugin's next one.
-fn send(app: &mut RustGisApp, plugin: &str, item: &PanelItemDecl, value: Value) {
+fn send(app: &mut powergisApp, plugin: &str, item: &PanelItemDecl, value: Value) {
     let values = json!({ item.key(): value });
     if item.command.is_empty() {
         run(app, "plugin.panel", json!({"id": plugin, "values": values}));
@@ -90,13 +90,13 @@ fn send(app: &mut RustGisApp, plugin: &str, item: &PanelItemDecl, value: Value) 
     }
 }
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     let Some(pid) = app.ui.plugin_panel.plugin.clone() else {
         ui.label(RichText::new(tl!("No plugin panel is open.")).color(t.text_dim));
         return;
     };
     // A plugin turned off or removed takes its panel with it.
-    let plugin = rustgis_engine::plugins::get(&pid).filter(|p| p.enabled);
+    let plugin = powergis_engine::plugins::get(&pid).filter(|p| p.enabled);
     let (Some(plugin), Some(state)) = (plugin, app.session.plugin_panel(&pid).cloned()) else {
         app.ui.plugin_panel = State::default();
         app.ui.close_right(RightPane::Plugin);
@@ -167,7 +167,7 @@ fn text(ui: &mut Ui, item: &PanelItemDecl, state: &PanelState, tr: &dyn Fn(&str)
     }
 }
 
-fn checkbox(app: &mut RustGisApp, ui: &mut Ui, pid: &str, item: &PanelItemDecl, state: &PanelState, tr: &dyn Fn(&str) -> String) {
+fn checkbox(app: &mut powergisApp, ui: &mut Ui, pid: &str, item: &PanelItemDecl, state: &PanelState, tr: &dyn Fn(&str) -> String) {
     let mut on = state.checked(item.key());
     let resp = ui.add_enabled(enabled(item, state), egui::Checkbox::new(&mut on, label_of(item, state, tr)));
     let resp = if item.help.is_empty() { resp } else { resp.on_hover_text(tr(&item.help)) };
@@ -177,7 +177,7 @@ fn checkbox(app: &mut RustGisApp, ui: &mut Ui, pid: &str, item: &PanelItemDecl, 
 }
 
 fn button(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     ui: &mut Ui,
     pid: &str,
     m: &Manifest,
@@ -218,7 +218,7 @@ fn step_button(ui: &mut Ui, on: bool, left: bool, tip: &str, t: &Tokens) -> egui
     resp.on_hover_text(tip)
 }
 
-fn slider(app: &mut RustGisApp, ui: &mut Ui, pid: &str, item: &PanelItemDecl, state: &PanelState, tr: &dyn Fn(&str) -> String, t: &Tokens) {
+fn slider(app: &mut powergisApp, ui: &mut Ui, pid: &str, item: &PanelItemDecl, state: &PanelState, tr: &dyn Fn(&str) -> String, t: &Tokens) {
     let id = item.key();
     let Some(st) = state.items.get(id) else { return };
     let (min, max) = (st.min, st.max.max(st.min));
@@ -356,7 +356,7 @@ fn tree_rows<'a>(nodes: &'a [TreeNode], depth: usize, words: &[String], open: &H
 /// closes a branch (a click on the triangle never chooses it; the first click of a double click
 /// does, as a file browser's). With `search`, a box above it keeps the nodes whose label holds
 /// the words typed, with the branches above them held open ([`tree_rows`]).
-fn tree(app: &mut RustGisApp, ui: &mut Ui, pid: &str, item: &PanelItemDecl, state: &PanelState, tr: &dyn Fn(&str) -> String, t: &Tokens) {
+fn tree(app: &mut powergisApp, ui: &mut Ui, pid: &str, item: &PanelItemDecl, state: &PanelState, tr: &dyn Fn(&str) -> String, t: &Tokens) {
     let id = item.key();
     let Some(st) = state.items.get(id) else { return };
     let label = label_of(item, state, tr);
@@ -533,7 +533,7 @@ mod tests {
     #[test]
     fn a_plugin_adds_data_by_address_off_the_frame() {
         let _turn = crate::fetching::turn();
-        use rustgis_engine::plugins;
+        use powergis_engine::plugins;
         use std::io::{Read, Write};
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let url = format!("http://{}/places.csv", listener.local_addr().unwrap());
@@ -551,12 +551,12 @@ mod tests {
         let pkg = plugins::Package::from_zip(&plugins::testing::package("ui-url", &["edit", "network"])).unwrap();
         plugins::load(pkg, "test").unwrap();
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_step_dt(0.05).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
             },
-            RustGisApp::with_sample(),
+            powergisApp::with_sample(),
         );
         let app = h.state_mut();
         let params = json!({"url": url, "name": "Places", "x": "east", "y": "north"});
@@ -581,12 +581,12 @@ mod tests {
     #[test]
     fn a_scan_by_address_is_downloaded_whole_without_a_probe() {
         let _turn = crate::fetching::turn();
-        use rustgis_engine::plugins;
+        use powergis_engine::plugins;
         use std::io::{Read, Write};
         use std::sync::atomic::{AtomicUsize, Ordering};
         let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
         let url = format!("http://{}/scene.tif", listener.local_addr().unwrap());
-        let file = rustgis_engine::data::raster::cog::example(512, 256);
+        let file = powergis_engine::data::raster::cog::example(512, 256);
         let asked = std::sync::Arc::new(AtomicUsize::new(0));
         let counted = asked.clone();
         std::thread::spawn(move || {
@@ -601,12 +601,12 @@ mod tests {
         let pkg = plugins::Package::from_zip(&plugins::testing::package("ui-scan", &["edit", "network"])).unwrap();
         plugins::load(pkg, "test").unwrap();
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_step_dt(0.05).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
             },
-            RustGisApp::with_sample(),
+            powergisApp::with_sample(),
         );
         let params = json!({"url": url, "as": "scan", "name": "Scan"});
         let r = h.state_mut().run("plugin:ui-scan/f", json!({"op": "layer.addUrl", "params": params})).unwrap();

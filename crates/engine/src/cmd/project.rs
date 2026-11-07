@@ -126,7 +126,7 @@ fn export_log(s: &mut Session, p: &Value) -> CmdResult {
     // Written entry by entry, so a long log isn't held as text first; a failure part way leaves
     // an existing file as it was.
     let n = s.log.len();
-    rustgis_data::io::write_atomic_with(&path, |w| {
+    powergis_data::io::write_atomic_with(&path, |w| {
         use std::io::Write;
         if format == "csv" {
             w.write_all(b"time_utc,at,command,ok,millis,error,params\n")?;
@@ -141,7 +141,7 @@ fn export_log(s: &mut Session, p: &Value) -> CmdResult {
 /// Entry `e` as a CSV row or a JSON line, written to `w`.
 fn write_entry(w: &mut dyn std::io::Write, e: &crate::project_log::LogEntry, format: &str) -> std::io::Result<()> {
     if format == "csv" {
-        let (date, time) = rustgis_map::graphics::civil(e.at / 1000);
+        let (date, time) = powergis_map::graphics::civil(e.at / 1000);
         writeln!(
             w,
             "{date} {time}:{:02},{},{},{},{},{},{}",
@@ -207,7 +207,21 @@ fn reset(s: &mut Session, p: Project) {
 }
 
 fn new(s: &mut Session, p: &Value) -> CmdResult {
-    reset(s, Project::new(super::ps(p, "name").unwrap_or("Untitled")));
+    let mut proj = Project::new(super::ps(p, "name").unwrap_or("Untitled"));
+    let map = proj.map_mut();
+    map.basemap = powergis_map::Basemap::Blank;
+    let mut google_tiles = powergis_map::tiles::TileLayer::new(
+        "Google Maps",
+        powergis_map::tiles::TileKind::Raster,
+        "http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}",
+    );
+    google_tiles.id = "google-maps".to_string();
+    google_tiles.attribution = "Google Maps © Google".to_string();
+    google_tiles.max_zoom = 20;
+    map.tiles = vec![google_tiles];
+    map.camera = powergis_map::Camera::pondicherry();
+    map.bookmarks = vec![powergis_map::Bookmark::new("Pondicherry, India", powergis_map::Camera::pondicherry())];
+    reset(s, proj);
     s.path = None;
     Ok(Value::Null)
 }
@@ -350,9 +364,9 @@ fn set_tool(s: &mut Session, p: &Value) -> CmdResult {
         let gt = s.map().layer(id).map(|l| l.geometry_type());
         let ok = matches!(
             (t, gt),
-            (Tool::CreatePoint, Some(rustgis_data::GeometryType::Point))
-                | (Tool::CreateLine, Some(rustgis_data::GeometryType::Polyline))
-                | (Tool::CreatePolygon, Some(rustgis_data::GeometryType::Polygon))
+            (Tool::CreatePoint, Some(powergis_data::GeometryType::Point))
+                | (Tool::CreateLine, Some(powergis_data::GeometryType::Polyline))
+                | (Tool::CreatePolygon, Some(powergis_data::GeometryType::Polygon))
         );
         if !ok {
             return Err(format!("{} needs a {} layer", t.label(), t.label().trim_start_matches("Create ").to_lowercase()));
@@ -371,7 +385,7 @@ fn parse_tool(p: &Value) -> Result<Tool, String> {
 }
 
 /// A longitude/latitude extent as `[west, south, east, north]`, or null when there is none.
-fn bbox(e: rustgis_geom::Extent) -> Value {
+fn bbox(e: powergis_geom::Extent) -> Value {
     let r = |v: f64| (v * 1e6).round() / 1e6;
     if e.is_empty() { Value::Null } else { json!([r(e.min_x), r(e.min_y), r(e.max_x), r(e.max_y)]) }
 }
@@ -383,9 +397,9 @@ fn info(s: &mut Session, p: &Value) -> CmdResult {
     let filter = ps(p, "nameFilter").map(|f| f.trim().to_lowercase()).filter(|f| !f.is_empty());
     let named = |name: &str| filter.as_deref().is_none_or(|f| name.to_lowercase().contains(f));
     let fields = super::b(p, "includeFields").unwrap_or(true);
-    let field_list = |fs: &[rustgis_data::Field]| json!(fs.iter().map(|f| format!("{} ({})", f.name, f.ty.label())).collect::<Vec<_>>());
+    let field_list = |fs: &[powergis_data::Field]| json!(fs.iter().map(|f| format!("{} ({})", f.name, f.ty.label())).collect::<Vec<_>>());
     // Addresses lose passwords, keys and tokens: the AI Assistant sends this to its provider.
-    let source = |l: &rustgis_map::Layer| -> Option<String> {
+    let source = |l: &powergis_map::Layer| -> Option<String> {
         let from = match (&l.raster, &l.source) {
             (Some(r), _) => r.path.clone().or_else(|| r.file_name.clone()),
             (None, Some(src)) => src.path.clone().or_else(|| src.file_name.clone()),
@@ -437,7 +451,7 @@ fn info(s: &mut Session, p: &Value) -> CmdResult {
                 .elements
                 .iter()
                 .filter_map(|e| match &e.kind {
-                    rustgis_map::layout::ElementKind::MapFrame { map, scale, .. } => {
+                    powergis_map::layout::ElementKind::MapFrame { map, scale, .. } => {
                         Some(json!({"id": e.id, "name": e.name, "map": map, "scale": scale.round()}))
                     }
                     _ => None,
@@ -486,7 +500,7 @@ fn list(s: &mut Session, _: &Value) -> CmdResult {
         .commands
         .iter()
         .map(|c| json!({"id": c.id, "label": c.label, "location": c.location, "shortcut": c.shortcut, "params": c.params}));
-    let plugins = rustgis_plugins::commands().into_iter().map(|c| {
+    let plugins = powergis_plugins::commands().into_iter().map(|c| {
         json!({"id": c.id, "label": c.decl.label, "location": format!("Plugins › {}", c.plugin.manifest.name), "shortcut": "", "params": c.decl.params})
     });
     Ok(Value::Array(builtin.chain(plugins).collect()))
@@ -494,10 +508,10 @@ fn list(s: &mut Session, _: &Value) -> CmdResult {
 
 /// Whether a layer's labels go beyond a plain Default class: other classes, or a Default that
 /// is renamed, hidden or has a clause of its own. Then `info.project` lists the classes.
-fn label_classes_set(labels: &rustgis_map::Labeling) -> bool {
+fn label_classes_set(labels: &powergis_map::Labeling) -> bool {
     let d = &labels.default;
     !labels.classes.is_empty()
         || !d.visible
-        || d.name != rustgis_map::symbology::DEFAULT_LABEL_CLASS
+        || d.name != powergis_map::symbology::DEFAULT_LABEL_CLASS
         || d.where_.as_deref().is_some_and(|w| !w.trim().is_empty())
 }

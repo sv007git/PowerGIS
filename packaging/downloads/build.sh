@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the downloads.rustgis.app site for a PowerGIS release: its assets up to 100 MB (checked
+# Builds the downloads.powergis.app site for a PowerGIS release: its assets up to 100 MB (checked
 # against GitHub's SHA-256 digests), a manifest.json the page reads, SHA256SUMS.txt and the page.
 #
 #   packaging/downloads/build.sh <output-dir> [release-tag]
@@ -9,7 +9,7 @@
 set -euo pipefail
 
 readonly SOURCE_REPOSITORY="opengeos/PowerGIS"
-readonly MIRROR_ORIGIN="https://downloads.rustgis.app"
+readonly MIRROR_ORIGIN="https://downloads.powergis.app"
 readonly MAX_MIRRORED_BYTES=$((100 * 1024 * 1024))
 readonly METADATA_ONLY="${DOWNLOAD_MIRROR_METADATA_ONLY:-false}"
 # The Store-only MSIX, and the release's own SHA256SUMS (the mirror writes SHA256SUMS.txt).
@@ -150,7 +150,7 @@ cp "$template_directory/app.js" "$output_directory/app.js"
 cp "$template_directory/404.html" "$output_directory/404.html"
 cp "$template_directory/README.md" "$output_directory/README.md"
 touch "$output_directory/.nojekyll"
-printf '%s\n' 'downloads.rustgis.app' > "$output_directory/CNAME"
+printf '%s\n' 'downloads.powergis.app' > "$output_directory/CNAME"
 rm "$release_json"
 
 echo "Built mirror for $release_tag: $(jq -r '.mirrored_count' "$output_directory/manifest.json") mirrored, $(jq -r '.github_only_count' "$output_directory/manifest.json") linked to GitHub."

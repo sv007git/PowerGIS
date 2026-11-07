@@ -5,9 +5,9 @@
 
 use serde_json::json;
 
-use rustgis_engine::map::graphics;
+use powergis_engine::map::graphics;
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::Tokens;
 
 /// A text graphic, by map (its index in the project), layer id and row: layer ids and rows are a
@@ -30,7 +30,7 @@ pub struct GraphicFormat {
 
 /// The text graphic the Format pane edits: the one selected on the map, when it is the only
 /// thing selected there and a text.
-pub(crate) fn selected(app: &RustGisApp) -> Option<(u32, usize)> {
+pub(crate) fn selected(app: &powergisApp) -> Option<(u32, usize)> {
     let mut rows = app.session.map().layers.iter().flat_map(|l| l.selection.iter().map(move |r| (l, *r)));
     let (l, row) = rows.next()?;
     if rows.next().is_some() || !l.graphics || graphics::kind(&l.dataset, row) != "text" {
@@ -39,12 +39,12 @@ pub(crate) fn selected(app: &RustGisApp) -> Option<(u32, usize)> {
     Some((l.id, row))
 }
 
-fn key(app: &RustGisApp, (layer, row): (u32, usize)) -> Key {
+fn key(app: &powergisApp, (layer, row): (u32, usize)) -> Key {
     (app.session.project.active_map, layer, row)
 }
 
 /// Opens the Format pane when another text is selected on the map (run each frame the map shows).
-pub(crate) fn follow(app: &mut RustGisApp, ctx: &egui::Context) {
+pub(crate) fn follow(app: &mut powergisApp, ctx: &egui::Context) {
     let now = selected(app).map(|s| key(app, s));
     if now != app.graphic_format.formatted {
         app.graphic_format.formatted = now;
@@ -58,7 +58,7 @@ pub(crate) fn follow(app: &mut RustGisApp, ctx: &egui::Context) {
 /// Places a text at `lon`/`lat` with the Text tool: `text` (a dynamic text picked from the ribbon),
 /// else "Text", selected and open in the Format pane to be typed over. The tool goes back to
 /// Explore unless Keep Tool is on.
-pub(crate) fn place(app: &mut RustGisApp, lon: f64, lat: f64, text: Option<&str>) -> Result<(), String> {
+pub(crate) fn place(app: &mut powergisApp, lon: f64, lat: f64, text: Option<&str>) -> Result<(), String> {
     let text = text.unwrap_or("Text");
     let added = app.run("graphics.add", json!({"shape": "text", "points": [[lon, lat]], "text": text}))?;
     let layer = added["layer"].as_u64().and_then(|v| u32::try_from(v).ok()).ok_or("no layer")?;
@@ -66,14 +66,14 @@ pub(crate) fn place(app: &mut RustGisApp, lon: f64, lat: f64, text: Option<&str>
     edit(app, layer, row)?;
     app.graphic_format.select = Some(key(app, (layer, row)));
     if !app.session.keep_tool {
-        app.session.tool = rustgis_engine::Tool::Explore;
+        app.session.tool = powergis_engine::Tool::Explore;
     }
     Ok(())
 }
 
 /// Selects a placed text and opens the Format pane on it (a double-click, Edit Text…, or
 /// `ui.dialog` for a text by its layer and row), even closed over the same text.
-pub(crate) fn edit(app: &mut RustGisApp, layer: u32, row: usize) -> Result<(), String> {
+pub(crate) fn edit(app: &mut powergisApp, layer: u32, row: usize) -> Result<(), String> {
     let found = app.session.map().layer(layer).filter(|l| l.graphics).is_some_and(|l| graphics::kind(&l.dataset, row) == "text");
     if !found {
         return Err(tl!("no text graphic there").to_string());
@@ -86,7 +86,7 @@ pub(crate) fn edit(app: &mut RustGisApp, layer: u32, row: usize) -> Result<(), S
 
 /// The Format pane: a layout's element while a layout is on screen, else the text selected on
 /// the map.
-pub fn show(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens) {
     if app.session.active_layout.is_some() && !app.mb.shown() {
         crate::layoutview::format(app, ui, t);
         return;
@@ -132,7 +132,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
     };
     let settled = crate::textform::section(ui, "Text", |ui| crate::textform::show(ui, ("graphic_format", k), &[graphics::TOKENS], fields))
         .unwrap_or_default();
-    let save = |app: &mut RustGisApp, change: serde_json::Value| {
+    let save = |app: &mut powergisApp, change: serde_json::Value| {
         let mut p = json!({"layer": layer, "row": row});
         if let (Some(p), Some(c)) = (p.as_object_mut(), change.as_object()) {
             p.extend(c.clone());
@@ -169,7 +169,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
 /// hidden, or the selection changed) before its field could say it lost focus. A draft for
 /// another project, or another map than the one shown, is dropped: its layer ids and rows aren't
 /// this one's. Runs once a frame, after the panes and the view.
-pub(crate) fn save_draft(app: &mut RustGisApp) {
+pub(crate) fn save_draft(app: &mut powergisApp) {
     let drawn = app.graphic_format.drawn.take();
     let Some((k, opened, text)) = app.graphic_format.draft.take() else { return };
     if Some(k) == drawn && opened == app.session.opened {
@@ -191,12 +191,12 @@ mod tests {
     use crate::RightPane::Format;
     use egui::accesskit::{Action, ActionData, ActionRequest, Role};
     use egui_kittest::kittest::{NodeT, Queryable};
-    use rustgis_engine::map::layout::TextAlign;
+    use powergis_engine::map::layout::TextAlign;
 
-    fn harness(app: RustGisApp) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn harness(app: powergisApp) -> egui_kittest::Harness<'static, powergisApp> {
         let mut fonts = false;
         egui_kittest::Harness::builder().with_size(egui::vec2(1000.0, 800.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -217,7 +217,7 @@ mod tests {
     /// one undo step, and text being typed when the pane closes is saved.
     #[test]
     fn a_selected_text_is_formatted_in_the_pane() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let added = app.run("graphics.add", json!({"shape": "text", "points": [[10, 50]], "text": "Old"})).unwrap();
         let (layer, row) = (added["layer"].as_u64().unwrap() as u32, added["row"].as_u64().unwrap() as usize);
         let mut h = harness(app);
@@ -226,7 +226,7 @@ mod tests {
         h.state_mut().run("select.rows", json!({"layer": layer, "rows": [row]})).unwrap();
         h.run_steps(3);
         assert_eq!(h.state().ui.right, Some(Format));
-        let ds = |h: &egui_kittest::Harness<'_, RustGisApp>| h.state().session.map().layer(layer).unwrap().dataset.clone();
+        let ds = |h: &egui_kittest::Harness<'_, powergisApp>| h.state().session.map().layer(layer).unwrap().dataset.clone();
         // Bold, at once and undoable.
         h.get_by_role_and_label(Role::CheckBox, "Bold").click();
         h.run_steps(2);
@@ -273,7 +273,7 @@ mod tests {
     #[test]
     fn a_cleared_text_is_refused_however_it_ends() {
         for close in [false, true] {
-            let mut app = RustGisApp::with_sample();
+            let mut app = powergisApp::with_sample();
             let added = app.run("graphics.add", json!({"shape": "text", "points": [[10, 50]], "text": "Old"})).unwrap();
             let (layer, row) = (added["layer"].as_u64().unwrap() as u32, added["row"].as_u64().unwrap() as usize);
             app.run("select.rows", json!({"layer": layer, "rows": [row]})).unwrap();
@@ -300,7 +300,7 @@ mod tests {
     /// pane waiting.
     #[test]
     fn only_one_selected_text_is_formatted() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let a = app.run("graphics.add", json!({"shape": "text", "points": [[10, 50]], "text": "A"})).unwrap();
         let layer = a["layer"].as_u64().unwrap();
         let b = app.run("graphics.add", json!({"shape": "text", "points": [[20, 40]], "text": "B", "layer": layer})).unwrap();

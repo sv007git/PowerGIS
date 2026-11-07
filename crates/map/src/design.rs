@@ -2,7 +2,7 @@
 //! contingent values), an edit archive, feature templates, and the map's relationships, snapping,
 //! topology rules and edit settings. The engine enforces them on every edit.
 
-use rustgis_data::{Feature, Value};
+use powergis_data::{Feature, Value};
 use serde::{Deserialize, Serialize};
 
 /// The values a field may take.

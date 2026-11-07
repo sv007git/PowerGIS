@@ -1,6 +1,6 @@
 //! Geometry: points, polylines and polygons (each possibly multi-part), plus hit testing.
 
-use rustgis_geom::{Coord, Extent};
+use powergis_geom::{Coord, Extent};
 use serde::{Deserialize, Serialize};
 
 /// Subdivisions of the label fallback grid; both endpoints are sampled.

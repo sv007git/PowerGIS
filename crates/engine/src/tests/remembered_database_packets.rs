@@ -1,5 +1,5 @@
 use super::*;
-use rustgis_data::secrets::{MemorySecrets, SecretStore};
+use powergis_data::secrets::{MemorySecrets, SecretStore};
 use std::io::{Read, Write};
 use std::sync::{
     Arc,
@@ -183,14 +183,14 @@ impl Counting {
     }
 }
 impl SecretStore for Counting {
-    fn load(&self, account: &str) -> Result<Option<rustgis_data::secrets::Secret>, rustgis_data::secrets::SecretError> {
+    fn load(&self, account: &str) -> Result<Option<powergis_data::secrets::Secret>, powergis_data::secrets::SecretError> {
         self.loads.fetch_add(1, Ordering::SeqCst);
         self.inner.load(account)
     }
-    fn save(&self, account: &str, value: &rustgis_data::secrets::Secret) -> Result<(), rustgis_data::secrets::SecretError> {
+    fn save(&self, account: &str, value: &powergis_data::secrets::Secret) -> Result<(), powergis_data::secrets::SecretError> {
         self.inner.save(account, value)
     }
-    fn delete(&self, account: &str) -> Result<(), rustgis_data::secrets::SecretError> {
+    fn delete(&self, account: &str) -> Result<(), powergis_data::secrets::SecretError> {
         self.inner.delete(account)
     }
 }
@@ -236,13 +236,13 @@ fn isolated(name: &str) -> bool {
 
 /// The same isolation, with extra environment for the child (an ambient password, say).
 fn isolated_with(name: &str, extra: &[(&str, &str)]) -> bool {
-    if std::env::var("RUSTGIS_PACKET_SCENARIO").as_deref() == Ok(name) {
+    if std::env::var("powergis_PACKET_SCENARIO").as_deref() == Ok(name) {
         return false;
     }
     let mut command = std::process::Command::new(std::env::current_exe().unwrap());
     command
         .args(["--exact", &format!("tests::remembered_database_packets::{name}"), "--test-threads=1"])
-        .env("RUSTGIS_PACKET_SCENARIO", name)
+        .env("powergis_PACKET_SCENARIO", name)
         .env_remove("PGPASSWORD")
         .env_remove("PGPASSFILE")
         .env_remove("MYSQL_PWD")
@@ -359,7 +359,7 @@ fn remembered_database_exact_address_and_explicit_precedence_packets() {
     }
     let mut explicit = app(store, &prefs);
     let (_, key) = crate::connections::database_key(&server.address).unwrap();
-    rustgis_data::source::duckdb::remember_password(&key, "explicit-sentinel");
+    powergis_data::source::duckdb::remember_password(&key, "explicit-sentinel");
     explicit.run("project.openText", &json!({"text":project(&server.address)})).unwrap();
     assert_eq!(server.take(), b"explicit-sentinel\0");
     assert_eq!(server.take(), b"explicit-sentinel\0");
@@ -391,13 +391,13 @@ fn remembered_database_environment_password_wins_over_saved_for_postgres() {
     let id = remember(&mut seed, "Env", &server.address, "saved-sentinel");
     let prefs = seed.connections.to_json();
     // Seeding activated the typed password for the driver; the sessions below start without it.
-    rustgis_data::source::duckdb::forget_connection_passwords();
+    powergis_data::source::duckdb::forget_connection_passwords();
     // The desktop (a store without the opt-in) never reads the environment: the saved one is sent.
     let mut desktop = app(seeded.clone(), &prefs);
     assert!(desktop.run("connection.test", &json!({"id":id})).is_err());
     assert_eq!(server.take(), b"saved-sentinel\0");
     server.empty();
-    rustgis_data::source::duckdb::forget_connection_passwords();
+    powergis_data::source::duckdb::forget_connection_passwords();
     let store = Counting::over(seeded);
     let (_, key) = crate::connections::database_key(&server.address).unwrap();
 
@@ -436,7 +436,7 @@ fn remembered_database_environment_password_wins_over_saved_for_postgres() {
     server.empty();
 
     // A password typed for the address wins over the environment's as well.
-    rustgis_data::source::duckdb::remember_password(&key, "address-sentinel");
+    powergis_data::source::duckdb::remember_password(&key, "address-sentinel");
     let mut s = session_with(store.clone(), &prefs);
     assert!(s.run("connection.test", &json!({"id":id})).is_err());
     assert_eq!(server.take(), b"address-sentinel\0");
@@ -463,8 +463,8 @@ fn remembered_database_environment_password_wins_for_every_database_kind() {
         let mut seed = app(Arc::new(MemorySecrets::new()), "{}");
         remember_kind(&mut seed, kind, address, &format!("saved-{kind}"));
         let prefs = seed.connections.to_json();
-        rustgis_data::source::duckdb::forget_connection_passwords();
-        let unreadable = Arc::new(MemorySecrets::failing(rustgis_data::secrets::SecretError::Unavailable("no keychain here".into())));
+        powergis_data::source::duckdb::forget_connection_passwords();
+        let unreadable = Arc::new(MemorySecrets::failing(powergis_data::secrets::SecretError::Unavailable("no keychain here".into())));
         let store = Counting::over(unreadable);
 
         let mut s = session_with(store.clone(), &prefs);
@@ -473,14 +473,14 @@ fn remembered_database_environment_password_wins_for_every_database_kind() {
         let shown = s.run("connection.login", &json!({"id":id})).unwrap_or_else(|e| panic!("{kind}: {e}"));
         assert_eq!(shown["loggedIn"], true, "{kind}");
         assert_eq!(s.database_logins.known_password(&id).unwrap().expose(), expected, "{kind}");
-        assert!(rustgis_data::source::duckdb::has_connection_password(&key, &id), "{kind}");
+        assert!(powergis_data::source::duckdb::has_connection_password(&key, &id), "{kind}");
         assert_eq!(store.loads(), 0, "{kind}: a login the environment satisfies doesn't ask the keychain");
 
-        rustgis_data::source::duckdb::forget_connection_passwords();
+        powergis_data::source::duckdb::forget_connection_passwords();
         let mut s = session_with(store.clone(), &prefs);
         s.run("project.openText", &json!({"text":database_project(origin, address)})).unwrap();
         assert_eq!(s.database_logins.known_password(&id).unwrap().expose(), expected, "{kind}");
-        assert!(rustgis_data::source::duckdb::has_connection_password(&key, &id), "{kind}");
+        assert!(powergis_data::source::duckdb::has_connection_password(&key, &id), "{kind}");
         assert!(s.database_logins.activations().contains(&(key.clone(), id.clone())), "{kind}");
         assert_eq!(store.loads(), 0, "{kind}: opening a project the environment satisfies doesn't ask the keychain");
         assert!(!s.notices.iter().any(|n| n.text.contains(expected)), "{kind}");
@@ -490,7 +490,7 @@ fn remembered_database_environment_password_wins_for_every_database_kind() {
         assert_eq!(shown["loggedIn"], true, "{kind}");
         assert_eq!(s.database_logins.known_password(&id).unwrap().expose(), format!("typed-{kind}"), "{kind}");
         assert_eq!(store.loads(), 0, "{kind}");
-        rustgis_data::source::duckdb::forget_connection_passwords();
+        powergis_data::source::duckdb::forget_connection_passwords();
     }
 }
 
@@ -508,7 +508,7 @@ fn remembered_database_saved_password_serves_when_the_environment_has_none() {
         let mut seed = app(seeded.clone(), "{}");
         let id = remember_kind(&mut seed, kind, address, &format!("saved-{kind}"));
         let prefs = seed.connections.to_json();
-        rustgis_data::source::duckdb::forget_connection_passwords();
+        powergis_data::source::duckdb::forget_connection_passwords();
         let store = Counting::over(seeded);
 
         let mut s = session_with(store.clone(), &prefs);
@@ -516,13 +516,13 @@ fn remembered_database_saved_password_serves_when_the_environment_has_none() {
         assert_eq!(s.database_logins.known_password(&id).unwrap().expose(), format!("saved-{kind}"), "{kind}");
         assert_eq!(store.loads(), 1, "{kind}");
 
-        rustgis_data::source::duckdb::forget_connection_passwords();
+        powergis_data::source::duckdb::forget_connection_passwords();
         let mut s = session_with(store.clone(), &prefs);
         s.run("project.openText", &json!({"text":database_project(origin, address)})).unwrap();
         assert_eq!(s.database_logins.known_password(&id).unwrap().expose(), format!("saved-{kind}"), "{kind}");
-        assert!(rustgis_data::source::duckdb::has_connection_password(&key, &id), "{kind}");
+        assert!(powergis_data::source::duckdb::has_connection_password(&key, &id), "{kind}");
         assert_eq!(store.loads(), 2, "{kind}");
-        rustgis_data::source::duckdb::forget_connection_passwords();
+        powergis_data::source::duckdb::forget_connection_passwords();
     }
 }
 
@@ -531,7 +531,7 @@ fn remembered_database_forget_preserves_active_owner_and_explicit_input() {
     if isolated("remembered_database_forget_preserves_active_owner_and_explicit_input") {
         return;
     }
-    use rustgis_data::source::{duckdb, postgis};
+    use powergis_data::source::{duckdb, postgis};
     let server = Server::new();
     let store = Arc::new(MemorySecrets::new());
     let mut s = app(store.clone(), "{}");
@@ -576,7 +576,7 @@ fn remembered_database_forget_saved_only_clears_its_activation() {
     s.run("connection.login", &json!({"id":id})).unwrap();
     assert!(!s.database_logins.has_session_password(&id));
     s.run("connection.forgetPassword", &json!({"id":id})).unwrap();
-    assert!(!rustgis_data::source::duckdb::has_password(&key));
+    assert!(!powergis_data::source::duckdb::has_password(&key));
     assert!(!s.database_logins.activations().iter().any(|(_, active)| active == &id));
     server.empty();
 }
@@ -586,7 +586,7 @@ fn remembered_database_test_refusal_restores_prior_session_and_active_password()
     if isolated("remembered_database_test_refusal_restores_prior_session_and_active_password") {
         return;
     }
-    use rustgis_data::source::{duckdb, postgis};
+    use powergis_data::source::{duckdb, postgis};
     let server = Server::new();
     let store = Arc::new(MemorySecrets::new());
     let mut s = app(store.clone(), "{}");
@@ -707,7 +707,7 @@ fn remembered_database_refused_login_does_not_keep_the_typed_password() {
     assert_eq!(result["failed"], 1, "{result}");
     assert_eq!(server.take(), b"typed-wrong\0");
     assert!(!s.database_logins.has_session_password(&id));
-    assert!(!rustgis_data::source::duckdb::has_password(&key));
+    assert!(!powergis_data::source::duckdb::has_password(&key));
     assert_eq!(s.database_logins.selection("postgres", &key), selection.as_deref());
     assert_eq!(s.database_logins.activations(), activations);
     assert!(store.load(&format!("connection/{id}")).unwrap().is_some());
@@ -719,7 +719,7 @@ fn remembered_database_passwordless_login_keeps_another_connection_active() {
     if isolated("remembered_database_passwordless_login_keeps_another_connection_active") {
         return;
     }
-    use rustgis_data::source::duckdb;
+    use powergis_data::source::duckdb;
     let server = Server::new();
     let store = Arc::new(MemorySecrets::new());
     let mut s = app(store, "{}");
@@ -745,7 +745,7 @@ fn remembered_database_refused_login_restores_previous_driver_owner() {
     if isolated("remembered_database_refused_login_restores_previous_driver_owner") {
         return;
     }
-    use rustgis_data::source::{duckdb, postgis};
+    use powergis_data::source::{duckdb, postgis};
     let server = Server::new();
     let store = Arc::new(MemorySecrets::new());
     let mut s = app(store.clone(), "{}");
@@ -797,7 +797,7 @@ fn remembered_database_cached_session_refusal_evicts_reused_password() {
     if isolated("remembered_database_cached_session_refusal_evicts_reused_password") {
         return;
     }
-    use rustgis_data::source::duckdb;
+    use powergis_data::source::duckdb;
     let server = Server::new();
     for command in ["connection.login", "connection.test", "connection.browse", "project.openText"] {
         let store = Arc::new(MemorySecrets::new());
@@ -842,7 +842,7 @@ fn remembered_database_cached_session_listing_failure_keeps_password() {
     if isolated("remembered_database_cached_session_listing_failure_keeps_password") {
         return;
     }
-    use rustgis_data::source::duckdb;
+    use powergis_data::source::duckdb;
     let server = Server::start(true);
     for command in ["connection.login", "connection.test", "connection.browse", "project.openText"] {
         let mut s = app(Arc::new(MemorySecrets::new()), "{}");
@@ -877,7 +877,7 @@ fn remembered_database_session_refusal_suppresses_only_matching_saved_value() {
     if isolated("remembered_database_session_refusal_suppresses_only_matching_saved_value") {
         return;
     }
-    use rustgis_data::source::duckdb;
+    use powergis_data::source::duckdb;
     let server = Server::new();
     for same in [true, false] {
         for command in ["connection.login", "connection.test", "connection.browse", "project.openText"] {

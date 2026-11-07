@@ -2,7 +2,7 @@
 //! Analyze, View, Publish), the Layers and Browser panes, a Tools pane, the map view, the
 //! attribute table and the status bar.
 //!
-//! The UI is thin: it reads [`Session`] state and runs commands by id ([`RustGisApp::run`]).
+//! The UI is thin: it reads [`Session`] state and runs commands by id ([`powergisApp::run`]).
 //! UI-only commands (`ui.*`: panes, dialogs, theme) are handled here.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
@@ -61,6 +61,7 @@ mod panes;
 mod pluginpanel;
 mod pluginsui;
 mod portalsui;
+pub mod rbac;
 #[cfg(not(target_arch = "wasm32"))]
 mod relayshot;
 mod repairsource;
@@ -94,16 +95,16 @@ mod widgets;
 mod workspacepanes;
 mod zarrui;
 
-use rustgis_engine::render::rustgis_tiles::failure::Failure;
-use rustgis_engine::{Project, Session};
+use powergis_engine::render::powergis_tiles::failure::Failure;
+use powergis_engine::{Project, Session};
 use serde_json::{Value, json};
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use autosave::FolderStore;
 pub use autosave::{Recovery, RecoveryStore};
 pub use chrome::{DoubleClick, TitlebarMetrics};
-pub use rustgis_assistant;
-pub use rustgis_engine;
+pub use powergis_assistant;
+pub use powergis_engine;
 pub use widgets::big_split_menu;
 
 /// Reconciles only command-result wrappers, not parameters or other arbitrary JSON.
@@ -178,11 +179,11 @@ pub struct Start {
 /// What PowerGIS opens with: Settings › Start-up › Start With (#377).
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub enum StartWith {
-    /// The World Atlas sample.
-    #[default]
-    Sample,
     /// An empty project.
+    #[default]
     Blank,
+    /// The World Atlas sample.
+    Sample,
     /// The project last opened or saved on this computer (the desktop app).
     Last,
     /// A project file the user picked (the desktop app).
@@ -193,8 +194,8 @@ impl StartWith {
     /// As the `start_project` preference stores it.
     fn pref(&self) -> String {
         match self {
-            StartWith::Sample => "sample".into(),
             StartWith::Blank => "blank".into(),
+            StartWith::Sample => "sample".into(),
             StartWith::Last => "last".into(),
             StartWith::File(p) => format!("file:{p}"),
         }
@@ -204,6 +205,7 @@ impl StartWith {
     fn from_pref(v: &str) -> StartWith {
         match v {
             "blank" => StartWith::Blank,
+            "sample" => StartWith::Sample,
             "last" => StartWith::Last,
             _ => v.strip_prefix("file:").map(str::trim).filter(|p| !p.is_empty()).map_or(StartWith::Sample, |p| StartWith::File(p.into())),
         }
@@ -232,7 +234,7 @@ impl StartWith {
             Value::Object(_) => {
                 let path =
                     v.get("path").and_then(Value::as_str).map(str::trim).filter(|p| !p.is_empty()).ok_or("project's path is required")?;
-                if !rustgis_engine::project::is_project_file(path) {
+                if !powergis_engine::project::is_project_file(path) {
                     return Err(format!("{path} isn't a PowerGIS project file"));
                 }
                 let full = std::path::absolute(path).map_err(|e| format!("{path}: {e}"))?;
@@ -249,7 +251,7 @@ impl StartWith {
 /// Reads `minLon,minLat,maxLon,maxLat` (commas or spaces) into a valid longitude/latitude extent.
 pub fn parse_extent(text: &str) -> Option<[f64; 4]> {
     let n: Vec<f64> = text.split([',', ' ']).filter(|x| !x.is_empty()).map(|x| x.trim().parse().ok()).collect::<Option<_>>()?;
-    let e = rustgis_engine::cmd::navigate::lonlat_extent(Some(&serde_json::json!(n)))?;
+    let e = powergis_engine::cmd::navigate::lonlat_extent(Some(&serde_json::json!(n)))?;
     Some([e.min_x, e.min_y, e.max_x, e.max_y])
 }
 
@@ -270,7 +272,7 @@ pub struct Services {
     pub save_pref: Option<Box<dyn Fn(&str, &str)>>,
     /// The system's secret store (see `docs/architecture.md` › Secrets): the desktop's keychain.
     /// `None` in the browser and on the command line, where secrets last for the session only.
-    pub secrets: Option<std::sync::Arc<dyn rustgis_engine::data::secrets::SecretStore>>,
+    pub secrets: Option<std::sync::Arc<dyn powergis_engine::data::secrets::SecretStore>>,
     /// Downloads a font by URL (web); the bytes land in `font_inbox`.
     pub fetch_font: Option<Box<dyn Fn(&str)>>,
     pub font_inbox: Option<Inbox>,
@@ -278,12 +280,12 @@ pub struct Services {
     pub geolibre_manifests: Option<Box<dyn Fn(Slot<Result<String, String>>)>>,
     /// …and runs one tool in its in-memory `/work` folder, putting the new files and printed
     /// lines in the slot. The desktop app runs tools through the `geolibre` program instead.
-    pub geolibre_run: Option<Box<dyn Fn(rustgis_engine::cmd::gp::ExternalRun, Slot<rustgis_engine::cmd::gp::ExternalOutput>)>>,
+    pub geolibre_run: Option<Box<dyn Fn(powergis_engine::cmd::gp::ExternalRun, Slot<powergis_engine::cmd::gp::ExternalOutput>)>>,
     /// Downloads a URL into the slot (the browser's fetch; the desktop downloads on a thread).
     pub fetch: Option<Box<dyn Fn(&str, Slot<Result<Vec<u8>, String>>)>>,
     /// Makes an HTTP request (the AI assistant's calls to its model) and puts the response, of any
     /// status, in the slot (the browser's fetch; the desktop sends it on a thread).
-    pub http: Option<Box<dyn Fn(rustgis_assistant::HttpRequest, Slot<Result<rustgis_assistant::HttpResponse, rustgis_assistant::Error>>)>>,
+    pub http: Option<Box<dyn Fn(powergis_assistant::HttpRequest, Slot<Result<powergis_assistant::HttpResponse, powergis_assistant::Error>>)>>,
     /// Where autosave keeps the recovery copy of unsaved work (the desktop's recovery folder).
     /// `None` turns autosave off: the browser for now, and a second copy of the desktop app
     /// running alongside the first, which mustn't touch its copy.
@@ -303,7 +305,7 @@ pub struct Services {
 #[cfg(not(target_arch = "wasm32"))]
 fn print_dir() -> Result<std::path::PathBuf, String> {
     let tmp = std::env::temp_dir();
-    let prefix = format!("rustgis-print-{}-", std::process::id());
+    let prefix = format!("powergis-print-{}-", std::process::id());
     if let Ok(rd) = std::fs::read_dir(&tmp) {
         for e in rd.flatten() {
             if e.file_name().to_string_lossy().starts_with(&prefix) && e.file_type().is_ok_and(|t| t.is_dir()) {
@@ -410,16 +412,16 @@ pub enum ServiceStep {
 
 /// Fetches an address into a slot, off the frame.
 pub(crate) fn fetch_into(url: &str) -> Slot<Result<Vec<u8>, String>> {
-    fetch_into_limited(url, rustgis_engine::render::rustgis_tiles::cache::MAX_DOWNLOAD)
+    fetch_into_limited(url, powergis_engine::render::powergis_tiles::cache::MAX_DOWNLOAD)
 }
 
 /// Like [`fetch_into`], with what is known of a failure (#509).
 pub(crate) fn fetch_detailed_into(url: &str) -> Slot<Result<Vec<u8>, Failure>> {
     let slot: Slot<Result<Vec<u8>, Failure>> = Slot::default();
     let land = slot.clone();
-    rustgis_engine::render::rustgis_tiles::cache::download_detailed(
+    powergis_engine::render::powergis_tiles::cache::download_detailed(
         url,
-        rustgis_engine::render::rustgis_tiles::cache::MAX_DOWNLOAD,
+        powergis_engine::render::powergis_tiles::cache::MAX_DOWNLOAD,
         Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)),
     );
     slot
@@ -428,7 +430,7 @@ pub(crate) fn fetch_detailed_into(url: &str) -> Slot<Result<Vec<u8>, Failure>> {
 pub(crate) fn fetch_into_limited(url: &str, max: usize) -> Slot<Result<Vec<u8>, String>> {
     let slot: Slot<Result<Vec<u8>, String>> = Slot::default();
     let land = slot.clone();
-    rustgis_engine::render::rustgis_tiles::cache::download_limited(
+    powergis_engine::render::powergis_tiles::cache::download_limited(
         url,
         max,
         Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)),
@@ -511,12 +513,12 @@ pub struct PendingUniqueSymbology {
     project: u64,
     map: usize,
     layer: u32,
-    renderer: std::sync::Arc<rustgis_engine::map::Renderer>,
+    renderer: std::sync::Arc<powergis_engine::map::Renderer>,
     pub field: String,
 }
 
 impl PendingUniqueSymbology {
-    fn new(session: &Session, layer: &rustgis_engine::map::Layer, field: String) -> Self {
+    fn new(session: &Session, layer: &powergis_engine::map::Layer, field: String) -> Self {
         Self {
             project: session.opened,
             map: session.project.active_map,
@@ -571,7 +573,7 @@ pub struct UiState {
     /// Start-up preference: the projection the first map starts in (a [`Projection`] code);
     /// empty for Web Mercator.
     ///
-    /// [`Projection`]: rustgis_engine::map::Projection
+    /// [`Projection`]: powergis_engine::map::Projection
     pub start_projection: String,
     /// The EPSG or ESRI code typed in Settings › Start-up › Projection.
     pub start_projection_input: String,
@@ -596,6 +598,8 @@ pub struct UiState {
     pub(crate) shortcut_preferences_blocked: bool,
     /// The shortcut changes are too many to save: they apply only to this session.
     pub(crate) shortcut_preferences_full: bool,
+    /// Active engineer / user profile and permissions (RBAC).
+    pub user_profile: rbac::UserProfile,
     pub tab_strip_rect: Option<egui::Rect>,
     /// Where the left and right panes were drawn on the last frame, while they show.
     pub pane_rects: [Option<egui::Rect>; 2],
@@ -711,7 +715,7 @@ pub struct UiState {
     pub sources_saved: u64,
     pub connections_saved: u64,
     /// The default raster style last kept in the preferences.
-    pub raster_defaults_saved: rustgis_engine::map::RasterDefaults,
+    pub raster_defaults_saved: powergis_engine::map::RasterDefaults,
     /// Home › Add › Add Data › Zarr…: its store, choices and fetches.
     pub zarr: zarrui::State,
     /// Independent Zarr reads for imported GeoLibre layers; does not share the picker state.
@@ -719,7 +723,7 @@ pub struct UiState {
     /// A layout picture waiting for its image file (web).
     pub pending_layout_picture: bool,
     /// The corners of a picture graphic waiting for its image file.
-    pub pending_picture: Option<Vec<rustgis_engine::geom::Coord>>,
+    pub pending_picture: Option<Vec<powergis_engine::geom::Coord>>,
     /// The value picked under Edit › Dynamic Text (a token such as `{scale}`): the text tool's
     /// dialog starts with it. Cleared when the tool changes.
     pub dynamic_text: Option<&'static str>,
@@ -780,9 +784,9 @@ impl Default for UiState {
             dark: false,
             measurement_imperial: false,
             dark_follows_system: true,
-            language: i18n::AUTO.into(),
-            worldview: i18n::AUTO.into(),
-            start_with: StartWith::Sample,
+            language: "en".into(),
+            worldview: "default".into(),
+            start_with: StartWith::Blank,
             ask_layers: true,
             reserved_shortcuts: Vec::new(),
             choosing: Vec::new(),
@@ -801,6 +805,7 @@ impl Default for UiState {
             shortcut_editor: shortcutui::Editor::default(),
             shortcut_preferences_blocked: false,
             shortcut_preferences_full: false,
+            user_profile: rbac::UserProfile::default(),
             tab_strip_rect: None,
             pane_rects: [None; 2],
             copy_out: None,
@@ -870,7 +875,8 @@ impl Default for UiState {
     }
 }
 
-pub struct RustGisApp {
+#[allow(non_camel_case_types)]
+pub struct powergisApp {
     pub session: Session,
     pub ui: UiState,
     pub map: mapview::MapView,
@@ -878,9 +884,6 @@ pub struct RustGisApp {
     pub gp: panes::GpForm,
     pub table: table::TableState,
     pub layout: layoutview::LayoutView,
-}
-
-pub type PowerGisApp = RustGisApp;
     /// The text graphic the Format pane edits (#516).
     pub(crate) graphic_format: graphicformat::GraphicFormat,
     pub forms: editpanes::Forms,
@@ -911,14 +914,14 @@ pub type PowerGisApp = RustGisApp;
     pub(crate) autosave: autosave::AutosaveState,
     /// The question asked before unsaved changes are discarded, and a quit the user agreed to.
     pub(crate) save_prompt: saveprompt::SavePromptState,
-    /// The MCP relay for `rustgis-cli mcp --attach`: a loopback listener on the session this app
+    /// The MCP relay for `powergis-cli mcp --attach`: a loopback listener on the session this app
     /// already has open, started by the `ui.mcpRelay` command and off until then.
     #[cfg(not(target_arch = "wasm32"))]
-    pub relay: Option<rustgis_assistant::relay::Relay>,
+    pub relay: Option<powergis_assistant::relay::Relay>,
     /// The file bridge for agents that can't use MCP: on while agents are turned on, with or
     /// without the relay ([`connectui`]).
     #[cfg(not(target_arch = "wasm32"))]
-    pub file_bridge: Option<rustgis_assistant::filebridge::FileBridge>,
+    pub file_bridge: Option<powergis_assistant::filebridge::FileBridge>,
     /// A screen snapshot an agent attached through the relay asked for, while it is captured.
     #[cfg(not(target_arch = "wasm32"))]
     relay_shot: Option<relayshot::Shot>,
@@ -937,9 +940,9 @@ pub type PowerGisApp = RustGisApp;
     /// language's face comes right after the interface font (before it for Arabic script), so its
     /// glyph shapes win; the others are last-resort fallbacks. Faces are shared, so reinstalling
     /// copies nothing.
-    extra_fonts: Vec<(String, std::sync::Arc<egui::FontData>, Option<rustgis_engine::render::fonts::ScriptFont>)>,
+    extra_fonts: Vec<(String, std::sync::Arc<egui::FontData>, Option<powergis_engine::render::fonts::ScriptFont>)>,
     /// The script whose face was put first at the last font install.
-    installed_region: Option<rustgis_engine::render::fonts::ScriptFont>,
+    installed_region: Option<powergis_engine::render::fonts::ScriptFont>,
     fonts_dirty: bool,
     fonts_requested: Vec<String>,
     /// Downloads that failed; cleared when a language is picked, which retries them.
@@ -955,7 +958,9 @@ pub type PowerGisApp = RustGisApp;
     seen_project: Option<std::path::PathBuf>,
 }
 
-impl RustGisApp {
+pub type PowerGisApp = powergisApp;
+
+impl powergisApp {
     /// The Ctrl (⌘) shortcuts the keymap takes, as (Alt, Shift, key), the clipboard's left out:
     /// in a browser, what the web app keeps from the browser's own shortcuts (⌘D bookmarking
     /// the page, ⌘Y opening its history, ⌘= zooming it), as design tools in the browser do.
@@ -1003,7 +1008,7 @@ impl RustGisApp {
 
     /// A fingerprint of the keymap's key combinations and what they run: cheap to take every
     /// frame (no allocation), it changes when a shortcut is added, removed or rebound (to
-    /// another key or another command), so a caller can rebuild [`RustGisApp::command_keys`]
+    /// another key or another command), so a caller can rebuild [`powergisApp::command_keys`]
     /// only then.
     pub fn shortcuts_fingerprint(&self) -> u64 {
         use std::hash::{Hash, Hasher};
@@ -1032,7 +1037,7 @@ impl RustGisApp {
     }
 
     /// Whether a browser key press (its `key` and `code`, Ctrl or ⌘ held, Alt, Shift) is one of
-    /// [`RustGisApp::command_keys`]: as egui matches a shortcut, an extra Alt or Shift doesn't
+    /// [`powergisApp::command_keys`]: as egui matches a shortcut, an extra Alt or Shift doesn't
     /// stop it (⌘+ is ⌘⇧= on most keyboards).
     pub fn takes_browser_key(keys: &[(bool, bool, egui::Key)], key: &str, code: &str, command: bool, alt: bool, shift: bool) -> bool {
         command
@@ -1048,13 +1053,13 @@ impl RustGisApp {
     /// The app around `session`, with no platform hooks (see [`Self::with_services`]).
     pub fn new(session: Session) -> Self {
         // The installed fonts a label can be drawn in, indexed while the app starts.
-        rustgis_engine::render::families::warm_up();
+        powergis_engine::render::families::warm_up();
         let mut s = session;
         if s.active_layer.is_none() {
             s.active_layer = s.map().layers.first().map(|l| l.id);
         }
         let ui = UiState { keymap: keymap::Keymap::new(&s.registry), ..UiState::default() };
-        RustGisApp {
+        powergisApp {
             session: s,
             ui,
             map: mapview::MapView::default(),
@@ -1113,7 +1118,7 @@ impl RustGisApp {
         // Saved database passwords, S3 keys and the remembered Earthdata Login token use the same
         // store, installed before prefs.
         self.session.database_logins.set_store(services.secrets.clone());
-        rustgis_engine::render::rustgis_tiles::earthdata::set_secret_store(services.secrets.clone());
+        powergis_engine::render::powergis_tiles::earthdata::set_secret_store(services.secrets.clone());
         self.services = services;
         shortcutui::load(&mut self);
         sourcespane::load_connections(&mut self);
@@ -1121,31 +1126,33 @@ impl RustGisApp {
         if let Some(lang) = self.services.load_pref.as_ref().and_then(|load| load("language")) {
             self.ui.language = lang;
         }
-        // A stored value that is neither `auto` nor a known worldview means `auto`.
+        // Worldview defaults to "default".
         if let Some(w) = self.services.load_pref.as_ref().and_then(|load| load("worldview"))
-            && rustgis_engine::sample::Worldview::from_code(&w).is_some()
+            && powergis_engine::sample::Worldview::from_code(&w).is_some()
         {
             self.ui.worldview = w.trim().to_ascii_lowercase();
+        } else {
+            self.ui.worldview = "default".into();
         }
         self.apply_worldview();
         self.ui.start_with =
-            self.services.load_pref.as_ref().and_then(|load| load("start_project")).map_or(StartWith::Sample, |v| StartWith::from_pref(&v));
+            self.services.load_pref.as_ref().and_then(|load| load("start_project")).map_or(StartWith::Blank, |v| StartWith::from_pref(&v));
         // A shell without file paths (the web app) can't open a file at start.
         if self.ui.start_with.opens_a_file() && !self.opens_files() {
-            self.ui.start_with = StartWith::Sample;
+            self.ui.start_with = StartWith::Blank;
         }
         self.ui.last_project = self.services.load_pref.as_ref().and_then(|load| load("last_project")).filter(|p| !p.trim().is_empty());
         self.ui.ask_layers = self.services.load_pref.as_ref().and_then(|load| load("ask_file_layers")).is_none_or(|v| v != "off");
         // A stored projection this version can't use means Web Mercator.
         if let Some(code) = self.services.load_pref.as_ref().and_then(|load| load("start_projection"))
-            && let Ok(p) = rustgis_engine::map::Projection::from_code(&code)
+            && let Ok(p) = powergis_engine::map::Projection::from_code(&code)
         {
             self.ui.start_projection = p.code();
         }
         self.ui.start_extent = self.services.load_pref.as_ref().and_then(|load| load("start_extent")).and_then(|v| parse_extent(&v));
         // How new single-band rasters are drawn (Save as Default in the raster Symbology pane).
         if let Some(d) = self.services.load_pref.as_ref().and_then(|load| load(RASTER_DEFAULTS_PREF))
-            && let Ok(d) = serde_json::from_str::<rustgis_engine::map::RasterDefaults>(&d)
+            && let Ok(d) = serde_json::from_str::<powergis_engine::map::RasterDefaults>(&d)
         {
             self.session.raster_defaults = d.sanitized();
         }
@@ -1161,8 +1168,8 @@ impl RustGisApp {
             .unwrap_or_else(|| "Meters".into());
         self.ui.measurement_imperial =
             self.services.load_pref.as_ref().and_then(|load| load("measurement_units")).as_deref() == Some("imperial");
-        // The GPU map backend: RUSTGIS_GPU forces it on, else the saved preference.
-        self.map.gpu_enabled = std::env::var_os("RUSTGIS_GPU").is_some()
+        // The GPU map backend: powergis_GPU forces it on, else the saved preference.
+        self.map.gpu_enabled = std::env::var_os("powergis_GPU").is_some()
             || self.services.load_pref.as_ref().and_then(|load| load("ui.map.gpu")).as_deref() == Some("1");
         if let Some(m) = self.services.load_pref.as_ref().and_then(|load| load("ribbon_minimized")) {
             self.ui.ribbon_minimized = m == "true";
@@ -1205,7 +1212,7 @@ impl RustGisApp {
     fn can_draw(&self, lang: i18n::Lang) -> bool {
         let Some(region) = Self::script_region(lang.script()) else { return true };
         let have = self.extra_fonts.iter().any(|(_, _, r)| *r == Some(region));
-        let can_fetch = self.services.fetch_font.is_some() && rustgis_engine::render::fonts::script_font_url(region).is_some();
+        let can_fetch = self.services.fetch_font.is_some() && powergis_engine::render::fonts::script_font_url(region).is_some();
         (have || !can_fetch) && !self.fonts_pending && self.installed_region == Some(region)
     }
 
@@ -1213,7 +1220,7 @@ impl RustGisApp {
     /// in the picker, place names in data) renders whatever the interface language. The bytes are
     /// borrowed from the font cache, not copied.
     fn add_cjk_fallback(&mut self) {
-        use rustgis_engine::render::fonts::{CjkRegion, cjk_font};
+        use powergis_engine::render::fonts::{CjkRegion, cjk_font};
         if self.extra_fonts.iter().any(|(n, _, _)| n == "cjk-fallback") {
             return;
         }
@@ -1232,7 +1239,7 @@ impl RustGisApp {
         if self.extra_fonts.iter().any(|(n, _, _)| n == "symbol-fallback") {
             return;
         }
-        if let Some((bytes, index)) = rustgis_engine::render::fonts::symbol_font() {
+        if let Some((bytes, index)) = powergis_engine::render::fonts::symbol_font() {
             let mut face = egui::FontData::from_static(bytes);
             face.index = *index;
             self.extra_fonts.push(("symbol-fallback".into(), std::sync::Arc::new(face), None));
@@ -1240,13 +1247,13 @@ impl RustGisApp {
     }
 
     /// The script face the current language needs, if any.
-    fn current_region(&self) -> Option<rustgis_engine::render::fonts::ScriptFont> {
+    fn current_region(&self) -> Option<powergis_engine::render::fonts::ScriptFont> {
         Self::script_region(self.chosen_lang().script())
     }
 
     /// The face a script needs beyond the interface fonts, if any.
-    fn script_region(script: i18n::Script) -> Option<rustgis_engine::render::fonts::ScriptFont> {
-        use rustgis_engine::render::fonts::{CjkRegion, ScriptFont};
+    fn script_region(script: i18n::Script) -> Option<powergis_engine::render::fonts::ScriptFont> {
+        use powergis_engine::render::fonts::{CjkRegion, ScriptFont};
         match script {
             i18n::Script::Cjk(i18n::CjkFont::SimplifiedChinese) => Some(ScriptFont::Cjk(CjkRegion::SimplifiedChinese)),
             i18n::Script::Cjk(i18n::CjkFont::Japanese) => Some(ScriptFont::Cjk(CjkRegion::Japanese)),
@@ -1260,7 +1267,7 @@ impl RustGisApp {
     /// Makes sure the current language's script has a font: an installed face on the desktop, a
     /// download on the web.
     fn ensure_script_font(&mut self) {
-        use rustgis_engine::render::fonts::{script_font, script_font_url};
+        use powergis_engine::render::fonts::{script_font, script_font_url};
         // Switching between script languages reorders the faces already loaded.
         if self.current_region() != self.installed_region {
             self.fonts_dirty = true;
@@ -1291,7 +1298,7 @@ impl RustGisApp {
         p["points"] = json!(pts.iter().map(|c| [c.x, c.y]).collect::<Vec<_>>());
         let r = self.run("graphics.add", p);
         if r.is_ok() && !self.session.keep_tool {
-            self.session.tool = rustgis_engine::Tool::Explore;
+            self.session.tool = powergis_engine::Tool::Explore;
         }
         r
     }
@@ -1300,7 +1307,7 @@ impl RustGisApp {
     fn layout_bytes(&mut self, li: usize, pdf: bool, dpi: f64) -> Result<Vec<u8>, String> {
         let session = &mut self.session;
         let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            rustgis_engine::cmd::layout::layout_bytes(session, li, pdf, dpi, true)
+            powergis_engine::cmd::layout::layout_bytes(session, li, pdf, dpi, true)
         }))
         .unwrap_or_else(|_| Err("the layout export failed unexpectedly".into()));
         if let Err(e) = &r {
@@ -1409,7 +1416,7 @@ impl RustGisApp {
             return r;
         }
         if lower.ends_with(".rgispkg") {
-            let text = rustgis_engine::cmd::items::package_text(bytes)?;
+            let text = powergis_engine::cmd::items::package_text(bytes)?;
             let r = self.run("project.openText", json!({"text": text, "package": true}));
             self.map.invalidate();
             return r;
@@ -1432,16 +1439,16 @@ impl RustGisApp {
             use base64::Engine;
             return self.add_picture(json!({"image": base64::engine::general_purpose::STANDARD.encode(bytes)}));
         }
-        if rustgis_engine::data::raster::is_raster_name(name)
-            || rustgis_engine::data::source::is_source_name(name)
-            || rustgis_engine::data::io::is_multi_layer_name(name)
-            || rustgis_engine::data::sheets::is_sheet_name(name)
+        if powergis_engine::data::raster::is_raster_name(name)
+            || powergis_engine::data::source::is_source_name(name)
+            || powergis_engine::data::io::is_multi_layer_name(name)
+            || powergis_engine::data::sheets::is_sheet_name(name)
         {
             use base64::Engine;
             let data = base64::engine::general_purpose::STANDARD.encode(bytes);
             let mut p = json!({"fileName": name, "data": data});
             // A picked spreadsheet or Shapefile ZIP takes its import options.
-            if let Some(Value::Object(opts)) = csv.filter(|_| rustgis_engine::data::sheets::is_sheet_name(name) || lower.ends_with(".zip"))
+            if let Some(Value::Object(opts)) = csv.filter(|_| powergis_engine::data::sheets::is_sheet_name(name) || lower.ends_with(".zip"))
             {
                 for (k, v) in opts {
                     p[k] = v;
@@ -1454,7 +1461,7 @@ impl RustGisApp {
             self.session.notify(e.clone(), true);
             return Err(e);
         };
-        if rustgis_engine::project::is_project_file(name) {
+        if powergis_engine::project::is_project_file(name) {
             let r = self.run("project.openText", json!({"text": text, "fileName": name}));
             if r.is_ok() {
                 self.ui.web_file = Some(format!("{}.rgis", self.session.project.name));
@@ -1559,13 +1566,13 @@ impl RustGisApp {
         requested
     }
 
-    /// The PowerGIS logo as a texture (rasterised once from `rustgis_render::logo`).
+    /// The PowerGIS logo as a texture (rasterised once from `powergis_render::logo`).
     pub fn logo(&mut self, ctx: &egui::Context) -> Option<egui::TextureId> {
         if self.logo.is_none()
-            && let Some(pm) = rustgis_engine::render::logo::pixmap(256)
+            && let Some(pm) = powergis_engine::render::logo::pixmap(256)
         {
             let img = egui::ColorImage::from_rgba_premultiplied([pm.width() as usize, pm.height() as usize], pm.data());
-            self.logo = Some(ctx.load_texture("rustgis-logo", img, egui::TextureOptions::LINEAR));
+            self.logo = Some(ctx.load_texture("powergis-logo", img, egui::TextureOptions::LINEAR));
         }
         self.logo.as_ref().map(|t| t.id())
     }
@@ -1579,20 +1586,20 @@ impl RustGisApp {
 
     /// The sample "World Atlas" project.
     pub fn with_sample() -> Self {
-        // Tests don't depend on the machine's time zone and locale.
-        rustgis_engine::sample::apply_worldview(if cfg!(test) { "default" } else { i18n::AUTO });
+        powergis_engine::sample::apply_worldview("default");
         let mut s = Session::new(Project::default());
         let _ = s.run("project.sample", &Value::Null);
         s.mark_saved();
-        RustGisApp::new(s)
+        let mut app = powergisApp::new(s);
+        app.ui.start_with = StartWith::Sample;
+        app
     }
 
     /// Applies the worldview preference; an untouched sample project's countries follow it.
     fn apply_worldview(&mut self) {
-        use rustgis_engine::sample;
+        use powergis_engine::sample;
         let before = sample::worldview();
-        // Tests don't depend on the machine's time zone and locale.
-        let pref = if cfg!(test) && self.ui.worldview == i18n::AUTO { "default" } else { self.ui.worldview.as_str() };
+        let pref = if self.ui.worldview == i18n::AUTO || self.ui.worldview.is_empty() { "default" } else { self.ui.worldview.as_str() };
         let after = sample::apply_worldview(pref);
         if after != before {
             sample::swap_countries(&mut self.session, before, after);
@@ -1669,7 +1676,7 @@ impl RustGisApp {
     /// what the app started with and says why; the next start tries again.
     fn open_start_project(&mut self, path: &str) -> bool {
         // A preference edited by hand can name anything: only a project file is opened.
-        if !rustgis_engine::project::is_project_file(path) {
+        if !powergis_engine::project::is_project_file(path) {
             let text = i18n::fmt("The start-up project {path} isn't a PowerGIS project file.", &[("path", path)]);
             self.session.notify(text, true);
             return false;
@@ -1706,7 +1713,7 @@ impl RustGisApp {
         self.seen_project = self.session.path.clone();
         let Some(p) = self.session.path.as_ref().filter(|_| self.opens_files()) else { return };
         let path = std::path::absolute(p).unwrap_or_else(|_| p.clone()).display().to_string();
-        if !rustgis_engine::project::is_project_file(&path) || self.ui.last_project.as_deref() == Some(path.as_str()) {
+        if !powergis_engine::project::is_project_file(&path) || self.ui.last_project.as_deref() == Some(path.as_str()) {
             return;
         }
         if let Some(save) = &self.services.save_pref {
@@ -1752,7 +1759,7 @@ impl RustGisApp {
         // left for the frame loop (`ui.addUrl`), as in the browser.
         let mut r = if id.starts_with("ui.") {
             self.run_ui(id, &params)
-        } else if id.starts_with(rustgis_engine::plugins::PREFIX) {
+        } else if id.starts_with(powergis_engine::plugins::PREFIX) {
             self.session.run_leaving_downloads(id, &params)
         } else {
             self.session.run(id, &params)
@@ -1907,7 +1914,7 @@ impl RustGisApp {
         }
         // A task is saved with the project and shared as a file: a command holding a password,
         // key or token (a database connection, a signed address) isn't recorded.
-        if rustgis_engine::sources::holds_secret(params) {
+        if powergis_engine::sources::holds_secret(params) {
             let text = crate::i18n::fmt(
                 "{command} isn't recorded: its parameters may hold a password, key or token (one is named like it, an address carries one, or they nest too deep to check), and a task would keep it.",
                 &[("command", tl_raw!(spec.label))],
@@ -1927,7 +1934,7 @@ impl RustGisApp {
         }
         // A plain `key` is kept (a field or a lookup key, as often as not), but it might be an
         // access key: said once a recording.
-        if rustgis_engine::sources::holds_plain_key(params) && !self.ws.recording_key_said {
+        if powergis_engine::sources::holds_plain_key(params) && !self.ws.recording_key_said {
             self.ws.recording_key_said = true;
             let text = crate::i18n::fmt(
                 "{command}'s step keeps its key parameter. If that is an access key, delete the step (Edit Steps) before sharing the task.",
@@ -1972,7 +1979,7 @@ impl RustGisApp {
             return;
         }
         // A tool's step is titled with the tool's name ("Buffer"), not "Run Tool".
-        let title = match params.get("tool").and_then(Value::as_str).and_then(rustgis_engine::analysis::tool) {
+        let title = match params.get("tool").and_then(Value::as_str).and_then(powergis_engine::analysis::tool) {
             Some(tool) if id == "gp.run" => tl!(tool.name).to_string(),
             _ => tl!(spec.label).to_string(),
         };
@@ -1985,7 +1992,7 @@ impl RustGisApp {
             }
             return;
         }
-        steps.push(rustgis_engine::project::TaskStep {
+        steps.push(powergis_engine::project::TaskStep {
             title,
             instructions: String::new(),
             command: id.to_string(),
@@ -2089,7 +2096,7 @@ impl RustGisApp {
                 }
             }
             "ui.gp.open" => {
-                let tool = p.get("tool").and_then(Value::as_str).and_then(rustgis_engine::analysis::tool);
+                let tool = p.get("tool").and_then(Value::as_str).and_then(powergis_engine::analysis::tool);
                 self.gp.open(tool.map(|t| t.id), &self.session);
                 // The values to start from, by parameter name (a run opened again from the History
                 // pane, #539): over the form's own.
@@ -2115,8 +2122,8 @@ impl RustGisApp {
                 self.map.invalidate();
             }
             "ui.worldview" => {
-                let code = p.get("worldview").and_then(Value::as_str).unwrap_or(i18n::AUTO).to_ascii_lowercase();
-                if code != i18n::AUTO && rustgis_engine::sample::Worldview::from_code(&code).is_none() {
+                let code = p.get("worldview").and_then(Value::as_str).unwrap_or("default").to_ascii_lowercase();
+                if code != "default" && powergis_engine::sample::Worldview::from_code(&code).is_none() {
                     return Err(format!("unknown worldview '{code}'"));
                 }
                 self.ui.worldview = code;
@@ -2158,7 +2165,7 @@ impl RustGisApp {
                 };
                 // Validate before changing anything; `mercator` is stored as the default.
                 let projection = match p.get("projection").and_then(Value::as_str) {
-                    Some(code) => Some(rustgis_engine::map::Projection::from_code(code)?),
+                    Some(code) => Some(powergis_engine::map::Projection::from_code(code)?),
                     None => None,
                 };
                 // `"extent": "view"` takes the map's view, `null` the full extent.
@@ -2167,10 +2174,10 @@ impl RustGisApp {
                     Some(Value::Null) => Some(None),
                     Some(Value::String(v)) if v == "view" => {
                         let r = self.session.run("map.extent", &Value::Null)?;
-                        Some(Some(rustgis_engine::cmd::navigate::lonlat_extent(r.get("extent")).ok_or("the view has no extent")?))
+                        Some(Some(powergis_engine::cmd::navigate::lonlat_extent(r.get("extent")).ok_or("the view has no extent")?))
                     }
                     Some(v) => Some(Some(
-                        rustgis_engine::cmd::navigate::lonlat_extent(Some(v))
+                        powergis_engine::cmd::navigate::lonlat_extent(Some(v))
                             .ok_or("extent is [minLon, minLat, maxLon, maxLat], \"view\" or null")?,
                     )),
                 };
@@ -2189,7 +2196,7 @@ impl RustGisApp {
                 }
                 if let Some(proj) = projection {
                     self.ui.start_projection =
-                        if proj == rustgis_engine::map::Projection::WebMercator { String::new() } else { proj.code() };
+                        if proj == powergis_engine::map::Projection::WebMercator { String::new() } else { proj.code() };
                     if let Some(save) = &self.services.save_pref {
                         save("start_projection", &self.ui.start_projection);
                     }
@@ -2250,7 +2257,7 @@ impl RustGisApp {
             "ui.commandSearch" => self.ui.command_search = Some(String::new()),
             "ui.about" => self.ui.about = true,
             "ui.checkUpdate" => self.update.check(),
-            // The MCP relay for `rustgis-cli mcp --attach`: starts a loopback listener off until
+            // The MCP relay for `powergis-cli mcp --attach`: starts a loopback listener off until
             // asked. Running the command again reports its address; the app owns its lifetime.
             #[cfg(not(target_arch = "wasm32"))]
             "ui.mcpRelay" => {
@@ -2275,14 +2282,14 @@ impl RustGisApp {
                     let text = i18n::fmt("MCP relay listening on 127.0.0.1:{port}", &[("port", &relay.port().to_string())]);
                     self.session.notify(text, false);
                 } else {
-                    // A port asked for that isn't one is an error, as RUSTGIS_MCP_PORT's is.
+                    // A port asked for that isn't one is an error, as powergis_MCP_PORT's is.
                     let port = match p.get("port") {
-                        None | Some(Value::Null) => rustgis_assistant::relay::default_port()?,
+                        None | Some(Value::Null) => powergis_assistant::relay::default_port()?,
                         Some(v) => v.as_u64().and_then(|n| u16::try_from(n).ok()).ok_or_else(|| {
                             i18n::fmt("ui.mcpRelay: port {port} is not a port number (0 to 65535)", &[("port", &v.to_string())])
                         })?,
                     };
-                    let relay = rustgis_assistant::relay::Relay::start(port)?;
+                    let relay = powergis_assistant::relay::Relay::start(port)?;
                     // Where it is, for clients and setup scripts; the relay works without it.
                     if let Err(e) = relay.publish_endpoint() {
                         log::warn!("MCP relay: could not publish its endpoint file: {e}");
@@ -2291,7 +2298,7 @@ impl RustGisApp {
                     // network without asking (--yes); otherwise what each asks for decides.
                     relay.set_allow_access(connectui::enabled(self));
                     // What agents do to the user's project is kept, for review.
-                    relay.set_audit_dir(rustgis_assistant::audit::dir());
+                    relay.set_audit_dir(powergis_assistant::audit::dir());
                     relay.set_full_access(connectui::full_access(self));
                     // The relay only queues; the frame runs the messages, so a queued message
                     // asks for the frame that will run it. Before the first frame there is no
@@ -2332,7 +2339,7 @@ impl RustGisApp {
                 let v = self.session.run("identify", &json!({"lon": lon, "lat": lat, "tolerancePx": 5}))?;
                 if let (false, Some(lon), Some(lat)) = (v.is_null(), lon.as_f64(), lat.as_f64()) {
                     let map = self.session.project.active_map;
-                    self.map.popup = Some(mapview::Popup::new(v, rustgis_engine::geom::Coord::new(lon, lat), map, self.session.opened));
+                    self.map.popup = Some(mapview::Popup::new(v, powergis_engine::geom::Coord::new(lon, lat), map, self.session.opened));
                 } else {
                     self.map.popup = None;
                 }
@@ -2392,16 +2399,16 @@ impl RustGisApp {
             // when it lands: native projects replace it; GeoLibre imports add a map (see `poll_downloads`).
             "ui.openUrl" => {
                 let url = p.get("url").and_then(Value::as_str).map(str::trim).filter(|u| !u.is_empty()).ok_or("url is required")?;
-                let url = rustgis_engine::map::geolibre::download_url(url);
+                let url = powergis_engine::map::geolibre::download_url(url);
                 let url = url.as_str();
                 let slot: Slot<Result<Vec<u8>, String>> = Slot::default();
                 let land = slot.clone();
-                rustgis_engine::render::rustgis_tiles::cache::download_limited(
+                powergis_engine::render::powergis_tiles::cache::download_limited(
                     url,
-                    if rustgis_engine::map::geolibre::is_project_file(url) {
-                        rustgis_engine::map::geolibre::MAX_TEXT
+                    if powergis_engine::map::geolibre::is_project_file(url) {
+                        powergis_engine::map::geolibre::MAX_TEXT
                     } else {
-                        rustgis_engine::render::rustgis_tiles::cache::MAX_DOWNLOAD
+                        powergis_engine::render::powergis_tiles::cache::MAX_DOWNLOAD
                     },
                     Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)),
                 );
@@ -2436,7 +2443,7 @@ impl RustGisApp {
             "ui.addUrl" => {
                 if p.get("geolibreZarr").and_then(Value::as_bool) == Some(true) {
                     if let Err(e) = geolibreui::start(self, p) {
-                        rustgis_engine::cmd::geolibre::discard_pending(&mut self.session, p);
+                        powergis_engine::cmd::geolibre::discard_pending(&mut self.session, p);
                         return Err(e);
                     }
                     return Ok(Value::Null);
@@ -2454,32 +2461,32 @@ impl RustGisApp {
                 // `poll_downloads`). An address without a file name (an API answering with a
                 // file, such as Vantor's `…/geotiff?…`) is probed as a GeoTIFF too, and downloaded
                 // as before when it doesn't answer as one.
-                let remote = rustgis_engine::data::source::is_remote_name(url);
-                let tiff = rustgis_engine::cmd::layer::is_tiff_url(url);
+                let remote = powergis_engine::data::source::is_remote_name(url);
+                let tiff = powergis_engine::cmd::layer::is_tiff_url(url);
                 // A scan (`"as"`, a plugin's or a script's) keeps only the pixels: downloaded
                 // whole.
                 let scan = p.get("as").and_then(Value::as_str) == Some("scan");
                 let unnamed = !remote
                     && !tiff
-                    && rustgis_engine::cmd::layer::is_unnamed_url(url)
+                    && powergis_engine::cmd::layer::is_unnamed_url(url)
                     && ["service", "coverage"].iter().all(|k| p.get(*k).and_then(Value::as_bool) != Some(true));
                 if (remote || tiff || unnamed) && !scan && p.get("whole").and_then(Value::as_bool) != Some(true) {
                     let slot: Slot<Result<bool, String>> = Slot::default();
                     let land = slot.clone();
                     if remote {
-                        rustgis_engine::data::source::open_url(
+                        powergis_engine::data::source::open_url(
                             url,
                             Box::new(move |r| {
                                 let r = match r {
                                     Ok(_) => Ok(true),
-                                    Err(e) if e.to_string().contains(rustgis_engine::data::source::remote::READ_WHOLE) => Ok(false),
+                                    Err(e) if e.to_string().contains(powergis_engine::data::source::remote::READ_WHOLE) => Ok(false),
                                     Err(e) => Err(e.to_string()),
                                 };
                                 *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r);
                             }),
                         );
                     } else {
-                        rustgis_engine::render::rustgis_tiles::cog::probe(
+                        powergis_engine::render::powergis_tiles::cog::probe(
                             url,
                             Box::new(move |r| {
                                 let r = if unnamed { Ok(r.unwrap_or(false)) } else { r };
@@ -2488,7 +2495,7 @@ impl RustGisApp {
                         );
                     }
                     // An address read through a saved S3 connection is said as the address it wraps.
-                    let shown = rustgis_engine::data::s3_address::inner(url);
+                    let shown = powergis_engine::data::s3_address::inner(url);
                     self.session.notify(i18n::fmt("Reading {url}…", &[("url", shown)]), false);
                     let mut probe = p.clone();
                     if let Some(o) = probe.as_object_mut() {
@@ -2503,12 +2510,12 @@ impl RustGisApp {
                 let url = url.to_string();
                 let slot: Slot<Result<Vec<u8>, String>> = Slot::default();
                 let land = slot.clone();
-                rustgis_engine::render::rustgis_tiles::cache::download_limited(
+                powergis_engine::render::powergis_tiles::cache::download_limited(
                     &url,
                     if p.get("geolibreProject").and_then(Value::as_bool) == Some(true) {
-                        rustgis_engine::map::geolibre::MAX_TEXT
+                        powergis_engine::map::geolibre::MAX_TEXT
                     } else {
-                        rustgis_engine::render::rustgis_tiles::cache::MAX_DOWNLOAD
+                        powergis_engine::render::powergis_tiles::cache::MAX_DOWNLOAD
                     },
                     Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)),
                 );
@@ -2545,7 +2552,7 @@ impl RustGisApp {
                 if let Some(origin) = &origin {
                     q[connectiontree::ORIGIN] = json!(origin);
                 }
-                let shown = rustgis_engine::data::s3_address::inner(&url);
+                let shown = powergis_engine::data::s3_address::inner(&url);
                 self.session.notify(i18n::fmt("Downloading {url}…", &[("url", shown)]), false);
                 let id = self.session.download_started();
                 self.ui.downloads.push((id, url, q, slot));
@@ -2601,7 +2608,7 @@ impl RustGisApp {
                 // Another service: its own list, unfiltered (Open keeps the way back).
                 self.ui.service_browse.filter.clear();
                 self.ui.service_browse.back.clear();
-                let caps = rustgis_engine::data::ogc::capabilities_url(url, (kind != "auto").then_some(kind));
+                let caps = powergis_engine::data::ogc::capabilities_url(url, (kind != "auto").then_some(kind));
                 // A refusal is told with what the server said (#509).
                 let slot = fetch_detailed_into(&caps);
                 // The dialog shows the address connected to, however the connection was asked for.
@@ -2620,7 +2627,7 @@ impl RustGisApp {
             }
             "ui.importShapefile" => {
                 let text = p.get("crs").and_then(Value::as_str).ok_or(tl!("Source coordinate system is required"))?;
-                rustgis_engine::data::raster::Crs::parse(text)?;
+                powergis_engine::data::raster::Crs::parse(text)?;
                 if let Some(open) = &self.services.open_async {
                     self.ui.pending_layout_picture = false;
                     self.ui.pending_picture = None;
@@ -2690,7 +2697,7 @@ impl RustGisApp {
                         ][..],
                         // Rasters GDAL reads (every one it is asked to read).
                         #[cfg(not(target_arch = "wasm32"))]
-                        rustgis_engine::data::raster::gdal::EXTENSIONS,
+                        powergis_engine::data::raster::gdal::EXTENSIONS,
                     ]
                     .concat(),
                     tl!("Vector and raster data"),
@@ -2715,7 +2722,7 @@ impl RustGisApp {
                     let cmd = if lower.ends_with(".qgs") || lower.ends_with(".qgz") {
                         "project.importQgis"
                     } else {
-                        rustgis_engine::project::open_command(&path)
+                        powergis_engine::project::open_command(&path)
                     };
                     let r = self.run_by_user(cmd, json!({"path": path}));
                     // Asking to save first: the Project tab stays until the answer, so Cancel
@@ -2768,7 +2775,7 @@ impl RustGisApp {
                     let safe: String =
                         name.chars().map(|c| if c.is_alphanumeric() || matches!(c, ' ' | '-' | '_') { c } else { '_' }).collect();
                     let path = print_dir()?.join(format!("{safe}.pdf"));
-                    rustgis_engine::data::io::write_atomic(&path, &bytes).map_err(|e| e.to_string())?;
+                    powergis_engine::data::io::write_atomic(&path, &bytes).map_err(|e| e.to_string())?;
                     open_with_system(&path)?;
                     self.session.notify(i18n::fmt("Opened {name} for printing", &[("name", &path.display().to_string())]), false);
                 } else {
@@ -2796,12 +2803,12 @@ impl RustGisApp {
             }
             // Reports: export as PDF (or PNG, the first page).
             "ui.exportReport" => {
-                let i = rustgis_engine::cmd::report::index(&self.session, p)?;
+                let i = powergis_engine::cmd::report::index(&self.session, p)?;
                 let name = self.session.project.reports.get(i).map(|r| r.name.clone()).unwrap_or_default();
                 if self.services.download.is_some() {
                     let session = &mut self.session;
                     let bytes = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        rustgis_engine::cmd::report::report_bytes(session, i, 150.0, true)
+                        powergis_engine::cmd::report::report_bytes(session, i, 150.0, true)
                     }))
                     .unwrap_or_else(|_| Err("the report export failed unexpectedly".into()))
                     .inspect_err(|e| self.session.notify(e.clone(), true))?
@@ -2849,16 +2856,16 @@ impl RustGisApp {
                 let kind = p.get("kind").and_then(Value::as_str).ok_or("kind is required")?;
                 let session = &mut self.session;
                 let (name, bytes) =
-                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| rustgis_engine::cmd::items::item_bytes(session, kind, p)))
+                    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| powergis_engine::cmd::items::item_bytes(session, kind, p)))
                         .unwrap_or_else(|_| Err("saving failed unexpectedly".into()))
                         .inspect_err(|e| self.session.notify(e.clone(), true))?;
                 if self.services.download.is_some() {
                     self.download(&name, bytes);
                 } else {
                     let (ext, label) =
-                        rustgis_engine::cmd::items::ITEMS.iter().find(|i| i.0 == kind).map_or(("json", "File"), |i| (i.1, i.2));
+                        powergis_engine::cmd::items::ITEMS.iter().find(|i| i.0 == kind).map_or(("json", "File"), |i| (i.1, i.2));
                     if let Some(path) = dialogs::pick_save(&name, &[ext], tl!(label)) {
-                        rustgis_engine::data::io::write_atomic(std::path::Path::new(&path), &bytes).map_err(|e| e.to_string())?;
+                        powergis_engine::data::io::write_atomic(std::path::Path::new(&path), &bytes).map_err(|e| e.to_string())?;
                         self.session.notify(i18n::fmt("Saved {name}", &[("name", &path)]), false);
                     }
                 }
@@ -2908,17 +2915,17 @@ impl RustGisApp {
             "ui.captureMap" => {
                 let session = &mut self.session;
                 let png = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    rustgis_engine::cmd::share::map_png(session, None, None, Some(192.0))
+                    powergis_engine::cmd::share::map_png(session, None, None, Some(192.0))
                 }))
                 .unwrap_or_else(|_| Err("the capture failed unexpectedly".into()))?;
-                let pm = rustgis_engine::render::decode_png(&png).ok_or("could not draw the map")?;
+                let pm = powergis_engine::render::decode_png(&png).ok_or("could not draw the map")?;
                 let size = [pm.width() as usize, pm.height() as usize];
                 self.ui.copy_image = Some(egui::ColorImage::from_rgba_premultiplied(size, pm.data()));
                 self.session.notify(tl!("Copied the map to the clipboard"), false);
             }
             "ui.printMap" => {
                 let session = &mut self.session;
-                let pdf = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| rustgis_engine::cmd::share::map_pdf(session, 300.0)))
+                let pdf = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| powergis_engine::cmd::share::map_pdf(session, 300.0)))
                     .unwrap_or_else(|_| Err("printing failed unexpectedly".into()))
                     .inspect_err(|e| self.session.notify(e.clone(), true))?;
                 let name = format!("{}.pdf", self.session.map().name);
@@ -2933,7 +2940,7 @@ impl RustGisApp {
                         .map(|c| if c.is_alphanumeric() || matches!(c, ' ' | '-' | '_') { c } else { '_' })
                         .collect();
                     let path = print_dir()?.join(format!("{safe}.pdf"));
-                    rustgis_engine::data::io::write_atomic(&path, &pdf).map_err(|e| e.to_string())?;
+                    powergis_engine::data::io::write_atomic(&path, &pdf).map_err(|e| e.to_string())?;
                     open_with_system(&path)?;
                     self.session.notify(i18n::fmt("Opened {name} for printing", &[("name", &path.display().to_string())]), false);
                 }
@@ -2941,7 +2948,7 @@ impl RustGisApp {
             "ui.pane.tasks" => toggle_right(&mut self.ui, RightPane::Tasks),
             // Show Me for a task step (`{"command", "params"?}`): where its command is.
             "ui.taskShowMe" => {
-                let st: rustgis_engine::project::TaskStep = serde_json::from_value(json!({
+                let st: powergis_engine::project::TaskStep = serde_json::from_value(json!({
                     "title": p.get("title").cloned().unwrap_or(json!("")),
                     "command": p.get("command").cloned().unwrap_or(Value::Null),
                     "params": p.get("params").cloned().unwrap_or(Value::Null),
@@ -3020,7 +3027,7 @@ impl RustGisApp {
                 if self.services.download.is_some() {
                     return self.run("ui.saveItem", json!({"kind": kind}));
                 }
-                let (ext, label) = rustgis_engine::cmd::sharing::KINDS.iter().find(|k| k.0 == kind).map_or(("bin", "File"), |k| (k.1, k.2));
+                let (ext, label) = powergis_engine::cmd::sharing::KINDS.iter().find(|k| k.0 == kind).map_or(("bin", "File"), |k| (k.1, k.2));
                 let name = match kind {
                     "webLayer" | "webStyle" | "locator" => {
                         self.session.active_layer.and_then(|id| self.session.map().layer(id)).map(|l| l.name.clone())
@@ -3063,12 +3070,12 @@ impl RustGisApp {
                 }
             }
             "ui.exportPresentation" => {
-                let i = rustgis_engine::cmd::presentation::index(&self.session, p)?;
+                let i = powergis_engine::cmd::presentation::index(&self.session, p)?;
                 let name = self.session.project.presentations.get(i).map(|r| r.name.clone()).unwrap_or_default();
                 if self.services.download.is_some() {
                     let session = &mut self.session;
                     let bytes = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                        rustgis_engine::cmd::presentation::export_bytes(session, i, "html", 110.0)
+                        powergis_engine::cmd::presentation::export_bytes(session, i, "html", 110.0)
                     }))
                     .unwrap_or_else(|_| Err("the presentation export failed unexpectedly".into()))
                     .inspect_err(|e| self.session.notify(e.clone(), true))?
@@ -3123,7 +3130,7 @@ impl RustGisApp {
             }
             "ui.learn" => {
                 // Only web pages: the URL can come from a script or command search.
-                let url = p.get("url").and_then(Value::as_str).unwrap_or("https://rustgis.app/user-guide/").to_string();
+                let url = p.get("url").and_then(Value::as_str).unwrap_or("https://powergis.app/user-guide/").to_string();
                 if !(url.starts_with("https://") || url.starts_with("http://")) {
                     return Err("ui.learn opens web pages (http or https) only".into());
                 }
@@ -3196,7 +3203,7 @@ impl RustGisApp {
                 // The same last-resort panic guard `Session::run` gives commands.
                 let session = &mut self.session;
                 let png = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-                    rustgis_engine::cmd::share::map_png(session, None, None, Some(192.0))
+                    powergis_engine::cmd::share::map_png(session, None, None, Some(192.0))
                 }))
                 .unwrap_or_else(|_| Err("Export Map failed unexpectedly".into()));
                 let png = match png {
@@ -3225,7 +3232,7 @@ impl RustGisApp {
                 let whole = if l.is_streamed() { Some(l.load_all()?) } else { None };
                 // In the layer's own coordinate system, as share.exportLayer writes a file.
                 let ds = whole.as_ref().unwrap_or(&l.dataset);
-                use rustgis_engine::data::io;
+                use powergis_engine::data::io;
                 let crs = io::default_export_crs(ds, &ext);
                 let written = io::write_bytes_in(ds, &ext, crs).map_err(|e| e.to_string());
                 let (bytes, left_out) = match written {
@@ -3240,14 +3247,14 @@ impl RustGisApp {
                 if left_out > 0 {
                     self.session.notify(format!("{name}: {left_out} features without drawable geometry were left out"), false);
                 }
-                if ext == "zip" && rustgis_engine::data::raster::wkt::to_wkt(crs).is_none() {
+                if ext == "zip" && powergis_engine::data::raster::wkt::to_wkt(crs).is_none() {
                     self.session.notify(format!("{name}: no .prj written, as {} has no WKT form", crs.label()), false);
                 }
                 self.download(&name, bytes);
             }
             "ui.exportRaster" if self.services.download.is_some() => {
                 // The web app: encode once and download.
-                match rustgis_engine::cmd::raster::geotiff_bytes(&self.session, &Value::Null) {
+                match powergis_engine::cmd::raster::geotiff_bytes(&self.session, &Value::Null) {
                     Ok((name, bytes)) => {
                         self.download(&format!("{name}.tif"), bytes);
                     }
@@ -3308,7 +3315,7 @@ impl RustGisApp {
             // values.
             "ui.dynamicText" => {
                 let text = p.get("text").and_then(Value::as_str).unwrap_or("");
-                let token = rustgis_engine::map::graphics::TOKENS
+                let token = powergis_engine::map::graphics::TOKENS
                     .iter()
                     .map(|(t, _)| *t)
                     .find(|t| *t == text)
@@ -3481,7 +3488,7 @@ impl RustGisApp {
     /// keeping its own name when the address has none). Unlike [`Self::open_bytes`], it never takes
     /// a picker's pending item: the download isn't the file the user is picking.
     fn open_project_bytes(&mut self, file: Option<&str>, bytes: &[u8]) -> Result<Value, String> {
-        if file.is_some_and(rustgis_engine::map::geolibre::is_project_file) {
+        if file.is_some_and(powergis_engine::map::geolibre::is_project_file) {
             let text = std::str::from_utf8(bytes).map_err(|_| tl!("Not a GeoLibre project").to_string())?;
             let result = self.run("project.importGeolibre", json!({"text":text}));
             self.map.invalidate();
@@ -3489,7 +3496,7 @@ impl RustGisApp {
         }
         let package = file.is_some_and(|f| f.to_ascii_lowercase().ends_with(".rgispkg"));
         let text = if package {
-            rustgis_engine::cmd::items::package_text(bytes)?
+            powergis_engine::cmd::items::package_text(bytes)?
         } else {
             std::str::from_utf8(bytes).map_err(|_| "not a PowerGIS project".to_string())?.to_string()
         };
@@ -3524,7 +3531,7 @@ impl RustGisApp {
             match r {
                 Ok(true) => {
                     // A GeoTIFF by its first bytes, whatever its address is named.
-                    if !rustgis_engine::data::source::is_remote_name(&url) {
+                    if !powergis_engine::data::source::is_remote_name(&url) {
                         p["cog"] = json!(true);
                     }
                     let before = self.session.sources.generation;
@@ -3558,7 +3565,7 @@ impl RustGisApp {
                 Ok(bytes) => self.add_landed(serviceui::Landed { id, url, params: p, origin }, bytes),
                 Err(e) => {
                     self.session.download_failed(id);
-                    rustgis_engine::cmd::geolibre::discard_pending(&mut self.session, &p);
+                    powergis_engine::cmd::geolibre::discard_pending(&mut self.session, &p);
                     self.session.notify(if e.starts_with(&url) { e } else { format!("{url}: {e}") }, true);
                 }
             }
@@ -3590,7 +3597,7 @@ impl RustGisApp {
                 self.map.invalidate();
             }
             Err(e) => {
-                rustgis_engine::cmd::geolibre::discard_pending(&mut self.session, &pending);
+                powergis_engine::cmd::geolibre::discard_pending(&mut self.session, &pending);
                 self.session.notify(if e.starts_with(&url) { e } else { format!("{url}: {e}") }, true);
             }
         }
@@ -3612,7 +3619,7 @@ impl RustGisApp {
     /// added with the template read, or the usual path) and a WCS coverage's description (the
     /// coverage is then asked for the view and downloaded as From URL… does).
     fn poll_service_steps(&mut self) {
-        use rustgis_engine::data::ogc::{TilesStep, resolve_tiles};
+        use powergis_engine::data::ogc::{TilesStep, resolve_tiles};
         for step in std::mem::take(&mut self.ui.service_steps) {
             match step {
                 ServiceStep::Tiles { mut resolve, dialog, origin } => {
@@ -3744,14 +3751,14 @@ impl RustGisApp {
         // Fonts installed last frame are active now.
         self.fonts_pending = false;
         i18n::set_current(self.lang());
-        rustgis_engine::plugins::set_language(self.lang().code());
+        powergis_engine::plugins::set_language(self.lang().code());
         panes::poll_geolibre(self, ctx);
         panes::poll_plugin_run(self, ctx);
         self.poll_downloads();
         let _ = self.deliver_gp_files(Ok(Value::Null));
         // A value picked under Dynamic Text lasts while the text tool does, however the tool
         // changes (Esc, another tool, a text placed without Keep Tool, a command).
-        if self.session.tool != rustgis_engine::Tool::Graphic("text") {
+        if self.session.tool != powergis_engine::Tool::Graphic("text") {
             self.ui.dynamic_text = None;
         }
         // Addresses commands asked for where they couldn't download themselves (the browser):
@@ -3815,7 +3822,7 @@ impl RustGisApp {
             None => Vec::new(),
         };
         for (url, bytes) in fonts {
-            use rustgis_engine::render::fonts::{CjkRegion, ScriptFont, script_font_url, valid_font};
+            use powergis_engine::render::fonts::{CjkRegion, ScriptFont, script_font_url, valid_font};
             let region = [CjkRegion::SimplifiedChinese, CjkRegion::Japanese, CjkRegion::Korean]
                 .map(ScriptFont::Cjk)
                 .into_iter()
@@ -3865,7 +3872,7 @@ impl RustGisApp {
         // fallback, until the installed fonts are indexed (`families::warm_up`); then the map and
         // the layout page are drawn again in theirs.
         if !self.label_fonts_indexed {
-            if rustgis_engine::render::families::installed_now().is_some() {
+            if powergis_engine::render::families::installed_now().is_some() {
                 self.label_fonts_indexed = true;
                 self.map.invalidate();
                 self.layout.redraw();
@@ -3887,7 +3894,7 @@ impl RustGisApp {
             let mut dropped = ctx.input_mut(|i| std::mem::take(&mut i.raw.dropped_files));
             // A project first, so the data dropped with it goes into that project, not the one
             // it replaces. While the save prompt asks about replacing this one, the rest wait.
-            dropped.sort_by_key(|f| rustgis_engine::project::open_command(&f.path().display().to_string()) != "project.open");
+            dropped.sort_by_key(|f| powergis_engine::project::open_command(&f.path().display().to_string()) != "project.open");
             let mut held = 0usize;
             for f in dropped {
                 let p = f.path().display().to_string();
@@ -4020,7 +4027,7 @@ impl RustGisApp {
 fn project_file_name(url: &str) -> Option<&str> {
     let path = url.split(['?', '#']).next().unwrap_or("");
     let last = path.rsplit('/').next().unwrap_or("");
-    (rustgis_engine::project::opens_as_project(last) || rustgis_engine::map::geolibre::is_project_file(last)).then_some(last)
+    (powergis_engine::project::opens_as_project(last) || powergis_engine::map::geolibre::is_project_file(last)).then_some(last)
 }
 
 /// Tests that fetch through the tile cache take turns: it has one fetcher for the whole process,
@@ -4038,7 +4045,7 @@ pub(crate) mod fetching {
 
     impl Drop for Turn {
         fn drop(&mut self) {
-            rustgis_engine::render::rustgis_tiles::cache::clear_fetcher();
+            powergis_engine::render::powergis_tiles::cache::clear_fetcher();
         }
     }
 
@@ -4078,7 +4085,7 @@ mod start_with_tests {
                 let _ = std::fs::remove_dir_all(&self.0);
             }
         }
-        let dir = std::env::temp_dir().join(format!("rustgis-from-json-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-from-json-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let _cleanup = TempDir(dir.clone());
         let project = dir.join("p.rgis");
@@ -4119,7 +4126,7 @@ mod service_text_tests {
 const MAX_STEP_BYTES: usize = 4 << 20;
 
 /// Commands that act on the active layer when given no `layer`, though they are enabled without
-/// one (so [`RustGisApp::layer_acted_on`] can't tell from their `enabled`). A command added with
+/// one (so [`powergisApp::layer_acted_on`] can't tell from their `enabled`). A command added with
 /// an optional `layer` that defaults to the active layer goes here, so a recorded step names it;
 /// `record_tests::every_optional_layer_is_classified` fails until it is placed here or there.
 const DEFAULTS_TO_ACTIVE_LAYER: &[&str] = &[
@@ -4146,7 +4153,7 @@ const DEFAULTS_TO_ACTIVE_LAYER: &[&str] = &[
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod record_tests {
-    use super::{DEFAULTS_TO_ACTIVE_LAYER, RustGisApp};
+    use super::{DEFAULTS_TO_ACTIVE_LAYER, powergisApp};
     use serde_json::json;
 
     /// Every command with an optional `layer` either needs an active layer to be enabled, defaults
@@ -4176,14 +4183,14 @@ mod record_tests {
             "report.update",
             "share.replaceWebLayer",
         ];
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         // A raster too, for the commands that need one active (a 2×2 ASCII grid).
         let grid = "bmNvbHMgMgpucm93cyAyCnhsbGNvcm5lciAwCnlsbGNvcm5lciAwCmNlbGxzaXplIDEKTk9EQVRBX3ZhbHVlIC05OTk5CjEgMgozIDQK";
         app.session.run("layer.addDataBytes", &json!({"fileName": "grid.asc", "data": grid})).unwrap();
         let layers: Vec<u32> = app.session.map().layers.iter().map(|l| l.id).collect();
         // As `layer_acted_on` tells, whatever its message says: enabled with some layer active,
         // and not with none.
-        let mut needs_active = |c: &rustgis_engine::CommandSpec| {
+        let mut needs_active = |c: &powergis_engine::CommandSpec| {
             app.session.active_layer = None;
             if (c.enabled)(&app.session).is_none() {
                 return false;
@@ -4195,7 +4202,7 @@ mod record_tests {
             app.session.active_layer = None;
             some
         };
-        let unplaced: Vec<_> = rustgis_engine::cmd::all()
+        let unplaced: Vec<_> = powergis_engine::cmd::all()
             .into_iter()
             .filter(|c| c.mutates && c.params.contains(r#""layer"?"#))
             .filter(|c| !needs_active(c))
@@ -4209,7 +4216,7 @@ mod record_tests {
     /// its text into another step; one that leaves the steps alone keeps it open.
     #[test]
     fn undoing_a_step_move_closes_the_step_being_edited() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let step = |t: &str| json!({"title": t, "command": "map.zoomFull", "params": {}});
         app.run("task.new", json!({"name": "Lesson", "steps": [step("One"), step("Two")]})).unwrap();
         app.ws.task = "Lesson".into();
@@ -4228,7 +4235,7 @@ mod record_tests {
     /// A step whose parameters would swell the task isn't recorded, and that is said.
     #[test]
     fn a_step_over_the_size_limit_isnt_recorded() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.ws.recording = Some(Vec::new());
         let big = "A".repeat(super::MAX_STEP_BYTES + 1);
         app.record_step("layer.addDataBytes", &json!({"fileName": "big.geojson", "data": big}), None);
@@ -4241,7 +4248,7 @@ mod record_tests {
     /// A step keeping a plain `key` is recorded, and that is said once a recording.
     #[test]
     fn a_kept_key_is_said_once() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.ws.recording = Some(Vec::new());
         app.record_step("layer.color", &json!({"layer": "Lakes", "color": "#123456", "key": "a"}), None);
         app.record_step("layer.color", &json!({"layer": "Rivers", "color": "#123456", "key": "b"}), None);
@@ -4252,12 +4259,12 @@ mod record_tests {
     /// A step naming a layer whose name another layer shares says so, once for the name.
     #[test]
     fn a_shared_layer_name_is_said_once() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let rivers = app.session.map().layer_by_name("Rivers").unwrap().id;
         app.session.map_mut().layers.iter_mut().find(|l| l.id == rivers).unwrap().name = "Lakes".into();
         app.run("layer.select", json!({"layer": rivers})).unwrap();
         app.run("ui.taskRecord", json!({})).unwrap();
-        let said = |app: &RustGisApp| app.session.notices.iter().filter(|n| n.text.contains("Two layers are named Lakes")).count();
+        let said = |app: &powergisApp| app.session.notices.iter().filter(|n| n.text.contains("Two layers are named Lakes")).count();
         app.run("layer.color", json!({"color": "#123456"})).unwrap();
         app.run("layer.visibility", json!({})).unwrap();
         assert_eq!(app.ws.recording.as_ref().unwrap()[0].params["layer"], json!("Lakes"));
@@ -4268,7 +4275,7 @@ mod record_tests {
     /// add it again.
     #[test]
     fn downloaded_data_isnt_recorded() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.ws.recording = Some(Vec::new());
         app.record_step("layer.addDownload", &json!({"id": 1, "url": "https://example.com/rivers.geojson"}), None);
         assert_eq!(app.ws.recording.as_ref().map(Vec::len), Some(0));
@@ -4281,15 +4288,15 @@ mod record_tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used)]
 mod vertex_undo_tests {
-    use super::RustGisApp;
-    use rustgis_engine::data::VertexId;
+    use super::powergisApp;
+    use powergis_engine::data::VertexId;
     use serde_json::{Value, json};
 
     /// An undone vertex insertion leaves no vertex chosen: its index would name the next vertex,
     /// and Delete would remove that one (#428).
     #[test]
     fn undo_and_redo_clear_the_chosen_vertex() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layer.template", json!({"template": "lines", "name": "Paths"})).unwrap();
         app.run("edit.enable", json!({"on": true})).unwrap();
         let geometry = json!({"type": "LineString", "coordinates": [[0, 0], [1, 0], [2, 0]]});
@@ -4308,12 +4315,12 @@ mod vertex_undo_tests {
 
 #[cfg(test)]
 mod download_service_tests {
-    use super::{RustGisApp, Services, complete_gp_file};
+    use super::{powergisApp, Services, complete_gp_file};
     use serde_json::json;
 
     #[test]
     fn rejected_download_does_not_announce_success_or_rename_project() {
-        let mut app = RustGisApp::with_sample()
+        let mut app = powergisApp::with_sample()
             .with_services(Services { download: Some(Box::new(|_, _| Err("browser rejected download".into()))), ..Default::default() });
         let name = app.session.project.name.clone();
         let saved_name = app.ui.web_file.clone();
@@ -4382,7 +4389,7 @@ mod download_service_tests {
 
     #[test]
     fn acknowledgment_errors_still_have_one_error_notice() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         assert_eq!(app.run("gp.fileDelivered", json!({"id": u64::MAX})), Err("no pending file with that id".into()));
         assert_eq!(app.session.notices.iter().filter(|n| n.error && n.text == "no pending file with that id").count(), 1);
     }

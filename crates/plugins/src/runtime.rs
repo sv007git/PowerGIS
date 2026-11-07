@@ -6,10 +6,10 @@
 //!
 //! The ABI (version 1) is JSON over linear memory:
 //!
-//! - the module exports `memory`, `rustgis_alloc(len: i32) -> i32` (room for `len` bytes) and
-//!   `rustgis_call(ptr: i32, len: i32) -> i64`, which reads a request and returns where its
+//! - the module exports `memory`, `powergis_alloc(len: i32) -> i32` (room for `len` bytes) and
+//!   `powergis_call(ptr: i32, len: i32) -> i64`, which reads a request and returns where its
 //!   reply is, packed as `ptr << 32 | len`. A reply is `{"ok": value}` or `{"error": "text"}`.
-//! - PowerGIS provides, in module `rustgis`: `call(ptr, len) -> i32`, which runs a host request
+//! - PowerGIS provides, in module `powergis`: `call(ptr, len) -> i32`, which runs a host request
 //!   (`{"op": "...", "params": {...}}`) and returns the length of its reply (`-1` when there is
 //!   none); `result(ptr)`, which copies that reply to `ptr`; and `log(ptr, len)`.
 
@@ -73,13 +73,13 @@ pub fn engine() -> &'static Engine {
 /// Compiles (and validates) a module, checking it has the exports the ABI needs.
 pub fn compile(wasm: &[u8]) -> Result<Module, String> {
     let module = Module::new(engine(), wasm).map_err(|e| format!("not a valid WebAssembly module: {e}"))?;
-    for name in ["memory", "rustgis_alloc", "rustgis_call"] {
+    for name in ["memory", "powergis_alloc", "powergis_call"] {
         if module.get_export(name).is_none() {
             return Err(format!("the module doesn't export '{name}' (was it built with the PowerGIS plugin SDK?)"));
         }
     }
     for import in module.imports() {
-        if import.module() != "rustgis" || !matches!(import.name(), "call" | "result" | "log") {
+        if import.module() != "powergis" || !matches!(import.name(), "call" | "result" | "log") {
             return Err(format!("the module needs '{}.{}', which PowerGIS doesn't provide", import.module(), import.name()));
         }
     }
@@ -113,7 +113,7 @@ fn memory_of(caller: &Caller<'_, State<'_>>) -> Option<Memory> {
 
 fn link<'a>(linker: &mut Linker<State<'a>>) -> Result<(), String> {
     linker
-        .func_wrap("rustgis", "call", |mut caller: Caller<'_, State<'a>>, ptr: i32, len: i32| -> i32 {
+        .func_wrap("powergis", "call", |mut caller: Caller<'_, State<'a>>, ptr: i32, len: i32| -> i32 {
             let Some(mem) = memory_of(&caller) else { return -1 };
             let too_many = {
                 let st = caller.data_mut();
@@ -142,7 +142,7 @@ fn link<'a>(linker: &mut Linker<State<'a>>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
     linker
-        .func_wrap("rustgis", "result", |mut caller: Caller<'_, State<'a>>, ptr: i32| {
+        .func_wrap("powergis", "result", |mut caller: Caller<'_, State<'a>>, ptr: i32| {
             let Some(mem) = memory_of(&caller) else { return };
             let Some(bytes) = caller.data_mut().reply.take() else { return };
             if let Ok(ptr) = usize::try_from(ptr) {
@@ -151,7 +151,7 @@ fn link<'a>(linker: &mut Linker<State<'a>>) -> Result<(), String> {
         })
         .map_err(|e| e.to_string())?;
     linker
-        .func_wrap("rustgis", "log", |mut caller: Caller<'_, State<'a>>, ptr: i32, len: i32| {
+        .func_wrap("powergis", "log", |mut caller: Caller<'_, State<'a>>, ptr: i32, len: i32| {
             let Some(mem) = memory_of(&caller) else { return };
             if let Some(b) = read(&mem, &caller, ptr, len.min(MAX_LOG as i32)) {
                 let text = String::from_utf8_lossy(&b).to_string();
@@ -184,8 +184,8 @@ pub fn call(module: &Module, host: &mut dyn Host, request: &Value, fuel: u64) ->
     };
     let instance = linker.instantiate_and_start(&mut store, module).map_err(trap)?;
     let mem = instance.get_memory(&store, "memory").ok_or("the module has no memory")?;
-    let alloc: TypedFunc<i32, i32> = instance.get_typed_func(&store, "rustgis_alloc").map_err(|e| format!("rustgis_alloc: {e}"))?;
-    let entry: TypedFunc<(i32, i32), i64> = instance.get_typed_func(&store, "rustgis_call").map_err(|e| format!("rustgis_call: {e}"))?;
+    let alloc: TypedFunc<i32, i32> = instance.get_typed_func(&store, "powergis_alloc").map_err(|e| format!("powergis_alloc: {e}"))?;
+    let entry: TypedFunc<(i32, i32), i64> = instance.get_typed_func(&store, "powergis_call").map_err(|e| format!("powergis_call: {e}"))?;
     let bytes = request.to_string().into_bytes();
     let len = i32::try_from(bytes.len()).map_err(|_| "the request is too large")?;
     // A request too large for the module's memory (large layers or files) fails here: say so.

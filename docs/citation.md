@@ -20,7 +20,7 @@ To cite a specific version instead, open the
 ## BibTeX
 
 ```bibtex
-@software{wu_rustgis,
+@software{wu_powergis,
   author    = {Wu, Qiusheng and Rincón Albarracín, José Gregorio and Filho, Elpidio and Hofbauer, Daniel and Fitzgerald, Mavrick and Strebel, Dominik},
   title     = {{PowerGIS: A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data}},
   year      = {2026},

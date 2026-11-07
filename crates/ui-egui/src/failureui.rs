@@ -4,9 +4,9 @@
 //! What the server said is untrusted: shown as plain text only, its address without keys.
 
 use egui::{RichText, Ui, vec2};
-use rustgis_engine::render::rustgis_tiles::failure::{Failure, Reason, status_name};
+use powergis_engine::render::powergis_tiles::failure::{Failure, Reason, status_name};
 
-use rustgis_engine::sources::redact_text;
+use powergis_engine::sources::redact_text;
 
 use crate::theme::Tokens;
 
@@ -39,7 +39,7 @@ pub fn plain(f: &Failure) -> (String, String) {
 /// What is known of the failure, as (label, value) rows: the labels in English, translated
 /// where shown.
 pub fn details(f: &Failure) -> Vec<(&'static str, String)> {
-    let mut rows = vec![("Address", rustgis_engine::sources::redact(&f.url))];
+    let mut rows = vec![("Address", powergis_engine::sources::redact(&f.url))];
     match f.status() {
         Some(s) => rows.push(("Status", status_name(s).map_or_else(|| s.to_string(), |n| format!("{s} {n}")))),
         None => rows.push(("Error", redact_text(&f.message))),

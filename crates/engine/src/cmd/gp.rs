@@ -1,7 +1,7 @@
 //! Analyze tab: run geoprocessing tools and keep their history.
 
-use rustgis_analysis::{Inputs, Output, OutputLayer, RasterInput};
-use rustgis_data::Dataset;
+use powergis_analysis::{Inputs, Output, OutputLayer, RasterInput};
+use powergis_data::Dataset;
 use serde_json::{Value, json};
 
 use super::{need_layers, ps};
@@ -26,7 +26,7 @@ pub fn commands() -> Vec<C> {
         ),
         C::new("gp.tools", "Tools", "Analyze › Geoprocessing", |_, _| {
             Ok(Value::Array(
-                rustgis_analysis::tools()
+                powergis_analysis::tools()
                     .map(|t| {
                         json!({"id": t.id, "name": t.name, "toolbox": t.toolbox, "summary": t.summary,
                             "params": t.params.iter().map(|p| json!({"name": p.name, "label": p.label, "required": p.required, "kind": format!("{:?}", p.kind)})).collect::<Vec<_>>()})
@@ -39,7 +39,7 @@ pub fn commands() -> Vec<C> {
         C::new("gp.installGeolibre", "Install GeoLibre Tools", "Analyze › Geoprocessing", |_, _| {
             let path = install_geolibre(&|_, _| {})?;
             #[cfg(all(feature = "geolibre", not(target_arch = "wasm32")))]
-            rustgis_geolibre::set_runner(Some(std::path::PathBuf::from(&path)))?;
+            powergis_geolibre::set_runner(Some(std::path::PathBuf::from(&path)))?;
             Ok(json!({"path": path, "status": geolibre_status()}))
         })
         .view(),
@@ -59,10 +59,10 @@ pub fn commands() -> Vec<C> {
 }
 
 /// The GeoLibre tools (empty when the suite isn't installed, or the build doesn't include it).
-pub fn geolibre_tools() -> &'static [rustgis_analysis::ToolSpec] {
+pub fn geolibre_tools() -> &'static [powergis_analysis::ToolSpec] {
     #[cfg(feature = "geolibre")]
     {
-        rustgis_analysis::external_tools_of(rustgis_geolibre::SOURCE)
+        powergis_analysis::external_tools_of(powergis_geolibre::SOURCE)
     }
     #[cfg(not(feature = "geolibre"))]
     {
@@ -71,10 +71,10 @@ pub fn geolibre_tools() -> &'static [rustgis_analysis::ToolSpec] {
 }
 
 /// Whether a tool is one of the GeoLibre tools (which the browser runs asynchronously).
-pub fn is_geolibre_tool(spec: &rustgis_analysis::ToolSpec) -> bool {
+pub fn is_geolibre_tool(spec: &powergis_analysis::ToolSpec) -> bool {
     #[cfg(feature = "geolibre")]
     {
-        rustgis_analysis::external_source(spec) == Some(rustgis_geolibre::SOURCE)
+        powergis_analysis::external_source(spec) == Some(powergis_geolibre::SOURCE)
     }
     #[cfg(not(feature = "geolibre"))]
     {
@@ -88,17 +88,17 @@ pub fn is_geolibre_tool(spec: &rustgis_analysis::ToolSpec) -> bool {
 pub fn geolibre_status() -> Value {
     #[cfg(all(feature = "geolibre", not(target_arch = "wasm32")))]
     {
-        let found = rustgis_geolibre::runner::find();
+        let found = powergis_geolibre::runner::find();
         json!({
             "supported": true,
             "web": false,
             "available": found.is_some(),
             // The runner in use is the one `gp.installGeolibre` put in place (so it can be uninstalled).
-            "installed": found.as_ref().is_some_and(|(p, _)| rustgis_geolibre::install::is_installed(p)),
+            "installed": found.as_ref().is_some_and(|(p, _)| powergis_geolibre::install::is_installed(p)),
             "path": found.as_ref().map(|(p, _)| p.display().to_string()),
             "version": found.map(|(_, v)| v),
             "tools": geolibre_tools().len(),
-            "download": rustgis_geolibre::runner::DOWNLOAD_URL,
+            "download": powergis_geolibre::runner::DOWNLOAD_URL,
         })
     }
     #[cfg(all(feature = "geolibre", target_arch = "wasm32"))]
@@ -116,7 +116,7 @@ pub fn geolibre_status() -> Value {
 pub fn install_geolibre(progress: &dyn Fn(u64, Option<u64>)) -> Result<String, String> {
     #[cfg(all(feature = "geolibre", not(target_arch = "wasm32")))]
     {
-        rustgis_geolibre::install::install(progress).map(|p| p.display().to_string())
+        powergis_geolibre::install::install(progress).map(|p| p.display().to_string())
     }
     #[cfg(not(all(feature = "geolibre", not(target_arch = "wasm32"))))]
     {
@@ -130,13 +130,13 @@ pub fn install_geolibre(progress: &dyn Fn(u64, Option<u64>)) -> Result<String, S
 fn uninstall_geolibre() -> CmdResult {
     #[cfg(all(feature = "geolibre", not(target_arch = "wasm32")))]
     {
-        rustgis_geolibre::install::uninstall()?;
-        rustgis_geolibre::set_runner(None)?;
+        powergis_geolibre::install::uninstall()?;
+        powergis_geolibre::set_runner(None)?;
         Ok(geolibre_status())
     }
     #[cfg(all(feature = "geolibre", target_arch = "wasm32"))]
     {
-        rustgis_geolibre::set_manifests("[]")?;
+        powergis_geolibre::set_manifests("[]")?;
         Ok(geolibre_status())
     }
     #[cfg(not(feature = "geolibre"))]
@@ -148,7 +148,7 @@ fn set_geolibre(_s: &mut Session, p: &Value) -> CmdResult {
     #[cfg(all(feature = "geolibre", not(target_arch = "wasm32")))]
     {
         let path = ps(p, "path").map(str::trim).filter(|p| !p.is_empty()).map(std::path::PathBuf::from);
-        rustgis_geolibre::set_runner(path)?;
+        powergis_geolibre::set_runner(path)?;
         Ok(geolibre_status())
     }
     #[cfg(not(all(feature = "geolibre", not(target_arch = "wasm32"))))]
@@ -163,7 +163,7 @@ fn set_geolibre(_s: &mut Session, p: &Value) -> CmdResult {
 pub fn external_load_manifests(json: &str) -> Result<usize, String> {
     #[cfg(feature = "geolibre")]
     {
-        rustgis_geolibre::set_manifests(json)
+        powergis_geolibre::set_manifests(json)
     }
     #[cfg(not(feature = "geolibre"))]
     {
@@ -194,11 +194,11 @@ pub type ExternalOutput = Result<(Vec<(String, Vec<u8>)>, Vec<String>), String>;
 pub fn external_start(s: &mut Session, tool: &str, params: &Value) -> Result<ExternalRun, String> {
     #[cfg(feature = "geolibre")]
     {
-        let spec = rustgis_analysis::tool(tool)
-            .filter(|t| rustgis_analysis::external_source(t) == Some(rustgis_geolibre::SOURCE))
+        let spec = powergis_analysis::tool(tool)
+            .filter(|t| powergis_analysis::external_source(t) == Some(powergis_geolibre::SOURCE))
             .ok_or_else(|| format!("no GeoLibre tool '{tool}'"))?;
-        let params = rustgis_analysis::resolve_params(spec, params)?;
-        let job = rustgis_geolibre::prepare(spec, &map_inputs(s, Some(spec), &params)?, &params)?;
+        let params = powergis_analysis::resolve_params(spec, params)?;
+        let job = powergis_geolibre::prepare(spec, &map_inputs(s, Some(spec), &params)?, &params)?;
         s.next_pending = s.next_pending.wrapping_add(1);
         let id = s.next_pending;
         let run = ExternalRun { id, tool: job.tool.clone(), argv: job.argv("/work"), files: job.files.clone() };
@@ -230,10 +230,10 @@ pub fn external_complete(s: &mut Session, id: u64, ran: ExternalOutput) -> Resul
         // Reading the runner's files back parses outside `Session::run`'s guard: a bug in a
         // reader must not take the app down.
         let result = ran.map_err(|e| format!("{}: {e}", job.name)).and_then(|(files, lines)| {
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| rustgis_geolibre::finish(&job, &files, &lines, None)))
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| powergis_geolibre::finish(&job, &files, &lines, None)))
                 .map_err(|_| format!("{}: its output couldn't be read", job.name))
         });
-        let tool_id = format!("{}{}", rustgis_geolibre::PREFIX, job.tool);
+        let tool_id = format!("{}{}", powergis_geolibre::PREFIX, job.tool);
         s.pending.push(crate::PendingRun {
             id,
             tool: job.name.clone(),
@@ -263,12 +263,12 @@ pub struct PluginRun {
     pub id: u64,
     /// The tool's id.
     pub tool: &'static str,
-    job: rustgis_plugins::tools::Job,
+    job: powergis_plugins::tools::Job,
 }
 
 impl PluginRun {
     /// Runs the tool, blocking until it ends; `control` stops it and shows its progress.
-    pub fn run(&self, control: &rustgis_plugins::tools::Control) -> Result<rustgis_analysis::ToolResult, String> {
+    pub fn run(&self, control: &powergis_plugins::tools::Control) -> Result<powergis_analysis::ToolResult, String> {
         // A bug in a tool must not take the app down.
         std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| self.job.run(control)))
             .unwrap_or_else(|_| Err(format!("{} failed unexpectedly", self.job.name())))
@@ -301,12 +301,12 @@ fn full_ids(full: &std::collections::HashMap<String, Dataset>) -> FullIds {
 /// Prepares a run of a plugin tool on the active map, as `gp.run` would run it: its parameters
 /// checked and its layers read now, so that the map can change while it runs.
 pub fn plugin_start(s: &mut Session, tool: &str, params: &Value) -> Result<PluginRun, String> {
-    let spec = rustgis_analysis::tool(tool_id(tool).unwrap_or(tool))
-        .filter(|t| t.id.starts_with(rustgis_plugins::PREFIX))
+    let spec = powergis_analysis::tool(tool_id(tool).unwrap_or(tool))
+        .filter(|t| t.id.starts_with(powergis_plugins::PREFIX))
         .ok_or_else(|| format!("no plugin tool '{tool}'"))?;
-    let resolved = rustgis_analysis::resolve_params(spec, params)?;
+    let resolved = powergis_analysis::resolve_params(spec, params)?;
     let inputs = map_inputs(s, Some(spec), &resolved)?;
-    let job = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| rustgis_plugins::tools::prepare(spec, &inputs, &resolved)))
+    let job = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| powergis_plugins::tools::prepare(spec, &inputs, &resolved)))
         .unwrap_or_else(|_| Err(format!("{} failed unexpectedly", spec.name)))?;
     let full_ids = full_ids(&inputs.loaded);
     drop(inputs);
@@ -340,7 +340,7 @@ pub fn plugin_abandon(s: &mut Session, id: u64) {
 
 /// Finishes a run from [`plugin_start`] with what [`PluginRun::run`] returned: `gp.finish
 /// {"id"}` then applies it like `gp.run` would, with undo and history.
-pub fn plugin_complete(s: &mut Session, id: u64, result: Result<rustgis_analysis::ToolResult, String>) -> Result<(), String> {
+pub fn plugin_complete(s: &mut Session, id: u64, result: Result<powergis_analysis::ToolResult, String>) -> Result<(), String> {
     let i = s
         .plugin_runs
         .iter()
@@ -371,7 +371,7 @@ pub fn plugin_complete(s: &mut Session, id: u64, result: Result<rustgis_analysis
 /// or of one removed, is refused.
 fn fit_to_changes(
     s: &Session,
-    res: &mut Result<rustgis_analysis::ToolResult, String>,
+    res: &mut Result<powergis_analysis::ToolResult, String>,
     tool: &str,
     read: &std::collections::HashMap<String, Read>,
 ) {
@@ -406,7 +406,7 @@ pub(crate) struct Read {
 }
 
 impl Read {
-    fn of(l: &rustgis_map::Layer) -> Self {
+    fn of(l: &powergis_map::Layer) -> Self {
         Read { id: l.id, ids: l.dataset.features.iter().map(|f| f.id).collect(), fingerprint: fingerprint(&l.dataset) }
     }
 }
@@ -433,7 +433,7 @@ fn fingerprint(d: &Dataset) -> Option<u64> {
 /// Fits a tool's result to the map: a selection made on the complete streamed source becomes
 /// rows of the current window. An update from a selection is still refused: it would replace
 /// the complete source with just those selected features.
-fn fit_to_windows(s: &Session, res: &mut Result<rustgis_analysis::ToolResult, String>, full_ids: &FullIds) {
+fn fit_to_windows(s: &Session, res: &mut Result<powergis_analysis::ToolResult, String>, full_ids: &FullIds) {
     if let Ok(r) = res
         && let Output::Selection { layer, rows } = &mut r.output
         && let Some(full) = full_ids.get(&layer.to_ascii_lowercase())
@@ -474,23 +474,23 @@ struct MapInputs<'a> {
     /// The flat map's projection (its name, the projection and its unit in metres), built the
     /// first time a tool asks for it (Tissot's indicatrix does), once for the run; `None` on the
     /// globe.
-    flat: std::cell::OnceCell<Option<(String, rustgis_map::projection::Flat, f64)>>,
+    flat: std::cell::OnceCell<Option<(String, powergis_map::projection::Flat, f64)>>,
     /// The view's longitude/latitude extent, worked out the first time a tool asks for it (it
     /// inverse-projects the view, which most tools never need).
-    view: std::cell::OnceCell<Option<rustgis_geom::Extent>>,
+    view: std::cell::OnceCell<Option<powergis_geom::Extent>>,
 }
 
 impl MapInputs<'_> {
     /// The flat map's projection, built on first use.
-    fn flat(&self) -> Option<&(String, rustgis_map::projection::Flat, f64)> {
+    fn flat(&self) -> Option<&(String, powergis_map::projection::Flat, f64)> {
         let map = self.session.map();
         self.flat
             .get_or_init(|| {
-                (map.projection != rustgis_map::Projection::Globe).then(|| {
+                (map.projection != powergis_map::Projection::Globe).then(|| {
                     let flat = map.flat();
                     let to_meter = match &flat {
-                        rustgis_map::projection::Flat::Mercator => 1.0,
-                        rustgis_map::projection::Flat::Custom(p) => p.to_meter(),
+                        powergis_map::projection::Flat::Mercator => 1.0,
+                        powergis_map::projection::Flat::Custom(p) => p.to_meter(),
                     };
                     (map.projection.label(), flat, to_meter)
                 })
@@ -499,7 +499,7 @@ impl MapInputs<'_> {
     }
 }
 
-fn map_inputs<'a>(s: &'a Session, spec: Option<&rustgis_analysis::ToolSpec>, params: &Value) -> Result<MapInputs<'a>, String> {
+fn map_inputs<'a>(s: &'a Session, spec: Option<&powergis_analysis::ToolSpec>, params: &Value) -> Result<MapInputs<'a>, String> {
     let full = streamed_inputs(s.map(), spec, params)?;
     let messages = Vec::new();
     #[cfg(not(target_arch = "wasm32"))]
@@ -507,11 +507,11 @@ fn map_inputs<'a>(s: &'a Session, spec: Option<&rustgis_analysis::ToolSpec>, par
     #[cfg(not(target_arch = "wasm32"))]
     let mut full = full;
     #[cfg(not(target_arch = "wasm32"))]
-    if let Some(spec) = spec.filter(|t| rustgis_analysis::external_source(t).is_none()) {
-        for parameter in spec.params.iter().filter(|p| p.kind == rustgis_analysis::ParamKind::VectorLayers) {
-            for name in rustgis_analysis::layer_list(params.get(parameter.name).unwrap_or(&Value::Null))? {
+    if let Some(spec) = spec.filter(|t| powergis_analysis::external_source(t).is_none()) {
+        for parameter in spec.params.iter().filter(|p| p.kind == powergis_analysis::ParamKind::VectorLayers) {
+            for name in powergis_analysis::layer_list(params.get(parameter.name).unwrap_or(&Value::Null))? {
                 if s.map().layer_by_name(name).is_none() && !full.contains_key(name) {
-                    let (dataset, report) = rustgis_data::io::read_path(std::path::Path::new(name)).map_err(|e| format!("{name}: {e}"))?;
+                    let (dataset, report) = powergis_data::io::read_path(std::path::Path::new(name)).map_err(|e| format!("{name}: {e}"))?;
                     messages.extend(report.messages.into_iter().map(|message| format!("{name}: {message}")));
                     full.insert(name.to_string(), dataset);
                 }
@@ -545,8 +545,8 @@ fn map_inputs<'a>(s: &'a Session, spec: Option<&rustgis_analysis::ToolSpec>, par
 /// Complete streamed inputs without selections, plus selected PMTiles inputs: that exporter
 /// requires the complete source. Their selected window rows are remapped in `map_inputs`.
 fn streamed_inputs(
-    map: &rustgis_map::Map,
-    spec: Option<&rustgis_analysis::ToolSpec>,
+    map: &powergis_map::Map,
+    spec: Option<&powergis_analysis::ToolSpec>,
     params: &Value,
 ) -> Result<std::collections::HashMap<String, Dataset>, String> {
     let mut full = std::collections::HashMap::new();
@@ -566,7 +566,7 @@ fn streamed_inputs(
 
 /// The layers a tool's parameters name: the values of its layer parameters (all of them, for a
 /// tool without a spec), so a field or text value that happens to match a layer's name isn't one.
-fn layer_names<'v>(spec: Option<&rustgis_analysis::ToolSpec>, params: &'v Value) -> Vec<&'v str> {
+fn layer_names<'v>(spec: Option<&powergis_analysis::ToolSpec>, params: &'v Value) -> Vec<&'v str> {
     fn names<'v>(v: &'v Value, out: &mut Vec<&'v str>) {
         match v {
             Value::String(s) => out.push(s),
@@ -575,14 +575,14 @@ fn layer_names<'v>(spec: Option<&rustgis_analysis::ToolSpec>, params: &'v Value)
             _ => {}
         }
     }
-    use rustgis_analysis::ParamKind as K;
+    use powergis_analysis::ParamKind as K;
     let mut named = Vec::new();
     match spec {
         Some(spec) => {
             for p in spec.params {
                 if let Some(v) = params.get(p.name) {
                     if p.kind == K::VectorLayers {
-                        if let Ok(layers) = rustgis_analysis::layer_list(v) {
+                        if let Ok(layers) = powergis_analysis::layer_list(v) {
                             named.extend(layers);
                         }
                     } else if matches!(p.kind, K::Layer | K::PolygonLayer | K::PointLayer | K::VectorLayer) {
@@ -599,7 +599,7 @@ fn layer_names<'v>(spec: Option<&rustgis_analysis::ToolSpec>, params: &'v Value)
 /// The environment's rows for a run, refusing a run whose main input has no features inside the
 /// extent (which would otherwise process everything, or nothing).
 fn env_inputs(
-    map: &rustgis_map::Map,
+    map: &powergis_map::Map,
     full: &std::collections::HashMap<String, Dataset>,
     env: &crate::project::GpEnvironment,
     params: &Value,
@@ -616,7 +616,7 @@ fn env_inputs(
 /// The rows of the tool's main input (its `input` layer) inside the environment's extent, when
 /// that layer has no selection. Overlay layers (clip, erase, join targets…) stay whole.
 fn env_rows(
-    map: &rustgis_map::Map,
+    map: &powergis_map::Map,
     full: &std::collections::HashMap<String, Dataset>,
     env: &crate::project::GpEnvironment,
     params: &Value,
@@ -652,7 +652,7 @@ impl Inputs for MapInputs<'_> {
         max_zoom: u8,
         source_layer: &str,
     ) -> Result<(Vec<u8>, Vec<String>), String> {
-        let out = crate::render::rustgis_tiles::vector_export::export(dataset, rows, min_zoom, max_zoom, source_layer)?;
+        let out = crate::render::powergis_tiles::vector_export::export(dataset, rows, min_zoom, max_zoom, source_layer)?;
         Ok((out.bytes, out.messages))
     }
     fn raster_to_pmtiles(&self, layer: &str, min_zoom: u8, max_zoom: u8) -> Result<Vec<u8>, String> {
@@ -686,15 +686,15 @@ impl Inputs for MapInputs<'_> {
     fn projection_name(&self) -> Option<String> {
         self.flat().map(|(name, _, _)| name.clone())
     }
-    fn project(&self, c: rustgis_geom::Coord) -> Option<rustgis_geom::Coord> {
+    fn project(&self, c: powergis_geom::Coord) -> Option<powergis_geom::Coord> {
         let (_, flat, to_meter) = self.flat()?;
-        flat.forward(c).map(|m| rustgis_geom::Coord::new(m.x * to_meter, m.y * to_meter))
+        flat.forward(c).map(|m| powergis_geom::Coord::new(m.x * to_meter, m.y * to_meter))
     }
-    fn view_extent(&self) -> Option<rustgis_geom::Extent> {
+    fn view_extent(&self) -> Option<powergis_geom::Extent> {
         *self.view.get_or_init(|| {
             // The globe shows the whole Earth (the camera's flat extent means nothing there).
             if self.session.map().projection.is_globe() {
-                return Some(rustgis_geom::Extent::new(-180.0, -90.0, 180.0, 90.0));
+                return Some(powergis_geom::Extent::new(-180.0, -90.0, 180.0, 90.0));
             }
             Some(super::workspace::view_extent(self.session)).filter(|e| !e.is_empty())
         })
@@ -717,7 +717,7 @@ fn run(s: &mut Session, p: &Value) -> CmdResult {
 
 /// The id of a tool named by its id or its display name (history records keep the name).
 pub fn tool_id(name: &str) -> Option<&'static str> {
-    rustgis_analysis::tool(name).or_else(|| rustgis_analysis::tools().find(|t| t.name.eq_ignore_ascii_case(name))).map(|t| t.id)
+    powergis_analysis::tool(name).or_else(|| powergis_analysis::tools().find(|t| t.name.eq_ignore_ascii_case(name))).map(|t| t.id)
 }
 
 /// One point, for a tool run on a place clicked on the map.
@@ -735,14 +735,14 @@ impl Inputs for PointInput {
 /// Buffers a point (the map's right-click Quick Analysis): the Buffer tool on a one-point input
 /// that isn't added to the map; the buffer is.
 fn buffer_point(s: &mut Session, p: &Value) -> CmdResult {
-    use rustgis_data::{Geometry, GeometryType};
+    use powergis_data::{Geometry, GeometryType};
     let lon = super::f(p, "lon").ok_or("lon is required")?;
     let lat = super::f(p, "lat").ok_or("lat is required")?;
     if !(-180.0..=180.0).contains(&lon) || !(-90.0..=90.0).contains(&lat) {
         return Err("longitude must be within ±180 and latitude within ±90".into());
     }
     let mut ds = Dataset::new("Clicked point", GeometryType::Point, Vec::new());
-    ds.push_next(Some(Geometry::Point(rustgis_geom::Coord::new(lon, lat))), Vec::new());
+    ds.push_next(Some(Geometry::Point(powergis_geom::Coord::new(lon, lat))), Vec::new());
     let mut params = json!({"input": ds.name, "distance": p.get("distance").cloned().unwrap_or(Value::Null)});
     // The history keeps this command, with the point, so the run can be copied and run again
     // (#539): its input is no layer of the project.
@@ -756,7 +756,7 @@ fn buffer_point(s: &mut Session, p: &Value) -> CmdResult {
         command["name"] = n.clone();
     }
     let t0 = now_ms();
-    let res = rustgis_analysis::run("buffer", &PointInput(ds), &params);
+    let res = powergis_analysis::run("buffer", &PointInput(ds), &params);
     let millis = now_ms().saturating_sub(t0);
     let ran = Ran { name: "Buffer".into(), id: "buffer".into(), command: Some(("gp.bufferPoint".into(), command)), started: t0 };
     apply(s, ran, params, res, millis)
@@ -777,8 +777,8 @@ pub fn run_tool(s: &mut Session, tool: &str, params: &Value) -> CmdResult {
     let tool = tool_id(tool).unwrap_or(tool).to_string();
     let params = params.clone();
     let t0 = now_ms();
-    let inputs = map_inputs(s, rustgis_analysis::tool(&tool), &params)?;
-    let mut res = rustgis_analysis::run(&tool, &inputs, &params);
+    let inputs = map_inputs(s, powergis_analysis::tool(&tool), &params)?;
+    let mut res = powergis_analysis::run(&tool, &inputs, &params);
     if let Ok(result) = &mut res {
         result.messages.extend(inputs.messages.iter().cloned());
     }
@@ -786,19 +786,19 @@ pub fn run_tool(s: &mut Session, tool: &str, params: &Value) -> CmdResult {
     drop(inputs);
     fit_to_windows(s, &mut res, &ids);
     let millis = now_ms().saturating_sub(t0);
-    let spec = rustgis_analysis::tool(&tool);
+    let spec = powergis_analysis::tool(&tool);
     let name = spec.map(|t| t.name).unwrap_or("Tool").to_string();
     apply(s, Ran { name, id: tool, command: None, started: t0 }, recorded(spec, params), res, millis)
 }
 
 /// Whether a tool can read files named by a path or vector-layer-list parameter.
-pub fn reads_files(spec: &rustgis_analysis::ToolSpec) -> bool {
-    spec.params.iter().any(|p| matches!(p.kind, rustgis_analysis::ParamKind::Path | rustgis_analysis::ParamKind::VectorLayers))
+pub fn reads_files(spec: &powergis_analysis::ToolSpec) -> bool {
+    spec.params.iter().any(|p| matches!(p.kind, powergis_analysis::ParamKind::Path | powergis_analysis::ParamKind::VectorLayers))
 }
 
 /// Whether a tool produces a file rather than a map layer.
-pub fn writes_files(spec: &rustgis_analysis::ToolSpec) -> bool {
-    spec.params.iter().any(|p| matches!(p.kind, rustgis_analysis::ParamKind::SaveFile { .. }))
+pub fn writes_files(spec: &powergis_analysis::ToolSpec) -> bool {
+    spec.params.iter().any(|p| matches!(p.kind, powergis_analysis::ParamKind::SaveFile { .. }))
 }
 
 /// A browser file export waiting for delivery, without a success record until acknowledged.
@@ -856,8 +856,8 @@ fn file_delivered(s: &mut Session, p: &Value) -> CmdResult {
 
 /// The parameters as the history keeps them: a file picked in the browser (`{"name", "data"}`)
 /// by its name, not its contents.
-fn recorded(spec: Option<&rustgis_analysis::ToolSpec>, mut params: Value) -> Value {
-    for p in spec.into_iter().flat_map(|t| t.params).filter(|p| p.kind == rustgis_analysis::ParamKind::Path) {
+fn recorded(spec: Option<&powergis_analysis::ToolSpec>, mut params: Value) -> Value {
+    for p in spec.into_iter().flat_map(|t| t.params).filter(|p| p.kind == powergis_analysis::ParamKind::Path) {
         if let Some(v) = params.get_mut(p.name)
             && v.get("data").is_some()
         {
@@ -903,8 +903,8 @@ fn write_file_output(s: &Session, path: &std::path::Path, bytes: &[u8]) -> Resul
             }
             for tile in &map.tiles {
                 let archive = tile.url.strip_prefix("file://").unwrap_or(tile.url.as_str());
-                let local = matches!(tile.kind, rustgis_map::TileKind::PmTiles | rustgis_map::TileKind::MbTiles);
-                if local && rustgis_map::tiles::is_local_archive(&tile.url) && names_file(archive, &destination) {
+                let local = matches!(tile.kind, powergis_map::TileKind::PmTiles | powergis_map::TileKind::MbTiles);
+                if local && powergis_map::tiles::is_local_archive(&tile.url) && names_file(archive, &destination) {
                     return Err(format!("destination is the archive of tile layer '{}'; choose a different output file", tile.name));
                 }
             }
@@ -915,7 +915,7 @@ fn write_file_output(s: &Session, path: &std::path::Path, bytes: &[u8]) -> Resul
             }
         }
     }
-    rustgis_data::io::write_atomic(path, bytes).map_err(|error| error.to_string())
+    powergis_data::io::write_atomic(path, bytes).map_err(|error| error.to_string())
 }
 
 /// Whether a loaded source reads `destination`: the file itself, a directory's contents, the
@@ -934,7 +934,7 @@ fn names_file(source: &str, destination: &std::path::Path) -> bool {
 }
 
 /// Adds a tool's result to the map and the history.
-fn apply(s: &mut Session, ran: Ran, params: Value, res: Result<rustgis_analysis::ToolResult, String>, millis: u64) -> CmdResult {
+fn apply(s: &mut Session, ran: Ran, params: Value, res: Result<powergis_analysis::ToolResult, String>, millis: u64) -> CmdResult {
     let Ran { name, id, command, started } = ran;
     let at = started / 1000;
     let mut result = match res {
@@ -1029,9 +1029,9 @@ fn apply(s: &mut Session, ran: Ran, params: Value, res: Result<rustgis_analysis:
                     OutputLayer::Vector(ds) => layers.push(super::layer::add_dataset(s, ds)),
                     OutputLayer::Raster { name, file_name, bytes } => {
                         // One unreadable output doesn't undo the others: it's reported instead.
-                        let added = rustgis_data::raster::read_bytes(&file_name, &bytes)
+                        let added = powergis_data::raster::read_bytes(&file_name, &bytes)
                             .map_err(|e| format!("{name}: {e}"))
-                            .and_then(|r| super::raster::add_raster(s, &name, rustgis_map::RasterLayer::from_bytes(r, file_name, bytes)));
+                            .and_then(|r| super::raster::add_raster(s, &name, powergis_map::RasterLayer::from_bytes(r, file_name, bytes)));
                         match added {
                             Ok(v) => {
                                 if let Some(id) = v.get("layer").and_then(Value::as_u64).and_then(|id| u32::try_from(id).ok()) {
@@ -1074,7 +1074,7 @@ mod file_tests {
 
     #[test]
     fn raster_to_pmtiles_queues_the_archive_without_changing_the_map() {
-        use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+        use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
         let raster = Raster::new(
             "Elevation",
             4,
@@ -1088,9 +1088,9 @@ mod file_tests {
         )
         .unwrap();
         let mut s = Session::new(crate::Project::default());
-        let id = s.map_mut().add_raster("Elevation", rustgis_map::RasterLayer::from_path(raster, "test.tif"));
+        let id = s.map_mut().add_raster("Elevation", powergis_map::RasterLayer::from_path(raster, "test.tif"));
         s.map_mut().layer_mut(id).unwrap().transparency = 50.0;
-        let mut group = rustgis_map::LayerGroup::new("Faded");
+        let mut group = powergis_map::LayerGroup::new("Faded");
         group.children.push(id);
         group.transparency = 50.0;
         s.map_mut().add_group(group);
@@ -1134,9 +1134,9 @@ mod file_tests {
 
     fn task_session(steps: Value) -> Session {
         let mut s = Session::new(crate::Project::default());
-        let mut cities = Dataset::new("Cities", rustgis_data::GeometryType::Point, Vec::new());
-        cities.push_next(Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(20.0, 30.0))), Vec::new());
-        s.map_mut().add_layer(rustgis_map::Layer::new(0, cities));
+        let mut cities = Dataset::new("Cities", powergis_data::GeometryType::Point, Vec::new());
+        cities.push_next(Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(20.0, 30.0))), Vec::new());
+        s.map_mut().add_layer(powergis_map::Layer::new(0, cities));
         s.queue_gp_files = true;
         s.run("task.new", &json!({"name": "Export task", "steps": steps})).unwrap();
         s.mark_saved();
@@ -1260,12 +1260,12 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_export_preserves_the_saved_project_file() {
-        let root = std::env::temp_dir().join(format!("rustgis-project-output-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-project-output-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(root.join("nested")).unwrap();
         let project = root.join("Map.rgis");
         let mut s = Session::new(crate::Project::default());
-        let mut points = Dataset::new("Points", rustgis_data::GeometryType::Point, Vec::new());
-        points.push_next(Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(20.0, 30.0))), Vec::new());
+        let mut points = Dataset::new("Points", powergis_data::GeometryType::Point, Vec::new());
+        points.push_next(Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(20.0, 30.0))), Vec::new());
         s.map_mut().add_dataset(points);
         s.run("project.saveAs", &json!({"path": project})).unwrap();
         let original = std::fs::read(&project).unwrap();
@@ -1297,12 +1297,12 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_export_preserves_the_opened_project_package() {
-        let root = std::env::temp_dir().join(format!("rustgis-package-output-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-package-output-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(root.join("nested")).unwrap();
         let package = root.join("Map.rgispkg");
         let mut s = Session::new(crate::Project::default());
-        let mut points = Dataset::new("Points", rustgis_data::GeometryType::Point, Vec::new());
-        points.push_next(Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(20.0, 30.0))), Vec::new());
+        let mut points = Dataset::new("Points", powergis_data::GeometryType::Point, Vec::new());
+        points.push_next(Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(20.0, 30.0))), Vec::new());
         s.map_mut().add_dataset(points.clone());
         s.run("project.package", &json!({"path": package})).unwrap();
         let original = std::fs::read(&package).unwrap();
@@ -1356,8 +1356,8 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     fn points_session() -> Session {
         let mut s = Session::new(crate::Project::default());
-        let mut points = Dataset::new("Points", rustgis_data::GeometryType::Point, Vec::new());
-        points.push_next(Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(20.0, 30.0))), Vec::new());
+        let mut points = Dataset::new("Points", powergis_data::GeometryType::Point, Vec::new());
+        points.push_next(Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(20.0, 30.0))), Vec::new());
         s.map_mut().add_dataset(points);
         s
     }
@@ -1365,8 +1365,8 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_project_origins_survive_cwd_changes() {
-        if std::env::var_os("RUSTGIS_TEST_PROJECT_ORIGIN_CWD").is_none() {
-            let root = std::env::temp_dir().join(format!("rustgis-origin-cwd-{}-{}", std::process::id(), now_ms()));
+        if std::env::var_os("powergis_TEST_PROJECT_ORIGIN_CWD").is_none() {
+            let root = std::env::temp_dir().join(format!("powergis-origin-cwd-{}-{}", std::process::id(), now_ms()));
             std::fs::create_dir_all(root.join("elsewhere")).unwrap();
             let mut s = points_session();
             s.run("project.saveAs", &json!({"path": root.join("Opened.rgis")})).unwrap();
@@ -1374,7 +1374,7 @@ mod file_tests {
             // cwd is process-wide: never change it in the parallel suite's parent process.
             let output = std::process::Command::new(std::env::current_exe().unwrap())
                 .args(["--exact", "cmd::gp::file_tests::native_project_origins_survive_cwd_changes", "--nocapture"])
-                .env("RUSTGIS_TEST_PROJECT_ORIGIN_CWD", "1")
+                .env("powergis_TEST_PROJECT_ORIGIN_CWD", "1")
                 .current_dir(&root)
                 .output()
                 .unwrap();
@@ -1414,7 +1414,7 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_project_origins_follow_undo_redo() {
-        let root = std::env::temp_dir().join(format!("rustgis-origin-undo-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-origin-undo-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(&root).unwrap();
         for package in [true, false] {
             let mut s = points_session();
@@ -1460,7 +1460,7 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_project_origins_survive_failed_nested_undo() {
-        let root = std::env::temp_dir().join(format!("rustgis-origin-rollback-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-origin-rollback-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(&root).unwrap();
         let mut s = points_session();
         let first = root.join("First.rgispkg");
@@ -1488,7 +1488,7 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_project_origins_restore_unsaved_after_replacement_saved_later() {
-        let root = std::env::temp_dir().join(format!("rustgis-origin-later-save-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-origin-later-save-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(&root).unwrap();
         for nested in [false, true] {
             let mut s = points_session();
@@ -1515,7 +1515,7 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_project_origin_keeps_save_as_after_nonreplacement_undo() {
-        let root = std::env::temp_dir().join(format!("rustgis-origin-save-as-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-origin-save-as-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(&root).unwrap();
         for round_trip in [false, true] {
             let mut s = points_session();
@@ -1547,7 +1547,7 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_project_origins_keep_earliest_files_when_steps_merge() {
-        let root = std::env::temp_dir().join(format!("rustgis-origin-merge-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-origin-merge-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(&root).unwrap();
         let mut s = points_session();
         let first = root.join("A.rgis");
@@ -1578,14 +1578,14 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_export_preserves_standalone_table_sources() {
-        let root = std::env::temp_dir().join(format!("rustgis-table-output-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-table-output-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(root.join("nested")).unwrap();
         let source = root.join("Counts.csv");
         let bytes = b"name,value\nalpha,7\n";
         std::fs::write(&source, bytes).unwrap();
         let mut s = Session::new(crate::Project::default());
-        let mut points = Dataset::new("Points", rustgis_data::GeometryType::Point, Vec::new());
-        points.push_next(Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(20.0, 30.0))), Vec::new());
+        let mut points = Dataset::new("Points", powergis_data::GeometryType::Point, Vec::new());
+        points.push_next(Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(20.0, 30.0))), Vec::new());
         s.map_mut().add_dataset(points);
         s.run("layer.addData", &json!({"path": source})).unwrap();
         let table = s.project.tables.first().unwrap();
@@ -1609,10 +1609,10 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_export_preserves_loaded_workbooks() {
-        let root = std::env::temp_dir().join(format!("rustgis-workbook-output-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-workbook-output-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(root.join("nested")).unwrap();
         let book = root.join("Counts.xlsx");
-        let bytes = rustgis_data::sheets::xlsx(&[("Counts", &[&["name", "value"], &["alpha", "7"]])]);
+        let bytes = powergis_data::sheets::xlsx(&[("Counts", &[&["name", "value"], &["alpha", "7"]])]);
         std::fs::write(&book, &bytes).unwrap();
         let mut s = points_session();
         s.run("layer.addData", &json!({"path": book})).unwrap();
@@ -1634,7 +1634,7 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_export_preserves_loaded_source_directories() {
-        let root = std::env::temp_dir().join(format!("rustgis-directory-output-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-directory-output-{}-{}", std::process::id(), now_ms()));
         let source = root.join("Store.gdb");
         std::fs::create_dir_all(source.join("nested")).unwrap();
         let catalog = source.join("a00000001.gdbtable");
@@ -1642,7 +1642,7 @@ mod file_tests {
         std::fs::write(&catalog, b"source catalog").unwrap();
         std::fs::write(&rows, b"source rows").unwrap();
         let mut s = points_session();
-        let mut table = Dataset::new("Counts", rustgis_data::GeometryType::None, Vec::new());
+        let mut table = Dataset::new("Counts", powergis_data::GeometryType::None, Vec::new());
         table.source = Some(source.display().to_string());
         s.project.add_table(table);
         let destinations = vec![catalog.clone(), source.join("nested").join("..").join("a00000001.gdbtable"), rows.clone()];
@@ -1695,7 +1695,7 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn native_export_preserves_loaded_sources_and_path_aliases() {
-        let root = std::env::temp_dir().join(format!("rustgis-source-output-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-source-output-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(root.join("nested")).unwrap();
         let source = root.join("sites.geojson");
         let bytes = br#"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"Site"},"geometry":{"type":"Point","coordinates":[20,30]}}]}"#;
@@ -1732,7 +1732,7 @@ mod file_tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn source_paths_name_zip_archives_and_shapefile_companions() {
-        let root = std::env::temp_dir().join(format!("rustgis-source-names-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-source-names-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir_all(&root).unwrap();
         let archive = root.join("roads.zip");
         let companion = root.join("roads.DBF");
@@ -1750,12 +1750,12 @@ mod file_tests {
     #[test]
     fn native_file_exports_are_atomic_and_never_map_layers() {
         let mut s = Session::new(crate::Project::default());
-        let root = std::env::temp_dir().join(format!("rustgis-gp-file-{}-{}", std::process::id(), now_ms()));
+        let root = std::env::temp_dir().join(format!("powergis-gp-file-{}-{}", std::process::id(), now_ms()));
         std::fs::create_dir(&root).unwrap();
         let destination = root.join("cities.pmtiles");
         std::fs::write(&destination, b"previous").unwrap();
         let file = || {
-            Ok(rustgis_analysis::ToolResult {
+            Ok(powergis_analysis::ToolResult {
                 output: Output::File { file_name: "cities.pmtiles".into(), bytes: b"archive".to_vec() },
                 messages: vec!["Exported data".into()],
             })
@@ -1805,7 +1805,7 @@ mod file_permission_tests {
     #[test]
     fn file_tools_are_file_access_even_without_an_output_path() {
         let s = Session::new(crate::Project::default());
-        let tool = rustgis_analysis::tool("vectorToPmtiles").expect("registered file export tool");
+        let tool = powergis_analysis::tool("vectorToPmtiles").expect("registered file export tool");
         assert!(writes_files(tool));
         assert!(!reads_files(tool), "output files are not input paths");
         for output in [None, Some("archive"), Some("cities.pmtiles")] {

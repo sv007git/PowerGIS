@@ -4,8 +4,8 @@
 //!
 //! The data is made here, small enough that the whole file runs in well under a second.
 
-use rustgis_engine::data::{Dataset, Value as Field, io};
-use rustgis_engine::{Project, Session};
+use powergis_engine::data::{Dataset, Value as Field, io};
+use powergis_engine::{Project, Session};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 
@@ -26,7 +26,7 @@ impl Scratch {
     /// A new, empty folder under the system's temporary folder, unique to this process and moment.
     fn new(label: &str) -> Self {
         let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_or(0, |d| d.as_nanos());
-        let dir = std::env::temp_dir().join(format!("rustgis-workflow-{label}-{}-{nonce}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-workflow-{label}-{}-{nonce}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         Scratch(dir)
     }
@@ -197,7 +197,7 @@ fn join_overlay_summarise_map_save_reopen_and_share() {
     let png = dir.path("map.png");
     s.run("share.exportMap", &json!({"path": png, "width": 320, "height": 200})).unwrap();
     let bytes = std::fs::read(&png).unwrap();
-    let map = rustgis_engine::render::decode_png(&bytes).expect("a PNG came out");
+    let map = powergis_engine::render::decode_png(&bytes).expect("a PNG came out");
     let colours: std::collections::HashSet<_> = map.pixels().iter().map(|p| (p.red(), p.green(), p.blue())).collect();
     assert!(colours.len() > 2, "the map draws its layers, not only a background: {} colours", colours.len());
 
@@ -292,9 +292,9 @@ fn a_bad_input_stops_the_job_and_leaves_the_data_untouched() {
 }
 
 /// The Census files the nightly build downloads (see `.github/workflows/nightly.yml`), in the folder
-/// `RUSTGIS_WORKFLOW_DATA` names.
+/// `powergis_WORKFLOW_DATA` names.
 fn census(file: &str) -> PathBuf {
-    let dir = std::env::var_os("RUSTGIS_WORKFLOW_DATA").expect("RUSTGIS_WORKFLOW_DATA names the folder of Census files");
+    let dir = std::env::var_os("powergis_WORKFLOW_DATA").expect("powergis_WORKFLOW_DATA names the folder of Census files");
     Path::new(&dir).join(file)
 }
 
@@ -305,7 +305,7 @@ fn census(file: &str) -> PathBuf {
 /// The published areas and the TIGER outlines agree to 4e-6 (worked out separately with
 /// GeographicLib); the test allows 1e-5.
 #[test]
-#[ignore = "reads Census files the nightly build downloads (RUSTGIS_WORKFLOW_DATA)"]
+#[ignore = "reads Census files the nightly build downloads (powergis_WORKFLOW_DATA)"]
 fn shelby_county_tract_areas_match_the_census() {
     let dir = Scratch::new("shelby");
     let mut s = Session::new(Project::new("shelby"));

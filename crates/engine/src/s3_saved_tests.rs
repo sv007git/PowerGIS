@@ -9,11 +9,11 @@ use std::io::{Read, Write};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use rustgis_data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
+use powergis_data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
 use serde_json::{Value, json};
 
 use crate::connections::Connections;
-use crate::render::rustgis_tiles::{cache, s3};
+use crate::render::powergis_tiles::{cache, s3};
 use crate::{Project, Session, s3_keys};
 
 /// A credential store that remembers what it was asked and can refuse to save or delete.
@@ -177,7 +177,7 @@ fn answer(mut s: std::net::TcpStream, bucket: &str, objects: &Objects, redirects
 
 /// A FlatGeobuf of a grid of points (attribute `n`), big enough to be read in place by range.
 fn grid_fgb() -> Vec<u8> {
-    use rustgis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
+    use powergis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
     let mut ds = Dataset::new("grid", GeometryType::Point, vec![Field::new("n", FieldType::Integer)]);
     for i in 0..200u32 {
         for j in 0..200u32 {
@@ -185,12 +185,12 @@ fn grid_fgb() -> Vec<u8> {
             ds.push(Some(Geometry::Point(c)), vec![V::Int(i64::from(i * 200 + j))]);
         }
     }
-    rustgis_data::source::fgb::write(&ds).unwrap()
+    powergis_data::source::fgb::write(&ds).unwrap()
 }
 
 /// A vector PMTiles archive: one park at zoom 0.
 fn parks_pmtiles() -> Vec<u8> {
-    use crate::render::rustgis_tiles::{mvt, pmtiles};
+    use crate::render::powergis_tiles::{mvt, pmtiles};
     let park = mvt::Feature {
         id: Some(3),
         kind: mvt::GeomKind::Polygon,
@@ -234,7 +234,7 @@ fn live_key(name: &str) -> Option<String> {
 
 /// Waits for a streamed layer's view to be read; how many features it holds.
 fn read_view(s: &mut Session, id: u32) -> usize {
-    let view = rustgis_geom::Extent::new(10.0, 10.0, 14.0, 13.0);
+    let view = powergis_geom::Extent::new(10.0, 10.0, 14.0, 13.0);
     let scale = s.map().scale();
     let mut pending = s.map_mut().sync_sources(&view, scale, false);
     let start = std::time::Instant::now();
@@ -294,7 +294,7 @@ fn s3_saved_keys_are_remembered_only_on_request_and_reused_by_a_fresh_session() 
     // Browsed and added through the login: the server sees the saved access key id.
     let v = b.run("connection.browse", &json!({"id": id, "node": "s3:sv-remember/"})).unwrap();
     let add = v["children"].as_array().unwrap().iter().find(|c| c["name"] == "grid.fgb").unwrap()["add"].clone();
-    assert!(add["params"]["url"].as_str().unwrap().starts_with("rustgis-s3:"), "{add}");
+    assert!(add["params"]["url"].as_str().unwrap().starts_with("powergis-s3:"), "{add}");
     let r = b.run(add["command"].as_str().unwrap(), &add["params"]).unwrap();
     assert_eq!((r["streamed"].as_bool(), r["features"].as_u64()), (Some(true), Some(40_000)), "{r}");
     assert_eq!(srv.key_ids(0), BTreeSet::from(["SAVEDKEYA".to_string()]));
@@ -550,7 +550,7 @@ fn s3_saved_a_binding_signs_only_its_own_connection_and_errors_never_echo_the_ke
     // Another endpoint, an ungranted bucket, no token and a token nobody has: refused, not
     // read with someone else's key.
     let from = srv.requests();
-    let wrap = |token: &str, endpoint: &str, url: &str| rustgis_data::s3_address::bind(token, endpoint, url).unwrap();
+    let wrap = |token: &str, endpoint: &str, url: &str| powergis_data::s3_address::bind(token, endpoint, url).unwrap();
     let token = s.s3_binding(&a).unwrap().to_string();
     for (bad, why) in [
         (wrap(&token, &moved_to.base, &format!("{}/sv-bind/grid.fgb", moved_to.base)), s3::MISMATCH),
@@ -591,7 +591,7 @@ fn s3_saved_a_binding_signs_only_its_own_connection_and_errors_never_echo_the_ke
 }
 
 fn bound_with(token: &str, endpoint: &str, url: &str) -> String {
-    rustgis_data::s3_address::bind(token, endpoint, url).unwrap()
+    powergis_data::s3_address::bind(token, endpoint, url).unwrap()
 }
 
 /// Waits until the server has had no new request for a moment (reads the layers just added
@@ -626,7 +626,7 @@ struct Saved {
 fn saved_project(bucket: &str) -> Saved {
     let srv = serve_bucket(
         bucket,
-        vec![("grid.fgb", grid_fgb()), ("scene.tif", rustgis_data::raster::cog::example(2048, 256)), ("parks.pmtiles", parks_pmtiles())],
+        vec![("grid.fgb", grid_fgb()), ("scene.tif", powergis_data::raster::cog::example(2048, 256)), ("parks.pmtiles", parks_pmtiles())],
         vec![],
     );
     let store = Arc::new(Spy::default());
@@ -669,7 +669,7 @@ fn s3_saved_projects_hold_no_keys_and_reload_through_their_one_connection() {
     for secret in ["SAVEDKEYA", "SAVEDKEYB", "saved-secret"] {
         assert!(!p.text.contains(secret) && !p.prefs.contains(secret), "{secret}");
     }
-    assert!(p.text.contains("rustgis-s3:") && p.text.contains("sv-proj-one"));
+    assert!(p.text.contains("powergis-s3:") && p.text.contains("sv-proj-one"));
     // Read as plain data, with no session to answer for it: nothing is fetched.
     let from = p.srv.requests();
     let project = Project::from_json(&p.text).unwrap();
@@ -678,8 +678,8 @@ fn s3_saved_projects_hold_no_keys_and_reload_through_their_one_connection() {
     assert_eq!(p.srv.requests(), from);
     // A binding in the file is nobody's login: it is cleared.
     let path = source.path.clone().unwrap();
-    assert_eq!(rustgis_data::s3_address::parse(&path).unwrap().unwrap().binding, "");
-    assert_eq!(rustgis_data::s3_address::parse(&p.fgb).unwrap().unwrap().binding.len(), 16);
+    assert_eq!(powergis_data::s3_address::parse(&path).unwrap().unwrap().binding, "");
+    assert_eq!(powergis_data::s3_address::parse(&p.fgb).unwrap().unwrap().binding.len(), 16);
     // One connection could read it: the keys come from the store, and everything opens.
     let mut s = reopened(&p, &p.store, 1);
     s.run("project.openText", &json!({"text": p.text})).unwrap();
@@ -713,7 +713,7 @@ fn s3_saved_projects_hold_no_keys_and_reload_through_their_one_connection() {
     assert_eq!((pm.width(), pm.height()), (256, 256));
     assert!(pm.pixels().iter().any(|px| px.alpha() == 255));
     // The PMTiles' park is found where it is.
-    s.map_mut().camera.center = rustgis_geom::Coord::new(0.0, 0.0);
+    s.map_mut().camera.center = powergis_geom::Coord::new(0.0, 0.0);
     s.map_mut().camera.res = 2.0 * 20_037_508.342_789_244 / 256.0;
     let mut found = Value::Null;
     for _ in 0..500 {
@@ -751,7 +751,7 @@ fn s3_saved_several_candidates_wait_for_a_choice_and_nothing_is_fetched_before()
     assert_eq!(store.count("save"), saves, "opening saves nothing");
     // A stale or unknown choice does nothing.
     for (source, id) in
-        [(pending.source.as_str(), "c99"), ("rustgis-s3::0::s3://nope/x.fgb", "c1"), ("", ""), (pending.source.as_str(), "")]
+        [(pending.source.as_str(), "c99"), ("powergis-s3::0::s3://nope/x.fgb", "c1"), ("", ""), (pending.source.as_str(), "")]
     {
         let e = s.run("connection.resolveS3", &json!({"source": source, "id": id})).unwrap_err();
         assert_eq!(e, crate::s3_connections::STALE);
@@ -849,12 +849,12 @@ fn s3_saved_sources_without_keys_zero_matches_and_older_addresses_stay_blocked_o
 #[test]
 fn s3_saved_imported_maps_layers_and_packages_never_bring_their_own_login() {
     let p = saved_project("sv-proj-import");
-    let token = rustgis_data::s3_address::parse(&p.fgb).unwrap().unwrap().binding.to_string();
+    let token = powergis_data::s3_address::parse(&p.fgb).unwrap().unwrap().binding.to_string();
     let from = p.srv.requests();
     // Package and template reads (and a plain project read) clear every binding.
     for read in [Project::from_import_json(&p.text, None).unwrap(), Project::from_json(&p.text).unwrap()] {
         for a in read.maps.iter().flat_map(|m| m.layers.iter()).filter_map(|l| l.source.as_ref().and_then(|s| s.path.as_ref())) {
-            assert!(a.starts_with("rustgis-s3::") && !a.contains(&token), "{a}");
+            assert!(a.starts_with("powergis-s3::") && !a.contains(&token), "{a}");
         }
         for t in &read.map().tiles {
             assert!(!t.url.contains(&token), "{}", t.url);
@@ -862,7 +862,7 @@ fn s3_saved_imported_maps_layers_and_packages_never_bring_their_own_login() {
     }
     // A map imported with no saved connection to read it keeps the cleared address, unfetched.
     let map = serde_json::to_string(&Project::from_import_json(&p.text, None).unwrap().maps[0]).unwrap();
-    let raw_map = map.replace("rustgis-s3::", &format!("rustgis-s3:{token}:"));
+    let raw_map = map.replace("powergis-s3::", &format!("powergis-s3:{token}:"));
     assert!(raw_map.contains(&token));
     let mut s = session(Some(&Arc::new(Spy::default())));
     s.run("map.import", &json!({"text": raw_map})).unwrap();
@@ -879,7 +879,7 @@ fn s3_saved_imported_maps_layers_and_packages_never_bring_their_own_login() {
     let layer =
         serde_json::to_string(&Project::from_import_json(&p.text, None).unwrap().maps[0].layers.iter().find(|l| l.name == "Grid").unwrap())
             .unwrap();
-    let raw_layer = layer.replace("rustgis-s3::", &format!("rustgis-s3:{token}:"));
+    let raw_layer = layer.replace("powergis-s3::", &format!("powergis-s3:{token}:"));
     let mut u = session(Some(&Arc::new(Spy::default())));
     crate::cmd::layer::add_layer_text(&mut u, &raw_layer).unwrap();
     assert!(!serde_json::to_string(&u.project).unwrap().contains(&token));
@@ -1017,15 +1017,15 @@ fn s3_saved_database_and_s3_share_one_store_without_crossing_credentials_or_clea
 
 #[test]
 fn s3_saved_raster_pixels_wait_for_selection_then_reload_with_style_intact() {
-    let bytes = rustgis_data::raster::cog::example(256, 256);
-    let pixels = rustgis_data::raster::read_bytes("scene.tif", &bytes).unwrap();
+    let bytes = powergis_data::raster::cog::example(256, 256);
+    let pixels = powergis_data::raster::read_bytes("scene.tif", &bytes).unwrap();
     let srv = serve_bucket("sv-raster", vec![("scene.tif", bytes)], vec![]);
     let store = Arc::new(Spy::default());
     let mut seed = session(Some(&store));
     let first = saved(&mut seed, "sv-raster-first", &srv.base, "sv-raster", "keys");
     login(&mut seed, &first, "RASTERKEYA", "raster-secret-a", true).unwrap();
-    let mut layer = rustgis_map::Layer::new(1, rustgis_data::Dataset::new("Saved raster", rustgis_data::GeometryType::None, Vec::new()));
-    layer.raster = Some(rustgis_map::RasterLayer::from_path(pixels, bound(&seed, &first, "s3://sv-raster/scene.tif")));
+    let mut layer = powergis_map::Layer::new(1, powergis_data::Dataset::new("Saved raster", powergis_data::GeometryType::None, Vec::new()));
+    layer.raster = Some(powergis_map::RasterLayer::from_path(pixels, bound(&seed, &first, "s3://sv-raster/scene.tif")));
     layer.transparency = 0.25;
     seed.map_mut().layers.push(layer);
     let text = seed.project.saved_text(None).unwrap().0;
@@ -1138,17 +1138,17 @@ fn s3_saved_favourites_keep_provenance_overhead_without_relaxing_destination_lim
     let endpoint = "https://s3.example.org";
     let inner = format!("{endpoint}/bucket/{}.fgb?versionId={}", "k".repeat(990), "v".repeat(1000));
     assert!(inner.len() <= 2048);
-    let address = rustgis_data::s3_address::bind("0123456789abcdef", endpoint, &inner).unwrap();
+    let address = powergis_data::s3_address::bind("0123456789abcdef", endpoint, &inner).unwrap();
     assert!(address.len() > 2048);
     let source =
         crate::sources::Source { kind: "url".into(), name: "Saved range source".into(), address: address.clone(), extra: Value::Null };
     let mut sources = crate::sources::Sources::default();
     sources.keep("favourites", source.clone()).unwrap();
     let restored = crate::sources::Sources::from_json(&sources.to_json());
-    let provenance = rustgis_data::s3_address::parse(&restored.favourites[0].address).unwrap().unwrap();
+    let provenance = powergis_data::s3_address::parse(&restored.favourites[0].address).unwrap().unwrap();
     assert_eq!((provenance.endpoint, provenance.url, provenance.binding), (endpoint, inner.as_str(), ""));
     let oversized = format!("{inner}{}", "v".repeat(2049 - inner.len()));
-    let too_long = rustgis_data::s3_address::bind("0123456789abcdef", endpoint, &oversized).unwrap();
+    let too_long = powergis_data::s3_address::bind("0123456789abcdef", endpoint, &oversized).unwrap();
     assert!(sources.keep("favourites", crate::sources::Source { address: too_long, ..source }).is_err());
 }
 
@@ -1165,7 +1165,7 @@ fn s3_saved_legacy_choice_never_rebinds_an_explicit_aws_source_for_the_same_obje
         let aws_a = saved(&mut s, &format!("{bucket}-aws-a"), "", &bucket, "none");
         let aws_b = saved(&mut s, &format!("{bucket}-aws-b"), "", &bucket, "none");
         let raw = format!("s3://{bucket}/same.fgb");
-        let aws = rustgis_data::s3_address::bind("", "", &raw).unwrap();
+        let aws = powergis_data::s3_address::bind("", "", &raw).unwrap();
         let sources = if aws_first { [("AWS", &aws), ("Legacy", &raw)] } else { [("Legacy", &raw), ("AWS", &aws)] };
         for (name, path) in sources {
             s.map_mut().add_streamed(name, serde_json::from_value(json!({"path":path})).unwrap());

@@ -52,7 +52,7 @@ pub const SEMIBOLD_WEIGHT: f32 = 600.0;
 pub fn ui_fonts() -> &'static UiFonts {
     static F: OnceLock<UiFonts> = OnceLock::new();
     F.get_or_init(|| {
-        if std::env::var_os("RUSTGIS_BUILTIN_FONTS").is_none() {
+        if std::env::var_os("powergis_BUILTIN_FONTS").is_none() {
             for (r, b) in CANDIDATES {
                 if let Some(regular) = read(r) {
                     let semibold = read(b).unwrap_or_else(|| regular.clone());
@@ -163,12 +163,12 @@ pub struct SerifFonts {
 }
 
 /// The installed serif, found once: `None` when there is none (the web app, a bare Linux box),
-/// or with `RUSTGIS_BUILTIN_FONTS` set, so tests draw alike on every machine. Text asking for a
+/// or with `powergis_BUILTIN_FONTS` set, so tests draw alike on every machine. Text asking for a
 /// serif is then drawn in the sans.
 pub fn serif_fonts() -> Option<&'static SerifFonts> {
     static F: OnceLock<Option<SerifFonts>> = OnceLock::new();
     F.get_or_init(|| {
-        if std::env::var_os("RUSTGIS_BUILTIN_FONTS").is_some() {
+        if std::env::var_os("powergis_BUILTIN_FONTS").is_some() {
             return None;
         }
         let family = |[r, b, i, bi]: &[&str; 4]| {
@@ -410,7 +410,7 @@ mod tests {
     /// package folder by its name's start, whatever axes the name lists.
     #[test]
     fn a_variable_noto_serif_is_found() {
-        let root = std::env::temp_dir().join(format!("rustgis-noto-{}", std::process::id()));
+        let root = std::env::temp_dir().join(format!("powergis-noto-{}", std::process::id()));
         let dir = root.join("google-noto-serif-vf");
         std::fs::create_dir_all(&dir).unwrap();
         // Any valid face stands in for the font.

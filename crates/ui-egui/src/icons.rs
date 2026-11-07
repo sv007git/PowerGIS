@@ -388,6 +388,11 @@ pub fn paint(painter: &Painter, r: Rect, name: &str, ink: Color32, accent: Color
             p.circle(12.0, 7.5, 1.4, Some(Color32::WHITE), None);
             p.line(&[(12.0, 10.5), (12.0, 17.0)], 2.2, Color32::WHITE);
         }
+        "profile" | "user" => {
+            p.circle(12.0, 8.0, 3.8, Some(accent), Some((1.4, ink)));
+            p.closed(&[(4.5, 20.0), (7.0, 15.0), (17.0, 15.0), (19.5, 20.0)], 1.4, ink);
+            p.fill(&[(5.0, 19.5), (7.3, 15.5), (16.7, 15.5), (19.0, 19.5)], p.tint(60));
+        }
         "help" => {
             p.circle(12.0, 12.0, 9.0, Some(accent), None);
             p.text(12.0, 12.3, "?", 12.0, Color32::WHITE);
@@ -837,16 +842,16 @@ pub fn paint(painter: &Painter, r: Rect, name: &str, ink: Color32, accent: Color
         "up" => p.line(&[(6.0, 15.0), (12.0, 9.0), (18.0, 15.0)], 1.8, ink),
         "down" => p.line(&[(6.0, 9.0), (12.0, 15.0), (18.0, 9.0)], 1.8, ink),
         "logo" => {
-            // A small version of the PowerGIS logo: a rust cog around a four-colour globe.
-            let rust = crate::theme::BRAND;
+            // PowerGIS brand icon: an electric power ring with GIS globe and lightning core.
+            let brand = crate::theme::BRAND;
             for k in 0..12 {
                 let a = (k as f32 * 30.0).to_radians();
                 let (c, s2) = (a.cos(), a.sin());
                 let q = |r: f32, w: f32| (12.0 + r * c - w * s2, 12.0 + r * s2 + w * c);
-                p.fill(&[q(9.0, -1.6), q(11.6, -1.1), q(11.6, 1.1), q(9.0, 1.6)], rust);
+                p.fill(&[q(9.2, -1.5), q(11.8, -1.0), q(11.8, 1.0), q(9.2, 1.5)], brand);
             }
-            p.circle(12.0, 12.0, 9.8, Some(rust), None);
-            p.circle(12.0, 12.0, 8.0, Some(Color32::WHITE), None);
+            p.circle(12.0, 12.0, 10.0, Some(brand), None);
+            p.circle(12.0, 12.0, 8.2, Some(Color32::WHITE), None);
             let wedge = |a0: f32, a1: f32, col: Color32| {
                 let n = 8;
                 for k in 0..n {
@@ -854,19 +859,31 @@ pub fn paint(painter: &Painter, r: Rect, name: &str, ink: Color32, accent: Color
                     p.fill(
                         &[
                             (12.0, 12.0),
-                            (12.0 + 7.0 * b0.to_radians().cos(), 12.0 + 7.0 * b0.to_radians().sin()),
-                            (12.0 + 7.0 * b1.to_radians().cos(), 12.0 + 7.0 * b1.to_radians().sin()),
+                            (12.0 + 7.2 * b0.to_radians().cos(), 12.0 + 7.2 * b0.to_radians().sin()),
+                            (12.0 + 7.2 * b1.to_radians().cos(), 12.0 + 7.2 * b1.to_radians().sin()),
                         ],
                         col,
                     );
                 }
             };
-            wedge(180.0, 275.0, Color32::from_rgb(0x2D, 0x76, 0xC2));
-            wedge(275.0, 365.0, Color32::from_rgb(0x18, 0x9D, 0x8C));
-            wedge(5.0, 95.0, Color32::from_rgb(0xEE, 0xAE, 0x3A));
-            wedge(95.0, 180.0, Color32::from_rgb(0x6C, 0xB3, 0x3F));
-            p.line(&[(11.5, 4.5), (11.0, 12.0), (12.5, 19.5)], 1.2, Color32::WHITE);
-            p.line(&[(4.5, 12.6), (11.0, 12.0), (19.5, 11.0)], 1.2, Color32::WHITE);
+            wedge(180.0, 275.0, Color32::from_rgb(0x00, 0x83, 0x8F));
+            wedge(275.0, 365.0, Color32::from_rgb(0x00, 0x91, 0xEA));
+            wedge(5.0, 95.0, Color32::from_rgb(0x02, 0x88, 0xD1));
+            wedge(95.0, 180.0, Color32::from_rgb(0x00, 0xC8, 0x53));
+            p.line(&[(11.5, 4.5), (11.0, 12.0), (12.5, 19.5)], 1.0, Color32::WHITE);
+            p.line(&[(4.5, 12.6), (11.0, 12.0), (19.5, 11.0)], 1.0, Color32::WHITE);
+            // Energy lightning bolt in radiant gold
+            p.fill(
+                &[
+                    (13.2, 5.5),
+                    (9.5, 11.8),
+                    (12.2, 11.8),
+                    (10.8, 18.5),
+                    (15.0, 11.2),
+                    (12.5, 11.2),
+                ],
+                Color32::from_rgb(0xFF, 0xEB, 0x3B),
+            );
         }
         "point_layer" => p.circle(12.0, 12.0, 5.0, Some(accent), Some((1.2, ink))),
         "line_layer" => p.line(&[(3.0, 17.0), (9.0, 8.0), (15.0, 15.0), (21.0, 6.0)], 2.2, accent),
@@ -1225,6 +1242,8 @@ pub const ALL: &[&str] = &[
     "measure_area",
     "identify",
     "about",
+    "profile",
+    "user",
     "help",
     "label",
     "label_off",

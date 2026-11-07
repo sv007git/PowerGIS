@@ -1,5 +1,5 @@
 //! "Let your Agents Control PowerGIS" (desktop), in the AI Assistant settings. Ticking it turns
-//! on the MCP relay ([`rustgis_assistant::relay`]): AI agents on this computer that connect
+//! on the MCP relay ([`powergis_assistant::relay`]): AI agents on this computer that connect
 //! (Claude Code, Codex, Cursor…) work on the map open here, with file and network access, no
 //! `--yes` needed. While it's on, the section shows what an agent needs to connect, and nothing
 //! else. The choice is remembered: the relay starts with the app.
@@ -7,7 +7,7 @@
 use egui::RichText;
 use serde_json::json;
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::Tokens;
 
 /// The preference that remembers the choice.
@@ -29,34 +29,34 @@ pub struct ConnectState {
 }
 
 /// Whether the user lets agents control PowerGIS.
-pub fn enabled(app: &RustGisApp) -> bool {
+pub fn enabled(app: &powergisApp) -> bool {
     app.connect.on.unwrap_or_else(|| app.services.load_pref.as_ref().and_then(|l| l(PREF)).as_deref() == Some("on"))
 }
 
 /// Whether agents have full access: no command refused, scripts, tasks, models and plugins
 /// included. Only while agents are on, and only once ticked in this session.
-pub fn full_access(app: &RustGisApp) -> bool {
+pub fn full_access(app: &powergisApp) -> bool {
     enabled(app) && app.connect.full
 }
 
 /// At launch, starts the relay when the user had agents turned on.
-pub fn resume(app: &mut RustGisApp) {
+pub fn resume(app: &mut powergisApp) {
     // Read only once, and only said when agents are on (`resume_with` returns early otherwise).
     if app.connect.resumed {
         return;
     }
-    let port = rustgis_assistant::relay::default_port();
+    let port = powergis_assistant::relay::default_port();
     resume_with(app, port);
 }
 
 /// [`resume`] on a given port (tests, with a port of their own).
 #[cfg(test)]
-fn resume_on(app: &mut RustGisApp, port: u16) {
+fn resume_on(app: &mut powergisApp, port: u16) {
     resume_with(app, Ok(port));
 }
 
-/// [`resume`] on `port`, or with why there is none (a `RUSTGIS_MCP_PORT` that isn't a port).
-fn resume_with(app: &mut RustGisApp, port: Result<u16, String>) {
+/// [`resume`] on `port`, or with why there is none (a `powergis_MCP_PORT` that isn't a port).
+fn resume_with(app: &mut powergisApp, port: Result<u16, String>) {
     if std::mem::replace(&mut app.connect.resumed, true) {
         return;
     }
@@ -66,7 +66,7 @@ fn resume_with(app: &mut RustGisApp, port: Result<u16, String>) {
         return;
     }
     let bridge = start_bridge(app);
-    // A RUSTGIS_MCP_PORT that isn't a port fails the relay as a busy port would.
+    // A powergis_MCP_PORT that isn't a port fails the relay as a busy port would.
     let relay = match port {
         _ if app.relay.is_some() => Ok(()),
         Ok(port) => app.run("ui.mcpRelay", json!({"port": port})).map(|_| ()),
@@ -76,14 +76,14 @@ fn resume_with(app: &mut RustGisApp, port: Result<u16, String>) {
     start_http(app);
 }
 
-/// Starts MCP over HTTP beside the relay ([`rustgis_assistant::relay::Relay::serve_http`]) for
+/// Starts MCP over HTTP beside the relay ([`powergis_assistant::relay::Relay::serve_http`]) for
 /// clients that speak HTTP, while agents are on. Says why when it can't; the relay works without.
-fn start_http(app: &mut RustGisApp) {
+fn start_http(app: &mut powergisApp) {
     let Some(relay) = app.relay.clone() else { return };
     if relay.http_port().is_some() {
         return;
     }
-    match relay.serve_http(rustgis_assistant::relay::default_http_port()) {
+    match relay.serve_http(powergis_assistant::relay::default_http_port()) {
         Ok(port) => {
             let text = crate::i18n::fmt("MCP over HTTP on 127.0.0.1:{port}", &[("port", &port.to_string())]);
             app.session.notify(text, false);
@@ -103,7 +103,7 @@ fn start_http(app: &mut RustGisApp) {
 
 /// Says how starting agents went, once: the relay's failure (with the bridge's, when both
 /// failed), or the bridge's alone when only it failed.
-fn started(app: &mut RustGisApp, relay: Result<(), String>, bridge: Result<(), String>) {
+fn started(app: &mut powergisApp, relay: Result<(), String>, bridge: Result<(), String>) {
     match (relay, bridge) {
         (Ok(()), Ok(())) => {}
         (Ok(()), Err(e)) => app.session.notify(crate::i18n::fmt("The file bridge couldn't start: {error}", &[("error", &e)]), true),
@@ -113,7 +113,7 @@ fn started(app: &mut RustGisApp, relay: Result<(), String>, bridge: Result<(), S
 
 /// The relay couldn't start (its port is taken, say). With the file bridge running, agents stay
 /// on and can use it; without, the choice goes back off.
-fn relay_failed(app: &mut RustGisApp, error: String, bridge: Result<(), String>) {
+fn relay_failed(app: &mut powergisApp, error: String, bridge: Result<(), String>) {
     let said = match bridge {
         Ok(()) => crate::i18n::fmt("MCP relay couldn't start ({error}); agents can still use the file bridge", &[("error", &error)]),
         Err(why) => {
@@ -128,31 +128,31 @@ fn relay_failed(app: &mut RustGisApp, error: String, bridge: Result<(), String>)
     app.connect.error = Some(said);
 }
 
-/// Starts the file bridge ([`rustgis_assistant::filebridge`]) unless it runs already: agents
+/// Starts the file bridge ([`powergis_assistant::filebridge`]) unless it runs already: agents
 /// turned on may use files and the network through it, as through the relay.
-fn start_bridge(app: &mut RustGisApp) -> Result<(), String> {
+fn start_bridge(app: &mut powergisApp) -> Result<(), String> {
     if app.file_bridge.is_some() {
         return Ok(());
     }
     // Tests never touch the real folder (a running PowerGIS holds its lock): one of their own, or none.
     #[cfg(test)]
     let started = match app.connect.bridge_dir.clone() {
-        Some(dir) => rustgis_assistant::filebridge::FileBridge::start_in(dir),
+        Some(dir) => powergis_assistant::filebridge::FileBridge::start_in(dir),
         None => Err("no file bridge folder in this test".to_string()),
     };
     #[cfg(not(test))]
-    let started = rustgis_assistant::filebridge::FileBridge::start();
+    let started = powergis_assistant::filebridge::FileBridge::start();
     let bridge = started?;
     bridge.set_allow_access(true);
     bridge.set_full_access(full_access(app));
     // What scripts do to the user's project is kept, as agents' calls are.
-    bridge.set_audit_dir(rustgis_assistant::audit::dir());
+    bridge.set_audit_dir(powergis_assistant::audit::dir());
     app.file_bridge = Some(bridge);
     Ok(())
 }
 
 /// Every explicit stop, including the status bar/command, also withdraws remembered consent.
-pub(crate) fn stopped(app: &mut RustGisApp) {
+pub(crate) fn stopped(app: &mut powergisApp) {
     let changed = app.connect.on != Some(false);
     app.connect.on = Some(false);
     // Agents turned on again start without full access.
@@ -175,9 +175,9 @@ fn shell_arg(text: &str) -> String {
     format!("'{escaped}'")
 }
 
-/// `rustgis-cli` beside the app, or its name (for a PATH lookup) when it isn't there.
+/// `powergis-cli` beside the app, or its name (for a PATH lookup) when it isn't there.
 fn cli() -> String {
-    let name = if cfg!(windows) { "rustgis-cli.exe" } else { "rustgis-cli" };
+    let name = if cfg!(windows) { "powergis-cli.exe" } else { "powergis-cli" };
     std::env::current_exe()
         .ok()
         .map(|p| p.with_file_name(name))
@@ -200,7 +200,7 @@ fn copyable(ui: &mut egui::Ui, text: &str) {
 
 /// The section in the assistant settings: the switch in a header that folds away the access
 /// switch and the connection details (folded until agents are turned on).
-pub fn section(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
+pub fn section(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens) {
     let mut on = enabled(app);
     let hint = tl!(
         "Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with PowerGIS's tools: they can open and save files and use the web. So can a script any program of yours writes to the file bridge shown below. Scripts and plugin management stay off. The choice is remembered across launches."
@@ -250,7 +250,7 @@ pub fn section(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
 }
 
 /// The open section's body: full access and how agents connect.
-fn details(app: &mut RustGisApp, ui: &mut egui::Ui) {
+fn details(app: &mut powergisApp, ui: &mut egui::Ui) {
     let mut full = full_access(app);
     let hint = tl!(
         "Agents may also run scripts, tasks and models, and install, remove and run plugins: anything you could do yourself. Turn it on only for an agent you trust with your computer. It lasts until PowerGIS closes or agents are turned off."
@@ -276,10 +276,10 @@ fn details(app: &mut RustGisApp, ui: &mut egui::Ui) {
     // What an agent needs: PowerGIS's MCP server, attached to this app.
     let cli = cli();
     let mut args = vec!["mcp".to_string(), "--attach".to_string()];
-    if port != rustgis_assistant::relay::DEFAULT_PORT {
+    if port != powergis_assistant::relay::DEFAULT_PORT {
         args.push(port.to_string());
     }
-    let config = serde_json::to_string_pretty(&json!({"mcpServers": {"rustgis-app": {"command": cli, "args": args}}})).unwrap_or_default();
+    let config = serde_json::to_string_pretty(&json!({"mcpServers": {"powergis-app": {"command": cli, "args": args}}})).unwrap_or_default();
     ui.label(RichText::new(tl!("Add this MCP server to your agent:")).small());
     copyable(ui, &config);
     let hint = if cfg!(windows) {
@@ -290,7 +290,7 @@ fn details(app: &mut RustGisApp, ui: &mut egui::Ui) {
     ui.label(RichText::new(hint).small());
     let quoted = shell_arg(&cli);
     for agent in ["claude", "codex"] {
-        copyable(ui, &format!("{agent} mcp add rustgis-app -- {quoted} {}", args.join(" ")));
+        copyable(ui, &format!("{agent} mcp add powergis-app -- {quoted} {}", args.join(" ")));
     }
     // Clients that speak MCP over HTTP: registered with the stable token, kept off the screen.
     if let Some(http) = app.relay.as_ref().and_then(|r| r.http_port()) {
@@ -299,7 +299,7 @@ fn details(app: &mut RustGisApp, ui: &mut egui::Ui) {
         // PowerShell runs a quoted program only through its call operator.
         let call = if cfg!(windows) { "& " } else { "" };
         let mut register = format!("{call}{quoted} mcp-register --client claude");
-        if http != rustgis_assistant::relay::HTTP_PORT {
+        if http != powergis_assistant::relay::HTTP_PORT {
             register.push_str(&format!(" --port {http}"));
         }
         copyable(ui, &register);
@@ -317,7 +317,7 @@ mod tests {
         let occupied = std::net::TcpListener::bind(("127.0.0.1", 0)).unwrap();
         let port = occupied.local_addr().unwrap().port();
         let saved = Arc::new(Mutex::new(Vec::<(String, String)>::new()));
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.services.load_pref = Some(Box::new(|key: &str| (key == PREF).then(|| "on".to_string())));
         let sink = saved.clone();
         app.services.save_pref = Some(Box::new(move |key: &str, value: &str| {
@@ -341,14 +341,14 @@ mod tests {
     /// A port variable that isn't a port is said only when agents are on.
     #[test]
     fn a_bad_port_variable_is_said_only_with_agents_on() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let mark = app.session.notice_mark();
-        resume_with(&mut app, Err("RUSTGIS_MCP_PORT=x is not a port number".into()));
+        resume_with(&mut app, Err("powergis_MCP_PORT=x is not a port number".into()));
         assert!(app.session.notices_since(mark).is_empty() && app.connect.error.is_none(), "agents are off");
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.services.load_pref = Some(Box::new(|key: &str| (key == PREF).then(|| "on".to_string())));
-        resume_with(&mut app, Err("RUSTGIS_MCP_PORT=x is not a port number".into()));
-        assert!(app.connect.error.as_deref().is_some_and(|e| e.contains("RUSTGIS_MCP_PORT")));
+        resume_with(&mut app, Err("powergis_MCP_PORT=x is not a port number".into()));
+        assert!(app.connect.error.as_deref().is_some_and(|e| e.contains("powergis_MCP_PORT")));
         assert!(app.relay.is_none());
     }
 
@@ -356,15 +356,15 @@ mod tests {
     #[test]
     fn the_app_runs_file_bridge_scripts() {
         let dir = tempfile::tempdir().unwrap();
-        let mut app = RustGisApp::with_sample();
-        let bridge = rustgis_assistant::filebridge::FileBridge::start_in(dir.path().to_path_buf()).unwrap();
+        let mut app = powergisApp::with_sample();
+        let bridge = powergis_assistant::filebridge::FileBridge::start_in(dir.path().to_path_buf()).unwrap();
         app.file_bridge = Some(bridge.clone());
         let layers = app.session.map().layers.len();
         let ctx = egui::Context::default();
         app.logic(&ctx);
         assert!(bridge.has_wake(), "the frame gives the bridge its wake");
         // Writes a script and runs frames until the app says how it went.
-        let run = |app: &mut RustGisApp, script: &str| {
+        let run = |app: &mut powergisApp, script: &str| {
             let mark = app.session.notice_mark();
             std::fs::write(bridge.command_path(), script).unwrap();
             let deadline = std::time::Instant::now() + std::time::Duration::from_secs(5);
@@ -392,7 +392,7 @@ mod tests {
     /// when agents are turned off.
     #[test]
     fn full_access_needs_agents_on_and_a_fresh_opt_in() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.services.load_pref = Some(Box::new(|key: &str| (key == PREF || key == "agents_full_access").then(|| "on".to_string())));
         assert!(enabled(&app) && !full_access(&app), "a launch never restores full access");
         app.connect.full = true;
@@ -409,7 +409,7 @@ mod tests {
     fn explicit_stop_updates_cached_and_remembered_choice() {
         use std::sync::{Arc, Mutex};
         let saved = Arc::new(Mutex::new(String::from("on")));
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let read = saved.clone();
         app.services.load_pref = Some(Box::new(move |key| (key == PREF).then(|| read.lock().unwrap().clone())));
         let write = saved.clone();

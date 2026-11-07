@@ -1,8 +1,8 @@
 //! Project sources that read an S3 bucket through a saved connection: which saved connection
 //! reads each, decided before anything is fetched.
 //!
-//! A project keeps an S3 source's address as `rustgis-s3:<binding>:<len>:<endpoint>:<url>`
-//! ([`rustgis_data::s3_address`]) when it was added through a saved connection: the endpoint and
+//! A project keeps an S3 source's address as `powergis-s3:<binding>:<len>:<endpoint>:<url>`
+//! ([`powergis_data::s3_address`]) when it was added through a saved connection: the endpoint and
 //! bucket it names, never a key. The binding is this computer's runtime token for a login, so one
 //! read from a file is cleared ([`clear_bindings`]); a source with none can't be fetched. Opening
 //! a project (or importing a map) settles each bucket its sources read ([`resolve_project_s3`]):
@@ -20,11 +20,11 @@
 //! include (or aren't limited to) its bucket is a candidate. Its blocked placeholder uses the
 //! reserved non-login marker `s3_address::LEGACY`, distinct from explicit AWS provenance.
 
-use rustgis_data::s3_address;
+use powergis_data::s3_address;
 
 use crate::Session;
 use crate::connections::Connection;
-use crate::render::rustgis_tiles::{cache, s3};
+use crate::render::powergis_tiles::{cache, s3};
 
 /// A bucket (at an endpoint) some project sources read, and the saved connections that could read
 /// it: the user chooses one (`connection.resolveS3`); until then none of those sources is fetched.
@@ -357,7 +357,7 @@ mod tests {
         assert_eq!(part("s3://data/a.fgb"), "s3://data/a.fgb");
         let mut addresses = [template.clone(), "s3://data/b.fgb".to_string(), wrapped.clone(), "https://x.org/a".to_string()];
         clear_bindings(addresses.iter_mut());
-        assert_eq!(addresses[0], "pmtiles:{z}/{x}/{y}@rustgis-s3::22:https://s3.example.org:https://s3.example.org/data/a.pmtiles");
+        assert_eq!(addresses[0], "pmtiles:{z}/{x}/{y}@powergis-s3::22:https://s3.example.org:https://s3.example.org/data/a.pmtiles");
         assert_eq!(addresses[1], "s3://data/b.fgb");
         let u = unresolved(&addresses[0]).unwrap();
         assert_eq!((u.endpoint.as_deref(), u.bucket.as_str()), (Some("https://s3.example.org"), "data"));
@@ -370,8 +370,8 @@ mod tests {
         assert_eq!(again, template);
         assert!(has_binding(&again, B) && !has_binding(&addresses[0], B));
         let bare = bound("s3://data/b.fgb", "", B).unwrap();
-        assert_eq!(bare, format!("rustgis-s3:{B}:0::s3://data/b.fgb"));
+        assert_eq!(bare, format!("powergis-s3:{B}:0::s3://data/b.fgb"));
         // Malformed provenance is nobody's resource and never a file.
-        assert!(unresolved("rustgis-s3:junk").is_none() && is_s3_backed("rustgis-s3:junk"));
+        assert!(unresolved("powergis-s3:junk").is_none() && is_s3_backed("powergis-s3:junk"));
     }
 }

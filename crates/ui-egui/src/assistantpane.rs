@@ -1,14 +1,14 @@
 //! The AI Assistant pane: a chat with a model of the user's choosing, which acts on the map by
-//! running commands (see the `rustgis-assistant` crate). Requests go out off the frame: on a
+//! running commands (see the `powergis-assistant` crate). Requests go out off the frame: on a
 //! thread on the desktop, through `Services::http` (the browser's fetch) on the web.
 
 use egui::{Align, Layout, RichText, Ui, vec2};
-use rustgis_assistant::{Agent, Config, Entry, HttpRequest, HttpResponse, PRESETS, Step, chatgpt, provider};
+use powergis_assistant::{Agent, Config, Entry, HttpRequest, HttpResponse, PRESETS, Step, chatgpt, provider};
 
 use crate::theme::{Tokens, regular, semibold};
-use crate::{RustGisApp, Slot, icons};
+use crate::{powergisApp, Slot, icons};
 
-type Reply = Slot<Result<HttpResponse, rustgis_assistant::Error>>;
+type Reply = Slot<Result<HttpResponse, powergis_assistant::Error>>;
 /// A streamed reply's pieces, as they arrive.
 type Chunks = std::sync::Arc<std::sync::Mutex<Vec<u8>>>;
 
@@ -54,7 +54,7 @@ pub struct AssistantState {
     /// The catalog is fetched once per provider/account selection.
     catalog_pending: bool,
     models_slot: Option<Reply>,
-    models_error: Option<rustgis_assistant::Error>,
+    models_error: Option<powergis_assistant::Error>,
     /// Earlier messages, for Up/Down in the composer.
     history: Vec<String>,
     history_pos: Option<usize>,
@@ -68,10 +68,10 @@ pub struct AssistantState {
     login: Option<chatgpt::Login>,
     /// The ChatGPT account signed in, for the settings.
     account: Option<chatgpt::Account>,
-    login_error: Option<rustgis_assistant::Error>,
+    login_error: Option<powergis_assistant::Error>,
     /// A sign-out's revocation at OpenAI, under way (desktop only).
     #[cfg(not(target_arch = "wasm32"))]
-    signout: Option<Slot<Result<(), rustgis_assistant::Error>>>,
+    signout: Option<Slot<Result<(), powergis_assistant::Error>>>,
     /// The ChatGPT sign-in, being read on a worker: its tokens are in the system keychain, which
     /// may block or ask (desktop only).
     #[cfg(not(target_arch = "wasm32"))]
@@ -100,14 +100,14 @@ pub struct AssistantState {
     skills_rev: u64,
     /// The settings' Skills list, read when shown (desktop).
     #[cfg(not(target_arch = "wasm32"))]
-    skills_list: Option<(Vec<rustgis_assistant::skills::Listed>, Vec<String>)>,
+    skills_list: Option<(Vec<powergis_assistant::skills::Listed>, Vec<String>)>,
     /// What the last change to the skills did: whether it worked, and what to say.
     #[cfg(not(target_arch = "wasm32"))]
     skills_message: Option<(bool, String)>,
     /// The agents on this computer, looked for when the settings open (a search of `PATH`, not
     /// every frame) and again when the switch changes.
     #[cfg(not(target_arch = "wasm32"))]
-    agents_found: Option<rustgis_assistant::acp::Installed>,
+    agents_found: Option<powergis_assistant::acp::Installed>,
 }
 
 /// The settings fields typed into (saved when none has focus).
@@ -119,19 +119,19 @@ fn typing(ctx: &egui::Context) -> bool {
 }
 
 /// Reads a nonempty preference, including legacy keys awaiting migration.
-fn pref(app: &RustGisApp, key: &str) -> Option<String> {
+fn pref(app: &powergisApp, key: &str) -> Option<String> {
     app.services.load_pref.as_ref().and_then(|l| l(key)).filter(|v| !v.is_empty())
 }
 
 /// Saves a preference through the platform hook.
-fn save_pref(app: &RustGisApp, key: &str, value: &str) {
+fn save_pref(app: &powergisApp, key: &str, value: &str) {
     if let Some(s) = &app.services.save_pref {
         s(key, value);
     }
 }
 
 /// A provider's settings: its defaults and the environment, then what the user saved.
-fn load_config(app: &mut RustGisApp, provider: &str, ctx: &egui::Context) -> Config {
+fn load_config(app: &mut powergisApp, provider: &str, ctx: &egui::Context) -> Config {
     let mut c = Config::from_env(provider);
     if let Some(m) = pref(app, &format!("assistant_model_{provider}")) {
         c.model = m;
@@ -157,14 +157,14 @@ fn load_config(app: &mut RustGisApp, provider: &str, ctx: &egui::Context) -> Con
 }
 
 /// Initializes the selected provider once, without blocking on its keychain.
-fn ensure_loaded(app: &mut RustGisApp, ctx: &egui::Context) {
+fn ensure_loaded(app: &mut powergisApp, ctx: &egui::Context) {
     if app.assistant.loaded {
         return;
     }
     app.assistant.loaded = true;
     app.assistant.remember_key = provider::remembers_keys(pref(app, provider::REMEMBER_KEY_PREF).as_deref());
     let provider = pref(app, provider::PROVIDER_PREF)
-        .or_else(|| std::env::var("RUSTGIS_ASSISTANT_PROVIDER").ok())
+        .or_else(|| std::env::var("powergis_ASSISTANT_PROVIDER").ok())
         .filter(|p| provider::preset(p).is_some())
         // The first provider with a key in the environment (a ChatGPT sign-in is chosen, not assumed).
         .or_else(|| PRESETS.iter().find(|p| !p.login && !Config::from_env(p.id).key.is_empty()).map(|p| p.id.to_string()))
@@ -172,7 +172,7 @@ fn ensure_loaded(app: &mut RustGisApp, ctx: &egui::Context) {
     let mut cfg = load_config(app, &provider, ctx);
     #[cfg(not(target_arch = "wasm32"))]
     migrate_keys(app, ctx);
-    if let Ok(m) = std::env::var("RUSTGIS_ASSISTANT_MODEL")
+    if let Ok(m) = std::env::var("powergis_ASSISTANT_MODEL")
         && !m.trim().is_empty()
         && pref(app, &format!("assistant_model_{provider}")).is_none()
     {
@@ -200,26 +200,26 @@ fn ensure_loaded(app: &mut RustGisApp, ctx: &egui::Context) {
         app.assistant.agents_auto = pref(app, "assistant_agents_auto").as_deref() == Some("on");
     }
     // The skills switched on (the plugins' too), and the local agents the user allows (desktop).
-    agent.set_skills(rustgis_assistant::skills::installed());
+    agent.set_skills(powergis_assistant::skills::installed());
     #[cfg(not(target_arch = "wasm32"))]
     agent.set_agents_auto(app.assistant.agents_auto);
-    app.assistant.skills_rev = rustgis_engine::plugins::revision();
+    app.assistant.skills_rev = powergis_engine::plugins::revision();
     #[cfg(not(target_arch = "wasm32"))]
     if app.assistant.local_agents {
-        agent.set_harnesses(rustgis_assistant::acp::installed().0.into_iter().map(|(spec, _)| spec).collect());
+        agent.set_harnesses(powergis_assistant::acp::installed().0.into_iter().map(|(spec, _)| spec).collect());
     }
     app.assistant.agent = Some(agent);
 }
 
 /// An unconfigured provider opens its fields; a configured one restores the saved fold state.
-fn init_settings(app: &mut RustGisApp, cfg: &Config) {
+fn init_settings(app: &mut powergisApp, cfg: &Config) {
     let missing = cfg.missing().is_some();
     app.assistant.settings = missing;
     app.assistant.provider_closed = !missing && pref(app, "assistant_provider_closed").as_deref() == Some("on");
 }
 
 /// An explicit settings choice takes precedence over startup's pending key read.
-fn toggle_settings(app: &mut RustGisApp) {
+fn toggle_settings(app: &mut powergisApp) {
     #[cfg(not(target_arch = "wasm32"))]
     {
         app.assistant.settings_pending = None;
@@ -229,7 +229,7 @@ fn toggle_settings(app: &mut RustGisApp) {
 
 /// Schedules all remembered legacy providers once, without opening the Assistant or making requests.
 #[cfg(not(target_arch = "wasm32"))]
-fn migrate_keys(app: &mut RustGisApp, ctx: &egui::Context) {
+fn migrate_keys(app: &mut powergisApp, ctx: &egui::Context) {
     if app.assistant.keys_migrated {
         return;
     }
@@ -245,8 +245,8 @@ fn migrate_keys(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Reads the skills again when they changed (`force`) or the plugins did.
-fn sync_skills(app: &mut RustGisApp, force: bool) {
-    let rev = rustgis_engine::plugins::revision();
+fn sync_skills(app: &mut powergisApp, force: bool) {
+    let rev = powergis_engine::plugins::revision();
     if !force && rev == app.assistant.skills_rev {
         return;
     }
@@ -256,7 +256,7 @@ fn sync_skills(app: &mut RustGisApp, force: bool) {
         app.assistant.skills_list = None;
     }
     if let Some(a) = app.assistant.agent.as_mut() {
-        a.set_skills(rustgis_assistant::skills::installed());
+        a.set_skills(powergis_assistant::skills::installed());
     }
 }
 
@@ -268,7 +268,7 @@ type SignInRead = (Option<chatgpt::Binding>, Slot<Option<chatgpt::Credentials>>)
 /// Starts reading the selected ChatGPT sign-in on a worker; [`poll_sign_in`] applies it. With
 /// `checking`, it only says whether that sign-in is still there (after a failed request).
 #[cfg(not(target_arch = "wasm32"))]
-fn read_sign_in(app: &mut RustGisApp, checking: Option<chatgpt::Binding>, ctx: &egui::Context) {
+fn read_sign_in(app: &mut powergisApp, checking: Option<chatgpt::Binding>, ctx: &egui::Context) {
     let slot: Slot<Option<chatgpt::Credentials>> = Slot::default();
     let (out, ctx) = (slot.clone(), ctx.clone());
     std::thread::spawn(move || {
@@ -287,7 +287,7 @@ fn read_sign_in(app: &mut RustGisApp, checking: Option<chatgpt::Binding>, ctx: &
 /// and the settings open to sign in again. A read taking the selected account goes through
 /// [`apply_config`], which stops work bound to another account, and loads the new catalog.
 #[cfg(not(target_arch = "wasm32"))]
-fn poll_sign_in(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll_sign_in(app: &mut powergisApp, ctx: &egui::Context) {
     let Some((checking, slot)) = app.assistant.sign_in_read.as_ref() else { return };
     let Some(read) = slot.lock().ok().and_then(|mut s| s.take()) else { return };
     let checking = checking.clone();
@@ -330,12 +330,12 @@ fn poll_sign_in(app: &mut RustGisApp, ctx: &egui::Context) {
 
 /// Whether the provider's key or sign-in is still being read (off the frame).
 #[cfg(not(target_arch = "wasm32"))]
-fn reading(app: &RustGisApp, provider: &str) -> bool {
+fn reading(app: &powergisApp, provider: &str) -> bool {
     app.assistant.keys.loading(provider) || (provider::preset(provider).is_some_and(|p| p.login) && app.assistant.sign_in_read.is_some())
 }
 
 /// Persists ordinary settings; desktop secrets are queued for the keychain worker.
-fn save_config(app: &mut RustGisApp, c: &Config, ctx: &egui::Context) {
+fn save_config(app: &mut powergisApp, c: &Config, ctx: &egui::Context) {
     save_pref(app, provider::PROVIDER_PREF, &c.provider);
     save_pref(app, &format!("assistant_model_{}", c.provider), c.model.trim());
     save_pref(app, &provider::url_pref(&c.provider), c.base_url.trim());
@@ -368,7 +368,7 @@ fn save_config(app: &mut RustGisApp, c: &Config, ctx: &egui::Context) {
 
 /// Applies background replies without overwriting a later edit or another provider.
 #[cfg(not(target_arch = "wasm32"))]
-fn poll_keys(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll_keys(app: &mut powergisApp, ctx: &egui::Context) {
     migrate_keys(app, ctx);
     let previous = app
         .assistant
@@ -400,7 +400,7 @@ fn poll_keys(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Sends a request off the frame. A signed-in account's requests renew its tokens as needed.
-fn dispatch(app: &mut RustGisApp, req: HttpRequest, login: Option<chatgpt::Binding>, chunks: Option<Chunks>, ctx: &egui::Context) -> Reply {
+fn dispatch(app: &mut powergisApp, req: HttpRequest, login: Option<chatgpt::Binding>, chunks: Option<Chunks>, ctx: &egui::Context) -> Reply {
     let slot: Reply = Slot::default();
     let fail = |slot: &Reply, e: String| {
         if let Ok(mut s) = slot.lock() {
@@ -438,8 +438,8 @@ fn dispatch(app: &mut RustGisApp, req: HttpRequest, login: Option<chatgpt::Bindi
             let r = match (&login, chunks.is_some()) {
                 (Some(account), true) => chatgpt::send_streaming(&req, account, &mut on_chunk),
                 (Some(account), false) => chatgpt::send(&req, account),
-                (None, true) => rustgis_assistant::http::send_streaming(&req, &mut on_chunk),
-                (None, false) => rustgis_assistant::http::send(&req),
+                (None, true) => powergis_assistant::http::send_streaming(&req, &mut on_chunk),
+                (None, false) => powergis_assistant::http::send(&req),
             };
             if let Ok(mut s) = out.lock() {
                 *s = Some(r);
@@ -456,7 +456,7 @@ fn dispatch(app: &mut RustGisApp, req: HttpRequest, login: Option<chatgpt::Bindi
 }
 
 /// Asks the provider for its models.
-fn list_models(app: &mut RustGisApp, cfg: &Config, ctx: &egui::Context) {
+fn list_models(app: &mut powergisApp, cfg: &Config, ctx: &egui::Context) {
     if key_loading(app) {
         app.assistant.catalog_pending = true;
         return;
@@ -467,7 +467,7 @@ fn list_models(app: &mut RustGisApp, cfg: &Config, ctx: &egui::Context) {
 }
 
 /// Replaces provider settings and stops work bound to a different provider or sign-in.
-fn apply_config(app: &mut RustGisApp, cfg: Config) {
+fn apply_config(app: &mut powergisApp, cfg: Config) {
     if let Some(agent) = app.assistant.agent.as_mut() {
         if agent.config.provider != cfg.provider
             || (agent.config.login() && (agent.config.binding() != cfg.binding() || agent.config.key != cfg.key))
@@ -483,7 +483,7 @@ fn apply_config(app: &mut RustGisApp, cfg: Config) {
 
 /// A ChatGPT account signed in: the assistant uses its plan from now on.
 #[cfg(not(target_arch = "wasm32"))]
-fn signed_in(app: &mut RustGisApp, c: &chatgpt::Credentials, ctx: &egui::Context) {
+fn signed_in(app: &mut powergisApp, c: &chatgpt::Credentials, ctx: &egui::Context) {
     app.assistant.sign_in_read = None;
     app.assistant.account = Some(c.account());
     app.assistant.login_error = None;
@@ -506,7 +506,7 @@ fn signed_in(app: &mut RustGisApp, c: &chatgpt::Credentials, ctx: &egui::Context
     } else {
         app.assistant.models_slot = None;
         app.assistant.catalog_pending = false;
-        app.assistant.login_error = Some(rustgis_assistant::Error::new(rustgis_assistant::Recovery::Consent, ""));
+        app.assistant.login_error = Some(powergis_assistant::Error::new(powergis_assistant::Recovery::Consent, ""));
     }
     apply_config(app, cfg);
     app.assistant.unsaved = true;
@@ -514,7 +514,7 @@ fn signed_in(app: &mut RustGisApp, c: &chatgpt::Credentials, ctx: &egui::Context
 
 /// After a failed request: when the sign-in on this computer no longer has tokens (they expired
 /// or were revoked), the settings say so and offer to sign in again (read off the frame).
-fn sync_sign_in(app: &mut RustGisApp, ctx: &egui::Context) {
+fn sync_sign_in(app: &mut powergisApp, ctx: &egui::Context) {
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(binding) = app.assistant.agent.as_ref().filter(|a| a.config.login() && !a.config.key.is_empty()).map(|a| a.config.binding())
     {
@@ -524,13 +524,13 @@ fn sync_sign_in(app: &mut RustGisApp, ctx: &egui::Context) {
     let _ = (app, ctx);
 }
 
-fn take(slot: &Reply) -> Option<Result<HttpResponse, rustgis_assistant::Error>> {
+fn take(slot: &Reply) -> Option<Result<HttpResponse, powergis_assistant::Error>> {
     slot.lock().ok().and_then(|mut s| s.take())
 }
 
 /// Ends the agent threads on this computer (with every process they started), and the relay if
 /// they started it: nothing keeps acting on the map after the conversation.
-fn end_threads(app: &mut RustGisApp) {
+fn end_threads(app: &mut powergisApp) {
     #[cfg(not(target_arch = "wasm32"))]
     crate::agentthreads::end_all(app);
     #[cfg(target_arch = "wasm32")]
@@ -538,7 +538,7 @@ fn end_threads(app: &mut RustGisApp) {
 }
 
 /// Carries out what the agent asked for.
-pub(crate) fn follow(app: &mut RustGisApp, step: Step, ctx: &egui::Context) {
+pub(crate) fn follow(app: &mut powergisApp, step: Step, ctx: &egui::Context) {
     app.map.invalidate();
     if let Step::Retry(after) = step {
         let generation = app.assistant.agent.as_ref().map_or(0, Agent::generation);
@@ -558,7 +558,7 @@ pub(crate) fn follow(app: &mut RustGisApp, step: Step, ctx: &egui::Context) {
 
 /// Runs `f` on the agent and the session; errors of the commands it ran show in the transcript,
 /// not as notices too.
-fn with_agent(app: &mut RustGisApp, f: impl FnOnce(&mut Agent, &mut rustgis_engine::Session) -> Step) -> Option<Step> {
+fn with_agent(app: &mut powergisApp, f: impl FnOnce(&mut Agent, &mut powergis_engine::Session) -> Step) -> Option<Step> {
     let mut agent = app.assistant.agent.take()?;
     let before = app.session.notices.len();
     let step = f(&mut agent, &mut app.session);
@@ -572,7 +572,7 @@ fn with_agent(app: &mut RustGisApp, f: impl FnOnce(&mut Agent, &mut rustgis_engi
 }
 
 /// Per-frame: responses that arrived, a message queued by a command, and settings to save.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     #[cfg(not(target_arch = "wasm32"))]
     poll_keys(app, ctx);
     #[cfg(not(target_arch = "wasm32"))]
@@ -636,9 +636,9 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
         && let Some(r) = take(slot)
     {
         app.assistant.models_slot = None;
-        let api = app.assistant.agent.as_ref().map_or(rustgis_assistant::Api::OpenAi, |a| a.config.api());
+        let api = app.assistant.agent.as_ref().map_or(powergis_assistant::Api::OpenAi, |a| a.config.api());
         let models = r.and_then(|r| {
-            if api == rustgis_assistant::Api::Responses {
+            if api == powergis_assistant::Api::Responses {
                 let catalog = provider::parse_catalog(&r)?;
                 if catalog.is_empty() {
                     return Err("No models are available for this account.".into());
@@ -695,7 +695,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Starts a user request with the selected provider's current session configuration.
-fn send(app: &mut RustGisApp, text: String, ctx: &egui::Context) {
+fn send(app: &mut powergisApp, text: String, ctx: &egui::Context) {
     if key_loading(app) {
         app.assistant.queued = Some(text);
         return;
@@ -715,7 +715,7 @@ fn send(app: &mut RustGisApp, text: String, ctx: &egui::Context) {
 }
 
 /// Only an initial keychain read delays requests; a known legacy key works during migration.
-fn key_loading(app: &RustGisApp) -> bool {
+fn key_loading(app: &powergisApp) -> bool {
     #[cfg(not(target_arch = "wasm32"))]
     {
         app.assistant.agent.as_ref().is_some_and(|a| reading(app, &a.config.provider))
@@ -728,7 +728,7 @@ fn key_loading(app: &RustGisApp) -> bool {
 }
 
 /// Draws the Assistant pane, loading its provider on first use.
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     ensure_loaded(app, ui.ctx());
     sync_skills(app, false);
     let ctx = ui.ctx().clone();
@@ -819,14 +819,14 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     });
 }
 
-fn composer_panel(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, busy: bool, ctx: &egui::Context) {
+fn composer_panel(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, busy: bool, ctx: &egui::Context) {
     egui::Panel::bottom("assistant_composer")
         .frame(egui::Frame::NONE.fill(t.pane).inner_margin(egui::Margin::symmetric(10, 8)))
         .show(ui, |ui| composer(app, ui, t, busy, ctx));
 }
 
 /// Edits provider settings and invalidates pending key reads as soon as a key changes.
-fn settings(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn settings(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     #[cfg(not(target_arch = "wasm32"))]
     poll_sign_in(app, ui.ctx());
     let Some(mut cfg) = app.assistant.agent.as_ref().map(|a| a.config.clone()) else { return };
@@ -886,7 +886,7 @@ fn settings(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 
 /// The settings' AI provider section: the provider, account, model, address and key, with
 /// notes on where they're kept and what is sent.
-fn provider_settings(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, cfg: &mut Config) {
+fn provider_settings(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, cfg: &mut Config) {
     egui::Grid::new("assistant_settings").num_columns(2).spacing(vec2(8.0, 6.0)).show(ui, |ui| {
         let provider_label = ui.label(tl!("Provider"));
         let current = provider::preset(&cfg.provider).map_or("", |p| p.label);
@@ -1049,7 +1049,7 @@ fn sign_in_storage_note(account: Option<&chatgpt::Account>) -> String {
 }
 
 /// Describes actual storage, including a legacy key retained after a failed migration.
-fn key_storage_note(app: &RustGisApp, provider: &str) -> String {
+fn key_storage_note(app: &powergisApp, provider: &str) -> String {
     #[cfg(target_arch = "wasm32")]
     {
         let _ = provider;
@@ -1062,7 +1062,7 @@ fn key_storage_note(app: &RustGisApp, provider: &str) -> String {
     #[cfg(not(target_arch = "wasm32"))]
     {
         use crate::assistantkeys::Status;
-        use rustgis_engine::data::secrets::SecretError;
+        use powergis_engine::data::secrets::SecretError;
         let mut notes = Vec::new();
         let plaintext = pref(app, &format!("assistant_key_{provider}")).is_some();
         match app.assistant.keys.status(provider) {
@@ -1096,7 +1096,7 @@ fn key_storage_note(app: &RustGisApp, provider: &str) -> String {
 /// The settings' account row of a sign-in provider: who is signed in and Sign out, or
 /// Continue with ChatGPT (the browser).
 #[cfg(not(target_arch = "wasm32"))]
-fn account_row(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, cfg: &mut Config) {
+fn account_row(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, cfg: &mut Config) {
     if let Some(login) = &app.assistant.login {
         let (reopen, cancel) = waiting_for_browser(ui, t, &login.url);
         if reopen {
@@ -1205,9 +1205,9 @@ fn account_row(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, cfg: &mut Config) 
 
 /// Revokes a signed-out session at OpenAI: network I/O, off the frame.
 #[cfg(not(target_arch = "wasm32"))]
-fn revoke_later(app: &mut RustGisApp, revocation: Option<chatgpt::Revocation>, ctx: &egui::Context) {
+fn revoke_later(app: &mut powergisApp, revocation: Option<chatgpt::Revocation>, ctx: &egui::Context) {
     let Some(r) = revocation else { return };
-    let slot: Slot<Result<(), rustgis_assistant::Error>> = Slot::default();
+    let slot: Slot<Result<(), powergis_assistant::Error>> = Slot::default();
     let (out, ctx) = (slot.clone(), ctx.clone());
     std::thread::spawn(move || {
         let result = chatgpt::revoke(&r);
@@ -1222,7 +1222,7 @@ fn revoke_later(app: &mut RustGisApp, revocation: Option<chatgpt::Revocation>, c
 /// After signing out or removing the account: no tokens, no catalog, and nothing waiting to be
 /// sent with them (a queued message goes back to the input box, not to the provider).
 #[cfg(not(target_arch = "wasm32"))]
-fn forget_sign_in(app: &mut RustGisApp, cfg: &mut Config) {
+fn forget_sign_in(app: &mut powergisApp, cfg: &mut Config) {
     app.assistant.sign_in_read = None;
     app.assistant.models_slot = None;
     app.assistant.catalog_pending = false;
@@ -1249,7 +1249,7 @@ fn waiting_for_browser(ui: &mut Ui, t: &Tokens, url: &str) -> (bool, bool) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn start_login(app: &mut RustGisApp, cfg: &mut Config, another: bool) {
+fn start_login(app: &mut powergisApp, cfg: &mut Config, another: bool) {
     app.assistant.sign_in_read = None;
     if !another && !cfg.client_id.is_empty() {
         match chatgpt::select(&cfg.client_id, &cfg.account) {
@@ -1274,13 +1274,13 @@ fn start_login(app: &mut RustGisApp, cfg: &mut Config, another: bool) {
 /// Gemini CLI…) through ACP. Off unless the user turns it on; each agent's actions then wait for
 /// the user's approval, unless they choose otherwise.
 #[cfg(not(target_arch = "wasm32"))]
-fn local_agents_setting(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn local_agents_setting(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     if let Some(a) = app.assistant.agent.as_mut() {
         a.set_agents_auto(app.assistant.agents_auto);
     }
     if ui.checkbox(&mut app.assistant.local_agents, tl!("Let the assistant hand tasks to agents on this computer")).changed() {
         app.assistant.agents_found = None;
-        let (found, _) = app.assistant.agents_found.get_or_insert_with(rustgis_assistant::acp::installed);
+        let (found, _) = app.assistant.agents_found.get_or_insert_with(powergis_assistant::acp::installed);
         let found: Vec<_> = found.iter().map(|(spec, _)| *spec).collect();
         save_pref(app, "assistant_local_agents", if app.assistant.local_agents { "on" } else { "off" });
         let agents = if app.assistant.local_agents { found } else { Vec::new() };
@@ -1288,7 +1288,7 @@ fn local_agents_setting(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             a.set_harnesses(agents);
         }
     }
-    let (found, need_node) = app.assistant.agents_found.get_or_insert_with(rustgis_assistant::acp::installed).clone();
+    let (found, need_node) = app.assistant.agents_found.get_or_insert_with(powergis_assistant::acp::installed).clone();
     let note = if found.is_empty() {
         tl!("No agents that speak ACP (Claude Code, Codex, Gemini CLI, GitHub Copilot CLI, Cursor, OpenCode, goose) were found on this computer.").to_string()
     } else {
@@ -1336,8 +1336,8 @@ fn local_agents_setting(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 /// The Skills list: every skill and where it comes from, a switch for each, and adding and
 /// removing the user's (desktop).
 #[cfg(not(target_arch = "wasm32"))]
-fn skills_setting(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
-    use rustgis_assistant::skills::{self, Places, Source};
+fn skills_setting(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
+    use powergis_assistant::skills::{self, Places, Source};
     ui.collapsing(tl!("Skills"), |ui| {
         // Read once and kept; each frame copies only what the rows show (not the skills' bodies),
         // and the folders are looked up only when something is done.
@@ -1419,14 +1419,14 @@ fn skills_setting(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// Recovery text is translated; server diagnostics retain their original wording.
-fn show_error(ui: &mut Ui, error: &rustgis_assistant::Error, t: &Tokens) {
+fn show_error(ui: &mut Ui, error: &powergis_assistant::Error, t: &Tokens) {
     ui.label(RichText::new(tl!(error.message())).small().color(t.red));
-    if error.recovery == rustgis_assistant::Recovery::Usage
+    if error.recovery == powergis_assistant::Recovery::Usage
         && crate::widgets::primary_button(ui, tl!("Weekly usage"), true, vec2(160.0, 26.0)).clicked()
     {
         ui.ctx().open_url(egui::OpenUrl::new_tab(chatgpt::USAGE_URL));
     }
-    if error.status.is_some() || error.recovery != rustgis_assistant::Recovery::Other {
+    if error.status.is_some() || error.recovery != powergis_assistant::Recovery::Other {
         ui.collapsing(tl!("Diagnostics"), |ui| {
             ui.label(&error.detail);
             if let Some(status) = error.status {
@@ -1441,7 +1441,7 @@ fn show_error(ui: &mut Ui, error: &rustgis_assistant::Error, t: &Tokens) {
 
 /// While a ChatGPT plan is in use: saying so, with a link to its usage settings, and after the
 /// first sign-in, a confirmation to dismiss.
-fn plan_notice(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn plan_notice(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     if app.assistant.welcome {
         egui::Frame::group(ui.style()).show(ui, |ui| {
             ui.label(RichText::new(tl!("You're using your ChatGPT plan")).font(semibold(12.5)));
@@ -1468,7 +1468,7 @@ fn plan_line(ui: &mut Ui, t: &Tokens) {
 }
 
 #[cfg(target_arch = "wasm32")]
-fn account_row(_app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, _cfg: &mut Config) {
+fn account_row(_app: &mut powergisApp, ui: &mut Ui, t: &Tokens, _cfg: &mut Config) {
     ui.label(RichText::new(tl!("Signing in with ChatGPT works in the desktop app.")).small().color(t.text_dim));
 }
 
@@ -1476,7 +1476,7 @@ fn account_row(_app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, _cfg: &mut Config
 const INPUT_HEIGHT: f32 = 44.0;
 const INPUT_GROWS: f32 = 160.0;
 
-fn composer(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, busy: bool, ctx: &egui::Context) {
+fn composer(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, busy: bool, ctx: &egui::Context) {
     // Agent threads on this computer, working or waiting for a follow-up.
     #[cfg(not(target_arch = "wasm32"))]
     crate::agentthreads::list(app, ui, t);
@@ -1587,7 +1587,7 @@ fn composer(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, busy: bool, ctx: &egu
     }
 }
 
-fn transcript(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, ctx: &egui::Context) {
+fn transcript(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, ctx: &egui::Context) {
     let Some(agent) = app.assistant.agent.as_ref() else { return };
     if agent.transcript.is_empty() {
         ui.label(RichText::new(tl!("Ask a question about your data, or describe what to do with the map. The assistant runs PowerGIS commands for you; every change can be undone.")).color(t.text_dim));
@@ -1801,8 +1801,8 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     fn keys_app(
         legacy: Option<&str>,
-        store: Option<std::sync::Arc<dyn rustgis_engine::data::secrets::SecretStore>>,
-    ) -> (RustGisApp, KeyPrefs) {
+        store: Option<std::sync::Arc<dyn powergis_engine::data::secrets::SecretStore>>,
+    ) -> (powergisApp, KeyPrefs) {
         keys_app_remember(legacy, store, true)
     }
 
@@ -1810,9 +1810,9 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     fn keys_app_remember(
         legacy: Option<&str>,
-        store: Option<std::sync::Arc<dyn rustgis_engine::data::secrets::SecretStore>>,
+        store: Option<std::sync::Arc<dyn powergis_engine::data::secrets::SecretStore>>,
         remember: bool,
-    ) -> (RustGisApp, KeyPrefs) {
+    ) -> (powergisApp, KeyPrefs) {
         use std::{
             collections::BTreeMap,
             sync::{Arc, Mutex},
@@ -1824,7 +1824,7 @@ mod tests {
         if let Some(key) = legacy {
             prefs.lock().unwrap().insert("assistant_key_custom".into(), key.into());
         }
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let read = prefs.clone();
         app.services.load_pref = Some(Box::new(move |key| read.lock().unwrap().get(key).cloned()));
         let write = prefs.clone();
@@ -1838,7 +1838,7 @@ mod tests {
 
     /// Waits for the fake keychain and applies its preference cleanup on the UI side.
     #[cfg(not(target_arch = "wasm32"))]
-    fn settle_keys(app: &mut RustGisApp) {
+    fn settle_keys(app: &mut powergisApp) {
         let end = std::time::Instant::now() + std::time::Duration::from_secs(3);
         loop {
             poll_keys(app, &egui::Context::default());
@@ -1855,7 +1855,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn assistant_keys_migrate_without_losing_a_legacy_key() {
-        use rustgis_engine::data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
+        use powergis_engine::data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
         let store = std::sync::Arc::new(MemorySecrets::new());
         let (mut app, prefs) = keys_app(Some("synthetic-legacy"), Some(store.clone()));
         settle_keys(&mut app);
@@ -1899,7 +1899,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn assistant_keys_report_failed_writes_without_leaking_the_key() {
-        use rustgis_engine::data::secrets::{MemorySecrets, SecretError};
+        use powergis_engine::data::secrets::{MemorySecrets, SecretError};
         for error in [SecretError::Denied, SecretError::Failed("synthetic-new".into())] {
             let (mut app, prefs) = keys_app(None, Some(std::sync::Arc::new(MemorySecrets::failing(error))));
             settle_keys(&mut app);
@@ -1921,7 +1921,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn assistant_keys_distinguish_a_failed_replacement_from_legacy_migration() {
-        use rustgis_engine::data::secrets::{MemorySecrets, SecretError, SecretStore};
+        use powergis_engine::data::secrets::{MemorySecrets, SecretError, SecretStore};
         let failing: std::sync::Arc<dyn SecretStore> =
             std::sync::Arc::new(MemorySecrets::failing(SecretError::Failed("synthetic-backend-payload".into())));
         for store in [None, Some(failing)] {
@@ -1947,7 +1947,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn assistant_keys_wait_before_contacting_a_provider() {
-        use rustgis_engine::data::secrets::{MemorySecrets, Secret, SecretStore};
+        use powergis_engine::data::secrets::{MemorySecrets, Secret, SecretStore};
         let store = std::sync::Arc::new(MemorySecrets::new());
         store.save("assistant/custom", &Secret::new("synthetic-stored")).unwrap();
         let (mut app, _) = keys_app(None, Some(store));
@@ -1968,7 +1968,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn assistant_settings_follow_the_initial_key_read() {
-        use rustgis_engine::data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
+        use powergis_engine::data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
         for saved in [false, true] {
             for collapsed in [false, true] {
                 let store = std::sync::Arc::new(MemorySecrets::new());
@@ -2000,7 +2000,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn assistant_settings_keep_user_choices_during_the_initial_key_read() {
-        use rustgis_engine::data::secrets::MemorySecrets;
+        use powergis_engine::data::secrets::MemorySecrets;
         for open in [false, true] {
             let (mut app, _) = keys_app(None, Some(std::sync::Arc::new(MemorySecrets::new())));
             assert!(key_loading(&app));
@@ -2018,7 +2018,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn assistant_keys_are_deleted_when_cleared_or_not_remembered() {
-        use rustgis_engine::data::secrets::{MemorySecrets, SecretStore};
+        use powergis_engine::data::secrets::{MemorySecrets, SecretStore};
         for clear in [false, true] {
             let store = std::sync::Arc::new(MemorySecrets::new());
             let (mut app, _) = keys_app(Some("synthetic-legacy"), Some(store.clone()));
@@ -2040,10 +2040,10 @@ mod tests {
 
     /// The shared settings harness installs the real fonts before drawing the form.
     #[cfg(not(target_arch = "wasm32"))]
-    fn keys_harness(app: RustGisApp) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn keys_harness(app: powergisApp) -> egui_kittest::Harness<'static, powergisApp> {
         let mut fonts = false;
         egui_kittest::Harness::builder().with_size(vec2(700.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2063,7 +2063,7 @@ mod tests {
     #[test]
     fn assistant_remember_checkbox_forgets_the_key() {
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::data::secrets::{MemorySecrets, SecretStore};
+        use powergis_engine::data::secrets::{MemorySecrets, SecretStore};
         let store = std::sync::Arc::new(MemorySecrets::new());
         let (mut app, prefs) = keys_app(Some("synthetic-legacy"), Some(store.clone()));
         settle_keys(&mut app);
@@ -2082,7 +2082,7 @@ mod tests {
     #[test]
     fn assistant_remember_checkbox_loads_an_unread_key() {
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::data::secrets::{MemorySecrets, Secret, SecretStore};
+        use powergis_engine::data::secrets::{MemorySecrets, Secret, SecretStore};
         let store = std::sync::Arc::new(MemorySecrets::new());
         store.save("assistant/custom", &Secret::new("synthetic-stored")).unwrap();
         let (app, prefs) = keys_app_remember(None, Some(store.clone()), false);
@@ -2102,7 +2102,7 @@ mod tests {
     #[test]
     fn assistant_keys_clear_without_waiting_for_focus_loss() {
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::data::secrets::{MemorySecrets, SecretStore};
+        use powergis_engine::data::secrets::{MemorySecrets, SecretStore};
         let store = std::sync::Arc::new(MemorySecrets::new());
         let (mut app, _) = keys_app(Some("synthetic-legacy"), Some(store.clone()));
         settle_keys(&mut app);
@@ -2124,7 +2124,7 @@ mod tests {
     #[test]
     fn assistant_session_key_typing_defers_storage() {
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::data::secrets::{MemorySecrets, SecretError};
+        use powergis_engine::data::secrets::{MemorySecrets, SecretError};
         let (app, prefs) = keys_app_remember(None, Some(std::sync::Arc::new(MemorySecrets::failing(SecretError::Denied))), false);
         let mut h = keys_harness(app);
         h.run_steps(3);
@@ -2150,7 +2150,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn assistant_keys_migrate_all_legacy_providers_at_startup() {
-        use rustgis_engine::data::secrets::{MemorySecrets, Secret, SecretStore};
+        use powergis_engine::data::secrets::{MemorySecrets, Secret, SecretStore};
         use std::{
             collections::BTreeMap,
             sync::{Arc, Mutex},
@@ -2161,7 +2161,7 @@ mod tests {
             ("assistant_key_anthropic".into(), "second".into()),
         ])));
         let store = Arc::new(MemorySecrets::new());
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let read = prefs.clone();
         app.services.load_pref = Some(Box::new(move |key| read.lock().unwrap().get(key).cloned()));
         let write = prefs.clone();
@@ -2189,8 +2189,8 @@ mod tests {
     }
 
     /// A signed-out ChatGPT settings pane for tests that never contact a provider.
-    fn plan_app() -> RustGisApp {
-        let mut app = RustGisApp::with_sample();
+    fn plan_app() -> powergisApp {
+        let mut app = powergisApp::with_sample();
         let mut cfg = Config::from_env("chatgpt");
         cfg.key.clear();
         cfg.account.clear();
@@ -2206,7 +2206,7 @@ mod tests {
     #[test]
     fn stop_button_clears_retry_deadline_and_chunks() {
         use egui_kittest::kittest::Queryable;
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let mut config = Config::from_env("custom");
         config.model = "test".into();
         let mut agent = Agent::new(config, &app.session);
@@ -2220,7 +2220,7 @@ mod tests {
         app.assistant.inflight = Some((generation, Slot::default()));
         // Render just the composer: no polling or network dispatch is needed to press Stop.
         let mut h = egui_kittest::Harness::builder().with_size(vec2(600.0, 160.0)).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 let busy = app.assistant.agent.as_ref().is_some_and(Agent::busy);
                 composer(app, ui, &Tokens::light(), busy, &ctx);
@@ -2240,7 +2240,7 @@ mod tests {
     fn plan_settings_order_and_signed_out_model() {
         use egui_kittest::kittest::{NodeT, Queryable};
         let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
@@ -2272,7 +2272,7 @@ mod tests {
         let log = saved.clone();
         app.services.save_pref = Some(Box::new(move |k, v| log.lock().unwrap().push((k.to_string(), v.to_string()))));
         let mut h = egui_kittest::Harness::builder().with_size(vec2(800.0, 600.0)).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
@@ -2329,16 +2329,16 @@ mod tests {
             let mut app = if plan {
                 plan_app()
             } else {
-                let mut app = RustGisApp::with_sample();
+                let mut app = powergisApp::with_sample();
                 app.assistant.agent = Some(Agent::new(Config::from_env("custom"), &app.session));
                 app.assistant.loaded = true;
                 app.run("ui.pane.assistant", serde_json::Value::Null).unwrap();
                 app.assistant.settings = true;
                 app
             };
-            app.assistant.login_error = Some(rustgis_assistant::Error::new(rustgis_assistant::Recovery::Auth, ""));
+            app.assistant.login_error = Some(powergis_assistant::Error::new(powergis_assistant::Recovery::Auth, ""));
             let mut h = egui_kittest::Harness::builder().with_size(vec2(width, height)).build_ui_state(
-                |ui, app: &mut RustGisApp| {
+                |ui, app: &mut powergisApp| {
                     let ctx = ui.ctx().clone();
                     app.logic(&ctx);
                     app.ui(ui);
@@ -2364,17 +2364,17 @@ mod tests {
     /// the test's body.
     #[cfg(not(target_arch = "wasm32"))]
     fn in_isolated_settings(name: &str) -> bool {
-        if std::env::var_os("RUSTGIS_TEST_ISOLATED").is_some() {
+        if std::env::var_os("powergis_TEST_ISOLATED").is_some() {
             return true;
         }
         let short = name.rsplit("::").next().unwrap_or(name);
-        let dir = std::env::temp_dir().join(format!("rustgis-ui-{short}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-ui-{short}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let output = std::process::Command::new(std::env::current_exe().unwrap())
             .args(["--exact", name])
-            .env("RUSTGIS_TEST_ISOLATED", "1")
-            .env(rustgis_engine::data::dirs::CONFIG_ENV, &dir)
-            .env("RUSTGIS_LANGUAGE", "en")
+            .env("powergis_TEST_ISOLATED", "1")
+            .env(powergis_engine::data::dirs::CONFIG_ENV, &dir)
+            .env("powergis_LANGUAGE", "en")
             .output()
             .unwrap();
         std::fs::remove_dir_all(dir).unwrap();
@@ -2417,7 +2417,7 @@ mod tests {
             .to_string(),
         )
         .unwrap();
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.services.load_pref = Some(Box::new(|key| (key == "assistant_provider").then(|| "chatgpt".into())));
         ensure_loaded(&mut app, &egui::Context::default());
         // The sign-in is read on a worker; the catalog request follows once it arrives.
@@ -2436,7 +2436,7 @@ mod tests {
         // repaint, which can land mid-run (it did on Windows) and run past `run`'s step limit.
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(400.0, 600.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2493,7 +2493,7 @@ mod tests {
             scopes: vec![chatgpt::PLAN_SCOPE.into()],
             ..Default::default()
         };
-        let finish = |app: &mut RustGisApp, checking: Option<chatgpt::Binding>, read: Option<chatgpt::Credentials>| {
+        let finish = |app: &mut powergisApp, checking: Option<chatgpt::Binding>, read: Option<chatgpt::Credentials>| {
             let slot: Slot<Option<chatgpt::Credentials>> = Slot::default();
             *slot.lock().unwrap() = Some(read);
             app.assistant.sign_in_read = Some((checking, slot));
@@ -2587,7 +2587,7 @@ mod tests {
         let start = std::time::Instant::now();
         loop {
             if let Some(result) = take(&slot) {
-                assert_eq!(result.unwrap_err().recovery, rustgis_assistant::Recovery::SignIn);
+                assert_eq!(result.unwrap_err().recovery, powergis_assistant::Recovery::SignIn);
                 break;
             }
             assert!(start.elapsed() < std::time::Duration::from_secs(2));
@@ -2598,12 +2598,12 @@ mod tests {
     #[test]
     fn usage_error_offers_weekly_usage() {
         use egui_kittest::kittest::Queryable;
-        let error = rustgis_assistant::Error::new(rustgis_assistant::Recovery::Usage, "");
+        let error = powergis_assistant::Error::new(powergis_assistant::Recovery::Usage, "");
         let mut app = plan_app();
         app.assistant.settings = false;
         app.assistant.agent.as_mut().unwrap().transcript.push(Entry::Error(error));
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
@@ -2627,7 +2627,7 @@ mod tests {
         if !in_isolated_settings("assistantpane::tests::late_sign_in_never_changes_another_providers_key") {
             return;
         }
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let cfg = Config {
             provider: "custom".into(),
             base_url: "http://localhost:1234/v1".into(),
@@ -2637,7 +2637,7 @@ mod tests {
             client_id: String::new(),
             session: String::new(),
             reasoning: None,
-            tool_output_token_limit: rustgis_assistant::tools::DEFAULT_OUTPUT_TOKENS,
+            tool_output_token_limit: powergis_assistant::tools::DEFAULT_OUTPUT_TOKENS,
         };
         app.assistant.agent = Some(Agent::new(cfg.clone(), &app.session));
         let c = chatgpt::Credentials { access_token: "synthetic-chatgpt-token".into(), ..Default::default() };
@@ -2648,7 +2648,7 @@ mod tests {
 
     #[test]
     fn provider_change_stops_the_previous_request() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let cfg = Config {
             provider: "custom".into(),
             base_url: "http://localhost:1234/v1".into(),
@@ -2658,7 +2658,7 @@ mod tests {
             client_id: String::new(),
             session: String::new(),
             reasoning: None,
-            tool_output_token_limit: rustgis_assistant::tools::DEFAULT_OUTPUT_TOKENS,
+            tool_output_token_limit: powergis_assistant::tools::DEFAULT_OUTPUT_TOKENS,
         };
         let mut agent = Agent::new(cfg.clone(), &app.session);
         assert!(matches!(agent.ask("hello", &app.session), Step::Send(_)));
@@ -2678,19 +2678,19 @@ mod tests {
         right_pane(&h).width()
     }
 
-    fn right_pane(h: &egui_kittest::Harness<'_, RustGisApp>) -> egui::Rect {
+    fn right_pane(h: &egui_kittest::Harness<'_, powergisApp>) -> egui::Rect {
         h.state().ui.pane_rects[1].unwrap()
     }
 
     /// The window with the assistant open and `entries` in the conversation.
-    fn chat(entries: Vec<Entry>, model: &str) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn chat(entries: Vec<Entry>, model: &str) -> egui_kittest::Harness<'static, powergisApp> {
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
             },
-            RustGisApp::with_sample(),
+            powergisApp::with_sample(),
         );
         h.state_mut().run("ui.pane.assistant", serde_json::Value::Null).unwrap();
         for _ in 0..4 {
@@ -2749,7 +2749,7 @@ mod tests {
     fn input_box_resizes_by_its_grip() {
         use egui_kittest::kittest::Queryable;
         let mut h = chat(Vec::new(), "m");
-        let input = |h: &egui_kittest::Harness<'_, RustGisApp>| h.get_by_role(egui::accesskit::Role::MultilineTextInput).rect();
+        let input = |h: &egui_kittest::Harness<'_, powergisApp>| h.get_by_role(egui::accesskit::Role::MultilineTextInput).rect();
         let before = input(&h);
         let grip = egui::pos2(before.center().x, before.min.y - 4.0);
         h.hover_at(grip);

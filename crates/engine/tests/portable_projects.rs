@@ -6,7 +6,7 @@ mod common;
 mod repair;
 
 use common::*;
-use rustgis_engine::{Project, Session};
+use powergis_engine::{Project, Session};
 use serde_json::{Value, json};
 use std::path::Path;
 
@@ -251,7 +251,7 @@ fn opening_relative_project_text_keeps_unavailable_sources_without_reading_them(
 
 #[test]
 fn overly_long_relative_spelling_preserves_absolute_provenance_and_restoration_order() {
-    use rustgis_engine::{
+    use powergis_engine::{
         data::{Dataset, GeometryType},
         map::Layer,
     };

@@ -17,16 +17,16 @@
 //! - **One draw per chunk.** A layer's tiles are instances: per frame only the instance list
 //!   and one uniform are written.
 //!
-//! [`DrawCmd::LiveTiles`]: rustgis_engine::render::gpu_scene::DrawCmd::LiveTiles
+//! [`DrawCmd::LiveTiles`]: powergis_engine::render::gpu_scene::DrawCmd::LiveTiles
 
 use std::collections::HashMap;
 use std::ops::Range;
 use std::sync::{Arc, Weak};
 
 use egui_wgpu::wgpu;
-use rustgis_engine::map::Camera;
-use rustgis_engine::render::gpu_scene::TileQuad;
-use rustgis_engine::render::rustgis_tiles::cache::Payload;
+use powergis_engine::map::Camera;
+use powergis_engine::render::gpu_scene::TileQuad;
+use powergis_engine::render::powergis_tiles::cache::Payload;
 
 /// Bytes of tile pictures kept on the GPU, over all sizes.
 const BUDGET: u64 = if cfg!(target_arch = "wasm32") { 128 << 20 } else { 384 << 20 };

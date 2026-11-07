@@ -8,15 +8,15 @@
 //! (`#bands=2,17,10&range=-0.3,0.3`): the bands shown as red, green and blue (or one, grey) and
 //! their stretch. Bands stored apart (planar files, such as AlphaEarth's 64 embedding bands) are
 //! read a band at a time, only those shown. Files are hostile input: header reads, tile counts and
-//! sizes are bounded (see [`rustgis_data::raster::cog`]).
+//! sizes are bounded (see [`powergis_data::raster::cog`]).
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use rustgis_data::raster::ColorHint;
-use rustgis_data::raster::cog::{self, Layout, Parse, Sparse};
-use rustgis_data::raster::crs::Transformer;
-use rustgis_geom::Coord;
+use powergis_data::raster::ColorHint;
+use powergis_data::raster::cog::{self, Layout, Parse, Sparse};
+use powergis_data::raster::crs::Transformer;
+use powergis_geom::Coord;
 use web_time::{Duration, Instant};
 
 use crate::cache::{Done, MAX_BYTES, RANGE};
@@ -474,8 +474,8 @@ fn stats(url: String, header: Sparse, layout: Layout, done: Box<dyn FnOnce(Resul
     }
     let bounds = [lon.0.max(-180.0), lat.0.max(-85.05), lon.1.min(180.0), lat.1.min(85.05)];
     let merc = {
-        let a = rustgis_geom::lonlat_to_merc(Coord::new(bounds[0], bounds[1]));
-        let b = rustgis_geom::lonlat_to_merc(Coord::new(bounds[2], bounds[3]));
+        let a = powergis_geom::lonlat_to_merc(Coord::new(bounds[0], bounds[1]));
+        let b = powergis_geom::lonlat_to_merc(Coord::new(bounds[2], bounds[3]));
         [a.x, a.y, b.x, b.y]
     };
     // The zoom whose pixels match the full image's.
@@ -1235,8 +1235,8 @@ mod tests {
 
     #[test]
     fn stretch_read_from_an_overview_large_enough() {
-        let file = rustgis_data::raster::cog::example(1024, 64);
-        let rustgis_data::raster::cog::Parse::Done(l) = cog::layout(&Sparse::default().with(0, file)).unwrap() else { panic!() };
+        let file = powergis_data::raster::cog::example(1024, 64);
+        let powergis_data::raster::cog::Parse::Done(l) = cog::layout(&Sparse::default().with(0, file)).unwrap() else { panic!() };
         // Overviews down to 64 pixels: the 256-pixel one is read.
         assert_eq!(l.levels.last().map(|l| l.width), Some(64));
         assert_eq!(l.levels[stats_level(&l)].width, 256);
@@ -1319,7 +1319,7 @@ mod tests {
         // No byte is read twice: a read stops where a part already read starts.
         assert!(held <= file.len() as u64, "{held} bytes held of a {}-byte header", file.len());
         // A cloud-optimised file's header is in its first read, as before.
-        assert_eq!(layout_by_ranges(&rustgis_data::raster::cog::example(1024, 64)).map(|(_, r, _)| r), Ok(0));
+        assert_eq!(layout_by_ranges(&powergis_data::raster::cog::example(1024, 64)).map(|(_, r, _)| r), Ok(0));
         // A read stops at the header's cap, however large the step has grown.
         let near = Sparse::default().with(0, vec![0; cog::MAX_HEADER as usize - 1000]);
         assert_eq!(header_read(&near, cog::MAX_HEADER, cog::MAX_HEADER + 512, 8), Some(1000));

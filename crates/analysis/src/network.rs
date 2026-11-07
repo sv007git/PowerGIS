@@ -3,8 +3,8 @@
 
 use std::collections::{BinaryHeap, HashMap};
 
-use rustgis_data::{Dataset, Geometry};
-use rustgis_geom::{Coord, haversine_m};
+use powergis_data::{Dataset, Geometry};
+use powergis_geom::{Coord, haversine_m};
 
 /// A shortest route: its path, length in metres, cost, and the line rows it uses.
 #[derive(Clone, Debug, PartialEq)]
@@ -104,7 +104,7 @@ pub fn shortest_route(
     let attach = |p: Coord, nodes: &mut Vec<Coord>, adj: &mut Vec<Vec<(usize, f64, f64, usize)>>| -> Result<(usize, usize, f64), String> {
         let (si, t, q, d) = nearest(p, nodes).ok_or("the layer has no lines")?;
         if d > snap_m {
-            return Err(format!("a route end is more than {} from the network", rustgis_geom::format_distance(snap_m)));
+            return Err(format!("a route end is more than {} from the network", powergis_geom::format_distance(snap_m)));
         }
         let &(a, b, weight, row) = segs.get(si).ok_or("the layer has no lines")?;
         if t <= 0.0 {
@@ -218,7 +218,7 @@ pub fn random_points(ds: &Dataset, rows: &[usize], per: usize, seed: u64) -> Vec
             tries += 1;
             budget -= 1;
             let c = Coord::new(e.min_x + rnd() * e.width(), e.min_y + rnd() * e.height());
-            if polys.iter().any(|rings| rustgis_data::geometry::polygon_contains(rings, c)) {
+            if polys.iter().any(|rings| powergis_data::geometry::polygon_contains(rings, c)) {
                 out.push((*r, c));
                 placed += 1;
             }
@@ -325,7 +325,7 @@ fn radius_scale(at: Coord) -> f64 {
 }
 
 fn radius_coord_supported(point: Coord) -> bool {
-    point.is_finite() && (-180.0..=180.0).contains(&point.x) && (-rustgis_geom::MAX_LAT..=rustgis_geom::MAX_LAT).contains(&point.y)
+    point.is_finite() && (-180.0..=180.0).contains(&point.x) && (-powergis_geom::MAX_LAT..=powergis_geom::MAX_LAT).contains(&point.y)
 }
 
 /// Local Mercator distance in metres, using the same centre-latitude correction as [`within`].
@@ -336,8 +336,8 @@ pub fn radius_distance_m(at: Coord, point: Coord) -> Option<f64> {
     if !radius_coord_supported(at) || !radius_coord_supported(point) {
         return None;
     }
-    let center = rustgis_geom::lonlat_to_merc(at);
-    let point = rustgis_geom::lonlat_to_merc(point);
+    let center = powergis_geom::lonlat_to_merc(at);
+    let point = powergis_geom::lonlat_to_merc(point);
     let dx = point.x - center.x;
     let dy = point.y - center.y;
     let distance = (dx.powi(2) + dy.powi(2)).sqrt() / radius_scale(at);
@@ -353,17 +353,17 @@ pub fn radius_boundary_point(at: Coord, radius_m: f64, angle_rad: f64) -> Option
     if !radius_coord_supported(at) || !radius_m.is_finite() || radius_m <= 0.0 || radius_m > 5_000_000.0 || !angle_rad.is_finite() {
         return None;
     }
-    let center = rustgis_geom::lonlat_to_merc(at);
+    let center = powergis_geom::lonlat_to_merc(at);
     let radius = radius_m * radius_scale(at);
     let (sin, cos) = angle_rad.sin_cos();
     let point = Coord::new(center.x + radius * cos, center.y + radius * sin);
-    let point = rustgis_geom::merc_to_lonlat(point);
+    let point = powergis_geom::merc_to_lonlat(point);
     radius_coord_supported(point).then_some(point)
 }
 
 /// Rows of `ds` whose geometry comes within `radius_m` of a point, with their distances.
 pub fn within(ds: &Dataset, rows: &[usize], at: Coord, radius_m: f64) -> Vec<(usize, f64)> {
-    let m = rustgis_geom::lonlat_to_merc(at);
+    let m = powergis_geom::lonlat_to_merc(at);
     let k = radius_scale(at);
     let mut out: Vec<(usize, f64)> = rows
         .iter()
@@ -376,7 +376,7 @@ pub fn within(ds: &Dataset, rows: &[usize], at: Coord, radius_m: f64) -> Vec<(us
             if at.x < e.min_x - dlon || at.x > e.max_x + dlon || at.y < e.min_y - dlat || at.y > e.max_y + dlat {
                 return None;
             }
-            let pg = g.map_coords(&rustgis_geom::lonlat_to_merc);
+            let pg = g.map_coords(&powergis_geom::lonlat_to_merc);
             let d = if pg.hit(m, 0.0) { 0.0 } else { pg_dist(&pg, m) / k };
             (d <= radius_m).then_some((*r, d))
         })
@@ -389,8 +389,8 @@ fn pg_dist(g: &Geometry, p: Coord) -> f64 {
     let d2 = match g {
         Geometry::Point(c) => (c.x - p.x).powi(2) + (c.y - p.y).powi(2),
         Geometry::MultiPoint(v) => v.iter().map(|c| (c.x - p.x).powi(2) + (c.y - p.y).powi(2)).fold(f64::INFINITY, f64::min),
-        Geometry::Line(parts) => parts.iter().map(|l| rustgis_data::geometry::seg_dist2(l, p)).fold(f64::INFINITY, f64::min),
-        Geometry::Polygon(polys) => polys.iter().flatten().map(|r| rustgis_data::geometry::seg_dist2(r, p)).fold(f64::INFINITY, f64::min),
+        Geometry::Line(parts) => parts.iter().map(|l| powergis_data::geometry::seg_dist2(l, p)).fold(f64::INFINITY, f64::min),
+        Geometry::Polygon(polys) => polys.iter().flatten().map(|r| powergis_data::geometry::seg_dist2(r, p)).fold(f64::INFINITY, f64::min),
     };
     d2.sqrt()
 }
@@ -398,7 +398,7 @@ fn pg_dist(g: &Geometry, p: Coord) -> f64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Field, FieldType, GeometryType, Value};
+    use powergis_data::{Field, FieldType, GeometryType, Value};
 
     #[test]
     fn routes_points_profiles_and_similarity() {
@@ -451,20 +451,20 @@ mod tests {
     }
 
     fn offset(at: Coord, x: f64, y: f64) -> Coord {
-        let m = rustgis_geom::lonlat_to_merc(at);
+        let m = powergis_geom::lonlat_to_merc(at);
         let scale = radius_scale(at);
-        rustgis_geom::merc_to_lonlat(Coord::new(m.x + x * scale, m.y + y * scale))
+        powergis_geom::merc_to_lonlat(Coord::new(m.x + x * scale, m.y + y * scale))
     }
 
     #[test]
     fn radius_helpers_match_local_mercator_metric() {
         let at = Coord::new(0.0, 60.0);
-        let m = rustgis_geom::lonlat_to_merc(at);
-        let east = rustgis_geom::merc_to_lonlat(Coord::new(m.x + 2000.0, m.y));
+        let m = powergis_geom::lonlat_to_merc(at);
+        let east = powergis_geom::merc_to_lonlat(Coord::new(m.x + 2000.0, m.y));
         assert!((radius_distance_m(at, east).unwrap() - 1000.0).abs() < 1e-8);
         assert_eq!(radius_distance_m(at, at), Some(0.0));
         let boundary = radius_boundary_point(at, 1000.0, 0.0).unwrap();
-        assert!((rustgis_geom::lonlat_to_merc(boundary).x - m.x - 2000.0).abs() < 1e-8);
+        assert!((powergis_geom::lonlat_to_merc(boundary).x - m.x - 2000.0).abs() < 1e-8);
         for latitude in [0.0, 60.0] {
             let center = Coord::new(3.0, latitude);
             for angle in [0.0, 0.5, 1.0, 2.0, 3.0, 4.5] {

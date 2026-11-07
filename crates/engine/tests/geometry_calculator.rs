@@ -1,4 +1,4 @@
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{Dataset, Field, FieldType, Geometry, GeometryType, Value},
     geom::Coord,
@@ -6,7 +6,7 @@ use rustgis_engine::{
 use serde_json::json;
 
 fn session(kind: GeometryType, geometries: Vec<Option<Geometry>>) -> (Session, u32) {
-    rustgis_engine::plugins::store::set_dir(Some(std::env::temp_dir().join("rustgis-geometry-calc-test-plugins")));
+    powergis_engine::plugins::store::set_dir(Some(std::env::temp_dir().join("powergis-geometry-calc-test-plugins")));
     let mut s = Session::new(Project::default());
     let mut ds = Dataset::new("test", kind, vec![Field::new("result", FieldType::Double), Field::new("integer", FieldType::Integer)]);
     for g in geometries {
@@ -57,8 +57,8 @@ fn polygon_holes_multipart_and_area_units() {
     let outer = ring(0.0, 0.01);
     let hole = ring(0.002, 0.002);
     let part = ring(0.02, 0.005);
-    let expected = rustgis_engine::geom::geodesic_ring_area_m2(&outer) - rustgis_engine::geom::geodesic_ring_area_m2(&hole)
-        + rustgis_engine::geom::geodesic_ring_area_m2(&part);
+    let expected = powergis_engine::geom::geodesic_ring_area_m2(&outer) - powergis_engine::geom::geodesic_ring_area_m2(&hole)
+        + powergis_engine::geom::geodesic_ring_area_m2(&part);
     let (mut s, id) = session(GeometryType::Polygon, vec![Some(Geometry::Polygon(vec![vec![outer, hole], vec![part]]))]);
     for (unit, divisor) in [("m2", 1.0), ("km2", 1e6), ("ha", 1e4), ("ac", 4046.8564224)] {
         s.run("edit.calculateGeometry", &json!({"layer":id,"field":"result","overwrite":true,"property":"area","unit":unit,"scope":"all"}))

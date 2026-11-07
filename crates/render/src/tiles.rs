@@ -5,12 +5,12 @@
 //! on the globe, they draw into a Web Mercator mosaic of the area in view, which is then warped
 //! into place pixel by pixel.
 
-use rustgis_geom::{Coord, Extent, MAX_LAT, lonlat_to_merc};
-use rustgis_map::effects::Blend;
-use rustgis_map::layout::TextAlign;
-use rustgis_map::projection::Flat;
-use rustgis_map::{Map, Rgba, TileKind, TileLayer};
-use rustgis_tiles::{Frame, Kind, Spec};
+use powergis_geom::{Coord, Extent, MAX_LAT, lonlat_to_merc};
+use powergis_map::effects::Blend;
+use powergis_map::layout::TextAlign;
+use powergis_map::projection::Flat;
+use powergis_map::{Map, Rgba, TileKind, TileLayer};
+use powergis_tiles::{Frame, Kind, Spec};
 use tiny_skia::{Pixmap, PixmapPaint, Transform};
 
 use crate::gpu_scene::{DrawCmd, MeshTile, TileQuad};
@@ -45,7 +45,7 @@ impl TileOutput {
 
 /// A tile style's label as the map places it (in its logical points), with its priority:
 /// sized, wrapped and anchored as MapLibre lays it out. `None` when it has nothing to show.
-pub(crate) fn tile_label(l: rustgis_tiles::Label) -> Option<(PlacedLabel, f64)> {
+pub(crate) fn tile_label(l: powergis_tiles::Label) -> Option<(PlacedLabel, f64)> {
     // Styles often label in two scripts ("Syria\nسوريا"): only the lines the font can
     // draw are kept, so a name never shows as boxes, and a label left with neither text
     // nor an icon is left out.
@@ -130,7 +130,7 @@ pub fn spec(t: &TileLayer) -> Spec {
 }
 
 /// A vector PMTiles or MBTiles archive's source layers (`vector_layers`), each once in its
-/// order, as [`source_layers::of_metadata`](rustgis_data::source_layers::of_metadata) keeps
+/// order, as [`source_layers::of_metadata`](powergis_data::source_layers::of_metadata) keeps
 /// them. `None` for other tile layers, and while the archive's header is on its way.
 pub fn source_layers(t: &TileLayer) -> Option<Vec<String>> {
     let kind = match t.kind {
@@ -138,19 +138,19 @@ pub fn source_layers(t: &TileLayer) -> Option<Vec<String>> {
         TileKind::MbTiles => Kind::MbTiles,
         _ => return None,
     };
-    rustgis_tiles::source::source_layers(kind, &t.url)
+    powergis_tiles::source::source_layers(kind, &t.url)
 }
 
 /// Where a MapLibre style layer's root properties place the map; `Ok(None)` while the style is
 /// still loading (asking starts loading it). Other tile layers have no view of their own.
-pub fn style_view(t: &TileLayer) -> Result<Option<rustgis_tiles::style::StyleView>, String> {
+pub fn style_view(t: &TileLayer) -> Result<Option<powergis_tiles::style::StyleView>, String> {
     if t.kind != TileKind::Style {
         return Ok(Some(Default::default()));
     }
-    match rustgis_tiles::source::resolve(&spec(t)) {
-        rustgis_tiles::source::Resolve::Ready(r) => Ok(Some(r.style.view)),
-        rustgis_tiles::source::Resolve::Pending => Ok(None),
-        rustgis_tiles::source::Resolve::Failed(e) => Err(e),
+    match powergis_tiles::source::resolve(&spec(t)) {
+        powergis_tiles::source::Resolve::Ready(r) => Ok(Some(r.style.view)),
+        powergis_tiles::source::Resolve::Pending => Ok(None),
+        powergis_tiles::source::Resolve::Failed(e) => Err(e),
     }
 }
 
@@ -161,15 +161,15 @@ type LastTile = (std::sync::Weak<crate::tile_mesh::TileMesh>, [f64; 2], [f32; 4]
 /// The tiles of each style last drawn as meshes (by the resolved style's address), which stand in
 /// for tiles whose meshes are still to be made. Any map's do: a mesh is the same wherever it is
 /// drawn, and only its square's part of it is.
-type Last = std::collections::HashMap<usize, (std::sync::Weak<rustgis_tiles::source::Resolved>, Vec<LastTile>)>;
+type Last = std::collections::HashMap<usize, (std::sync::Weak<powergis_tiles::source::Resolved>, Vec<LastTile>)>;
 static LAST: std::sync::OnceLock<std::sync::Mutex<Last>> = std::sync::OnceLock::new();
 
 /// The meshes of `v`'s tiles, and whether some were made while the sprite was on its way. A map
-/// drawn for the screen at a pace (see `rustgis_tiles::Pace`) makes those missing a frame's worth
+/// drawn for the screen at a pace (see `powergis_tiles::Pace`) makes those missing a frame's worth
 /// at a time, nearest `centre` first, the tiles drawn last standing in for the rest meanwhile,
 /// clipped to their squares.
-fn mesh_tiles(v: &rustgis_tiles::shapes::VectorTiles, centre: [f64; 2]) -> (Vec<MeshTile>, bool) {
-    let pace = rustgis_tiles::pace();
+fn mesh_tiles(v: &powergis_tiles::shapes::VectorTiles, centre: [f64; 2]) -> (Vec<MeshTile>, bool) {
+    let pace = powergis_tiles::pace();
     let meshes = crate::tile_mesh::meshes(&v.style, &v.source, &v.tiles, v.level, pace.map(|(_, until)| (until, centre)));
     let lock = || LAST.get_or_init(Default::default).lock().unwrap_or_else(|e| e.into_inner());
     let key = std::sync::Arc::as_ptr(&v.style) as usize;
@@ -195,7 +195,7 @@ fn mesh_tiles(v: &rustgis_tiles::shapes::VectorTiles, centre: [f64; 2]) -> (Vec<
                     tiles.push(MeshTile { mesh, origin: o, clip, level: v.level });
                 }
             }
-            None if matches!(&*d.payload, rustgis_tiles::cache::Payload::Vector(_)) => {
+            None if matches!(&*d.payload, powergis_tiles::cache::Payload::Vector(_)) => {
                 // Still to be made: what was drawn over its square last stands in.
                 let before = stood_in.len();
                 let s = &d.clip;
@@ -217,9 +217,9 @@ fn mesh_tiles(v: &rustgis_tiles::shapes::VectorTiles, centre: [f64; 2]) -> (Vec<
                     }
                 }
                 let covered = stood_in.len() > before;
-                rustgis_tiles::unfinished(match pace {
-                    Some((rustgis_tiles::Pace::Moving, _)) if covered => rustgis_tiles::Unfinished::Later,
-                    _ => rustgis_tiles::Unfinished::Next,
+                powergis_tiles::unfinished(match pace {
+                    Some((powergis_tiles::Pace::Moving, _)) if covered => powergis_tiles::Unfinished::Later,
+                    _ => powergis_tiles::Unfinished::Next,
                 });
             }
             None => {}
@@ -275,12 +275,12 @@ pub fn live(spec: &Spec, opacity: f32, view: &View) -> Option<Live> {
     // out to the reach of a moving camera.
     let fetch = crate::cull_extent(view, LIVE_FETCH_MARGIN);
     let reach = crate::cull_extent(view, crate::GPU_CULL_MARGIN);
-    let p = rustgis_tiles::place_raster(spec, opacity, &frame, &fetch, &reach)?;
+    let p = powergis_tiles::place_raster(spec, opacity, &frame, &fetch, &reach)?;
     // The view's tiles three levels up (a tile or two) are fetched too: a coarse picture of
     // anywhere the camera goes next stands in until its own tiles arrive, so the map shows no
     // holes while they load (as the root tile is kept in forge3d's tile streaming).
     let coarse = Frame { m_per_px: frame.m_per_px * 8.0, ..frame };
-    let _ = rustgis_tiles::place_raster(spec, opacity, &coarse, &fetch, &fetch);
+    let _ = powergis_tiles::place_raster(spec, opacity, &coarse, &fetch, &fetch);
     let origin = [view.camera.center.x, view.camera.center.y];
     Some(Live { quads: p.tiles.iter().map(|q| quad(q, origin)).collect(), pending: p.pending })
 }
@@ -328,7 +328,7 @@ pub(crate) fn draw(
                     *g.dirty = true;
                 }
                 let attribution = if t.attribution.trim().is_empty() { Vec::new() } else { vec![t.attribution.clone()] };
-                collect(rustgis_tiles::Drawn { labels: Vec::new(), attribution, pending, error }, &t.name, &mut out);
+                collect(powergis_tiles::Drawn { labels: Vec::new(), attribution, pending, error }, &t.name, &mut out);
                 continue;
             }
             // A vector tile style as meshes, made once a tile and level and drawn at any zoom
@@ -339,14 +339,14 @@ pub(crate) fn draw(
                 && t.blend == Blend::Normal
                 && t.opacity >= 0.999
                 && let Some(v) =
-                    rustgis_tiles::shapes::vector_tiles(&spec(t), &frame, &fetch, Some(&reach), labels.then_some((pm.width(), pm.height())))
+                    powergis_tiles::shapes::vector_tiles(&spec(t), &frame, &fetch, Some(&reach), labels.then_some((pm.width(), pm.height())))
                 && crate::flush_acc(pm, g.cmds, g.dirty).is_some()
             {
                 let (tiles, waiting) = mesh_tiles(&v, origin);
                 if !tiles.is_empty() {
                     g.cmds.push(DrawCmd::TileMeshes { tiles });
                 }
-                let d = rustgis_tiles::Drawn { labels: v.labels, attribution: v.attribution, pending: v.pending || waiting, error: None };
+                let d = powergis_tiles::Drawn { labels: v.labels, attribution: v.attribution, pending: v.pending || waiting, error: None };
                 collect(d, &t.name, &mut out);
                 continue;
             }
@@ -358,18 +358,18 @@ pub(crate) fn draw(
                 && g.live
                 && north_up
                 && t.blend == Blend::Normal
-                && let Some(p) = rustgis_tiles::place_raster(&s, t.opacity, &frame, &fetch, &reach)
+                && let Some(p) = powergis_tiles::place_raster(&s, t.opacity, &frame, &fetch, &reach)
                 && crate::flush_acc(pm, g.cmds, g.dirty).is_some()
             {
                 g.cmds.push(DrawCmd::LiveTiles { spec: s, opacity: t.opacity });
-                let d = rustgis_tiles::Drawn { labels: Vec::new(), attribution: p.attribution, pending: p.pending, error: p.error };
+                let d = powergis_tiles::Drawn { labels: Vec::new(), attribution: p.attribution, pending: p.pending, error: p.error };
                 collect(d, &t.name, &mut out);
                 continue;
             }
             if let Some(g) = gpu.as_mut()
                 && t.blend == Blend::Normal
                 && let Some(p) =
-                    rustgis_tiles::place(&spec(t), t.opacity, &frame, &fetch, &reach, labels.then_some((pm.width(), pm.height())))
+                    powergis_tiles::place(&spec(t), t.opacity, &frame, &fetch, &reach, labels.then_some((pm.width(), pm.height())))
             {
                 // What the accumulator holds goes first, under the tiles; with no room for a new
                 // accumulator the layer is drawn into this one instead.
@@ -378,7 +378,7 @@ pub(crate) fn draw(
                     if !p.tiles.is_empty() {
                         g.cmds.push(DrawCmd::Tiles { origin, tiles: p.tiles.iter().map(|q| quad(q, origin)).collect() });
                     }
-                    let d = rustgis_tiles::Drawn { labels: p.labels, attribution: p.attribution, pending: p.pending, error: p.error };
+                    let d = powergis_tiles::Drawn { labels: p.labels, attribution: p.attribution, pending: p.pending, error: p.error };
                     collect(d, &t.name, &mut out);
                     continue;
                 }
@@ -399,7 +399,7 @@ pub(crate) fn draw(
     // pictures aren't flat on screen: it warps them all, pixel by pixel.)
     let native_to = match place {
         Place::Flat(flat @ Flat::Custom(_), code) if view.camera.pitch == 0.0 => {
-            rustgis_data::ogc::warp::epsg_of(code).and_then(|c| u16::try_from(c).ok()).map(|e| (flat, e))
+            powergis_data::ogc::warp::epsg_of(code).and_then(|c| u16::try_from(c).ok()).map(|e| (flat, e))
         }
         _ => None,
     };
@@ -417,7 +417,7 @@ pub(crate) fn draw(
             run.clear();
             if let Some((pending, error)) = crate::single_image::draw(pm, &req, t, view, flat) {
                 let attribution = if t.attribution.trim().is_empty() { Vec::new() } else { vec![t.attribution.clone()] };
-                collect(rustgis_tiles::Drawn { labels: Vec::new(), attribution, pending, error }, &t.name, &mut out);
+                collect(powergis_tiles::Drawn { labels: Vec::new(), attribution, pending, error }, &t.name, &mut out);
                 continue;
             }
         }
@@ -432,7 +432,7 @@ pub(crate) fn draw(
         run.clear();
         let (pending, error) = crate::native_tiles::draw(pm, &n, t, view, flat);
         let attribution = if t.attribution.trim().is_empty() { Vec::new() } else { vec![t.attribution.clone()] };
-        collect(rustgis_tiles::Drawn { labels: Vec::new(), attribution, pending, error }, &t.name, &mut out);
+        collect(powergis_tiles::Drawn { labels: Vec::new(), attribution, pending, error }, &t.name, &mut out);
     }
     mosaic(pm, &run, view, place, &mut out);
     out
@@ -440,7 +440,7 @@ pub(crate) fn draw(
 
 /// What a tile layer drew, into what the map's tile layers drew: tiles on their way, credits,
 /// errors and labels.
-fn collect(d: rustgis_tiles::Drawn, name: &str, out: &mut TileOutput) {
+fn collect(d: powergis_tiles::Drawn, name: &str, out: &mut TileOutput) {
     out.pending |= d.pending;
     for a in d.attribution {
         if !out.attribution.contains(&a) {
@@ -553,7 +553,7 @@ fn mosaic(pm: &mut Pixmap, layers: &[&TileLayer], view: &View, place: Place, out
 
 /// A placed tile as the GPU draws it: its clipped square about `origin`, and the part of its
 /// picture in that square.
-fn quad(p: &rustgis_tiles::Placement, origin: [f64; 2]) -> TileQuad {
+fn quad(p: &powergis_tiles::Placement, origin: [f64; 2]) -> TileQuad {
     let (w, h) = (p.at.width().max(1e-9), p.at.height().max(1e-9));
     let c = &p.clip;
     TileQuad {
@@ -572,9 +572,9 @@ fn quad(p: &rustgis_tiles::Placement, origin: [f64; 2]) -> TileQuad {
 /// Draws one tile layer into `pm`: straight in, or (blended) on a layer of its own composited
 /// with its blend mode over what's beneath. `scratch` holds that layer between calls, so the
 /// blended layers of one draw share one allocation.
-fn draw_layer(pm: &mut Pixmap, t: &TileLayer, frame: &Frame, labels: bool, scratch: &mut Option<Pixmap>) -> rustgis_tiles::Drawn {
+fn draw_layer(pm: &mut Pixmap, t: &TileLayer, frame: &Frame, labels: bool, scratch: &mut Option<Pixmap>) -> powergis_tiles::Drawn {
     if t.blend == Blend::Normal {
-        return rustgis_tiles::draw(pm, &spec(t), t.opacity, frame, labels);
+        return powergis_tiles::draw(pm, &spec(t), t.opacity, frame, labels);
     }
     let fits = scratch.as_ref().is_some_and(|s| s.width() == pm.width() && s.height() == pm.height());
     if fits {
@@ -586,16 +586,16 @@ fn draw_layer(pm: &mut Pixmap, t: &TileLayer, frame: &Frame, labels: bool, scrat
     }
     let Some(own) = scratch.as_mut() else {
         log::debug!("no room to blend tile layer '{}' ({}x{}): drawing it unblended", t.name, pm.width(), pm.height());
-        return rustgis_tiles::draw(pm, &spec(t), t.opacity, frame, labels);
+        return powergis_tiles::draw(pm, &spec(t), t.opacity, frame, labels);
     };
-    let d = rustgis_tiles::draw(own, &spec(t), t.opacity, frame, labels);
+    let d = powergis_tiles::draw(own, &spec(t), t.opacity, frame, labels);
     let paint = PixmapPaint { blend_mode: crate::blend_mode(t.blend), ..PixmapPaint::default() };
     pm.draw_pixmap(0, 0, own.as_ref(), &paint, Transform::identity(), None);
     d
 }
 
 /// Half the width (and height) of the Web Mercator world, metres.
-const HALF: f64 = std::f64::consts::PI * rustgis_geom::MERCATOR_R;
+const HALF: f64 = std::f64::consts::PI * powergis_geom::MERCATOR_R;
 
 /// The side of the cells the warp works out exactly at their corners and interpolates inside.
 const WARP_CELL: usize = 8;
@@ -688,8 +688,8 @@ fn warp(pm: &mut Pixmap, mosaic: &Pixmap, frame: &Frame, to_lonlat: &dyn Fn(f64,
 
 #[cfg(test)]
 pub(crate) mod tests {
-    use rustgis_geom::{Coord, lonlat_to_merc};
-    use rustgis_map::{Camera, Map, Projection, TileKind, TileLayer};
+    use powergis_geom::{Coord, lonlat_to_merc};
+    use powergis_map::{Camera, Map, Projection, TileKind, TileLayer};
 
     use crate::View;
 
@@ -699,7 +699,7 @@ pub(crate) mod tests {
     /// (where latitudes are clamped to Web Mercator's limit).
     #[test]
     fn the_warp_matches_the_exact_projection() {
-        use rustgis_geom::MERCATOR_R;
+        use powergis_geom::MERCATOR_R;
         let half = std::f64::consts::PI * MERCATOR_R;
         // A whole-world mosaic whose colour is its position: red across, green down.
         let side = 1024u32;
@@ -708,7 +708,7 @@ pub(crate) mod tests {
             let (x, y) = (i as u32 % side, i as u32 / side);
             px.copy_from_slice(&[(x / 4) as u8, (y / 4) as u8, 128, 255]);
         }
-        let frame = rustgis_tiles::Frame { left: -half, top: half, m_per_px: 2.0 * half / f64::from(side), ppp: 1.0 };
+        let frame = powergis_tiles::Frame { left: -half, top: half, m_per_px: 2.0 * half / f64::from(side), ppp: 1.0 };
         for (lon, lat, res) in [
             (10.0, 45.0, 2_000.0),
             (10.0, 20.0, 40_000.0),
@@ -718,9 +718,9 @@ pub(crate) mod tests {
             (0.0, 85.0, 800.0),
         ] {
             let camera = Camera { center: lonlat_to_merc(Coord::new(lon, lat)), res, bearing: 0.0, pitch: 0.0 };
-            let g = rustgis_map::globe::Globe::new(&camera, 300.0, 200.0);
+            let g = powergis_map::globe::Globe::new(&camera, 300.0, 200.0);
             let to_lonlat = |x: f64, y: f64| g.inverse(x, y);
-            let to_merc = |c: Coord| lonlat_to_merc(Coord::new(c.x, c.y.clamp(-rustgis_geom::MAX_LAT, rustgis_geom::MAX_LAT)));
+            let to_merc = |c: Coord| lonlat_to_merc(Coord::new(c.x, c.y.clamp(-powergis_geom::MAX_LAT, powergis_geom::MAX_LAT)));
             let mut fast = tiny_skia::Pixmap::new(300, 200).unwrap();
             super::warp(&mut fast, &mosaic, &frame, &to_lonlat, &to_merc);
             let (mut drawn, mut worst) = (0, 0);
@@ -753,15 +753,15 @@ pub(crate) mod tests {
     static ONE_TEST: std::sync::Mutex<()> = std::sync::Mutex::new(());
 
     /// Requests that are never answered: their tiles stay on their way.
-    static PARKED: std::sync::Mutex<Vec<rustgis_tiles::cache::Done>> = std::sync::Mutex::new(Vec::new());
+    static PARKED: std::sync::Mutex<Vec<powergis_tiles::cache::Done>> = std::sync::Mutex::new(Vec::new());
     /// Fetches under `stuck.test/`, left unanswered until a test lets them go: another's fetch
     /// still under way.
-    static STUCK: std::sync::Mutex<Vec<rustgis_tiles::cache::Done>> = std::sync::Mutex::new(Vec::new());
+    static STUCK: std::sync::Mutex<Vec<powergis_tiles::cache::Done>> = std::sync::Mutex::new(Vec::new());
 
     /// Serves tiles and documents for `https://tiles.test/…` without a network. Under `split/`,
     /// zoom 11 is red, zoom 13 blue, and zoom 12 never arrives.
     pub(crate) fn serve() {
-        rustgis_tiles::cache::set_fetcher(|url, done| {
+        powergis_tiles::cache::set_fetcher(|url, done| {
             let color = |r, g, b| {
                 let mut pm = tiny_skia::Pixmap::new(256, 256).unwrap();
                 pm.fill(tiny_skia::Color::from_rgba8(r, g, b, 255));
@@ -811,7 +811,7 @@ pub(crate) mod tests {
     /// grid of powers of two; the WMTS layer's of its matrix) and drawn as they come.
     #[test]
     fn layers_in_a_system_of_their_own() {
-        use rustgis_data::ogc::warp::{Grid, Matrix, System, Warp};
+        use powergis_data::ogc::warp::{Grid, Matrix, System, Warp};
         serve();
         let area = Some([5.9, 45.8, 10.5, 47.8]);
         let lv95 = System { epsg: 2056, name: "EPSG:2056".into(), lat_first: false };
@@ -889,7 +889,7 @@ pub(crate) mod tests {
     #[test]
     fn a_wms_layer_as_one_picture_of_the_view() {
         let _one = ONE_TEST.lock().unwrap_or_else(|e| e.into_inner());
-        use rustgis_data::ogc::warp::{Grid, System, Warp};
+        use powergis_data::ogc::warp::{Grid, System, Warp};
         serve();
         let bern = Coord::new(7.4474, 46.948);
         let at = |m: &mut Map, res: f64, dx: f64| {
@@ -938,7 +938,7 @@ pub(crate) mod tests {
         assert!(p[1] != green && asked.is_empty(), "{p:?} {asked:?}");
         // A service drawing no picture larger than a tile: its tiles, after its picture failed,
         // and at once though a fetch of another's is still under way.
-        let _ = rustgis_tiles::cache::get("https://stuck.test/0.png", rustgis_tiles::cache::Want::Image);
+        let _ = powergis_tiles::cache::get("https://stuck.test/0.png", powergis_tiles::cache::Want::Image);
         let mut m = Map::new("Map");
         m.graticule = false;
         let mut t = TileLayer::new("WMS", TileKind::Raster, url.replace("one.test/merc/", "one.test/tiles-only/"));
@@ -976,7 +976,7 @@ pub(crate) mod tests {
     #[test]
     fn a_turning_map_asks_for_a_picture_or_two() {
         let _one = ONE_TEST.lock().unwrap_or_else(|e| e.into_inner());
-        use rustgis_data::ogc::warp::{Grid, System, Warp};
+        use powergis_data::ogc::warp::{Grid, System, Warp};
         serve();
         let bern = Coord::new(7.4474, 46.948);
         let turned = |m: &mut Map, res: f64, bearing: f64| {
@@ -1026,7 +1026,7 @@ pub(crate) mod tests {
     /// added later.
     #[test]
     fn tile_layers_draw_at_their_place_among_the_layers() {
-        use rustgis_data::{Dataset, Geometry, GeometryType};
+        use powergis_data::{Dataset, Geometry, GeometryType};
         serve();
         let mut m = Map::new("Map");
         m.graticule = false;
@@ -1038,9 +1038,9 @@ pub(crate) mod tests {
             let id = m.add_dataset(d);
             if let Some(l) = m.layer_mut(id) {
                 let mut s = l.renderer.base_symbol();
-                s.fill = rustgis_map::Rgba::rgb(rgb.0, rgb.1, rgb.2);
+                s.fill = powergis_map::Rgba::rgb(rgb.0, rgb.1, rgb.2);
                 s.stroke = s.fill;
-                l.renderer = rustgis_map::Renderer::Single(s);
+                l.renderer = powergis_map::Renderer::Single(s);
             }
             id
         };
@@ -1136,7 +1136,7 @@ pub(crate) mod tests {
             let camera = Camera { center: lonlat_to_merc(Coord::new(lon, lat)), res, bearing: 0.0, pitch: 0.0 };
             let view = View { width: 600.0, height: 600.0, pixels_per_point: 2.0, camera, sky: false };
             let pm = tiny_skia::Pixmap::decode_png(&crate::render_png(&mut m, &view).unwrap()).unwrap();
-            let g = rustgis_map::globe::Globe::new(&camera, 600.0, 600.0);
+            let g = powergis_map::globe::Globe::new(&camera, 600.0, 600.0);
             let (x, y) = g.forward(Coord::new(lon, pole)).unwrap();
             let p = pm.pixel((x * 2.0) as u32, (y * 2.0) as u32).unwrap();
             assert!(p.red() > 120 && p.green() < 80 && p.blue() < 80, "({lon}, {lat}): {pole}° is {p:?}");
@@ -1152,7 +1152,7 @@ pub(crate) mod tests {
         serve();
         let mut m = Map::new("Map");
         m.graticule = false;
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         m.tiles.push(TileLayer::new("Red", TileKind::Raster, "https://tiles.test/red/{z}/{x}/{y}.png"));
         let camera = Camera { center: lonlat_to_merc(Coord::new(10.0, 50.0)), res: 2000.0, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 200.0, height: 100.0, pixels_per_point: 1.0, camera, sky: false };
@@ -1199,11 +1199,11 @@ pub(crate) mod tests {
         }));
         // Blended, or a style that draws more than raster tiles: still a picture.
         m.tiles[0].opacity = 1.0;
-        m.tiles[0].blend = rustgis_map::effects::Blend::Multiply;
+        m.tiles[0].blend = powergis_map::effects::Blend::Multiply;
         let Some(RenderOutput::Gpu(scene)) = crate::render_backend(&mut m, &view, Backend::Gpu) else { panic!("a gpu scene") };
         assert!(scene.cmds.iter().any(|c| matches!(c, DrawCmd::Image { .. })));
         assert!(!scene.cmds.iter().any(|c| matches!(c, DrawCmd::Tiles { .. })));
-        m.tiles[0].blend = rustgis_map::effects::Blend::Normal;
+        m.tiles[0].blend = powergis_map::effects::Blend::Normal;
         m.tiles.insert(0, TileLayer::new("Blue", TileKind::Style, "https://tiles.test/style.json"));
         crate::render_complete(&mut m, &view).unwrap();
         let Some(RenderOutput::Gpu(scene)) = crate::render_backend(&mut m, &view, Backend::Gpu) else { panic!("a gpu scene") };
@@ -1222,10 +1222,10 @@ pub(crate) mod tests {
         serve();
         let mut m = Map::new("Map");
         m.graticule = false;
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         m.tiles.push(TileLayer::new("Split", TileKind::Raster, "https://tiles.test/split/{z}/{x}/{y}.png"));
         // Zoom 12's own resolution, nudged off the tile grid.
-        let res = 2.0 * std::f64::consts::PI * rustgis_geom::MERCATOR_R / 256.0 / 4096.0;
+        let res = 2.0 * std::f64::consts::PI * powergis_geom::MERCATOR_R / 256.0 / 4096.0;
         let center = lonlat_to_merc(Coord::new(2.3417, 48.8571));
         let view = |res: f64| View {
             width: 200.0,
@@ -1269,17 +1269,17 @@ pub(crate) mod tests {
         m.graticule = false;
         m.tiles.push(TileLayer::new("Red", TileKind::Raster, "https://tiles.test/red/{z}/{x}/{y}.png"));
         let mut blue = TileLayer::new("Blue", TileKind::Style, "https://tiles.test/style.json");
-        blue.blend = rustgis_map::effects::Blend::Multiply;
+        blue.blend = powergis_map::effects::Blend::Multiply;
         m.tiles.insert(0, blue);
         // Multiplied: red × blue, not the blue on top.
         let p = pixel(&mut m);
         assert!(p[0] < 40 && p[1] < 15 && p[2] < 30 && p[3] == 255, "{p:?}");
         // Screened: lighter than either.
-        m.tiles[0].blend = rustgis_map::effects::Blend::Screen;
+        m.tiles[0].blend = powergis_map::effects::Blend::Screen;
         let p = pixel(&mut m);
         assert!(p[0] > 220 && p[1] > 80 && p[2] > 0xE0, "{p:?}");
         // And in the mosaic warped onto another projection (the globe shades it a little).
-        m.tiles[0].blend = rustgis_map::effects::Blend::Multiply;
+        m.tiles[0].blend = powergis_map::effects::Blend::Multiply;
         m.projection = Projection::Globe;
         let p = pixel(&mut m);
         assert!(p[0] < 60 && p[1] < 40 && p[2] < 60, "{p:?}");

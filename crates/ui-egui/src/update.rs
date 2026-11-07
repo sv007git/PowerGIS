@@ -4,7 +4,7 @@
 use egui::Align2;
 use serde_json::Value;
 
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 /// The latest release, as JSON naming its tag and page.
 const LATEST: &str = "https://api.github.com/repos/opengeos/PowerGIS/releases/latest";
@@ -101,7 +101,7 @@ pub fn is_newer(latest: &str, current: &str) -> bool {
 }
 
 /// Draws the window, starting and collecting the check.
-pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn show(app: &mut powergisApp, ctx: &egui::Context) {
     if !app.update.open {
         return;
     }

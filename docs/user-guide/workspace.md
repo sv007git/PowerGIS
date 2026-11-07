@@ -276,7 +276,7 @@ original value is preserved and edits apply only to the current session. **Reset
 replaces the saved shortcuts with the defaults.
 
 Use **Import…** and **Export…** in the editor to back up shortcuts or share them between desktop,
-macOS and browser sessions. Export writes `rustgis-shortcuts.json`, containing only differences
+macOS and browser sessions. Export writes `powergis-shortcuts.json`, containing only differences
 from the current defaults. `Mod` means Ctrl, or ⌘ on macOS, so the same file works across platforms.
 Import merges with your current shortcuts: review the counts of bindings, conflicts and unknown
 commands, then choose **Import** or **Cancel**. The file wins on conflicting keys; unrelated
@@ -291,7 +291,7 @@ The version 1 file format is:
 
 ```json
 {
-  "rustgis_shortcuts": 1,
+  "powergis_shortcuts": 1,
   "bindings": [
     { "keys": "D", "command": "tool.set", "params": { "tool": "select" } },
     { "keys": "T", "command": "select.zoomTo" },
@@ -373,7 +373,7 @@ duplication and nudging have their own [layout shortcuts](layouts.md#layouts).
 - **Time Slider** (View › Time) shows data through time, in a timeline docked under the map.
 
     <figure markdown="span">
-      ![The Time Slider under the map at 2018, showing a layer of dated events cumulatively, with a bar for each year](https://assets.rustgis.app/images/time-slider.webp)
+      ![The Time Slider under the map at 2018, showing a layer of dated events cumulatively, with a bar for each year](https://assets.powergis.app/images/time-slider.webp)
       <figcaption>The Time Slider in cumulative mode: every event up to 2018 is drawn.</figcaption>
     </figure>
 
@@ -402,7 +402,7 @@ duplication and nudging have their own [layout shortcuts](layouts.md#layouts).
       window: `"start"`, `"end"`, `"unit"`, `"interval"`, `"show"`, `"speed"`, `"loop"`,
       `"format"`…), `time.goTo` (`"date"`, or `"step"` from 0), `time.step` (`"by"`, negative goes
       back), `time.fields` (a layer's date fields) and `time.unbind`:
-      `rustgis-cli run --cmd 'layer.addData={"path":"quakes.csv"}' --cmd 'time.bind={"layer":"quakes","unit":"year","show":"cumulative"}' --cmd 'time.goTo={"date":"2018"}'`.
+      `powergis-cli run --cmd 'layer.addData={"path":"quakes.csv"}' --cmd 'time.bind={"layer":"quakes","unit":"year","show":"cumulative"}' --cmd 'time.goTo={"date":"2018"}'`.
     - **Export** on desktop writes the steps as an animated GIF (`time.export` also writes a zip of PNG
       frames). The slider, its window and the bindings are saved with the project; the off button
       turns it off and every feature shows again.
@@ -418,7 +418,7 @@ duplication and nudging have their own [layout shortcuts](layouts.md#layouts).
   buttons. Settings and Help always remain visible. **Help** opens the user guide and the
   **Diagnostic Monitor** (frame rate, draw time, data size).
 - **Plugins**: **Plugins › Plugin Manager** installs, updates and removes [plugins](../plugins.md)
-  from the registry at [plugins.rustgis.app](https://plugins.rustgis.app) or from a file.
+  from the registry at [plugins.powergis.app](https://plugins.powergis.app) or from a file.
 - **Language**: **Settings › Language** switches the interface among
   [19 languages](../i18n.md) and chooses the [worldview](maps.md#worldview) of the built-in
   borders.
@@ -433,6 +433,6 @@ duplication and nudging have their own [layout shortcuts](layouts.md#layouts).
   and a blank map. If the project no longer opens (moved or deleted), PowerGIS starts with the sample
   and says why. After a crash it starts with the sample too, in case the project is what crashed, and offers
   back the [recovery copy](#autosave-and-recovery) autosave kept of unsaved work, if any;
-  starting `rustgis --sample` also skips the start-up project. The choices are remembered on this
+  starting `powergis --sample` also skips the start-up project. The choices are remembered on this
   computer, or in this browser for the web app. Opening files from the command line starts a blank
   map.

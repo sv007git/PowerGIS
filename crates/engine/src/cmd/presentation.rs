@@ -4,10 +4,10 @@
 use std::path::Path;
 
 use base64::Engine;
-use rustgis_geom::Coord;
-use rustgis_map::Rgba;
-use rustgis_map::layout::{ElementKind, FrameShape, Layout};
-use rustgis_map::presentation::{MAX_CAPTION, MAX_PAGES, MAX_SOURCE, MAX_TEXT, MAX_TITLE, Page, PageKind, Presentation};
+use powergis_geom::Coord;
+use powergis_map::Rgba;
+use powergis_map::layout::{ElementKind, FrameShape, Layout};
+use powergis_map::presentation::{MAX_CAPTION, MAX_PAGES, MAX_SOURCE, MAX_TEXT, MAX_TITLE, Page, PageKind, Presentation};
 use serde_json::{Value, json};
 
 use super::{f, ps};
@@ -136,7 +136,7 @@ pub fn commands() -> Vec<C> {
             let path = ps(p, "path").ok_or("path is required")?;
             let i = index(s, p)?;
             let bytes = presentation_file(s, i)?;
-            rustgis_data::io::write_atomic(Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"path": path}))
         })
         .view()
@@ -157,7 +157,7 @@ pub fn commands() -> Vec<C> {
                 return Err("export to a .pdf, .html or .png file".into());
             };
             let (bytes, pages) = export_bytes(s, i, format, dpi)?;
-            rustgis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"path": path, "pages": pages, "bytes": bytes.len()}))
         })
         .view()
@@ -309,7 +309,7 @@ pub fn page_layout(s: &Session, pres: &Presentation, page: &Page) -> Layout {
             let (fw, fh) = (w - 2.0 * m, h - top - m);
             let map =
                 s.project.maps.iter().find(|x| x.name.eq_ignore_ascii_case(map)).map_or_else(|| s.map().name.clone(), |x| x.name.clone());
-            let scale = (width_m / (fw / 1000.0)).clamp(rustgis_map::layout::MIN_FRAME_SCALE, rustgis_map::layout::MAX_FRAME_SCALE);
+            let scale = (width_m / (fw / 1000.0)).clamp(powergis_map::layout::MIN_FRAME_SCALE, powergis_map::layout::MAX_FRAME_SCALE);
             l.add(
                 "Map",
                 (m, top, fw, fh),
@@ -320,8 +320,8 @@ pub fn page_layout(s: &Session, pres: &Presentation, page: &Page) -> Layout {
                     shape: FrameShape::Rectangle,
                     grid: None,
                     extent_of: None,
-                    extent_color: rustgis_map::layout::INDICATOR_COLOR,
-                    extent_width: rustgis_map::layout::INDICATOR_WIDTH,
+                    extent_color: powergis_map::layout::INDICATOR_COLOR,
+                    extent_width: powergis_map::layout::INDICATOR_WIDTH,
                     bearing: 0.0,
                     pitch: 0.0,
                 },
@@ -333,7 +333,7 @@ pub fn page_layout(s: &Session, pres: &Presentation, page: &Page) -> Layout {
             }
             let cap_h = if caption.trim().is_empty() { 0.0 } else { h * 0.08 };
             let (bw, bh) = (w - 2.0 * m, h - top - m - cap_h);
-            let (pw, ph) = rustgis_render::picture_size(image).map_or((bw, bh), |(iw, ih)| {
+            let (pw, ph) = powergis_render::picture_size(image).map_or((bw, bh), |(iw, ih)| {
                 let k = (bw / iw.max(1) as f64).min(bh / ih.max(1) as f64);
                 (iw as f64 * k, ih as f64 * k)
             });
@@ -370,13 +370,13 @@ pub fn page_layout(s: &Session, pres: &Presentation, page: &Page) -> Layout {
 }
 
 /// Draws page `k` at `dpi`.
-pub fn draw_page(s: &mut Session, i: usize, k: usize, dpi: f64) -> Result<rustgis_render::Pixmap, String> {
+pub fn draw_page(s: &mut Session, i: usize, k: usize, dpi: f64) -> Result<powergis_render::Pixmap, String> {
     let pres = s.project.presentations.get(i).ok_or("no presentation")?;
     let n = pres.pages.len();
     let page = pres.pages.get(k).ok_or_else(|| format!("no page {k}"))?;
     let layout = page_layout(s, pres, page);
-    let info = rustgis_render::layout::PageInfo { page: k + 1, pages: n, page_name: page.title.clone() };
-    rustgis_render::layout::render(&layout, &mut s.project.maps, dpi, &info).ok_or_else(|| "the page is too large to draw".to_string())
+    let info = powergis_render::layout::PageInfo { page: k + 1, pages: n, page_name: page.title.clone() };
+    powergis_render::layout::render(&layout, &mut s.project.maps, dpi, &info).ok_or_else(|| "the page is too large to draw".to_string())
 }
 
 fn html_escape(t: &str) -> String {
@@ -415,8 +415,8 @@ pub fn export_bytes(s: &mut Session, i: usize, format: &str, dpi: f64) -> Result
     for k in 0..n {
         let img = draw_page(s, i, k, dpi)?;
         if format == "pdf" {
-            pdf_pages.push(rustgis_render::pdf::Page::new(&img, width, height));
-            held += pdf_pages.last().map_or(0, rustgis_render::pdf::Page::len);
+            pdf_pages.push(powergis_render::pdf::Page::new(&img, width, height));
+            held += pdf_pages.last().map_or(0, powergis_render::pdf::Page::len);
         } else {
             let page = s.project.presentations.get(i).and_then(|p| p.pages.get(k)).ok_or("no page")?;
             let png = base64::engine::general_purpose::STANDARD.encode(img.encode_png().map_err(|e| e.to_string())?);
@@ -439,7 +439,7 @@ pub fn export_bytes(s: &mut Session, i: usize, format: &str, dpi: f64) -> Result
         }
     }
     if format == "pdf" {
-        return Ok((rustgis_render::pdf::write(&pdf_pages, &name), n));
+        return Ok((powergis_render::pdf::write(&pdf_pages, &name), n));
     }
     let html = format!(
         r#"<!doctype html>

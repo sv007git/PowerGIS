@@ -1,5 +1,5 @@
 [package]
-name = "rustgis-ui-egui"
+name = "powergis-ui-egui"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,8 +9,8 @@ description = "PowerGIS L6: the ribbon egui front end (ribbon, panes, map view);
 workspace = true
 
 [dependencies]
-rustgis-engine = { workspace = true }
-rustgis-assistant = { workspace = true }
+powergis-engine = { workspace = true }
+powergis-assistant = { workspace = true }
 # egui's own faces (Hack, the theme's fallback for Georgian) and its emoji, which egui 0.37 no longer
 # bundles by default.
 egui = { workspace = true, features = ["monochrome_emoji_fonts"] }
@@ -41,7 +41,7 @@ rustix = { version = "1.1", features = ["process"] }
 
 [dev-dependencies]
 tempfile = "3"
-rustgis-plugins = { workspace = true, features = ["testing"] }
+powergis-plugins = { workspace = true, features = ["testing"] }
 egui_kittest = { workspace = true, features = ["wgpu", "snapshot"] }
 image = { workspace = true }
 pollster = { workspace = true }

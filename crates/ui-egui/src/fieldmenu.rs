@@ -9,7 +9,7 @@ use egui::{Context, Event, Id, Key, Modifiers, PointerButton, Popup, SurrenderFo
 
 use crate::keymap::Chord;
 use crate::widgets::menu_row;
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 /// A row of the menu.
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -42,7 +42,7 @@ pub struct FieldMenu {
 /// open menu and is the field's no more (the search box would clear on it); a field pressed with
 /// the right button has its selection noted; the row picked in a field's menu is played to the
 /// field.
-pub fn play(app: &mut RustGisApp, ctx: &Context) {
+pub fn play(app: &mut powergisApp, ctx: &Context) {
     // The clipboard's text the browser read for Paste, pasted into its field; or why not.
     let landed =
         app.ui.field_menu.pasting.as_ref().and_then(|(field, slot)| Some((*field, slot.lock().unwrap_or_else(|e| e.into_inner()).take()?)));
@@ -160,7 +160,7 @@ fn refocus(ctx: &Context, (id, range): Field) {
 /// it's being typed in, so it has the menu then. A field with a right-click menu of its own keeps
 /// that one, and one in a popup (a ribbon button's form) has none: egui keeps one popup open, and
 /// the menu would close the form.
-pub fn show(app: &mut RustGisApp, ctx: &Context) {
+pub fn show(app: &mut powergisApp, ctx: &Context) {
     keep_selection(app, ctx);
     let (clicked, touched) = ctx.interaction_snapshot(|s| (s.clicked, s.long_touched));
     let right = clicked.filter(|_| ctx.input(|i| i.pointer.secondary_clicked())).or(touched);
@@ -202,7 +202,7 @@ pub fn show(app: &mut RustGisApp, ctx: &Context) {
 
 /// A field pressed with the right button within its selection (or at either end) keeps it, as in
 /// Windows: egui put the caret where it was pressed. Pressed elsewhere, the caret stays there.
-fn keep_selection(app: &mut RustGisApp, ctx: &Context) {
+fn keep_selection(app: &mut powergisApp, ctx: &Context) {
     let Some((id, kept)) = app.ui.field_menu.kept.take() else { return };
     let Some(mut state) = TextEditState::load(ctx, id) else { return };
     let Some(now) = state.cursor.char_range() else { return };
@@ -242,14 +242,14 @@ mod tests {
 
     use super::*;
 
-    fn harness() -> egui_kittest::Harness<'static, RustGisApp> {
+    fn harness() -> egui_kittest::Harness<'static, powergisApp> {
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_max_steps(64).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
             },
-            RustGisApp::with_sample(),
+            powergisApp::with_sample(),
         );
         h.run_steps(4);
         h
@@ -257,12 +257,12 @@ mod tests {
 
     const SEARCH: &str = "Search the map";
 
-    fn search(h: &egui_kittest::Harness<'_, RustGisApp>) -> String {
+    fn search(h: &egui_kittest::Harness<'_, powergisApp>) -> String {
         h.state().ui.search.query.clone()
     }
 
     /// Right-clicks the search box and picks `row` in its menu: the text it put on the clipboard.
-    fn pick(h: &mut egui_kittest::Harness<'_, RustGisApp>, row: &str) -> Vec<String> {
+    fn pick(h: &mut egui_kittest::Harness<'_, powergisApp>, row: &str) -> Vec<String> {
         h.get_by_role_and_label(Role::TextInput, SEARCH).click_secondary();
         h.run_steps(2);
         h.get_by_label(row).click();
@@ -345,7 +345,7 @@ mod tests {
         let asked: Slot<Slot<Result<String, String>>> = Slot::default();
         let ask = asked.clone();
         h.state_mut().services.read_clipboard = Some(Box::new(move |slot| *ask.lock().unwrap() = Some(slot)));
-        let paste = |h: &mut egui_kittest::Harness<'_, RustGisApp>| {
+        let paste = |h: &mut egui_kittest::Harness<'_, powergisApp>| {
             h.get_by_role_and_label(Role::TextInput, SEARCH).click_secondary();
             h.run_steps(2);
             h.get_by_label("Paste Ctrl+V").click();
@@ -381,7 +381,7 @@ mod tests {
     /// focus (as a table cell does), a number field, and one in a button's popup (as a ribbon
     /// button's form).
     struct Page {
-        app: RustGisApp,
+        app: powergisApp,
         name: String,
         saved: Vec<String>,
         number: f64,
@@ -389,7 +389,7 @@ mod tests {
     }
 
     fn page() -> egui_kittest::Harness<'static, Page> {
-        let page = Page { app: RustGisApp::with_sample(), name: "Bern".into(), saved: Vec::new(), number: 5.0, code: "2056".into() };
+        let page = Page { app: powergisApp::with_sample(), name: "Bern".into(), saved: Vec::new(), number: 5.0, code: "2056".into() };
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(600.0, 400.0)).build_ui_state(
             |ui, p: &mut Page| {
                 let ctx = ui.ctx().clone();

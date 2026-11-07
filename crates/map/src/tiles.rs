@@ -4,7 +4,7 @@
 //! Three kinds of service are read: XYZ/TMS raster tiles (PNG, JPEG or WebP, and WMS through a
 //! `{bbox-epsg-3857}` template), Mapbox Vector Tiles drawn with a built-in style, and MapLibre
 //! style documents (vector and raster sources together). The tiles themselves are fetched and
-//! drawn by `rustgis-tiles` and the renderer; this is only what the project saves.
+//! drawn by `powergis-tiles` and the renderer; this is only what the project saves.
 
 use serde::{Deserialize, Serialize};
 
@@ -169,12 +169,12 @@ pub struct TileLayer {
     /// it. Kept for the session only (a project's layer reads the capabilities again); the type
     /// can be saved, should projects keep it.
     #[serde(skip)]
-    pub feature_info: Option<rustgis_data::ogc::FeatureInfo>,
+    pub feature_info: Option<powergis_data::ogc::FeatureInfo>,
     /// Its legend pictures (a WMS or WMTS layer's, from its service's default style, or given to
     /// `map.addTiles`): the Layers pane shows the one for the map's scale under it, as ArcGIS
-    /// Pro's Contents pane does. Web addresses only, at most [`MAX_LEGENDS`](rustgis_data::ogc::MAX_LEGENDS).
+    /// Pro's Contents pane does. Web addresses only, at most [`MAX_LEGENDS`](powergis_data::ogc::MAX_LEGENDS).
     #[serde(default, skip_serializing_if = "Vec::is_empty", deserialize_with = "lenient_legends")]
-    pub legends: Vec<rustgis_data::ogc::Legend>,
+    pub legends: Vec<powergis_data::ogc::Legend>,
     /// Expanded in the Layers pane, its legend and source layers showing.
     #[serde(default, skip_serializing_if = "is_false")]
     pub expanded: bool,
@@ -194,20 +194,20 @@ pub struct TileLayer {
 pub const MAX_LEGEND_URL: usize = 4096;
 
 /// Legend pictures as a tile layer keeps them: web addresses of a sane length, scales that are
-/// positive numbers (others are open-ended), at most [`MAX_LEGENDS`](rustgis_data::ogc::MAX_LEGENDS).
-pub fn checked_legends(legends: impl IntoIterator<Item = rustgis_data::ogc::Legend>) -> Vec<rustgis_data::ogc::Legend> {
+/// positive numbers (others are open-ended), at most [`MAX_LEGENDS`](powergis_data::ogc::MAX_LEGENDS).
+pub fn checked_legends(legends: impl IntoIterator<Item = powergis_data::ogc::Legend>) -> Vec<powergis_data::ogc::Legend> {
     let scale = |v: Option<f64>| v.filter(|v| v.is_finite() && *v > 0.0);
     legends
         .into_iter()
-        .map(|l| rustgis_data::ogc::Legend { url: l.url.trim().to_string(), min_scale: scale(l.min_scale), max_scale: scale(l.max_scale) })
+        .map(|l| powergis_data::ogc::Legend { url: l.url.trim().to_string(), min_scale: scale(l.min_scale), max_scale: scale(l.max_scale) })
         .filter(|l| is_web(&l.url) && l.url.len() <= MAX_LEGEND_URL)
-        .take(rustgis_data::ogc::MAX_LEGENDS)
+        .take(powergis_data::ogc::MAX_LEGENDS)
         .collect()
 }
 
 /// A project's legends, checked; one that isn't a legend is left out, and a value that isn't a
 /// list is none, so a damaged entry doesn't make the project unreadable.
-fn lenient_legends<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<rustgis_data::ogc::Legend>, D::Error> {
+fn lenient_legends<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<powergis_data::ogc::Legend>, D::Error> {
     let value = serde_json::Value::deserialize(d)?;
     let list = match value {
         serde_json::Value::Array(list) => list,
@@ -217,7 +217,7 @@ fn lenient_legends<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Vec<rustgis
     let legend = |v: serde_json::Value| {
         let url = v.get("url")?.as_str()?.to_string();
         let scale = |k: &str| v.get(k).and_then(serde_json::Value::as_f64);
-        Some(rustgis_data::ogc::Legend { url, min_scale: scale("minScale"), max_scale: scale("maxScale") })
+        Some(powergis_data::ogc::Legend { url, min_scale: scale("minScale"), max_scale: scale("maxScale") })
     };
     Ok(checked_legends(list.into_iter().filter_map(legend)))
 }
@@ -265,13 +265,13 @@ pub fn checked_style_layers(text: &str) -> Result<String, String> {
 }
 
 /// The most source layers a tile layer lists or hides.
-pub const MAX_SOURCE_LAYERS: usize = rustgis_data::source_layers::MAX;
+pub const MAX_SOURCE_LAYERS: usize = powergis_data::source_layers::MAX;
 
 /// Source layer names as a tile layer keeps them: as
-/// [`source_layers::distinct`](rustgis_data::source_layers::distinct) keeps an archive's, sorted
+/// [`source_layers::distinct`](powergis_data::source_layers::distinct) keeps an archive's, sorted
 /// so the same set is the same list.
 pub fn checked_source_layers<'a>(names: impl IntoIterator<Item = &'a str>) -> Vec<String> {
-    let mut kept = rustgis_data::source_layers::distinct(names);
+    let mut kept = powergis_data::source_layers::distinct(names);
     kept.sort_unstable();
     kept.into_iter().map(str::to_string).collect()
 }
@@ -309,7 +309,7 @@ fn is_normal(b: &crate::effects::Blend) -> bool {
 /// The deepest zoom level tiles are requested at.
 pub const MAX_ZOOM: u8 = 24;
 
-pub use rustgis_data::ogc::warp::sized;
+pub use powergis_data::ogc::warp::sized;
 
 /// Whether a raster tile address is one its service draws on request, for any box and size
 /// ([`TileLayer::on_request`]): asked for by its box, with a size [`sized`] can write (a WMS's
@@ -490,7 +490,7 @@ pub const UPLOAD: &str = "upload:";
 /// Whether a PMTiles or MBTiles archive address is a file rather than a web address. An address
 /// read through a saved S3 connection is never a file, well formed or not.
 pub fn is_local_archive(url: &str) -> bool {
-    if rustgis_data::s3_address::is_wrapper(url) {
+    if powergis_data::s3_address::is_wrapper(url) {
         return false;
     }
     let lower = url.to_ascii_lowercase();
@@ -521,7 +521,7 @@ pub fn check_path(path: &str, ext: &str) -> Result<(), String> {
 /// address read through a saved S3 connection is judged by the address it wraps (still bounded
 /// by 4096 bytes), and itself by the wrapper's own bound; it needs no login to be kept.
 pub fn check_url(url: &str) -> Result<(), String> {
-    let url = match rustgis_data::s3_address::parse(url) {
+    let url = match powergis_data::s3_address::parse(url) {
         Ok(Some(b)) => b.url,
         Ok(None) => url,
         Err(e) => return Err(e.to_string()),
@@ -545,7 +545,7 @@ pub fn check_url(url: &str) -> Result<(), String> {
 /// The host part of an HTTP(S) address (of the address an address read through a saved S3
 /// connection wraps).
 pub fn host_of(url: &str) -> Option<&str> {
-    let url = rustgis_data::s3_address::inner(url);
+    let url = powergis_data::s3_address::inner(url);
     let rest = url.split_once("://")?.1;
     let host = rest.split(['/', '?', '#']).next()?;
     let host = host.rsplit_once('@').map_or(host, |(_, h)| h);
@@ -622,7 +622,7 @@ mod tests {
     /// it always was; damaged legends are left out without the rest failing to read.
     #[test]
     fn legends_are_kept_and_old_layers_save_as_before() {
-        use rustgis_data::ogc::{Legend, MAX_LEGENDS};
+        use powergis_data::ogc::{Legend, MAX_LEGENDS};
         let old = r#"{"name":"WMS","kind":"raster","url":"https://maps.example.org/wms?{bbox-epsg-3857}"}"#;
         let t: TileLayer = serde_json::from_str(old).unwrap();
         assert!(t.legends.is_empty() && !t.expanded);

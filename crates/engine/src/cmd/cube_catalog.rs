@@ -9,7 +9,7 @@ use std::borrow::Cow;
 use serde_json::{Value, json};
 
 use super::ps;
-use crate::render::rustgis_tiles::cubes::{self, Entry, Source};
+use crate::render::powergis_tiles::cubes::{self, Entry, Source};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -103,7 +103,7 @@ fn period(e: &Entry, p: &Value) -> Result<(Value, Value), String> {
                 .duration_since(web_time::UNIX_EPOCH)
                 .map_err(|_| "the system clock is before 1970; give start and end explicitly")?
                 .as_millis() as f64;
-            let this_year = rustgis_data::time::format(now, "YYYY")
+            let this_year = powergis_data::time::format(now, "YYYY")
                 .parse::<i32>()
                 .map_err(|_| "the system clock's year could not be read; give start and end explicitly")?;
             let y = e.last_year(this_year);
@@ -111,8 +111,8 @@ fn period(e: &Entry, p: &Value) -> Result<(Value, Value), String> {
         }
         _ => return Err("give start and end together, or neither for the entry's last full year".into()),
     };
-    let ms = |v: &Value| rustgis_data::time::parse_input(v);
-    let (first, last) = (rustgis_data::time::parse_text(&e.start), e.end.as_deref().and_then(rustgis_data::time::parse_text));
+    let ms = |v: &Value| powergis_data::time::parse_input(v);
+    let (first, last) = (powergis_data::time::parse_text(&e.start), e.end.as_deref().and_then(powergis_data::time::parse_text));
     // An end given as a year or a month reaches its last day.
     let until = super::stac::period_after(&end).map(|a| a - 1.0).or_else(|| ms(&end));
     if until.zip(first).is_some_and(|(u, f)| u < f) || ms(&start).zip(last).is_some_and(|(s, l)| s > l) {
@@ -125,7 +125,7 @@ fn period(e: &Entry, p: &Value) -> Result<(Value, Value), String> {
 /// A period's end as `layer.addZarr` takes it, an instant: a day, a month or a year given reaches
 /// its last moment, as `stac.addCube` takes them, so an hourly variable's last day is read whole.
 fn through(end: &Value) -> Value {
-    let day = end.as_str().map(str::trim).filter(|d| d.len() == 10).and_then(rustgis_data::time::parse_text).map(|d| d + 86_400_000.0);
+    let day = end.as_str().map(str::trim).filter(|d| d.len() == 10).and_then(powergis_data::time::parse_text).map(|d| d + 86_400_000.0);
     super::stac::period_after(end).or(day).map_or_else(|| end.clone(), |after| json!(after - 1.0))
 }
 

@@ -238,7 +238,7 @@ mod tests {
     }
 
     #[test]
-    fn a_page_rustgis_cant_decode_is_named_in_the_note() {
+    fn a_page_powergis_cant_decode_is_named_in_the_note() {
         let mut notes = Vec::new();
         assert!(matches!(encoding(None, 0x6C, &mut notes), DbfEncoding::Utf8));
         assert_eq!(notes, ["Shapefile: unsupported .dbf code page 0x6C (code page 863, DOS French Canadian); using UTF-8"]);

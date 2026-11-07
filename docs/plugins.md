@@ -5,13 +5,13 @@ Plugins add commands, geoprocessing tools and assistant skills to PowerGIS. A pl
 in the desktop app, on the command line and in the web app. [Process plugins](#process-plugins)
 run a local program instead and need the desktop app or command line.
 
-Browse the [plugin catalog](https://plugins.rustgis.app/catalog/).
-[opengeos/rustgis-plugins](https://github.com/opengeos/rustgis-plugins) holds the registry,
-blocklist and [`rustgis-plugin` SDK](https://github.com/opengeos/rustgis-plugins/tree/main/sdk),
+Browse the [plugin catalog](https://plugins.powergis.app/catalog/).
+[opengeos/powergis-plugins](https://github.com/opengeos/powergis-plugins) holds the registry,
+blocklist and [`powergis-plugin` SDK](https://github.com/opengeos/powergis-plugins/tree/main/sdk),
 not plugin source. Plugin sources live in their own repositories; start one from the
-[Rust WebAssembly](https://github.com/opengeos/rustgis-plugin-template),
-[Rust process](https://github.com/opengeos/rustgis-rust-process-plugin-template) or
-[Python process](https://github.com/opengeos/rustgis-python-plugin-template) template.
+[Rust WebAssembly](https://github.com/opengeos/powergis-plugin-template),
+[Rust process](https://github.com/opengeos/powergis-rust-process-plugin-template) or
+[Python process](https://github.com/opengeos/powergis-python-plugin-template) template.
 
 ## Using plugins
 
@@ -33,7 +33,7 @@ plugin, or on the plugin's own tab if it has one. Its commands are also in comma
 its tools are in the **Tools** pane under **Plugins ›**.
 
 The desktop app keeps installed packages in `plugins/` in its data folder (overridden by
-`$RUSTGIS_PLUGINS_DIR`) and loads them at startup. The web app remembers the
+`$powergis_PLUGINS_DIR`) and loads them at startup. The web app remembers the
 plugins you installed from the registry and downloads them again on your next visit. Packages
 installed from files are remembered when they are at most 1.5 MiB; larger ones last for the
 current session only.
@@ -41,16 +41,16 @@ current session only.
 On the command line:
 
 ```sh
-rustgis-cli plugins                          # installed plugins
-rustgis-cli plugins browse                   # the registry
-rustgis-cli plugins get vector-toolkit       # install from the registry
-rustgis-cli plugins install my.rgplugin      # install a file (or a plugin folder)
-rustgis-cli plugins disable vector-toolkit   # enable / disable / uninstall <id>
+powergis-cli plugins                          # installed plugins
+powergis-cli plugins browse                   # the registry
+powergis-cli plugins get vector-toolkit       # install from the registry
+powergis-cli plugins install my.rgplugin      # install a file (or a plugin folder)
+powergis-cli plugins disable vector-toolkit   # enable / disable / uninstall <id>
 
-rustgis-cli run --sample \
+powergis-cli run --sample \
   --cmd 'gp.run={"tool":"plugin:vector-toolkit/hexagon-grid","params":{"input":"Countries","size":300}}' \
   --cmd 'share.exportMap={"path":"hex.png"}'
-rustgis-cli run --plugin ./dev-plugin/ --sample --cmd 'plugin:my-plugin/hello'   # load for one run
+powergis-cli run --plugin ./dev-plugin/ --sample --cmd 'plugin:my-plugin/hello'   # load for one run
 ```
 
 Use `--no-plugins` to skip loading installed plugins. `plugins browse` and `plugins get` accept
@@ -94,16 +94,16 @@ apply the cached blocklist; the web app fetches it when restoring plugins.
 
 ## Writing a plugin
 
-Start from the [Rust WebAssembly template](https://github.com/opengeos/rustgis-plugin-template),
-or the [Rust](https://github.com/opengeos/rustgis-rust-process-plugin-template) or
-[Python](https://github.com/opengeos/rustgis-python-plugin-template) template for a
+Start from the [Rust WebAssembly template](https://github.com/opengeos/powergis-plugin-template),
+or the [Rust](https://github.com/opengeos/powergis-rust-process-plugin-template) or
+[Python](https://github.com/opengeos/powergis-python-plugin-template) template for a
 [process plugin](#process-plugins), and read the
-[official plugins](https://official-plugins.rustgis.app) for examples, such as
-[Hello PowerGIS](https://github.com/opengeos/rustgis-official-plugins/tree/main/plugins/hello).
-A WebAssembly plugin uses the `rustgis-plugin` SDK crate:
+[official plugins](https://official-plugins.powergis.app) for examples, such as
+[Hello PowerGIS](https://github.com/opengeos/powergis-official-plugins/tree/main/plugins/hello).
+A WebAssembly plugin uses the `powergis-plugin` SDK crate:
 
 ```rust
-use rustgis_plugin::{Kind, Request, ToolOutput, Value, geojson, host, json};
+use powergis_plugin::{Kind, Request, ToolOutput, Value, geojson, host, json};
 
 fn handle(req: Request) -> Result<Value, String> {
     match (req.kind, req.id.as_str()) {
@@ -123,7 +123,7 @@ fn handle(req: Request) -> Result<Value, String> {
     }
 }
 
-rustgis_plugin::export!(handle);
+powergis_plugin::export!(handle);
 ```
 
 ```sh
@@ -135,7 +135,7 @@ cargo build --release --target wasm32-unknown-unknown
 
 ```json
 {
-  "id": "hello-rustgis",
+  "id": "hello-powergis",
   "name": "Hello PowerGIS",
   "version": "0.1.0",
   "description": "What it does, in a sentence or two.",
@@ -144,7 +144,7 @@ cargo build --release --target wasm32-unknown-unknown
   "license": "MIT",
   "entry": "plugin.wasm",
   "abi": 1,
-  "minRustgisVersion": "0.1.0",
+  "minpowergisVersion": "0.1.0",
   "permissions": ["edit"],
   "commands": [
     { "id": "layer-report", "label": "Layer\nReport", "help": "Shown on hover.", "icon": "stats", "params": "{}" }
@@ -168,7 +168,7 @@ cargo build --release --target wasm32-unknown-unknown
 - `runtime`: `wasm` (the default), `process` or `skills`. For WebAssembly plugins, `entry`
   defaults to `plugin.wasm` and must name a `.wasm` file relative to the manifest, using
   forward slashes with no `.` or `..` path segments. `abi` defaults to `1` and must equal `1`.
-- `version` and optional `minRustgisVersion` are numeric versions such as `1.2.3` or `1.2`.
+- `version` and optional `minpowergisVersion` are numeric versions such as `1.2.3` or `1.2`.
   PowerGIS compares their numeric components, ignoring prerelease and build suffixes, and
   refuses a plugin that needs a newer PowerGIS.
 - `permissions`: `edit`, `files` and `network` (see [Safety](#safety)); empty by default.
@@ -214,7 +214,7 @@ The plugin needs the `files` permission:
   `{"name": "run.nc", "data": base64}`. The parameter itself holds just the file name.
 - Files are at most 64 MB. The Geoprocessing history keeps the file's name, not its contents.
 - PowerGIS versions before file parameters refuse a plugin that has one, so set
-  `minRustgisVersion` to the first version with them.
+  `minpowergisVersion` to the first version with them.
 
 ### Translations
 
@@ -303,7 +303,7 @@ can hide it like any other. Declare it in `plugin.json`:
   (Home, Data, Style, Analyze, Plugins…), including their older names. The `i18n` translations
   apply to the tab, group and menu labels too.
 
-[Map Explorer](https://github.com/opengeos/rustgis-official-plugins/tree/main/plugins/map-explorer) is
+[Map Explorer](https://github.com/opengeos/powergis-official-plugins/tree/main/plugins/map-explorer) is
 an example.
 
 ### A panel
@@ -366,11 +366,11 @@ button, a script or the command line):
 `values` has each checkbox (`true` or `false`), slider (a whole number) and tree (the chosen
 node's id, or `null`), and `changed` the ones this call set: the widget the user just moved. A
 widget's command is run with `{"panel": {"release": 196}}` as its parameters, which sets the
-values before the call and is taken out of the request's `params`, so a script or `rustgis-cli`
+values before the call and is taken out of the request's `params`, so a script or `powergis-cli`
 can do the same:
 
 ```sh
-rustgis-cli run --sample --cmd 'plugin:historical-imagery/go-to-release={"panel": {"release": 40}}'
+powergis-cli run --sample --cmd 'plugin:historical-imagery/go-to-release={"panel": {"release": 40}}'
 ```
 
 Any command can answer the panel's new state, beside the rest of its answer:
@@ -416,7 +416,7 @@ Any command can answer the panel's new state, beside the rest of its answer:
   `values` or, with `"refresh": true`, runs the state command first. On the command line, which
   has no panes, the commands still run with the values given.
 - PowerGIS versions before panels ignore `panel` (and refuse a tab that names it): keep the
-  commands usable from the ribbon too, or set `minRustgisVersion`.
+  commands usable from the ribbon too, or set `minpowergisVersion`.
 
 ### What a plugin can ask for
 
@@ -424,7 +424,7 @@ Inside a request, `host::call(op, params)` sends one of these to PowerGIS:
 
 | Request | Answer |
 |---|---|
-| `host.info` | `{rustgis, abi, plugin, permissions}`: version, ABI, plugin id and permissions |
+| `host.info` | `{powergis, abi, plugin, permissions}`: version, ABI, plugin id and permissions |
 | `host.layers` | `[{id, name, raster, visible, geometry, features, selected, active, fields: [{name, type}]}]` |
 | `host.features` `{layer, selected?, limit?}` | the layer's features as GeoJSON; each feature has its `row` |
 | `host.view` | `{center: [lon, lat], scale, projection}` |
@@ -443,9 +443,9 @@ FlatGeobuf's or GeoParquet's header too; in the web app a PMTiles archive, a clo
 GeoTIFF or a FlatGeobuf or GeoParquet whose header was fetched already is added at once. Up to 16
 downloads wait at a time: a request past 16 fails, and if the command then fails too, none of its
 downloads start. Run by
-`rustgis-cli`, a script or a task, the command waits and answers what was added.
+`powergis-cli`, a script or a task, the command waits and answers what was added.
 
-`rustgis-cli commands` lists every command id and its parameters.
+`powergis-cli commands` lists every command id and its parameters.
 
 #### Fetching a document
 
@@ -492,13 +492,13 @@ In the desktop app a plugin tool runs in the background, so the map and the rest
 stay usable: the Tools pane shows the line the tool last logged, or a process plugin's last
 `progress` message, and a **Cancel** button. Cancel stops a process plugin's program; a WebAssembly tool runs on to its
 end and its result is dropped. One plugin tool runs at a time. `gp.run`, scripts and
-`rustgis-cli` still wait for the result.
+`powergis-cli` still wait for the result.
 
 ### The ABI (version 1)
 
 The SDK implements this; it is described here for other languages.
 
-The module is `wasm32` with no imports except these three, in module `rustgis`:
+The module is `wasm32` with no imports except these three, in module `powergis`:
 
 - `call(ptr: i32, len: i32) -> i32` runs the host request at `ptr`
   (`{"op": "...", "params": {...}}`). It returns the length of the reply, which is
@@ -511,9 +511,9 @@ The module is `wasm32` with no imports except these three, in module `rustgis`:
 The module exports:
 
 - `memory`.
-- `rustgis_alloc(len: i32) -> i32`, which returns room for `len` bytes. PowerGIS writes the
+- `powergis_alloc(len: i32) -> i32`, which returns room for `len` bytes. PowerGIS writes the
   request there.
-- `rustgis_call(ptr: i32, len: i32) -> i64`, which handles the request and returns
+- `powergis_call(ptr: i32, len: i32) -> i64`, which handles the request and returns
   `reply_ptr << 32 | reply_len`. The reply is `{"ok": value}` or `{"error": "text"}`.
 
 Command requests are `{"abi": 1, "kind": "command", "id": "...", "params": {...}, "lang": "de"}`.
@@ -576,12 +576,12 @@ with no **Install** button.
 - A `.rgplugin` holds the plugin's files (the manifest, scripts, executables). Installing it
   unpacks them to `unpacked/<id>/` in the plugins folder, keeping Unix execute bits and
   rejecting unsafe paths or more than 1 GiB of unpacked files. A plugin folder installed for
-  development (Plugin Manager › Settings, or `rustgis-cli plugins install ./folder`) runs where
+  development (Plugin Manager › Settings, or `powergis-cli plugins install ./folder`) runs where
   it is.
 
 ### The protocol
 
-The [Rust process template](https://github.com/opengeos/rustgis-rust-process-plugin-template)
+The [Rust process template](https://github.com/opengeos/powergis-rust-process-plugin-template)
 provides a command, a tool and a reusable JSON-line transport module, with packaging and release
 builds for Linux, Windows and universal macOS. Users run the packaged executable without Rust or
 Python installed. Native plugins are not sandboxed and do not run in the web app.
@@ -655,14 +655,14 @@ any package themselves:
   for an environment with no extra packages.
 - PowerGIS prepares the environment when the plugin is installed: in the background in the desktop
   app (the Plugin Manager shows how it's going, with a **Prepare** button if it is not ready), and
-  before the command returns in `rustgis-cli plugins install` and `get`.
-  `rustgis-cli plugins prepare <id>` and the `plugin.prepare` command make it on demand.
+  before the command returns in `powergis-cli plugins install` and `get`.
+  `powergis-cli plugins prepare <id>` and the `plugin.prepare` command make it on demand.
 - It uses [uv](https://github.com/astral-sh/uv), which PowerGIS downloads once (a pinned version,
-  checked against its pinned SHA-256; `RUSTGIS_UV` names one to use instead, which is then
+  checked against its pinned SHA-256; `powergis_UV` names one to use instead, which is then
   trusted as it is, unchecked). uv installs a standalone Python of the version asked for and
   the packages in the requirements file, from PyPI. Pythons and uv's cache are shared in
   `tools/` in the plugins folder; each plugin's environment is in `envs/<id>/`. One
-  environment is made at a time per plugin, even across the app and `rustgis-cli`.
+  environment is made at a time per plugin, even across the app and `powergis-cli`.
 - The environment is made again when the Python version or the requirements change (a plugin
   update), and removed with the plugin. Until it's ready, the plugin's calls fail with a
   message saying how to prepare it.
@@ -682,7 +682,7 @@ for a kind of task, which the assistant reads when a request needs them. Put eac
 A `SKILL.md` starts with front matter giving the same `name` and a `description` that says when
 to use it, then the instructions in Markdown (the
 [Agent Skills](https://agentskills.io) format). The assistant knows it as `<plugin id>:<name>`
-(`hello-rustgis:flood-map`) while the plugin is enabled. A `SKILL.md` is at most 64 KB, and a
+(`hello-powergis:flood-map`) while the plugin is enabled. A `SKILL.md` is at most 64 KB, and a
 plugin has at most 32 skills.
 
 A package of skills alone, with no code, says `"runtime": "skills"`. It has no module, commands,
@@ -702,14 +702,14 @@ installs from a file in the desktop app, on the command line and in the web app:
 ## Publishing a plugin
 
 1. Write the plugin in your own repository, starting from the
-   [Rust WebAssembly](https://github.com/opengeos/rustgis-plugin-template),
-   [Rust process](https://github.com/opengeos/rustgis-rust-process-plugin-template) or
-   [Python process](https://github.com/opengeos/rustgis-python-plugin-template) template. See
-   [Write a plugin](https://plugins.rustgis.app/develop/).
+   [Rust WebAssembly](https://github.com/opengeos/powergis-plugin-template),
+   [Rust process](https://github.com/opengeos/powergis-rust-process-plugin-template) or
+   [Python process](https://github.com/opengeos/powergis-python-plugin-template) template. See
+   [Write a plugin](https://plugins.powergis.app/develop/).
 2. Release it: the templates' **Release** workflow attaches the `.rgplugin` and its registry
    entry to a GitHub release.
 3. Open a pull request on
-   [opengeos/rustgis-plugins](https://github.com/opengeos/rustgis-plugins) adding that entry as
+   [opengeos/powergis-plugins](https://github.com/opengeos/powergis-plugins) adding that entry as
    `registry/<id>.json`:
 
    ```json
@@ -720,19 +720,19 @@ installs from a file in the desktop app, on the command line and in the web app:
 4. CI downloads the package, checks its hash, validates its manifest and module (or a process
    plugin's files), and runs it in PowerGIS. A maintainer reviews it before merging.
 5. Once merged, the registry lists the plugin and serves its package at
-   `https://packages.rustgis.app/<id>/<id>-<version>.rgplugin`. Published packages never change,
+   `https://packages.powergis.app/<id>/<id>-<version>.rgplugin`. Published packages never change,
    and every version stays available. To update, release a new version and submit a pull
    request updating the entry's `source.url` and `source.sha256`.
 
 Pull requests get a preview with an **Open in PowerGIS** link; process plugins must be tried
 in the desktop app instead. The nightly workflow runs every published plugin in the latest
-PowerGIS. See the registry's [publishing instructions](https://plugins.rustgis.app/registry/)
+PowerGIS. See the registry's [publishing instructions](https://plugins.powergis.app/registry/)
 for details.
 
 The file you submit is only a pointer to the release. The registry build turns it into the
 published `registry.json` that PowerGIS reads, whose entries carry `package` (the package's address) and
 `sha256` in place of `source`. A registry entry contains `id`, `name`, `version`, `description`, `author`, `homepage`,
-`license`, `permissions`, `minRustgisVersion`, `i18n` (the name and description translated),
+`license`, `permissions`, `minpowergisVersion`, `i18n` (the name and description translated),
 `categories`, `package`, lower-case hexadecimal `sha256`, and `size` in bytes.
 `package` is an HTTPS address or a path relative to `registry.json`;
 plain `http://localhost` and `http://127.0.0.1` addresses are accepted for local test
@@ -740,6 +740,6 @@ registries. Entries without a valid id, name, version or SHA-256 are skipped. A 
 plugin's entry also has `"runtime": "process"` and, when it has a managed Python environment,
 `"python": "3.12"` (the version); a WebAssembly plugin can omit both. Registries can list
 skills packages with `"runtime": "skills"`. The Plugin Manager checks the package's hash
-and id before installing; `rustgis-cli plugins get` also checks its runtime.
-`rustgis-cli plugins browse` prints `runtime` for every entry (`wasm` when the registry leaves
+and id before installing; `powergis-cli plugins get` also checks its runtime.
+`powergis-cli plugins browse` prints `runtime` for every entry (`wasm` when the registry leaves
 it out).

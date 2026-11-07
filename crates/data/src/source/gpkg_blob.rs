@@ -2,7 +2,7 @@
 //! in-memory one (browser).
 
 use crate::FieldType;
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 
 /// A GeoPackage geometry blob flagged empty: valid, with nothing to draw.
 pub(crate) fn is_empty_blob(b: &[u8]) -> bool {

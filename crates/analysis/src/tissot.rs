@@ -7,8 +7,8 @@
 //! tool ran, from finite differences of the projection (Snyder, *Map Projections: A Working
 //! Manual*, 1987, pp. 20–24).
 
-use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
-use rustgis_geom::{Coord, EARTH_RADIUS_M, Extent, geodesic_destination};
+use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
+use powergis_geom::{Coord, EARTH_RADIUS_M, Extent, geodesic_destination};
 use serde_json::Value as Json;
 
 use crate::{Inputs, Output, ToolResult};
@@ -209,7 +209,7 @@ pub fn run(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String> {
 mod tests {
     use super::*;
     use geo::{Distance, Geodesic, Point};
-    use rustgis_geom::lonlat_to_merc;
+    use powergis_geom::lonlat_to_merc;
 
     /// No map: no projection, no view.
     struct NoMap;

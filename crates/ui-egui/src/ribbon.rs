@@ -2,11 +2,11 @@
 //! command by id.
 
 use egui::{Align2, CornerRadius, Rect, Sense, Stroke, Ui, pos2, vec2};
-use rustgis_engine::Tool;
-use rustgis_engine::data::GeometryType;
-use rustgis_engine::map::planets::EARTH_BASEMAP;
-use rustgis_engine::map::view::Weather;
-use rustgis_engine::map::{Basemap, RasterRenderer, Renderer, Resampling, Stretch};
+use powergis_engine::Tool;
+use powergis_engine::data::GeometryType;
+use powergis_engine::map::planets::EARTH_BASEMAP;
+use powergis_engine::map::view::Weather;
+use powergis_engine::map::{RasterRenderer, Renderer, Resampling, Stretch};
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, regular, semibold};
@@ -14,7 +14,7 @@ use crate::widgets::{
     CONTENT_H, Dragged, LABEL_H, big, big_form_menu, big_menu, big_split_menu, col, group, menu_item, small, small_form_menu, small_menu,
     submenu_row, text_w,
 };
-use crate::{RightPane, RustGisApp, icons};
+use crate::{RightPane, powergisApp, icons};
 
 pub const TABS: [&str; 12] = [
     "Home",
@@ -74,16 +74,16 @@ pub fn plugin_tab_id(plugin: &str) -> String {
 }
 
 /// The enabled plugins with a tab of their own: (tab id, caption in the interface language).
-fn plugin_tabs(app: &RustGisApp) -> Vec<(String, String)> {
+fn plugin_tabs(app: &powergisApp) -> Vec<(String, String)> {
     let lang = app.lang().code();
-    rustgis_engine::plugins::list()
+    powergis_engine::plugins::list()
         .into_iter()
         .filter(|p| p.enabled)
         .filter_map(|p| p.manifest.tab.as_ref().map(|t| (plugin_tab_id(&p.manifest.id), p.manifest.translate(lang, &t.label).to_string())))
         .collect()
 }
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui) {
     let t = Tokens::get(ui.ctx());
     // A plugin's tab whose plugin was turned off or removed.
     if app.ui.tab.starts_with("plugin:") && !plugin_tabs(app).iter().any(|(id, _)| *id == app.ui.tab) {
@@ -206,7 +206,7 @@ const COLLAPSE_W: f32 = 24.0;
 
 /// The active tool indicator at the right of the tab strip, unless the Explore tool is on: its
 /// label and width.
-fn tool_indicator(app: &RustGisApp, ui: &Ui) -> Option<(String, f32)> {
+fn tool_indicator(app: &powergisApp, ui: &Ui) -> Option<(String, f32)> {
     let tool = app.session.tool;
     if tool == Tool::Explore {
         return None;
@@ -216,14 +216,14 @@ fn tool_indicator(app: &RustGisApp, ui: &Ui) -> Option<(String, f32)> {
     Some((label, w))
 }
 
-fn tab_strip(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn tab_strip(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     ui.horizontal_centered(|ui| {
         ui.spacing_mut().item_spacing = vec2(2.0, 0.0);
         // The Project button opens the backstage.
         let pw = text_w(ui, tl!("Project"), semibold(12.5)) + 26.0;
         let (pr, presp) = ui.allocate_exact_size(vec2(pw, 26.0), Sense::click());
         let fill = if presp.hovered() { crate::theme::BRAND_DARK } else { crate::theme::BRAND };
-        ui.painter().rect_filled(pr, CornerRadius::same(6), fill);
+        ui.painter().rect_filled(pr, CornerRadius::same(7), fill);
         ui.painter().text(pr.center(), Align2::CENTER_CENTER, tl!("Project"), semibold(12.5), egui::Color32::WHITE);
         if presp.on_hover_text(tl!("Open, save and create projects")).clicked() {
             app.ui.backstage = true;
@@ -279,12 +279,12 @@ fn tab_strip(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                         );
                         let bar = t.accent;
                         ui.painter().rect_filled(
-                            Rect::from_min_max(pos2(r.min.x + 8.0, r.max.y - 3.0), pos2(r.max.x - 8.0, r.max.y - 1.0)),
-                            CornerRadius::same(1),
+                            Rect::from_min_max(pos2(r.min.x + 8.0, r.max.y - 3.5), pos2(r.max.x - 8.0, r.max.y - 0.5)),
+                            CornerRadius::same(2),
                             bar,
                         );
                     } else if resp.hovered() {
-                        ui.painter().rect_filled(body.shrink2(vec2(1.0, 2.0)), CornerRadius::same(5), t.hover);
+                        ui.painter().rect_filled(body.shrink2(vec2(1.0, 2.0)), CornerRadius::same(6), t.hover);
                     }
                     let color = if active { t.text } else { t.text_dim };
                     ui.painter().text(pos2(r.center().x, r.center().y + 1.5), Align2::CENTER_CENTER, shown, font, color);
@@ -330,7 +330,7 @@ fn tab_strip(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     });
 }
 
-fn tool_btn(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, desc: &str, tool: Tool) {
+fn tool_btn(ui: &mut Ui, app: &mut powergisApp, icon: &str, label: &str, desc: &str, tool: Tool) {
     let checked = app.session.tool == tool;
     let r = big(ui, app, icon, label, desc, "tool.set", json!({"tool": tool.code()}), checked, false);
     if r.clicked() {
@@ -339,7 +339,7 @@ fn tool_btn(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, desc: &s
 }
 
 /// The Clipboard group of the Edit tab.
-fn clipboard_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn clipboard_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Clipboard", |ui| {
         big_menu(ui, app, "paste", "Paste", "Paste copied features into the selected layer, or as a new layer.", |ui, app| {
             menu_item(ui, app, "paste", "Paste", "edit.paste", Value::Null);
@@ -353,7 +353,7 @@ fn clipboard_group(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn home_tab(app: &mut powergisApp, ui: &mut Ui) {
     // New maps and layouts first: where work starts (#328).
     project_group(app, ui);
     group(ui, "Navigate", |ui| {
@@ -439,7 +439,7 @@ fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
             );
             let mode = app.session.map().popup_mode;
             small_menu(ui, app, "popup", "Identify", "Choose which layers a click identifies.", |ui, app| {
-                for m in rustgis_engine::map::PopupMode::ALL {
+                for m in powergis_engine::map::PopupMode::ALL {
                     if ui.radio(mode == m, tl!(m.label())).clicked() {
                         let _ = app.run("map.popupMode", json!({"mode": m.code()}));
                         ui.close();
@@ -493,7 +493,7 @@ fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
                 submenu_row(ui, "", tl!("New Connection"), |ui| {
                     for (kind, label) in crate::connectionui::KINDS {
                         // Database drivers aren't built for the browser.
-                        if cfg!(target_arch = "wasm32") && rustgis_engine::connections::DATABASE_KINDS.contains(&kind) {
+                        if cfg!(target_arch = "wasm32") && powergis_engine::connections::DATABASE_KINDS.contains(&kind) {
                             continue;
                         }
                         menu_item(ui, app, "", label, "ui.connection", json!({"kind": kind}));
@@ -528,7 +528,6 @@ fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
             app.ui.left == Some(crate::LeftPane::Sources),
             false,
         );
-        big_menu(ui, app, "web_data", "Web\nData", "Add data from public web services and catalogs.", web_data_menu);
     });
     group(ui, "Selection", |ui| {
         let checked = app.session.tool == Tool::Select;
@@ -629,7 +628,8 @@ fn home_tab(app: &mut RustGisApp, ui: &mut Ui) {
 /// The Web Data menu: public web services and catalogs, the ones covering the world in one
 /// alphabetical list (a service fits one place, where a list by topic would leave it in several).
 /// Services covering one country go in a submenu named after it.
-fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
+#[allow(dead_code)]
+fn web_data_menu(ui: &mut Ui, app: &mut powergisApp) {
     let svc = |id: &str| json!({"service": id});
     let pane = |name: &str| json!({"name": name});
     menu_item(ui, app, "", "ArcGIS Portal…", "ui.searchOpenData", svc("arcgis-portal"));
@@ -673,7 +673,7 @@ fn web_data_menu(ui: &mut Ui, app: &mut RustGisApp) {
     });
 }
 
-pub(crate) fn sample_data_gallery(ui: &mut Ui, app: &mut RustGisApp) {
+pub(crate) fn sample_data_gallery(ui: &mut Ui, app: &mut powergisApp) {
     ui.label(egui::RichText::new(tl!("Sample data (Natural Earth)")).small().weak());
     for (name, label) in
         [("countries", "World Countries"), ("cities", "Populated Places"), ("rivers", "Major Rivers"), ("lakes", "Major Lakes")]
@@ -682,58 +682,19 @@ pub(crate) fn sample_data_gallery(ui: &mut Ui, app: &mut RustGisApp) {
     }
 }
 
-pub(crate) fn basemap_gallery(ui: &mut Ui, app: &mut RustGisApp) {
+pub(crate) fn basemap_gallery(ui: &mut Ui, app: &mut powergisApp) {
     let t = Tokens::get(ui.ctx());
-    ui.label(egui::RichText::new(tl!("Basemaps")).font(semibold(12.5)));
-    ui.add_space(4.0);
-    egui::Grid::new("basemaps").spacing(vec2(8.0, 8.0)).show(ui, |ui| {
-        for (i, b) in Basemap::ALL.into_iter().enumerate() {
-            let (water, land, outline, _) = b.palette();
-            let (r, resp) = ui.allocate_exact_size(vec2(92.0, 74.0), Sense::click());
-            // Web basemaps cover the built-in one.
-            let sel = app.session.map().basemap == b && app.session.map().tiles.iter().all(|t| t.overlay);
-            resp.widget_info(|| egui::WidgetInfo::selected(egui::Role::Button, true, sel, tl!(b.label())));
-            let thumb = Rect::from_min_size(r.min + vec2(4.0, 4.0), vec2(84.0, 48.0));
-            ui.painter().rect_filled(thumb, CornerRadius::same(4), crate::theme::c32(water));
-            // A little continent.
-            let pts = [(0.18, 0.3), (0.42, 0.18), (0.6, 0.35), (0.55, 0.7), (0.3, 0.82), (0.15, 0.6)];
-            let poly: Vec<egui::Pos2> =
-                pts.iter().map(|(x, y)| pos2(thumb.min.x + x * thumb.width(), thumb.min.y + y * thumb.height())).collect();
-            ui.painter().add(egui::Shape::convex_polygon(poly, crate::theme::c32(land), Stroke::new(1.0, crate::theme::c32(outline))));
-            let poly2: Vec<egui::Pos2> = [(0.68, 0.22), (0.88, 0.3), (0.84, 0.55), (0.7, 0.5)]
-                .iter()
-                .map(|(x, y)| pos2(thumb.min.x + x * thumb.width(), thumb.min.y + y * thumb.height()))
-                .collect();
-            ui.painter().add(egui::Shape::convex_polygon(poly2, crate::theme::c32(land), Stroke::new(1.0, crate::theme::c32(outline))));
-            if sel || resp.hovered() {
-                ui.painter().rect_stroke(
-                    r,
-                    CornerRadius::same(6),
-                    Stroke::new(if sel { 2.0 } else { 1.0 }, t.accent),
-                    egui::StrokeKind::Inside,
-                );
-            }
-            ui.painter().text(pos2(r.center().x, r.max.y - 11.0), Align2::CENTER_CENTER, tl!(b.label()), regular(11.5), t.text);
-            if resp.clicked() {
-                let _ = app.run("map.basemap", json!({"name": b.code()}));
-                ui.close();
-            }
-            if i % 3 == 2 {
-                ui.end_row();
-            }
-        }
-    });
     web_basemaps(ui, app, &t);
-    planet_basemaps(ui, app);
     tile_layers(ui, app, &t);
 }
 
 /// The celestial body switcher's menu (the Layers pane's planet button): picking a body moves the
 /// map there, with one of its basemaps; the Earth selects USGS Imagery.
-pub fn body_menu(ui: &mut Ui, app: &mut RustGisApp) {
+#[allow(dead_code)]
+pub fn body_menu(ui: &mut Ui, app: &mut powergisApp) {
     ui.label(egui::RichText::new(tl!("Celestial Body")).font(semibold(12.0)));
     let current = app.session.map().body().id;
-    for b in rustgis_engine::geom::BODIES {
+    for b in powergis_engine::geom::BODIES {
         if ui.add(egui::Button::selectable(b.id == current, tl!(b.name))).clicked() {
             let _ = app.run("map.body", json!({"name": b.id}));
             ui.close();
@@ -742,7 +703,8 @@ pub fn body_menu(ui: &mut Ui, app: &mut RustGisApp) {
 }
 
 /// The celestial bodies, and the basemaps of the one the map is on (#223).
-fn planet_basemaps(ui: &mut Ui, app: &mut RustGisApp) {
+#[allow(dead_code)]
+fn planet_basemaps(ui: &mut Ui, app: &mut powergisApp) {
     ui.add_space(6.0);
     ui.separator();
     ui.label(egui::RichText::new(tl!("Celestial Bodies")).font(semibold(12.5)));
@@ -751,7 +713,7 @@ fn planet_basemaps(ui: &mut Ui, app: &mut RustGisApp) {
     ui.horizontal_wrapped(|ui| {
         ui.set_max_width(300.0);
         ui.spacing_mut().item_spacing = vec2(4.0, 4.0);
-        for b in rustgis_engine::geom::BODIES {
+        for b in powergis_engine::geom::BODIES {
             let tip = tl!("Measure on this body, with one of its basemaps.");
             if ui.add(egui::Button::selectable(b.id == body.id, tl!(b.name))).on_hover_text(tip).clicked() {
                 let _ = app.run("map.body", json!({"name": b.id}));
@@ -765,7 +727,7 @@ fn planet_basemaps(ui: &mut Ui, app: &mut RustGisApp) {
     ui.add_space(4.0);
     let shown: Vec<String> = app.session.map().tiles.iter().filter(|l| !l.overlay && l.draws()).map(|l| l.id.clone()).collect();
     egui::Grid::new("planet-basemaps").spacing(vec2(6.0, 4.0)).show(ui, |ui| {
-        for (i, m) in rustgis_engine::map::planets::basemaps_of(body.id).enumerate() {
+        for (i, m) in powergis_engine::map::planets::basemaps_of(body.id).enumerate() {
             let sel = shown.first().map(String::as_str) == Some(m.id);
             let resp = ui.add_sized(vec2(140.0, 22.0), egui::Button::selectable(sel, m.name).truncate()).on_hover_text(m.attribution);
             if resp.clicked() {
@@ -799,10 +761,8 @@ const BASEMAPS_PLUGIN: &str = "basemaps";
 
 /// Web basemaps (OpenFreeMap, USGS) that replace the other tile basemaps or stack on them, and
 /// where to get more.
-fn web_basemaps(ui: &mut Ui, app: &mut RustGisApp, t: &Tokens) {
-    ui.add_space(6.0);
-    ui.separator();
-    ui.label(egui::RichText::new(tl!("Web Basemaps")).font(semibold(12.5)));
+fn web_basemaps(ui: &mut Ui, app: &mut powergisApp, t: &Tokens) {
+    ui.label(egui::RichText::new(tl!("Basemaps")).font(semibold(12.5)));
     ui.add_space(2.0);
     // Stacked: a web basemap goes over the others (to blend with them in the Layers pane)
     // rather than replacing them.
@@ -841,7 +801,7 @@ fn web_basemaps(ui: &mut Ui, app: &mut RustGisApp, t: &Tokens) {
     let tab = plugin_tab_id(BASEMAPS_PLUGIN);
     let (ask, link, hint, then) = if plugin_tabs(app).iter().any(|(id, _)| *id == tab) {
         (tl!("More basemaps:"), tl!("Open the Basemaps tab"), tl!("The Basemaps plugin's tab of public basemaps."), None)
-    } else if rustgis_engine::plugins::get(BASEMAPS_PLUGIN).is_some() {
+    } else if powergis_engine::plugins::get(BASEMAPS_PLUGIN).is_some() {
         (
             tl!("More basemaps:"),
             tl!("Turn on the Basemaps plugin"),
@@ -874,7 +834,7 @@ fn web_basemaps(ui: &mut Ui, app: &mut RustGisApp, t: &Tokens) {
 
 /// The map's web tile layers (top first, in the drawing order): shown, opacity, order among
 /// them and removal, and adding one.
-fn tile_layers(ui: &mut Ui, app: &mut RustGisApp, t: &Tokens) {
+fn tile_layers(ui: &mut Ui, app: &mut powergisApp, t: &Tokens) {
     ui.add_space(6.0);
     ui.separator();
     ui.label(egui::RichText::new(tl!("Web Tile Layers")).font(semibold(12.5)));
@@ -891,7 +851,7 @@ fn tile_layers(ui: &mut Ui, app: &mut RustGisApp, t: &Tokens) {
         .stack()
         .into_iter()
         .enumerate()
-        .filter_map(|(at, d)| if let rustgis_engine::map::Drawn::Tile(i) = d { Some((i, at)) } else { None })
+        .filter_map(|(at, d)| if let powergis_engine::map::Drawn::Tile(i) = d { Some((i, at)) } else { None })
         .collect();
     let mut action: Option<(&str, Value)> = None;
     for (k, (i, _)) in places.iter().copied().enumerate() {
@@ -954,7 +914,7 @@ fn tile_layers(ui: &mut Ui, app: &mut RustGisApp, t: &Tokens) {
     });
 }
 
-fn offline_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn offline_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Offline", |ui| {
         let areas: Vec<String> = app.session.project.offline_areas.iter().map(|a| a.name.clone()).collect();
         big(
@@ -992,7 +952,7 @@ fn offline_group(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn feature_cache_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn feature_cache_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Feature Cache", |ui| {
         col(ui, |ui| {
             small(ui, app, "add_data", "Fill", "Prepare every layer's geometry for this projection.", "cache.fill", Value::Null, false);
@@ -1016,7 +976,7 @@ fn feature_cache_group(app: &mut RustGisApp, ui: &mut Ui) {
 
 /// The label settings of the whole map (#897): they work without a layer, so the Labeling tab
 /// shows them whatever is selected.
-fn map_labeling_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn map_labeling_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Map Labeling", |ui| {
         let d = app.session.map().label_display;
         col(ui, |ui| {
@@ -1058,7 +1018,7 @@ fn map_labeling_group(app: &mut RustGisApp, ui: &mut Ui) {
 
 /// Runs `layout.publication` for `profile` from the New Layout menu, in `style` on a sheet: a sheet
 /// is titled with the map's name, a figure's title being its caption's.
-fn publication_layout(app: &mut RustGisApp, profile: &rustgis_engine::cmd::layout::PublicationProfile, style: Option<&str>) {
+fn publication_layout(app: &mut powergisApp, profile: &powergis_engine::cmd::layout::PublicationProfile, style: Option<&str>) {
     let mut p = json!({"profile": profile.id});
     if profile.sheet {
         p["title"] = json!(app.session.map().name.clone());
@@ -1113,11 +1073,11 @@ fn publication_label(id: &str) -> Option<&'static str> {
     })
 }
 
-fn project_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn project_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Project", |ui| {
         big(ui, app, "new_map", "New\nMap", "Add a new map to the project.", "map.new", Value::Null, false, false);
         big_menu(ui, app, "new_layout", "New\nLayout", "Add a page layout for printing and exporting the map.", |ui, app| {
-            for (id, label, w, h) in rustgis_engine::map::layout::PAGES {
+            for (id, label, w, h) in powergis_engine::map::layout::PAGES {
                 let text = format!("{} ({w:.0} × {h:.0} mm)", tl!(*label));
                 if ui.button(text).clicked() {
                     let _ = app.run("layout.new", json!({"page": id}));
@@ -1127,12 +1087,12 @@ fn project_group(app: &mut RustGisApp, ui: &mut Ui) {
             }
             // A finished sheet or figure of the map view, its texts to fill in on the page.
             ui.menu_button(tl!("Publication Layout"), |ui| {
-                for profile in rustgis_engine::cmd::layout::PUBLICATION_PROFILES {
+                for profile in powergis_engine::cmd::layout::PUBLICATION_PROFILES {
                     let label = publication_label(profile.id).unwrap_or_else(|| tl!(profile.label));
                     if profile.sheet {
                         // A sheet is arranged in one of the styles; a figure leaves that to its caption.
                         ui.menu_button(label, |ui| {
-                            for (style, name) in rustgis_engine::cmd::layout::PUBLICATION_STYLES {
+                            for (style, name) in powergis_engine::cmd::layout::PUBLICATION_STYLES {
                                 let (name, about) = publication_style(style).unwrap_or_else(|| (tl!(*name), ""));
                                 if ui.button(name).on_hover_text(about).clicked() {
                                     publication_layout(app, profile, Some(style));
@@ -1154,10 +1114,44 @@ fn project_group(app: &mut RustGisApp, ui: &mut Ui) {
             }
             menu_item(ui, app, "open", "Import Layout…", "ui.importLayout", Value::Null);
         });
+        // Engineer Profile switcher (RBAC)
+        big_menu(ui, app, "profile", "Profile\n(RBAC)", "Engineer profile and role-based permissions.", |ui, app| {
+            ui.label(egui::RichText::new(format!("User: {}", app.ui.user_profile.full_name)).strong());
+            ui.label(egui::RichText::new(format!("{}: {}", app.ui.user_profile.department, app.ui.user_profile.division)).weak());
+            ui.separator();
+            ui.label(egui::RichText::new("Switch Active Profile:").strong());
+            for role in crate::rbac::UserRole::ALL {
+                let is_current = app.ui.user_profile.role == role;
+                let text = if is_current {
+                    format!("✔ {}", role.label())
+                } else {
+                    format!("  {}", role.label())
+                };
+                if ui.button(text).clicked() {
+                    app.ui.user_profile = crate::rbac::UserProfile::demo_profile(role);
+                    ui.close();
+                }
+            }
+            ui.separator();
+            ui.label(egui::RichText::new(format!("Permissions for {}:", app.ui.user_profile.role.short_label())).weak());
+            let role = app.ui.user_profile.role;
+            let mut perms = Vec::new();
+            if role.can_manage_users() { perms.push("Manage Users & Roles"); }
+            if role.can_admin_system() { perms.push("System Configuration"); }
+            if role.can_approve_work_orders() { perms.push("Approve Work Orders"); }
+            if role.can_dispatch_crews() { perms.push("Dispatch Field Crews"); }
+            if role.can_edit_layers() { perms.push("Edit Spatial Layers"); }
+            if role.can_report_faults() { perms.push("Log Grid Faults"); }
+            if role.can_export() { perms.push("Export Data & Maps"); }
+            if role.is_guest() { perms.push("Read-Only Viewer Access"); }
+            for p in perms {
+                ui.label(format!("• {p}"));
+            }
+        });
     });
 }
 
-fn report_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn report_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Report", |ui| {
         big(
             ui,
@@ -1195,7 +1189,7 @@ fn report_group(app: &mut RustGisApp, ui: &mut Ui) {
                         }
                         menu_item(ui, app, "open", "Layout File…", "ui.reportLayoutFile", Value::Null);
                     });
-                    let active = rustgis_engine::cmd::report::index(&app.session, &Value::Null).ok();
+                    let active = powergis_engine::cmd::report::index(&app.session, &Value::Null).ok();
                     let others: Vec<String> = app
                         .session
                         .project
@@ -1232,12 +1226,12 @@ fn report_group(app: &mut RustGisApp, ui: &mut Ui) {
                 "Data",
                 "Fields, statistics, groups, pictures, attachments and charts in the report.",
                 |ui, app| {
-                    let fields: Vec<String> = rustgis_engine::cmd::report::index(&app.session, &Value::Null)
+                    let fields: Vec<String> = powergis_engine::cmd::report::index(&app.session, &Value::Null)
                         .ok()
-                        .and_then(|i| rustgis_engine::cmd::report::layer_of(&app.session, i).ok())
+                        .and_then(|i| powergis_engine::cmd::report::layer_of(&app.session, i).ok())
                         .map(|l| l.dataset.fields.iter().map(|f| f.name.clone()).collect())
                         .unwrap_or_default();
-                    let field_menu = |ui: &mut Ui, app: &mut RustGisApp, label: &str, id: &str, key: &str| {
+                    let field_menu = |ui: &mut Ui, app: &mut powergisApp, label: &str, id: &str, key: &str| {
                         ui.menu_button(tl!(label), |ui| {
                             for f in &fields {
                                 menu_item(ui, app, "", f, id, json!({key: f}));
@@ -1285,7 +1279,7 @@ fn report_group(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn presentation_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn presentation_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Presentation", |ui| {
         big(
             ui,
@@ -1329,7 +1323,7 @@ fn presentation_group(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn notebook_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn notebook_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Notebook", |ui| {
         big(ui, app, "python", "New\nNotebook", "A notebook of text and command cells.", "ui.newNotebook", Value::Null, false, false);
         col(ui, |ui| {
@@ -1357,7 +1351,7 @@ fn notebook_group(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn layer_templates_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn layer_templates_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Layer Templates", |ui| {
         big_menu(
             ui,
@@ -1370,7 +1364,7 @@ fn layer_templates_group(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-pub(crate) fn layer_templates_gallery(ui: &mut Ui, app: &mut RustGisApp) {
+pub(crate) fn layer_templates_gallery(ui: &mut Ui, app: &mut powergisApp) {
     for (id, label) in [
         ("points", "Points"),
         ("lines", "Lines"),
@@ -1384,7 +1378,7 @@ pub(crate) fn layer_templates_gallery(ui: &mut Ui, app: &mut RustGisApp) {
     }
 }
 
-fn styles_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn styles_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Styles", |ui| {
         big_menu(ui, app, "symbology", "Styles", "Saved symbology: apply it to the selected layer, or save the layer's.", |ui, app| {
             let styles: Vec<(String, String)> =
@@ -1404,7 +1398,7 @@ fn styles_group(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn graphics_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn graphics_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Graphics", |ui| {
         let tools: [&[(&str, &str, &str, &str)]; 4] = [
             &[
@@ -1442,7 +1436,7 @@ fn graphics_group(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn graphics_and_text_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn graphics_and_text_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Graphics and Text", |ui| {
         let text_tool = app.session.tool.code() == "graphicText";
         let dynamic = app.ui.dynamic_text.is_some();
@@ -1464,7 +1458,7 @@ fn graphics_and_text_group(app: &mut RustGisApp, ui: &mut Ui) {
         );
         egui::Popup::menu(&resp).show(|ui| {
             ui.set_min_width(200.0);
-            for &(token, what) in rustgis_engine::map::graphics::TOKENS {
+            for &(token, what) in powergis_engine::map::graphics::TOKENS {
                 if ui.button(format!("{}  {token}", tl!(what))).clicked() {
                     app.map.cancel_sketch();
                     let _ = app.run("ui.dynamicText", json!({"text": token}));
@@ -1490,7 +1484,7 @@ fn graphics_and_text_group(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn thumbnail_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn thumbnail_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Thumbnail", |ui| {
         col(ui, |ui| {
             small(
@@ -1564,7 +1558,7 @@ const GALLERY: &[(&str, &str, &str)] = &[
     ("idwInterpolation", "relief", "IDW\nInterpolation"),
 ];
 
-fn analysis_groups(app: &mut RustGisApp, ui: &mut Ui) {
+fn analysis_groups(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Geoprocessing", |ui| {
         big(
             ui,
@@ -1675,7 +1669,7 @@ fn analysis_groups(app: &mut RustGisApp, ui: &mut Ui) {
             ("raster", "relief", "Raster\nAnalysis", "Tools that analyse rasters."),
         ] {
             big_menu(ui, app, icon, label, desc, |ui, app| {
-                if let Ok(Value::Array(tools)) = rustgis_engine::cmd::workflows::gallery_list(kind) {
+                if let Ok(Value::Array(tools)) = powergis_engine::cmd::workflows::gallery_list(kind) {
                     for t in tools {
                         let (id, name, cmd) = (
                             t["id"].as_str().unwrap_or("").to_string(),
@@ -1745,7 +1739,7 @@ fn analysis_groups(app: &mut RustGisApp, ui: &mut Ui) {
         let r = ui.with_layout(egui::Layout::left_to_right(egui::Align::Min), |ui| {
             ui.spacing_mut().item_spacing = vec2(1.0, 0.0);
             for (id, icon, label) in GALLERY {
-                let tool = rustgis_engine::analysis::tool(id);
+                let tool = powergis_engine::analysis::tool(id);
                 let desc = tool.map(|t| t.summary).unwrap_or("");
                 big(ui, app, icon, label, desc, "ui.gp.open", json!({"tool": id}), false, false);
             }
@@ -1778,7 +1772,7 @@ fn analysis_groups(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn view_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn view_tab(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Display", |ui| {
         let g = app.session.map().graticule;
         big(ui, app, "graticule", "Graticule", "Show latitude/longitude lines on the basemap.", "map.graticule", Value::Null, g, false);
@@ -1813,25 +1807,24 @@ fn view_tab(app: &mut RustGisApp, ui: &mut Ui) {
         let current = app.session.map().projection.code();
         let local = current.starts_with("local:");
         big_menu(ui, app, "basemap", "Projection", "Choose how the flat map lays out the Earth.", move |ui, app| {
-            let mut items: Vec<(String, String)> = vec![("mercator".into(), "Web Mercator".into())];
-            items.extend(rustgis_engine::map::projection::PRESETS.iter().map(|(id, label, _)| (id.to_string(), label.to_string())));
+            let items: Vec<(&str, &str)> = vec![
+                ("mercator", "Web Mercator"),
+                ("naturalEarth", "Natural Earth"),
+                ("equalEarth", "Equal Earth"),
+                ("globe", "Globe"),
+            ];
             for (id, label) in items {
-                if ui.add(egui::Button::selectable(is_projection(&current, &id), tl!(label.as_str()))).clicked() {
+                if ui.add(egui::Button::selectable(is_projection(&current, id), tl!(label))).clicked() {
                     if app.run("map.projection", json!({"type": id})).is_ok() {
                         let _ = app.run("map.zoomFull", Value::Null);
                     }
                     ui.close();
                 }
             }
-            ui.separator();
-            if ui.button(tl!("Coordinate System…")).clicked() {
-                let _ = app.run("ui.dialog", json!({"name": "coordinateSystem"}));
-                ui.close();
-            }
         });
         col(ui, |ui| {
             small(ui, app, "globe_view", "Global", "A globe scene.", "map.viewMode", json!({"mode": "global"}), on);
-            if rustgis_engine::map::projection::local_views_supported() {
+            if powergis_engine::map::projection::local_views_supported() {
                 small(
                     ui,
                     app,
@@ -1937,7 +1930,7 @@ fn view_tab(app: &mut RustGisApp, ui: &mut Ui) {
             );
             let cv = v.color_vision;
             small_menu(ui, app, "eye", "Color Vision", "See the map as people with colour vision deficiencies do.", move |ui, app| {
-                for c in rustgis_engine::map::view::ColorVision::ALL {
+                for c in powergis_engine::map::view::ColorVision::ALL {
                     if ui.radio(cv == c, tl!(c.label())).clicked() {
                         let _ = app.run("map.colorVision", json!({"mode": c.code()}));
                         ui.close();
@@ -2297,7 +2290,7 @@ fn view_tab(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// The Data tab: bringing data in, tables, fields, queries, relationships and export.
-fn data_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn data_tab(app: &mut powergisApp, ui: &mut Ui) {
     layer_templates_group(app, ui);
     data_source_group(app, ui);
     if active_layer(app).is_some_and(|l| l.is_raster()) {
@@ -2309,7 +2302,7 @@ fn data_tab(app: &mut RustGisApp, ui: &mut Ui) {
     feature_cache_group(app, ui);
 }
 
-fn data_source_group(app: &mut RustGisApp, ui: &mut Ui) {
+fn data_source_group(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Data Source", |ui| {
         big(
             ui,
@@ -2327,7 +2320,7 @@ fn data_source_group(app: &mut RustGisApp, ui: &mut Ui) {
 
 /// The Style tab: the drawing of the layer selected in Layers (its symbology, labels and
 /// effects), or a hint when none is.
-fn style_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn style_tab(app: &mut powergisApp, ui: &mut Ui) {
     match active_layer(app) {
         Some(l) if l.is_raster() => raster_style_groups(app, ui),
         Some(l) if l.geometry_type() != GeometryType::None => feature_style_groups(app, ui),
@@ -2338,7 +2331,7 @@ fn style_tab(app: &mut RustGisApp, ui: &mut Ui) {
 
 /// The Labeling tab (#897): how the map is labelled. The selected feature layer's groups, in the
 /// order of the Labeling pane's tabs, then the settings of the whole map, which need no layer.
-fn labeling_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn labeling_tab(app: &mut powergisApp, ui: &mut Ui) {
     match active_layer(app) {
         Some(l) if l.is_raster() => layer_hint(ui, "Labels are drawn for feature layers, not rasters."),
         Some(l) if l.geometry_type() != GeometryType::None => label_groups(app, ui),
@@ -2357,7 +2350,7 @@ fn layer_hint(ui: &mut Ui, text: &str) {
 
 /// The Grid Intelligence tab: electrical distribution network topology, fault management,
 /// power flow simulation, predictive risk hotspots, and crew dispatch.
-fn grid_intelligence_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn grid_intelligence_tab(app: &mut powergisApp, ui: &mut Ui) {
     // 1. Distribution Network Data & Topology
     group(ui, "Topology & Assets", |ui| {
         big(
@@ -2519,14 +2512,14 @@ fn grid_intelligence_tab(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// The Analyze tab: geoprocessing, workflows, imagery and notebooks.
-fn analyze_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn analyze_tab(app: &mut powergisApp, ui: &mut Ui) {
     analysis_groups(app, ui);
     grid_groups(app, ui);
     notebook_group(app, ui);
     imagery_groups(app, ui);
 }
 
-fn grid_groups(app: &mut RustGisApp, ui: &mut Ui) {
+fn grid_groups(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Grid Intelligence", |ui| {
         big(
             ui,
@@ -2587,7 +2580,7 @@ fn grid_groups(app: &mut RustGisApp, ui: &mut Ui) {
 
 /// The Publish tab: the open layout's groups first, then reports, presentations, export and
 /// sharing.
-fn publish_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn publish_tab(app: &mut powergisApp, ui: &mut Ui) {
     layout_groups(app, ui);
     report_group(app, ui);
     presentation_group(app, ui);
@@ -2596,12 +2589,12 @@ fn publish_tab(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// The layer selected in Layers.
-fn active_layer(app: &RustGisApp) -> Option<&rustgis_engine::map::Layer> {
+fn active_layer(app: &powergisApp) -> Option<&powergis_engine::map::Layer> {
     app.session.active_layer.and_then(|id| app.session.map().layer(id))
 }
 
 /// Keeps edit commands and transient vertex modes together, with deeper settings in Editing.
-fn edit_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn edit_tab(app: &mut powergisApp, ui: &mut Ui) {
     let editing = app.session.map().editing.clone();
     let pane = app.ui.right == Some(RightPane::Editing);
     group(ui, "Manage Edits", |ui| {
@@ -2782,9 +2775,9 @@ fn edit_tab(app: &mut RustGisApp, ui: &mut Ui) {
     });
     group(ui, "Elevation", |ui| {
         let mode = match &editing.settings.elevation {
-            rustgis_engine::map::design::Elevation::None => "None",
-            rustgis_engine::map::design::Elevation::Constant(_) => "Constant",
-            rustgis_engine::map::design::Elevation::Surface(_) => "Surface",
+            powergis_engine::map::design::Elevation::None => "None",
+            powergis_engine::map::design::Elevation::Constant(_) => "Constant",
+            powergis_engine::map::design::Elevation::Surface(_) => "Surface",
         };
         small_menu(ui, app, "relief", mode, "Where new features get their elevation (the z field).", |ui, app| {
             if ui.button(tl!("None")).clicked() {
@@ -2820,7 +2813,7 @@ fn edit_tab(app: &mut RustGisApp, ui: &mut Ui) {
     clipboard_group(app, ui);
 }
 
-fn share_groups(app: &mut RustGisApp, ui: &mut Ui) {
+fn share_groups(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Output", |ui| {
         big(
             ui,
@@ -3114,20 +3107,20 @@ fn share_groups(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// The selected layout element if it's a map frame, else the layout's first frame.
-fn layout_frame(app: &RustGisApp) -> Option<u32> {
+fn layout_frame(app: &powergisApp) -> Option<u32> {
     let l = app.session.active_layout.and_then(|i| app.session.project.layouts.get(i))?;
     app.layout
         .selected
-        .filter(|id| matches!(l.element(*id).map(|e| &e.kind), Some(rustgis_engine::map::layout::ElementKind::MapFrame { .. })))
+        .filter(|id| matches!(l.element(*id).map(|e| &e.kind), Some(powergis_engine::map::layout::ElementKind::MapFrame { .. })))
         .or_else(|| l.first_frame())
 }
 
-fn layout_groups(app: &mut RustGisApp, ui: &mut Ui) {
-    use rustgis_engine::map::layout::ElementKind;
+fn layout_groups(app: &mut powergisApp, ui: &mut Ui) {
+    use powergis_engine::map::layout::ElementKind;
     let Some(li) = app.session.active_layout else { return };
     let Some(layout) = app.session.project.layouts.get(li).cloned() else { return };
     let frame = layout_frame(app);
-    let add = |app: &mut RustGisApp, mut p: Value| {
+    let add = |app: &mut powergisApp, mut p: Value| {
         p["layout"] = json!(li);
         if let Some(f) = frame {
             p["frame"] = json!(f);
@@ -3140,7 +3133,7 @@ fn layout_groups(app: &mut RustGisApp, ui: &mut Ui) {
     };
     group(ui, "Page", |ui| {
         big_menu(ui, app, "new_layout", "Page\nSize", "Change the page size and orientation.", |ui, app| {
-            for (id, label, w, h) in rustgis_engine::map::layout::PAGES {
+            for (id, label, w, h) in powergis_engine::map::layout::PAGES {
                 let landscape = layout.width > layout.height;
                 let (pw, ph) = if landscape { (h.max(*w), h.min(*w)) } else { (*w, *h) };
                 let on = (layout.width - pw).abs() < 0.5 && (layout.height - ph).abs() < 0.5;
@@ -3348,7 +3341,7 @@ fn layout_groups(app: &mut RustGisApp, ui: &mut Ui) {
         });
         col(ui, |ui| {
             small_menu(ui, app, "g_line", "Line", "Add a straight line.", |ui, app| {
-                for d in rustgis_engine::map::layout::LineDir::ALL {
+                for d in powergis_engine::map::layout::LineDir::ALL {
                     if ui.button(tl!(d.label())).clicked() {
                         add(app, json!({"kind": "line", "dir": d.code()}));
                         ui.close();
@@ -3397,7 +3390,7 @@ fn layout_groups(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn plugins_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn plugins_tab(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Plugins", |ui| {
         big(
             ui,
@@ -3437,7 +3430,7 @@ fn plugins_tab(app: &mut RustGisApp, ui: &mut Ui) {
     // (plugins with a tab of their own are on that tab instead).
     let lang = app.lang().code();
     // Its tools too: each opens in the Tools pane.
-    for p in rustgis_engine::plugins::list()
+    for p in powergis_engine::plugins::list()
         .into_iter()
         .filter(|p| p.enabled && p.manifest.tab.is_none() && !(p.manifest.commands.is_empty() && p.manifest.tools.is_empty()))
     {
@@ -3451,11 +3444,11 @@ fn plugins_tab(app: &mut RustGisApp, ui: &mut Ui) {
             }
             for c in &m.commands {
                 let icon = if crate::icons::ALL.contains(&c.icon.as_str()) { c.icon.as_str() } else { "plugin" };
-                let id = rustgis_engine::plugins::command_id(&m.id, &c.id);
+                let id = powergis_engine::plugins::command_id(&m.id, &c.id);
                 big(ui, app, icon, m.translate(lang, &c.label), m.translate(lang, &c.help), &id, Value::Null, false, false);
             }
             for t in &m.tools {
-                let id = rustgis_engine::plugins::command_id(&m.id, &t.id);
+                let id = powergis_engine::plugins::command_id(&m.id, &t.id);
                 let label = m.translate(lang, &t.name).replacen(' ', "\n", 1);
                 big(ui, app, "toolbox", &label, m.translate(lang, &t.summary), "ui.gp.open", json!({"tool": id}), false, false);
             }
@@ -3466,8 +3459,8 @@ fn plugins_tab(app: &mut RustGisApp, ui: &mut Ui) {
 /// The button that opens a plugin's panel: its icon, label (the panel's title, on two lines when
 /// long) and help, in language `lang`.
 fn panel_button(
-    m: &rustgis_engine::plugins::Manifest,
-    d: &rustgis_engine::plugins::PanelDecl,
+    m: &powergis_engine::plugins::Manifest,
+    d: &powergis_engine::plugins::PanelDecl,
     lang: &str,
 ) -> (&'static str, String, String) {
     let icon = crate::icons::ALL.iter().copied().find(|i| *i == d.icon).unwrap_or("plugin");
@@ -3478,20 +3471,20 @@ fn panel_button(
 }
 
 /// Whether plugin `id`'s panel is in view.
-fn panel_open(app: &RustGisApp, id: &str) -> bool {
+fn panel_open(app: &powergisApp, id: &str) -> bool {
     app.ui.right == Some(crate::RightPane::Plugin) && app.ui.plugin_panel.plugin.as_deref() == Some(id)
 }
 
 /// A plugin entry, shared by ribbon buttons and menu rows (`layout == None`).
 fn plugin_entry(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     ui: &mut Ui,
-    m: &rustgis_engine::plugins::Manifest,
+    m: &powergis_engine::plugins::Manifest,
     lang: &str,
     entry: &str,
-    layout: Option<rustgis_engine::plugins::Layout>,
+    layout: Option<powergis_engine::plugins::Layout>,
 ) {
-    use rustgis_engine::plugins::{Entry, Layout, command_id};
+    use powergis_engine::plugins::{Entry, Layout, command_id};
     let open = panel_open(app, &m.id);
     let mut show = |icon: &str, label: &str, help: &str, id: &str, params: Value| {
         let label = if layout != Some(Layout::Large) && label.contains('\n') {
@@ -3534,13 +3527,13 @@ fn plugin_entry(
 
 /// Popup entries always use menu rows; nested menus cascade rather than opening another ribbon.
 fn plugin_menu_items(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     ui: &mut Ui,
-    m: &rustgis_engine::plugins::Manifest,
+    m: &powergis_engine::plugins::Manifest,
     lang: &str,
-    items: &[rustgis_engine::plugins::ItemDecl],
+    items: &[powergis_engine::plugins::ItemDecl],
 ) {
-    use rustgis_engine::plugins::ItemDecl;
+    use powergis_engine::plugins::ItemDecl;
     for (index, item) in items.iter().enumerate() {
         ui.push_id(index, |ui| match item {
             ItemDecl::Entry(e) => plugin_entry(app, ui, m, lang, e, None),
@@ -3559,31 +3552,31 @@ fn plugin_menu_items(
 }
 
 fn plugin_item_layout(
-    item: &rustgis_engine::plugins::ItemDecl,
-    inherited: rustgis_engine::plugins::Layout,
-) -> rustgis_engine::plugins::Layout {
+    item: &powergis_engine::plugins::ItemDecl,
+    inherited: powergis_engine::plugins::Layout,
+) -> powergis_engine::plugins::Layout {
     match item {
-        rustgis_engine::plugins::ItemDecl::Entry(_) => inherited,
-        rustgis_engine::plugins::ItemDecl::Menu(menu) => menu.layout.unwrap_or(inherited),
+        powergis_engine::plugins::ItemDecl::Entry(_) => inherited,
+        powergis_engine::plugins::ItemDecl::Menu(menu) => menu.layout.unwrap_or(inherited),
     }
 }
 
 fn plugin_ribbon_item(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     ui: &mut Ui,
-    m: &rustgis_engine::plugins::Manifest,
+    m: &powergis_engine::plugins::Manifest,
     lang: &str,
-    item: &rustgis_engine::plugins::ItemDecl,
-    layout: rustgis_engine::plugins::Layout,
+    item: &powergis_engine::plugins::ItemDecl,
+    layout: powergis_engine::plugins::Layout,
 ) {
-    use rustgis_engine::plugins::{ItemDecl, Layout};
+    use powergis_engine::plugins::{ItemDecl, Layout};
     match item {
         ItemDecl::Entry(e) => plugin_entry(app, ui, m, lang, e, Some(layout)),
         ItemDecl::Menu(menu) => {
             let icon = if crate::icons::ALL.contains(&menu.icon.as_str()) { menu.icon.as_str() } else { "plugin" };
             let label = m.translate(lang, &menu.menu);
             let help = m.translate(lang, &menu.help);
-            let contents = |ui: &mut Ui, app: &mut RustGisApp| plugin_menu_items(app, ui, m, lang, &menu.items);
+            let contents = |ui: &mut Ui, app: &mut powergisApp| plugin_menu_items(app, ui, m, lang, &menu.items);
             match layout {
                 Layout::Large => big_menu(ui, app, icon, label, help, contents),
                 Layout::Small => {
@@ -3600,9 +3593,9 @@ fn plugin_ribbon_item(
 }
 
 /// A plugin's own tab: large controls and runs of three small controls per column.
-fn plugin_tab(app: &mut RustGisApp, ui: &mut Ui, plugin: &str) {
-    use rustgis_engine::plugins::Layout;
-    let Some(p) = rustgis_engine::plugins::get(plugin).filter(|p| p.enabled) else { return };
+fn plugin_tab(app: &mut powergisApp, ui: &mut Ui, plugin: &str) {
+    use powergis_engine::plugins::Layout;
+    let Some(p) = powergis_engine::plugins::get(plugin).filter(|p| p.enabled) else { return };
     let Some(tab) = p.manifest.tab.as_ref() else { return };
     let m = &p.manifest;
     let lang = app.lang().code();
@@ -3638,7 +3631,7 @@ fn plugin_tab(app: &mut RustGisApp, ui: &mut Ui, plugin: &str) {
 }
 
 /// The Settings tab: ribbon customization, language, start-up and (on the desktop) autosave.
-fn settings_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn settings_tab(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Customize", |ui| {
         let hidden = app.ui.hidden_tabs.clone();
         // PowerGIS's tabs and plugins' tabs.
@@ -3681,7 +3674,7 @@ fn autosave_interval(minutes: u32) -> String {
 }
 
 /// Settings › Autosave: how often a recovery copy of unsaved work is kept (#873).
-fn autosave_menu(app: &mut RustGisApp, ui: &mut Ui) {
+fn autosave_menu(app: &mut powergisApp, ui: &mut Ui) {
     let minutes = app.autosave.minutes;
     let label = format!("{}\n{}", tl!("Autosave"), autosave_interval(minutes));
     let tip = "How often PowerGIS keeps a copy of unsaved work, to offer it back after a crash.";
@@ -3697,7 +3690,7 @@ fn autosave_menu(app: &mut RustGisApp, ui: &mut Ui) {
 
 /// Settings › Start-up › Start With: the World Atlas sample, an empty project, or (in the
 /// desktop app) a project picked once or the last one opened or saved (#377).
-fn start_project_menu(app: &mut RustGisApp, ui: &mut Ui) {
+fn start_project_menu(app: &mut powergisApp, ui: &mut Ui) {
     use crate::StartWith;
     let with = app.ui.start_with.clone();
     // The button's second line is the file's name, kept short so the ribbon keeps its width.
@@ -3706,24 +3699,21 @@ fn start_project_menu(app: &mut RustGisApp, ui: &mut Ui) {
         if name.chars().count() > 24 { format!("{}…", name.chars().take(23).collect::<String>()) } else { name }
     };
     let current = match &with {
-        StartWith::Sample => tl!("World Atlas").to_string(),
-        StartWith::Blank => tl!("Blank Map").to_string(),
+        StartWith::Blank | StartWith::Sample => tl!("Blank Map").to_string(),
         StartWith::Last => tl!("Last Project").to_string(),
         StartWith::File(p) => short_name(p),
     };
     let label = format!("{}\n{current}", tl!("Start With"));
     let files = app.opens_files();
     let tip = if files {
-        "What PowerGIS opens with: the World Atlas sample, a blank map, a project you choose, or the last project opened or saved."
+        "What PowerGIS opens with: a blank map, a project you choose, or the last project opened or saved."
     } else {
-        "What PowerGIS opens with: the World Atlas sample or a blank map."
+        "What PowerGIS opens with: a blank map."
     };
     big_menu(ui, app, "map", &label, tip, move |ui, app| {
-        for (w, name) in [(StartWith::Sample, tl!("World Atlas")), (StartWith::Blank, tl!("Blank Map"))] {
-            if ui.add(egui::Button::selectable(with == w, name)).clicked() {
-                let _ = app.run("ui.startup", json!({"project": w.json()}));
-                ui.close();
-            }
+        if ui.add(egui::Button::selectable(with == StartWith::Blank || with == StartWith::Sample, tl!("Blank Map"))).clicked() {
+            let _ = app.run("ui.startup", json!({"project": "blank"}));
+            ui.close();
         }
         if !files {
             return;
@@ -3758,7 +3748,7 @@ fn start_project_menu(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// Settings › Start-up › Extent: the full extent or a saved view.
-fn start_extent_menu(app: &mut RustGisApp, ui: &mut Ui) {
+fn start_extent_menu(app: &mut powergisApp, ui: &mut Ui) {
     let saved = app.ui.start_extent;
     let current = if saved.is_some() { tl!("Saved View") } else { tl!("Full Extent") };
     let label = format!("{}\n{current}", tl!("Extent"));
@@ -3783,48 +3773,31 @@ fn start_extent_menu(app: &mut RustGisApp, ui: &mut Ui) {
 /// Whether projection code `current` is menu item `id`: the same code, or that preset with
 /// parameters (`robinson +lon_0=150` is Robinson).
 fn is_projection(current: &str, id: &str) -> bool {
-    current == id || rustgis_engine::map::projection::parse_preset(current).ok().flatten().is_some_and(|(p, _)| p == id)
+    current == id || powergis_engine::map::projection::parse_preset(current).ok().flatten().is_some_and(|(p, _)| p == id)
 }
 
 /// Settings › Start-up › Projection: the projection the map opens in.
-fn start_projection_menu(app: &mut RustGisApp, ui: &mut Ui) {
+fn start_projection_menu(app: &mut powergisApp, ui: &mut Ui) {
     let current = if app.ui.start_projection.is_empty() { "mercator".to_string() } else { app.ui.start_projection.clone() };
-    let shown = rustgis_engine::map::Projection::from_code(&current).map(|p| p.label()).unwrap_or_else(|_| current.clone());
+    let shown = powergis_engine::map::Projection::from_code(&current).map(|p| p.label()).unwrap_or_else(|_| current.clone());
     let label = format!("{}\n{}", tl!("Projection"), tl!(shown.as_str()));
     big_form_menu(ui, app, "basemap", &label, "The projection the map opens in.", move |ui, app| {
-        let mut items: Vec<(String, String)> = vec![("mercator".into(), "Web Mercator".into()), ("globe".into(), "Globe".into())];
-        items.extend(rustgis_engine::map::projection::PRESETS.iter().map(|(id, label, _)| (id.to_string(), label.to_string())));
+        let items: Vec<(&str, &str)> = vec![
+            ("mercator", "Web Mercator"),
+            ("naturalEarth", "Natural Earth"),
+            ("equalEarth", "Equal Earth"),
+            ("globe", "Globe"),
+        ];
         for (id, label) in items {
-            if ui.add(egui::Button::selectable(is_projection(&current, &id), tl!(label.as_str()))).clicked() {
+            if ui.add(egui::Button::selectable(is_projection(&current, id), tl!(label))).clicked() {
                 let _ = app.run("ui.startup", json!({"projection": id}));
                 ui.close();
             }
         }
-        ui.separator();
-        ui.label(tl!("EPSG or ESRI code"));
-        ui.horizontal(|ui| {
-            let edit = ui.add(egui::TextEdit::singleline(&mut app.ui.start_projection_input).hint_text("3010").desired_width(90.0));
-            let enter = edit.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
-            if ui.button(tl!("Use")).clicked() || enter {
-                let code = crate::dialogs::typed_crs(&app.ui.start_projection_input);
-                match app.run("ui.startup", json!({"projection": code})) {
-                    Ok(_) => {
-                        app.ui.start_projection_input.clear();
-                        ui.close();
-                    }
-                    Err(e) => app.session.notify(e, true),
-                }
-            }
-        });
-        if let Ok(rustgis_engine::map::Projection::Custom(c)) = rustgis_engine::map::Projection::from_code(&current)
-            && (c.starts_with("EPSG:") || c.starts_with("ESRI:"))
-        {
-            ui.add(egui::Button::selectable(true, c.as_str()));
-        }
     });
 }
 
-fn help_tab(app: &mut RustGisApp, ui: &mut Ui) {
+fn help_tab(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Performance", |ui| {
         big(
             ui,
@@ -3870,7 +3843,7 @@ pub(crate) const SCALES: [f64; 10] =
 pub(crate) fn scale_label(s: Option<f64>) -> String {
     match s {
         None => tl!("<None>").into(),
-        Some(v) => rustgis_engine::map::graphics::scale_ratio(v),
+        Some(v) => powergis_engine::map::graphics::scale_ratio(v),
     }
 }
 
@@ -3886,7 +3859,7 @@ pub fn fmt_thousands(v: f64) -> String {
     if v < 0.0 { format!("-{out}") } else { out }
 }
 
-fn feature_style_groups(app: &mut RustGisApp, ui: &mut Ui) {
+fn feature_style_groups(app: &mut powergisApp, ui: &mut Ui) {
     let Some(layer) = app.session.active_layer.and_then(|id| app.session.map().layer(id)).cloned() else { return };
     visibility_and_effects(app, ui, &layer);
     drawing_group(app, ui, &layer);
@@ -3895,7 +3868,7 @@ fn feature_style_groups(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// The polygon layers that could mask `layer`.
-fn mask_menu(ui: &mut Ui, app: &mut RustGisApp, layer: &rustgis_engine::map::Layer) {
+fn mask_menu(ui: &mut Ui, app: &mut powergisApp, layer: &powergis_engine::map::Layer) {
     let polys: Vec<String> = app
         .session
         .map()
@@ -3920,7 +3893,7 @@ fn mask_menu(ui: &mut Ui, app: &mut RustGisApp, layer: &rustgis_engine::map::Lay
 }
 
 /// Masking, display filters, aggregation and extrusion for feature layers.
-fn effects_groups(app: &mut RustGisApp, ui: &mut Ui, layer: &rustgis_engine::map::Layer) {
+fn effects_groups(app: &mut powergisApp, ui: &mut Ui, layer: &powergis_engine::map::Layer) {
     let gt = layer.geometry_type();
     group(ui, "Drawing Effects", |ui| {
         col(ui, |ui| {
@@ -4064,7 +4037,7 @@ fn effects_groups(app: &mut RustGisApp, ui: &mut Ui, layer: &rustgis_engine::map
     }
 }
 
-fn imagery_groups(app: &mut RustGisApp, ui: &mut Ui) {
+fn imagery_groups(app: &mut powergisApp, ui: &mut Ui) {
     let wf = |section: &str| json!({"section": section});
     group(ui, "Ortho Mapping", |ui| {
         big(
@@ -4207,7 +4180,7 @@ fn imagery_groups(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// The Visibility Range and Effects groups shared by feature and raster layers.
-fn visibility_and_effects(app: &mut RustGisApp, ui: &mut Ui, layer: &rustgis_engine::map::Layer) {
+fn visibility_and_effects(app: &mut powergisApp, ui: &mut Ui, layer: &powergis_engine::map::Layer) {
     group(ui, "Visibility Range", |ui| {
         ui.vertical(|ui| {
             ui.add_space(6.0);
@@ -4274,13 +4247,13 @@ fn visibility_and_effects(app: &mut RustGisApp, ui: &mut Ui, layer: &rustgis_eng
 /// dragging, and on release the pre-drag value is put back before `commit` runs the command, so
 /// the command's undo snapshot holds the old value.
 pub(crate) fn live_drag(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     ui: &Ui,
     resp: &egui::Response,
     before: f64,
     value: f64,
-    set: impl Fn(&mut RustGisApp, f64),
-    commit: impl FnOnce(&mut RustGisApp, f64),
+    set: impl Fn(&mut powergisApp, f64),
+    commit: impl FnOnce(&mut powergisApp, f64),
 ) {
     let key = resp.id.with("live_drag_original");
     if resp.drag_started() {
@@ -4298,7 +4271,7 @@ pub(crate) fn live_drag(
 }
 
 /// Style ribbon controls for the layer's renderer, fill, outline and marker size.
-fn drawing_group(app: &mut RustGisApp, ui: &mut Ui, layer: &rustgis_engine::map::Layer) {
+fn drawing_group(app: &mut powergisApp, ui: &mut Ui, layer: &powergis_engine::map::Layer) {
     group(ui, "Drawing", |ui| {
         big(
             ui,
@@ -4392,7 +4365,7 @@ fn drawing_group(app: &mut RustGisApp, ui: &mut Ui, layer: &rustgis_engine::map:
     });
 }
 
-fn layer_group(app: &mut RustGisApp, ui: &mut Ui, layer: &rustgis_engine::map::Layer) {
+fn layer_group(app: &mut powergisApp, ui: &mut Ui, layer: &powergis_engine::map::Layer) {
     group(ui, "Layer", |ui| {
         big(ui, app, "zoom_full", "Zoom To\nLayer", "Zoom to the layer's extent.", "layer.zoomTo", Value::Null, false, false);
         col(ui, |ui| {
@@ -4416,7 +4389,7 @@ fn layer_group(app: &mut RustGisApp, ui: &mut Ui, layer: &rustgis_engine::map::L
     });
 }
 
-fn raster_style_groups(app: &mut RustGisApp, ui: &mut Ui) {
+fn raster_style_groups(app: &mut powergisApp, ui: &mut Ui) {
     let Some(layer) = app.session.active_layer.and_then(|id| app.session.map().layer(id)).cloned() else { return };
     let Some(rl) = layer.raster.clone() else { return };
     visibility_and_effects(app, ui, &layer);
@@ -4456,7 +4429,7 @@ fn raster_style_groups(app: &mut RustGisApp, ui: &mut Ui) {
         col(ui, |ui| {
             let cur = layer.blend;
             small_menu(ui, app, "transparency", "Layer Blend", "How the layer's colours combine with what's beneath.", move |ui, app| {
-                for b in rustgis_engine::map::effects::Blend::ALL {
+                for b in powergis_engine::map::effects::Blend::ALL {
                     if ui.radio(cur == b, tl!(b.label())).clicked() {
                         let _ = app.run("layer.blend", json!({"mode": b.code()}));
                         ui.close();
@@ -4479,7 +4452,7 @@ fn raster_style_groups(app: &mut RustGisApp, ui: &mut Ui) {
     group(ui, "Rendering", |ui| {
         let n = data.band_count();
         let has_categories = data.bands.first().is_some_and(|b| b.stats.categories.is_some());
-        let palette = matches!(data.color, rustgis_engine::data::raster::ColorHint::Palette(_));
+        let palette = matches!(data.color, powergis_engine::data::raster::ColorHint::Palette(_));
         let kind = style.renderer.code();
         big_menu(ui, app, raster_renderer_icon(&style.renderer), "Symbology", "Choose how the raster is drawn.", move |ui, app| {
             for (code, label) in RasterRenderer::KINDS {
@@ -4634,7 +4607,7 @@ fn raster_renderer_icon(r: &RasterRenderer) -> &'static str {
     }
 }
 
-fn raster_data_groups(app: &mut RustGisApp, ui: &mut Ui) {
+fn raster_data_groups(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Information", |ui| {
         big(
             ui,
@@ -4675,7 +4648,7 @@ struct LabelSizeDrag {
 }
 
 /// Retains the starting size, layer and class while applying each frame's preview.
-fn label_size_drag(app: &mut RustGisApp, ui: &Ui, layer: &rustgis_engine::map::Layer, c: &crate::labelpane::Class, size: f64) {
+fn label_size_drag(app: &mut powergisApp, ui: &Ui, layer: &powergis_engine::map::Layer, c: &crate::labelpane::Class, size: f64) {
     let key = egui::Id::unique("ribbon_label_size_drag");
     let pending = ui.data_mut(|d| d.remove_temp::<LabelSizeDrag>(key));
     let before = match pending {
@@ -4694,7 +4667,7 @@ fn label_size_drag(app: &mut RustGisApp, ui: &Ui, layer: &rustgis_engine::map::L
 }
 
 /// Called after the panes even if selection is cleared or the ribbon is hidden mid-gesture.
-pub(crate) fn finish_label_size_drag(app: &mut RustGisApp, ui: &Ui) {
+pub(crate) fn finish_label_size_drag(app: &mut powergisApp, ui: &Ui) {
     if ui.input(|i| i.pointer.primary_down() && i.focused) {
         return;
     }
@@ -4705,7 +4678,7 @@ pub(crate) fn finish_label_size_drag(app: &mut RustGisApp, ui: &Ui) {
 
 /// Restores the original size before committing on the owning layer and class, so Undo captures
 /// that size. A layer or class removed mid-gesture took its preview with it.
-fn apply_label_size_drag(app: &mut RustGisApp, drag: LabelSizeDrag) {
+fn apply_label_size_drag(app: &mut powergisApp, drag: LabelSizeDrag) {
     let class = drag.class.as_deref();
     let Some(k) = app.session.map_mut().layer_mut(drag.layer).and_then(|l| crate::labelpane::class_mut(&mut l.labels, class)) else {
         return;
@@ -4719,7 +4692,7 @@ fn apply_label_size_drag(app: &mut RustGisApp, drag: LabelSizeDrag) {
 }
 
 /// The label groups edit the class chosen in the Labeling pane, and choose it too (#858).
-fn label_groups(app: &mut RustGisApp, ui: &mut Ui) {
+fn label_groups(app: &mut powergisApp, ui: &mut Ui) {
     let Some(layer) = app.session.active_layer.and_then(|id| app.session.map().layer(id)).cloned() else { return };
     let c = crate::labelpane::chosen(ui, app, &layer);
     group(ui, "Labels", |ui| {
@@ -4758,7 +4731,7 @@ fn label_groups(app: &mut RustGisApp, ui: &mut Ui) {
             let mut size = f64::from(c.it.size);
             ui.horizontal(|ui| {
                 let input_label = ui.label(egui::RichText::new(tl!("Size")).size(11.5));
-                let range = rustgis_engine::map::symbology::LABEL_SIZE;
+                let range = powergis_engine::map::symbology::LABEL_SIZE;
                 // Another layer or class gets a distinct widget, so an in-flight drag cannot move to it.
                 ui.push_id(("label_size", layer.id, c.name), |ui| {
                     if ui.add(egui::DragValue::new(&mut size).range(range).speed(0.1).suffix(" pt")).labelled_by(input_label.id).changed() {
@@ -4793,7 +4766,7 @@ fn label_groups(app: &mut RustGisApp, ui: &mut Ui) {
     group(ui, "Label Placement", |ui| {
         let cur = c.it.placement;
         big_menu(ui, app, "placement", "Placement", "Where labels sit relative to their features.", |ui, app| {
-            for pl in rustgis_engine::map::LabelPlacement::ALL {
+            for pl in powergis_engine::map::LabelPlacement::ALL {
                 if ui.radio(cur == pl, tl!(pl.label())).clicked() {
                     let _ = app.run("labels.placement", c.params(json!({"position": pl.code()})));
                     ui.close();
@@ -4855,7 +4828,7 @@ fn label_groups(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn feature_data_groups(app: &mut RustGisApp, ui: &mut Ui) {
+fn feature_data_groups(app: &mut powergisApp, ui: &mut Ui) {
     group(ui, "Definition Query", |ui| {
         let has = app.session.active_layer.and_then(|id| app.session.map().layer(id)).is_some_and(|l| l.definition_query.is_some());
         big(
@@ -4969,29 +4942,23 @@ fn feature_data_groups(app: &mut RustGisApp, ui: &mut Ui) {
 
 /// A language's own name, or its English name when no installed font can draw it (CJK names on the
 /// web before a CJK font has been downloaded).
+#[allow(dead_code)]
 fn shown_name(ui: &Ui, l: crate::i18n::Lang) -> &'static str {
     if ui.ctx().fonts_mut(|f| f.has_glyphs(&regular(12.5), l.name())) { l.name() } else { l.english() }
 }
 
 /// Whose view of disputed borders the built-in countries and world outline show (Settings › Language).
-fn worldview_menu(app: &mut RustGisApp, ui: &mut Ui) {
-    use rustgis_engine::sample::Worldview;
+fn worldview_menu(app: &mut powergisApp, ui: &mut Ui) {
+    use powergis_engine::sample::Worldview;
     let name = |w: Worldview| match w {
         Worldview::Default => tl!("Default"),
         Worldview::China => tl!("China"),
     };
-    let auto = app.ui.worldview == crate::i18n::AUTO;
-    let current = rustgis_engine::sample::worldview();
-    let label = if auto { format!("{} ({})", tl!("Automatic"), name(current)) } else { name(current).to_string() };
-    let label = format!("{}\n{label}", tl!("Worldview"));
+    let current = powergis_engine::sample::worldview();
+    let label = format!("{}\n{}", tl!("Worldview"), name(current));
     big_menu(ui, app, "globe_view", &label, "Whose borders the sample countries and the basemap outline show.", move |ui, app| {
-        if ui.selectable_label(auto, tl!("Automatic (system time zone and region)")).clicked() {
-            let _ = app.run("ui.worldview", json!({"worldview": crate::i18n::AUTO}));
-            ui.close();
-        }
-        ui.separator();
         for w in [Worldview::Default, Worldview::China] {
-            if ui.selectable_label(!auto && w == current, name(w)).clicked() {
+            if ui.selectable_label(w == current, name(w)).clicked() {
                 let _ = app.run("ui.worldview", json!({"worldview": w.code()}));
                 ui.close();
             }
@@ -5000,22 +4967,12 @@ fn worldview_menu(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// The interface language picker (Settings › Language).
-fn language_menu(app: &mut RustGisApp, ui: &mut Ui) {
-    let current = app.chosen_lang();
-    let auto = app.ui.language == crate::i18n::AUTO;
-    let label = if auto { format!("{} ({})", tl!("Automatic"), shown_name(ui, current)) } else { shown_name(ui, current).to_string() };
-    big_menu(ui, app, "globe_lang", &label, "Choose the interface language.", move |ui, app| {
-        if ui.selectable_label(auto, tl!("Automatic (system language)")).clicked() {
-            let _ = app.run("ui.language", json!({"code": crate::i18n::AUTO}));
+fn language_menu(app: &mut powergisApp, ui: &mut Ui) {
+    let label = format!("{}\nEnglish", tl!("Language"));
+    big_menu(ui, app, "globe_lang", &label, "Interface language.", move |ui, app| {
+        if ui.selectable_label(true, "English").clicked() {
+            let _ = app.run("ui.language", json!({"code": "en"}));
             ui.close();
-        }
-        ui.separator();
-        for l in crate::i18n::Lang::all() {
-            let sel = !auto && l == current;
-            if ui.selectable_label(sel, shown_name(ui, l)).on_hover_text(l.english()).clicked() {
-                let _ = app.run("ui.language", json!({"code": l.code()}));
-                ui.close();
-            }
         }
     });
 }
@@ -5027,18 +4984,18 @@ mod tests {
     use egui_kittest::kittest::Queryable;
 
     /// The sample with Cities selected, recording the steps run from here on.
-    fn cities() -> RustGisApp {
-        let mut app = RustGisApp::with_sample();
+    fn cities() -> powergisApp {
+        let mut app = powergisApp::with_sample();
         app.session.run("layer.select", &json!({"layer": "Cities"})).unwrap();
         app.ws.recording = Some(Vec::new());
         app
     }
 
     /// One tab's groups on `app`, as the ribbon draws them.
-    fn tab_harness(app: RustGisApp, tab: fn(&mut RustGisApp, &mut Ui)) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn tab_harness(app: powergisApp, tab: fn(&mut powergisApp, &mut Ui)) -> egui_kittest::Harness<'static, powergisApp> {
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(2400.0, 300.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -5056,7 +5013,7 @@ mod tests {
     /// show with no layer too; Style and View have none left.
     #[test]
     fn the_labeling_tab_holds_the_label_groups() {
-        let has = |h: &egui_kittest::Harness<'static, RustGisApp>, label: &str| {
+        let has = |h: &egui_kittest::Harness<'static, powergisApp>, label: &str| {
             h.query_by_role_and_label(egui::accesskit::Role::Button, label).is_some()
         };
         let h = tab_harness(cities(), labeling_tab);
@@ -5071,10 +5028,10 @@ mod tests {
     }
 
     /// The Drawing group for the selected layer (Cities), as the Style tab draws it.
-    fn drawing_harness() -> egui_kittest::Harness<'static, RustGisApp> {
+    fn drawing_harness() -> egui_kittest::Harness<'static, powergisApp> {
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 800.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -5091,7 +5048,7 @@ mod tests {
     }
 
     /// Drags a number of the harness from `at` by 16, 32 and 48 points, calling `each` between.
-    fn drag_by(h: &mut egui_kittest::Harness<'static, RustGisApp>, at: egui::Pos2, mut each: impl FnMut(&RustGisApp)) {
+    fn drag_by(h: &mut egui_kittest::Harness<'static, powergisApp>, at: egui::Pos2, mut each: impl FnMut(&powergisApp)) {
         h.hover_at(at);
         h.drag_at(at);
         h.step();
@@ -5110,7 +5067,7 @@ mod tests {
     fn ribbon_marker_size_drag_is_one_undo_step() {
         let mut h = drawing_harness();
         let id = h.state().session.active_layer.unwrap();
-        let size = |app: &RustGisApp| app.session.map().layer(id).unwrap().renderer.base_symbol().size;
+        let size = |app: &powergisApp| app.session.map().layer(id).unwrap().renderer.base_symbol().size;
         let before = size(h.state());
         let undo = h.state().session.undo_depth();
         // Outline, then Size.
@@ -5139,7 +5096,7 @@ mod tests {
     fn ribbon_colour_drag_is_one_undo_step() {
         let mut h = drawing_harness();
         let id = h.state().session.active_layer.unwrap();
-        let color = |app: &RustGisApp| app.session.map().layer(id).unwrap().renderer.base_symbol().fill;
+        let color = |app: &powergisApp| app.session.map().layer(id).unwrap().renderer.base_symbol().fill;
         let before = color(h.state());
         let undo = h.state().session.undo_depth();
         h.get_by_role(egui::accesskit::Role::ColorWell).click();
@@ -5158,15 +5115,15 @@ mod tests {
     }
 
     /// Isolates the label controls; the interrupted-gesture test below checks full-frame wiring.
-    fn label_harness() -> egui_kittest::Harness<'static, RustGisApp> {
+    fn label_harness() -> egui_kittest::Harness<'static, powergisApp> {
         label_harness_with(cities(), false)
     }
 
     /// The label controls on `app`, with the Labeling pane under them when `pane`.
-    fn label_harness_with(app: RustGisApp, pane: bool) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn label_harness_with(app: powergisApp, pane: bool) -> egui_kittest::Harness<'static, powergisApp> {
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1600.0, 1000.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -5191,7 +5148,7 @@ mod tests {
     fn ribbon_label_size_drag_is_one_undo_and_recorded_step() {
         let mut h = label_harness();
         let id = h.state().session.active_layer.unwrap();
-        let size = |app: &RustGisApp| app.session.map().layer(id).unwrap().labels.default.size;
+        let size = |app: &powergisApp| app.session.map().layer(id).unwrap().labels.default.size;
         let before = size(h.state());
         let undo = h.state().session.undo_depth();
         let at = h.get_by_role(egui::accesskit::Role::SpinButton).rect().center();
@@ -5226,7 +5183,7 @@ mod tests {
             let mut h = label_harness();
             let cities = h.state().session.active_layer.unwrap();
             let countries = h.state().session.map().layers.iter().find(|l| l.name == "Countries").unwrap().id;
-            let size = |app: &RustGisApp, id| app.session.map().layer(id).unwrap().labels.default.size;
+            let size = |app: &powergisApp, id| app.session.map().layer(id).unwrap().labels.default.size;
             let before = size(h.state(), cities);
             let countries_before = size(h.state(), countries);
             let undo = h.state().session.undo_depth();
@@ -5263,11 +5220,11 @@ mod tests {
     #[test]
     fn ribbon_label_size_drag_finishes_when_hidden_or_unfocused() {
         for hide_ribbon in [false, true] {
-            let mut app = RustGisApp::with_sample();
+            let mut app = powergisApp::with_sample();
             app.session.run("layer.select", &json!({"layer": "Cities"})).unwrap();
             app.ui.tab = "Labeling".into();
             let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 800.0)).with_max_steps(64).build_ui_state(
-                |ui, app: &mut RustGisApp| {
+                |ui, app: &mut powergisApp| {
                     let ctx = ui.ctx().clone();
                     app.logic(&ctx);
                     app.ui(ui);
@@ -5277,7 +5234,7 @@ mod tests {
             h.run();
             h.state_mut().ws.recording = Some(Vec::new());
             let id = h.state().session.active_layer.unwrap();
-            let size = |app: &RustGisApp| app.session.map().layer(id).unwrap().labels.default.size;
+            let size = |app: &powergisApp| app.session.map().layer(id).unwrap().labels.default.size;
             let before = size(h.state());
             let undo = h.state().session.undo_depth();
             // Text Symbol's size is the Labeling tab's numeric control, drawn after any other.
@@ -5310,7 +5267,7 @@ mod tests {
     fn ribbon_label_colour_drag_is_one_undo_and_recorded_step() {
         let mut h = label_harness();
         let id = h.state().session.active_layer.unwrap();
-        let color = |app: &RustGisApp| app.session.map().layer(id).unwrap().labels.default.color;
+        let color = |app: &powergisApp| app.session.map().layer(id).unwrap().labels.default.color;
         let before = color(h.state());
         let undo = h.state().session.undo_depth();
         h.get_by_role(egui::accesskit::Role::ColorWell).click();
@@ -5347,7 +5304,7 @@ mod tests {
         let mut h = label_harness();
         let cities = h.state().session.active_layer.unwrap();
         let countries = h.state().session.map().layers.iter().find(|l| l.name == "Countries").unwrap().id;
-        let color = |app: &RustGisApp, id| app.session.map().layer(id).unwrap().labels.default.color;
+        let color = |app: &powergisApp, id| app.session.map().layer(id).unwrap().labels.default.color;
         let before = color(h.state(), cities);
         let countries_before = color(h.state(), countries);
         let undo = h.state().session.undo_depth();
@@ -5402,23 +5359,23 @@ mod tests {
     }
 
     /// The sample's Cities with a second label class, Big, added before any step is recorded.
-    fn cities_with_big() -> RustGisApp {
+    fn cities_with_big() -> powergisApp {
         let mut app = cities();
         app.session.run("labels.class.add", &json!({"name": "Big"})).unwrap();
         app
     }
 
-    fn labels(app: &RustGisApp) -> rustgis_engine::map::symbology::Labeling {
+    fn labels(app: &powergisApp) -> powergis_engine::map::symbology::Labeling {
         app.session.map().layer(app.session.active_layer.unwrap()).unwrap().labels.clone()
     }
 
     /// The classes the Class choosers show, the ribbon's first.
-    fn classes_shown(h: &egui_kittest::Harness<'static, RustGisApp>) -> Vec<String> {
+    fn classes_shown(h: &egui_kittest::Harness<'static, powergisApp>) -> Vec<String> {
         h.query_all_by_role_and_label(egui::accesskit::Role::ComboBox, "Class").map(|n| n.value().unwrap_or_default()).collect()
     }
 
     /// Chooses class `to` in the `nth` Class chooser (the ribbon's first).
-    fn pick_class(h: &mut egui_kittest::Harness<'static, RustGisApp>, nth: usize, to: &str) {
+    fn pick_class(h: &mut egui_kittest::Harness<'static, powergisApp>, nth: usize, to: &str) {
         h.query_all_by_role_and_label(egui::accesskit::Role::ComboBox, "Class").nth(nth).unwrap().click();
         h.run();
         h.get_by_label(to).click();
@@ -5470,7 +5427,7 @@ mod tests {
     fn ribbon_label_size_drag_on_a_class_is_one_step_on_it() {
         let mut h = label_harness_with(cities_with_big(), false);
         pick_class(&mut h, 0, "Big");
-        let size = |app: &RustGisApp| labels(app).class("Big").unwrap().size;
+        let size = |app: &powergisApp| labels(app).class("Big").unwrap().size;
         let (before, default) = (size(h.state()), labels(h.state()).default.size);
         let undo = h.state().session.undo_depth();
         let at = h.get_by_role(egui::accesskit::Role::SpinButton).rect().center();
@@ -5497,7 +5454,7 @@ mod tests {
     /// (the test runs in English), so neither can be renamed without the other.
     #[test]
     fn every_publication_profile_is_named_by_a_literal() {
-        for p in rustgis_engine::cmd::layout::PUBLICATION_PROFILES {
+        for p in powergis_engine::cmd::layout::PUBLICATION_PROFILES {
             assert_eq!(publication_label(p.id), Some(p.label), "{}", p.id);
         }
     }
@@ -5506,7 +5463,7 @@ mod tests {
     /// says what it looks like.
     #[test]
     fn every_publication_style_is_named_by_a_literal() {
-        for (id, name) in rustgis_engine::cmd::layout::PUBLICATION_STYLES {
+        for (id, name) in powergis_engine::cmd::layout::PUBLICATION_STYLES {
             let (label, about) = publication_style(id).unwrap_or_else(|| panic!("{id}"));
             assert_eq!(label, *name, "{id}");
             assert!(!about.is_empty(), "{id}");
@@ -5519,7 +5476,7 @@ mod tests {
     fn a_publication_sheet_is_made_in_the_style_picked() {
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1600.0, 1000.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -5530,7 +5487,7 @@ mod tests {
             cities(),
         );
         h.run();
-        let open = |h: &mut egui_kittest::Harness<'static, RustGisApp>, path: &[&str]| {
+        let open = |h: &mut egui_kittest::Harness<'static, powergisApp>, path: &[&str]| {
             h.get_by_label("New Layout").click();
             h.run();
             for row in path {
@@ -5548,7 +5505,7 @@ mod tests {
         assert!(l.elements.iter().any(|e| e.name == "Panel Box"), "the panel style");
         let title = app.session.map().name.clone();
         assert!(
-            l.elements.iter().any(|e| matches!(&e.kind, rustgis_engine::map::layout::ElementKind::Text { text, .. } if *text == title)),
+            l.elements.iter().any(|e| matches!(&e.kind, powergis_engine::map::layout::ElementKind::Text { text, .. } if *text == title)),
             "titled with the map's name"
         );
         assert_eq!(app.ui.tab, "Publish");

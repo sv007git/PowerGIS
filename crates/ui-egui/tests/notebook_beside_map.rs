@@ -3,18 +3,18 @@
 
 use egui::vec2;
 use egui_kittest::Harness;
-use rustgis_ui_egui::RustGisApp;
+use powergis_ui_egui::powergisApp;
 use serde_json::Value;
 
 /// The window with the pane `cmd` opens in view.
-fn window(cmd: &str) -> Harness<'static, RustGisApp> {
+fn window(cmd: &str) -> Harness<'static, powergisApp> {
     let mut h = Harness::builder().with_size(vec2(1600.0, 900.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
         },
-        RustGisApp::with_sample(),
+        powergisApp::with_sample(),
     );
     h.state_mut().run(cmd, Value::Null).expect("open the pane");
     for _ in 0..6 {
@@ -24,7 +24,7 @@ fn window(cmd: &str) -> Harness<'static, RustGisApp> {
 }
 
 /// The right pane, and the room between the left pane (or the window's edge) and the window's right.
-fn rects(h: &Harness<'_, RustGisApp>) -> (egui::Rect, f32) {
+fn rects(h: &Harness<'_, powergisApp>) -> (egui::Rect, f32) {
     let [left, right] = h.state().ui.pane_rects;
     let right = right.expect("a right pane in view");
     let start = left.map_or(h.ctx.content_rect().min.x, |l| l.max.x);
@@ -32,7 +32,7 @@ fn rects(h: &Harness<'_, RustGisApp>) -> (egui::Rect, f32) {
 }
 
 /// Drags the right pane's edge `dx` points towards the map.
-fn drag_edge(h: &mut Harness<'_, RustGisApp>, dx: f32) {
+fn drag_edge(h: &mut Harness<'_, powergisApp>, dx: f32) {
     let (pane, _) = rects(h);
     // Grabbed just inside the pane, as the map's own drag sense is on top at the boundary.
     let edge = egui::pos2(pane.min.x + 2.0, pane.center().y);

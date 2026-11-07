@@ -3,8 +3,8 @@
 //! Deterministic (a seeded generator), bounded (samples, layers, units and epochs are capped),
 //! and pure Rust.
 
-use rustgis_data::raster::Raster;
-use rustgis_geom::Coord;
+use powergis_data::raster::Raster;
+use powergis_geom::Coord;
 use serde::{Deserialize, Serialize};
 
 /// Most training samples kept per class, hidden layers, units per layer, and epochs.
@@ -162,7 +162,7 @@ pub fn polygon_samples(r: &Raster, bands: &[usize], rings: &[Vec<Coord>], max: u
                 }
                 let w = r.transform.to_world(col as f64 + 0.5, row as f64 + 0.5);
                 if let Some(ll) = tr.to_lonlat(w)
-                    && rustgis_data::geometry::polygon_contains(rings, ll)
+                    && powergis_data::geometry::polygon_contains(rings, ll)
                     && let Some(v) = bands.iter().map(|b| r.value(*b, col, row)).collect::<Option<Vec<f32>>>()
                 {
                     out.push(v);

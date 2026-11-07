@@ -1,6 +1,6 @@
 //! MCP over HTTP ("Streamable HTTP", stateless, JSON replies) for the relay: clients that speak
 //! HTTP (Claude Code's `--transport http`, others) reach the open project without
-//! `rustgis-cli mcp --attach`. Each POST carries one JSON-RPC message or batch; it goes through
+//! `powergis-cli mcp --attach`. Each POST carries one JSON-RPC message or batch; it goes through
 //! the same queue as an attached client's, runs on the app's frame and gets the server's reply.
 //!
 //! Safety: the listener binds 127.0.0.1 only. Every request needs `Authorization: Bearer
@@ -17,7 +17,7 @@ use super::*;
 /// The port the HTTP listener takes unless [`HTTP_PORT_ENV`] names another (beside the relay's).
 pub const HTTP_PORT: u16 = 8768;
 /// The environment variable that changes [`HTTP_PORT`].
-pub const HTTP_PORT_ENV: &str = "RUSTGIS_MCP_HTTP_PORT";
+pub const HTTP_PORT_ENV: &str = "powergis_MCP_HTTP_PORT";
 /// The path clients post to (`/` works too).
 pub const HTTP_PATH: &str = "/mcp";
 /// The largest request head and body read.
@@ -39,7 +39,7 @@ pub fn default_http_port() -> u16 {
 
 /// The file that keeps the HTTP token, in the settings folder.
 pub fn http_token_path() -> Option<PathBuf> {
-    rustgis_engine::data::dirs::config_dir().map(|d| d.join("mcp-http.token"))
+    powergis_engine::data::dirs::config_dir().map(|d| d.join("mcp-http.token"))
 }
 
 /// The HTTP token: the one kept in [`http_token_path`], or a new one written there (readable by
@@ -183,7 +183,7 @@ impl Relay {
         let active = Arc::new(AtomicUsize::new(0));
         let in_flight = Arc::new(AtomicUsize::new(0));
         std::thread::Builder::new()
-            .name("rustgis-mcp-http".into())
+            .name("powergis-mcp-http".into())
             .spawn(move || {
                 while !shared.stopped.load(SeqCst) {
                     match listener.accept() {
@@ -204,7 +204,7 @@ impl Relay {
                             let (request_shared, request_token, request_active) =
                                 (Arc::clone(&shared), Arc::clone(&token), Arc::clone(&active));
                             let request_in_flight = Arc::clone(&in_flight);
-                            let spawned = std::thread::Builder::new().name("rustgis-mcp-http-request".into()).spawn(move || {
+                            let spawned = std::thread::Builder::new().name("powergis-mcp-http-request".into()).spawn(move || {
                                 serve(
                                     stream,
                                     &request_shared,
@@ -476,7 +476,7 @@ mod tests {
     use serde_json::json;
 
     fn sample() -> Session {
-        let mut s = Session::new(rustgis_engine::Project::default());
+        let mut s = Session::new(powergis_engine::Project::default());
         s.run("project.sample", &Value::Null).unwrap();
         s
     }
@@ -525,7 +525,7 @@ mod tests {
         let (status, body) = with_app(&relay, &mut s, move || http(port, &req));
         assert_eq!(status, 200, "{body}");
         let v: Value = serde_json::from_str(&body).unwrap();
-        assert_eq!(v["result"]["serverInfo"]["name"], "rustgis", "{body}");
+        assert_eq!(v["result"]["serverInfo"]["name"], "powergis", "{body}");
         let call = json!({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {"name": "run_command", "arguments": {"command": "layer.addSample", "params": {"name": "countries"}}}}).to_string();
         let req = post(&host, Some(&"a".repeat(32)), "", &call);
         let (status, body) = with_app(&relay, &mut s, move || http(port, &req));

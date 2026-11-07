@@ -2,13 +2,13 @@
 //! archive being a file path on the desktop (read through SQLite on the fetch workers, a tile at a
 //! time) or `upload:<name>`, a file read into memory with [`register`] (a browser upload).
 //!
-//! The reading itself is `rustgis_data::mbtiles`; this is addresses, the archives in use and
+//! The reading itself is `powergis_data::mbtiles`; this is addresses, the archives in use and
 //! answering the cache.
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use rustgis_data::mbtiles::{Archive, Info};
+use powergis_data::mbtiles::{Archive, Info};
 use web_time::{Duration, Instant};
 
 use crate::cache::Done;
@@ -67,7 +67,7 @@ fn uploads() -> &'static Mutex<Vec<(String, Arc<Archive>)>> {
 /// Reads an MBTiles file's bytes into memory as `upload:<name>`, and returns that address. The
 /// archive replaces one of the same name; the oldest of too many is forgotten.
 pub fn register(name: &str, bytes: &[u8]) -> Result<String, String> {
-    let archive = rustgis_data::mbtiles::read_bytes(bytes).map_err(|e| format!("{name}: {e}"))?;
+    let archive = powergis_data::mbtiles::read_bytes(bytes).map_err(|e| format!("{name}: {e}"))?;
     let address = format!("{UPLOAD}{}", name.chars().filter(|c| !c.is_control()).take(512).collect::<String>());
     check(&address)?;
     let mut all = uploads().lock().unwrap_or_else(|e| e.into_inner());
@@ -95,7 +95,7 @@ fn infos() -> &'static Mutex<HashMap<String, Result<Arc<Info>, (String, Instant)
 pub(crate) fn forget() {
     infos().lock().unwrap_or_else(|e| e.into_inner()).clear();
     #[cfg(not(target_arch = "wasm32"))]
-    rustgis_data::mbtiles::close_all();
+    powergis_data::mbtiles::close_all();
 }
 
 /// An archive's metadata.
@@ -125,7 +125,7 @@ pub fn info(archive: &str) -> Result<Arc<Info>, String> {
 #[cfg(not(target_arch = "wasm32"))]
 fn read_info(archive: &str) -> Result<Arc<Info>, String> {
     let path = std::path::Path::new(archive.strip_prefix("file://").unwrap_or(archive));
-    rustgis_data::mbtiles::open_path(path).map(Arc::new)
+    powergis_data::mbtiles::open_path(path).map(Arc::new)
 }
 
 #[cfg(target_arch = "wasm32")]
@@ -171,7 +171,7 @@ pub(crate) fn read_local(url: &str) -> Result<Vec<u8>, String> {
     let (z, x, y, archive) = parse_url(url).ok_or_else(|| format!("{url}: not an MBTiles tile address"))?;
     check(archive)?;
     let path = std::path::Path::new(archive.strip_prefix("file://").unwrap_or(archive));
-    Ok(rustgis_data::mbtiles::tile_path(path, z, x, y)?.unwrap_or_default())
+    Ok(powergis_data::mbtiles::tile_path(path, z, x, y)?.unwrap_or_default())
 }
 
 #[cfg(test)]

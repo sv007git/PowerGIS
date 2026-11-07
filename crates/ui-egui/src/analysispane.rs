@@ -4,7 +4,7 @@
 use egui::{Ui, vec2};
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, semibold};
 
 /// What the next map clicks are for, and the points so far.
@@ -12,7 +12,7 @@ use crate::theme::{Tokens, semibold};
 pub struct Pick {
     pub purpose: &'static str,
     pub needed: usize,
-    pub points: Vec<rustgis_engine::geom::Coord>,
+    pub points: Vec<powergis_engine::geom::Coord>,
 }
 
 /// The Workflows pane's inputs and results.
@@ -96,7 +96,7 @@ pub struct Trending {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-type TrendResult = std::sync::Arc<std::sync::Mutex<Option<Result<(Vec<rustgis_engine::data::raster::Raster>, usize), String>>>>;
+type TrendResult = std::sync::Arc<std::sync::Mutex<Option<Result<(Vec<powergis_engine::data::raster::Raster>, usize), String>>>>;
 
 fn heading(ui: &mut Ui, text: &str) {
     ui.add_space(6.0);
@@ -117,7 +117,7 @@ fn combo(ui: &mut Ui, id: &str, name: &str, value: &mut String, options: &[Strin
         .on_hover_text(tl!(name));
 }
 
-fn run(app: &mut RustGisApp, id: &str, p: Value) {
+fn run(app: &mut powergisApp, id: &str, p: Value) {
     match app.run(id, p) {
         Ok(v) => {
             app.workflow.result = Some(v);
@@ -170,7 +170,7 @@ pub const SECTIONS: &[(&str, &str)] = &[
 ];
 
 /// Starts picking `needed` map points for a workflow.
-fn pick_button(app: &mut RustGisApp, ui: &mut Ui, purpose: &'static str, needed: usize, label: &str) {
+fn pick_button(app: &mut powergisApp, ui: &mut Ui, purpose: &'static str, needed: usize, label: &str) {
     let active = app.workflow.pick.as_ref().is_some_and(|p| p.purpose == purpose);
     if ui.selectable_label(active, tl!(label)).clicked() {
         app.workflow.pick = if active { None } else { Some(Pick { purpose, needed, points: Vec::new() }) };
@@ -178,12 +178,12 @@ fn pick_button(app: &mut RustGisApp, ui: &mut Ui, purpose: &'static str, needed:
 }
 
 /// The picked points once a pick is complete (and clears it).
-fn picked(app: &mut RustGisApp, purpose: &str) -> Option<Vec<rustgis_engine::geom::Coord>> {
+fn picked(app: &mut powergisApp, purpose: &str) -> Option<Vec<powergis_engine::geom::Coord>> {
     let done = app.workflow.pick.as_ref().is_some_and(|p| p.purpose == purpose && p.points.len() >= p.needed);
     if done { app.workflow.pick.take().map(|p| p.points) } else { None }
 }
 
-pub fn workflows(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn workflows(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     if app.workflow.section.is_empty() {
         app.workflow.section = "rasterFunctions";
     }
@@ -205,13 +205,13 @@ pub fn workflows(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     let map = app.session.map();
     let rasters: Vec<String> = map.layers.iter().filter(|l| l.is_raster()).map(|l| l.name.clone()).collect();
     let features: Vec<String> = map.layers.iter().filter(|l| !l.is_raster() && !l.graphics).map(|l| l.name.clone()).collect();
-    let by_type = |g: rustgis_engine::data::GeometryType| -> Vec<String> {
+    let by_type = |g: powergis_engine::data::GeometryType| -> Vec<String> {
         map.layers.iter().filter(|l| !l.is_raster() && l.geometry_type() == g).map(|l| l.name.clone()).collect()
     };
     let (points, lines, polygons) = (
-        by_type(rustgis_engine::data::GeometryType::Point),
-        by_type(rustgis_engine::data::GeometryType::Polyline),
-        by_type(rustgis_engine::data::GeometryType::Polygon),
+        by_type(powergis_engine::data::GeometryType::Point),
+        by_type(powergis_engine::data::GeometryType::Polyline),
+        by_type(powergis_engine::data::GeometryType::Polygon),
     );
     let fields_of = |n: &str, numeric: bool| -> Vec<String> {
         map.layer_by_name(n)
@@ -297,7 +297,7 @@ pub fn workflows(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                     .labelled_by(input_label.id);
             });
             if ui.button(tl!("Run")).clicked() {
-                let crit = |app: &RustGisApp, n: &str, high: bool, w: f64| -> Value {
+                let crit = |app: &powergisApp, n: &str, high: bool, w: f64| -> Value {
                     let st = app
                         .session
                         .map()
@@ -353,7 +353,7 @@ pub fn workflows(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                 app.session.map().layer_by_name(&app.workflow.layer).and_then(|l| l.raster.as_ref()).and_then(|r| r.data.as_ref());
             let total_bands = raster_data.map_or(0, |d| d.band_count());
             let raster_ready = raster_data.is_some();
-            let band_res = rustgis_engine::analysis::zonal_bands(&json!(band_str), total_bands);
+            let band_res = powergis_engine::analysis::zonal_bands(&json!(band_str), total_bands);
             let band_valid = band_res.is_ok();
             let band_err = band_res.err();
             let layers_ready = !app.workflow.layer.is_empty() && !app.workflow.layer2.is_empty();
@@ -509,7 +509,7 @@ pub fn workflows(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                         if app.services.download.is_some() {
                             app.download_bytes(&name, bytes);
                         } else if let Some(path) = crate::dialogs::pick_save(&name, &[ext.as_str()], tl!("Converted data")) {
-                            let r = rustgis_engine::data::io::write_atomic(std::path::Path::new(&path), &bytes).map_err(|e| e.to_string());
+                            let r = powergis_engine::data::io::write_atomic(std::path::Path::new(&path), &bytes).map_err(|e| e.to_string());
                             app.workflow.error = r.err();
                         }
                     }
@@ -553,8 +553,8 @@ pub fn workflows(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                 let (w, h) = app.session.view_size;
                 let e = m.camera.extent(w, h);
                 let (a, b) = (
-                    m.to_lonlat(rustgis_engine::geom::Coord::new(e.min_x, e.min_y)),
-                    m.to_lonlat(rustgis_engine::geom::Coord::new(e.max_x, e.max_y)),
+                    m.to_lonlat(powergis_engine::geom::Coord::new(e.min_x, e.min_y)),
+                    m.to_lonlat(powergis_engine::geom::Coord::new(e.max_x, e.max_y)),
                 );
                 if let (Some(a), Some(b)) = (a, b) {
                     run(app, "raster.georeference", json!({"layer": app.workflow.layer, "extent": [a.x, a.y, b.x, b.y]}));
@@ -856,7 +856,7 @@ pub fn workflows(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                             if app.services.download.is_some() {
                                 app.download_bytes(&name, bytes);
                             } else if let Some(path) = crate::dialogs::pick_save(&name, &["obj"], tl!("3D mesh")) {
-                                app.workflow.error = rustgis_engine::data::io::write_atomic(std::path::Path::new(&path), &bytes)
+                                app.workflow.error = powergis_engine::data::io::write_atomic(std::path::Path::new(&path), &bytes)
                                     .err()
                                     .map(|e| e.to_string());
                             }
@@ -925,14 +925,14 @@ pub fn workflows(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 /// Whether the catalog's cube `id` is a STAC collection, read where the map is (a Zarr variable is
 /// read whole).
 fn stac_cube(id: &str) -> bool {
-    use rustgis_engine::render::rustgis_tiles::cubes;
+    use powergis_engine::render::powergis_tiles::cubes;
     cubes::find(id).is_ok_and(|e| matches!(e.source, cubes::Source::Stac { .. }))
 }
 
 /// The Trend Analysis section (opengeos/PowerGIS#579): a cube (raster layers a date each, a Zarr
 /// variable, or a raster's bands), Sen's slope and the modified Mann–Kendall test, worked out on a
 /// thread with progress and Cancel, and added as four layers.
-fn trend(app: &mut RustGisApp, ui: &mut Ui, rasters: &[String]) {
+fn trend(app: &mut powergisApp, ui: &mut Ui, rasters: &[String]) {
     #[cfg(not(target_arch = "wasm32"))]
     if trend_running(app, ui) {
         return;
@@ -981,8 +981,8 @@ fn trend(app: &mut RustGisApp, ui: &mut Ui, rasters: &[String]) {
         egui::ScrollArea::vertical().id_salt("trend_layers").max_height(160.0).show(ui, |ui| {
             for n in rasters {
                 let mut on = f.ticked.contains(n);
-                let date = rustgis_engine::cmd::cube::layer_date(&app.session, n)
-                    .map_or_else(|| tl!("no date in the name").to_string(), |d| rustgis_engine::data::time::format(d, "YYYY-MM-DD"));
+                let date = powergis_engine::cmd::cube::layer_date(&app.session, n)
+                    .map_or_else(|| tl!("no date in the name").to_string(), |d| powergis_engine::data::time::format(d, "YYYY-MM-DD"));
                 if ui.checkbox(&mut on, format!("{n}  ({date})")).changed() {
                     if on {
                         f.ticked.push(n.clone());
@@ -1130,7 +1130,7 @@ fn trend(app: &mut RustGisApp, ui: &mut Ui, rasters: &[String]) {
     #[cfg(target_arch = "wasm32")]
     run(app, "cube.trend", p);
     #[cfg(not(target_arch = "wasm32"))]
-    match rustgis_engine::cmd::cube::trend_start(&app.session, &p) {
+    match powergis_engine::cmd::cube::trend_start(&app.session, &p) {
         Ok(job) => {
             let id = app.session.download_started();
             let r = Trending {
@@ -1172,7 +1172,7 @@ fn trend(app: &mut RustGisApp, ui: &mut Ui, rasters: &[String]) {
 /// called every frame, whatever pane is in view, so a run lands though the Workflows pane
 /// closed. `true` while one is still running.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn land_trend(app: &mut RustGisApp) -> bool {
+pub fn land_trend(app: &mut powergisApp) -> bool {
     use std::sync::atomic::Ordering;
     let Some(r) = &app.workflow.trend.running else { return false };
     let Some(res) = r.result.lock().ok().and_then(|mut g| g.take()) else { return true };
@@ -1190,7 +1190,7 @@ pub fn land_trend(app: &mut RustGisApp) -> bool {
             app.workflow.error = Some(tl!("The trend finished after another project was opened, so it wasn't added").to_string());
         }
         Ok((rasters, dates)) => {
-            p["ran"] = json!(rustgis_engine::cmd::cube::land(&mut app.session, rasters, dates));
+            p["ran"] = json!(powergis_engine::cmd::cube::land(&mut app.session, rasters, dates));
             run(app, "cube.trend", p);
         }
         Err(_) if cancelled => {}
@@ -1202,7 +1202,7 @@ pub fn land_trend(app: &mut RustGisApp) -> bool {
 /// A trend under way: its progress and Cancel (its result lands through `land_trend`). Whether
 /// one is still running.
 #[cfg(not(target_arch = "wasm32"))]
-fn trend_running(app: &mut RustGisApp, ui: &mut Ui) -> bool {
+fn trend_running(app: &mut powergisApp, ui: &mut Ui) -> bool {
     use std::sync::atomic::Ordering;
     if !land_trend(app) {
         return false;
@@ -1228,7 +1228,7 @@ fn result_view(ui: &mut Ui, r: &Value, t: &Tokens) {
                 ui.label(egui::RichText::new(tl!(h)).small().strong());
             }
             ui.end_row();
-            let n = |v: &Value| v.as_f64().map(rustgis_engine::map::symbology::fmt_num).unwrap_or_default();
+            let n = |v: &Value| v.as_f64().map(powergis_engine::map::symbology::fmt_num).unwrap_or_default();
             for f in fields {
                 ui.label(egui::RichText::new(f["field"].as_str().unwrap_or("")).small());
                 ui.label(egui::RichText::new(f["nulls"].to_string()).small());
@@ -1274,7 +1274,7 @@ const SCRIPT_OUT_ROWS: f32 = 6.0;
 /// and Assistant panes are): the box grows with the script down to the buttons and then scrolls
 /// inside, so Run and a run's results stay in view, and its height doesn't follow a scroll of the
 /// pane. Only a pane too short for the box's first lines and the buttons scrolls as a whole.
-pub fn script_pane(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn script_pane(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     egui::Frame::NONE.inner_margin(egui::Margin::symmetric(12, 8)).show(ui, |ui| {
         // The hint above the box (two lines, in a narrow pane), the box's first lines, the rest.
         let hint = (ui.text_style_height(&egui::TextStyle::Small) + ui.spacing().item_spacing.y) * 2.0;
@@ -1294,7 +1294,7 @@ fn script_rows(ui: &Ui) -> f32 {
 
 /// The height the Script pane needs below its box: the buttons, the last run's line, and its
 /// results (their own scroll, at most SCRIPT_OUT_ROWS lines) when there are any.
-fn script_below(app: &RustGisApp, ui: &Ui) -> f32 {
+fn script_below(app: &powergisApp, ui: &Ui) -> f32 {
     let gap = ui.spacing().item_spacing.y;
     // A row: as tall as a button, whatever its text.
     let last = if app.workflow.script_last.is_none() { 0.0 } else { ui.spacing().interact_size.y + gap };
@@ -1310,7 +1310,7 @@ fn script_out_height(ui: &Ui) -> f32 {
 /// The Script pane's content: commands typed one per line, run in order, coloured as they're typed
 /// (#653). `fit`: the box grows down to the buttons (the pane's own layout); else it keeps its
 /// first lines, in a pane that scrolls as a whole.
-fn script(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, fit: bool) {
+fn script(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, fit: bool) {
     ui.label(egui::RichText::new(tl!("One command per line: id {json}. Lines starting with # are comments.")).small().weak());
     let unknown = crate::scriptcolor::unknown_ids_cached(ui, &app.session, &app.workflow.script);
     let palette = crate::scriptcolor::Palette::of(t);
@@ -1403,7 +1403,7 @@ fn script(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, fit: bool) {
             let text = crate::i18n::fmt("Run #{n} ({secs} s)", &[("n", &r.n.to_string()), ("secs", &format!("{:.2}", r.secs))]);
             ui.label(egui::RichText::new(text).small().strong());
             if r.at > 0 {
-                let (_, time) = rustgis_engine::map::graphics::civil(r.at);
+                let (_, time) = powergis_engine::map::graphics::civil(r.at);
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                     ui.label(egui::RichText::new(crate::i18n::fmt("{time} UTC", &[("time", &time)])).small().weak())
                 });
@@ -1428,11 +1428,11 @@ mod tests {
     #[test]
     fn every_workflow_names_its_inputs() {
         for &(section, _) in SECTIONS {
-            let mut app = RustGisApp::with_sample();
+            let mut app = powergisApp::with_sample();
             app.workflow.section = section;
             let mut fonts = false;
             let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(500.0, 1200.0)).build_ui_state(
-                move |ui, app: &mut RustGisApp| {
+                move |ui, app: &mut powergisApp| {
                     if !fonts {
                         crate::theme::install_fonts(ui.ctx(), &[], None);
                         fonts = true;

@@ -5,8 +5,8 @@ use serde_json::{Value, json};
 
 use super::{b, f, ps};
 #[cfg(not(target_arch = "wasm32"))]
-use crate::render::rustgis_tiles::s3;
-use crate::render::rustgis_tiles::stac::{self, Item, Search};
+use crate::render::powergis_tiles::s3;
+use crate::render::powergis_tiles::stac::{self, Item, Search};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -93,15 +93,15 @@ pub(crate) fn add_collection(s: &mut Session, fc: &Value, name: &str) -> Result<
     if text.len() > 64 << 20 {
         return Err("the footprints are too large".into());
     }
-    let (ds, _) = rustgis_data::io::read_geojson(&text, name).map_err(|e| e.to_string())?;
+    let (ds, _) = powergis_data::io::read_geojson(&text, name).map_err(|e| e.to_string())?;
     let id = super::layer::add_dataset(s, ds);
     // Outlines over a faint fill, so the map (and the scenes added later) show through.
     if let Some(l) = s.map_mut().layer_mut(id)
-        && let rustgis_map::Renderer::Single(sym) = &mut l.renderer
+        && let powergis_map::Renderer::Single(sym) = &mut l.renderer
     {
         let [r, g, b, _] = sym.fill.0;
-        sym.fill = rustgis_map::Rgba::new(r, g, b, 25);
-        sym.stroke = rustgis_map::Rgba::new(r, g, b, 255);
+        sym.fill = powergis_map::Rgba::new(r, g, b, 25);
+        sym.stroke = powergis_map::Rgba::new(r, g, b, 255);
         sym.stroke_width = 1.5;
     }
     Ok(Some(id))
@@ -117,12 +117,12 @@ pub(super) fn collections(_s: &mut Session, p: &Value) -> CmdResult {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let url = if stac::catalog::is_static(&api) {
-            crate::render::rustgis_tiles::address::check(&api, None)?;
+            crate::render::powergis_tiles::address::check(&api, None)?;
             api.clone()
         } else {
             stac::collections_url(&api)
         };
-        let bytes = crate::render::rustgis_tiles::cache::download_blocking(&url)?;
+        let bytes = crate::render::powergis_tiles::cache::download_blocking(&url)?;
         collections_json(&api, &bytes)
     }
 }
@@ -151,7 +151,7 @@ fn search(s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let bytes = crate::render::rustgis_tiles::cache::download_blocking(&url)?;
+        let bytes = crate::render::powergis_tiles::cache::download_blocking(&url)?;
         let (items, next) = stac::parse_items(&bytes, &url)?;
         let all = b(p, "properties").unwrap_or(false);
         let mut out =
@@ -170,7 +170,7 @@ fn search(s: &mut Session, p: &Value) -> CmdResult {
 
 /// A search of a static catalog: a walk from its document, keeping the items that match.
 fn search_static(s: &mut Session, p: &Value, root: &str) -> CmdResult {
-    crate::render::rustgis_tiles::address::check(root, None)?;
+    crate::render::powergis_tiles::address::check(root, None)?;
     let search = search_params(s, p)?;
     // A static catalog has no search: it is walked in its own order, and its nodes are its
     // collections.
@@ -232,7 +232,7 @@ fn item(p: &Value) -> Result<Item, String> {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let bytes = crate::render::rustgis_tiles::cache::download_blocking(url)?;
+        let bytes = crate::render::powergis_tiles::cache::download_blocking(url)?;
         let mut i = stac::parse_item(&bytes, url)?;
         i.url.get_or_insert_with(|| url.to_string());
         Ok(i)
@@ -301,7 +301,7 @@ pub(crate) fn period_after(v: &Value) -> Option<f64> {
         },
         _ => None,
     };
-    next.and_then(|n| rustgis_data::time::parse_text(&n))
+    next.and_then(|n| powergis_data::time::parse_text(&n))
 }
 
 /// Searches a collection over an area and period, every page up to `max_items`, and
@@ -317,7 +317,7 @@ pub fn cube_files(s: &Session, p: &Value, max_items: usize) -> Result<CubeFiles,
     let asset = ps(p, "asset").map(str::trim).filter(|a| !a.is_empty()).ok_or("asset is required (a band, such as NDVI)")?;
     let date = |k: &str| {
         p.get(k)
-            .and_then(rustgis_data::time::parse_input)
+            .and_then(powergis_data::time::parse_input)
             .ok_or_else(|| format!("{k} is a date (2024-06-01, a year, or milliseconds since 1970)"))
     };
     let (start, mut end) = (date("start")?, date("end")?);
@@ -328,7 +328,7 @@ pub fn cube_files(s: &Session, p: &Value, max_items: usize) -> Result<CubeFiles,
     if end < start {
         return Err("end is before start".into());
     }
-    let day = |ms: f64| rustgis_data::time::format(ms, "YYYY-MM-DD");
+    let day = |ms: f64| powergis_data::time::format(ms, "YYYY-MM-DD");
     // RFC 3339, as STAC asks: the whole of the last day included.
     let mut q = json!({"collections": collection, "datetime": format!("{}T00:00:00Z/{}T23:59:59Z", day(start), day(end)), "limit": 200});
     for k in ["bbox", "maxCloud"] {
@@ -366,7 +366,7 @@ pub fn cube_files(s: &Session, p: &Value, max_items: usize) -> Result<CubeFiles,
         if read.len() >= MAX_CUBE_PAGES {
             return Err(format!("more than {MAX_CUBE_PAGES} pages of results: take a shorter period or a smaller area"));
         }
-        let bytes = crate::render::rustgis_tiles::cache::download_blocking(&url)?;
+        let bytes = crate::render::powergis_tiles::cache::download_blocking(&url)?;
         let (page, more) = stac::parse_items(&bytes, &url)?;
         read.push(url);
         if page.is_empty() {
@@ -392,7 +392,7 @@ pub fn cube_files(s: &Session, p: &Value, max_items: usize) -> Result<CubeFiles,
     // Each public bucket's region, found once ([`public_web`]).
     let mut regions: std::collections::HashMap<String, Option<String>> = Default::default();
     for i in &items {
-        let Some(ms) = rustgis_data::time::parse_text(&i.datetime) else {
+        let Some(ms) = powergis_data::time::parse_text(&i.datetime) else {
             without += 1;
             continue;
         };
@@ -437,7 +437,7 @@ pub fn cube_files(s: &Session, p: &Value, max_items: usize) -> Result<CubeFiles,
     if let Some(e) = tiles
         .values()
         .flat_map(|by_day| by_day.values())
-        .find_map(|href| crate::render::rustgis_tiles::address::check(href, Some(&api)).err())
+        .find_map(|href| crate::render::powergis_tiles::address::check(href, Some(&api)).err())
     {
         return Err(e);
     }
@@ -471,7 +471,7 @@ fn public_web(href: &str, regions: &mut std::collections::HashMap<String, Option
     let region = match regions.get(&bucket) {
         Some(r) => r.clone(),
         None => {
-            let r = s3::public_region(href, crate::render::rustgis_tiles::cache::probe_blocking)?;
+            let r = s3::public_region(href, crate::render::powergis_tiles::cache::probe_blocking)?;
             regions.insert(bucket, r.clone());
             r
         }
@@ -526,10 +526,10 @@ pub struct StacCube {
     factor: u32,
     /// The area on that level's grid: its georeferencing (from its top-left corner), columns and
     /// rows, in the files' coordinate system.
-    transform: rustgis_data::raster::GeoTransform,
+    transform: powergis_data::raster::GeoTransform,
     width: u32,
     height: u32,
-    crs: rustgis_data::raster::Crs,
+    crs: powergis_data::raster::Crs,
     /// Rows a piece reads.
     rows: u32,
     /// Whether any file met a piece read: the tiles past the cover probes may all miss the area.
@@ -541,7 +541,7 @@ pub struct StacCube {
 /// grid's top-left corner, when both are on one grid of pixels (the same size, corners a whole
 /// number of pixels apart); `None` otherwise.
 #[cfg(not(target_arch = "wasm32"))]
-fn offset_in(grid: &rustgis_data::raster::GeoTransform, file: &rustgis_data::raster::GeoTransform) -> Option<(i64, i64)> {
+fn offset_in(grid: &powergis_data::raster::GeoTransform, file: &powergis_data::raster::GeoTransform) -> Option<(i64, i64)> {
     let same = |a: f64, b: f64| (a - b).abs() <= a.abs().max(b.abs()) * 1e-6;
     if !same(grid.pixel_width, file.pixel_width) || !same(grid.pixel_height, file.pixel_height) {
         return None;
@@ -578,7 +578,7 @@ pub fn piece_rows(width: u32, height: u32, dates: usize, tile_height: u32, max: 
 /// overview level for `cellSize`, the area's grid, and the pieces it is read in.
 #[cfg(not(target_arch = "wasm32"))]
 pub fn stac_cube(s: &Session, p: &Value) -> Result<StacCube, String> {
-    use crate::render::rustgis_tiles::cog;
+    use crate::render::powergis_tiles::cog;
     // The parameters read here, before the search and the first header are waited for.
     let size = match p.get("cellSize").filter(|v| !v.is_null()) {
         None => None,
@@ -643,7 +643,7 @@ pub fn stac_cube(s: &Session, p: &Value) -> Result<StacCube, String> {
     let level = match size {
         None => 0,
         Some(size) => {
-            let off = |l: &rustgis_data::raster::cog::Level| (layout.transform_of(l).pixel_width.abs() / size).ln().abs();
+            let off = |l: &powergis_data::raster::cog::Level| (layout.transform_of(l).pixel_width.abs() / size).ln().abs();
             (0..layout.levels.len()).min_by(|a, b| off(&layout.levels[*a]).total_cmp(&off(&layout.levels[*b]))).unwrap_or(0)
         }
     };
@@ -674,7 +674,7 @@ pub fn stac_cube(s: &Session, p: &Value) -> Result<StacCube, String> {
     for k in 0..=32 {
         let t = f64::from(k) / 32.0;
         for (lon, lat) in [(w + (e - w) * t, so), (w + (e - w) * t, n), (w, so + (n - so) * t), (e, so + (n - so) * t)] {
-            if let Some(c) = tr.from_lonlat(rustgis_geom::Coord::new(lon, lat)) {
+            if let Some(c) = tr.from_lonlat(powergis_geom::Coord::new(lon, lat)) {
                 (x0, y0, x1, y1) = (x0.min(c.x), y0.min(c.y), x1.max(c.x), y1.max(c.y));
             }
         }
@@ -696,7 +696,7 @@ pub fn stac_cube(s: &Session, p: &Value) -> Result<StacCube, String> {
         ));
     }
     let (width, height) = (width as u32, height as u32);
-    let transform = rustgis_data::raster::GeoTransform { origin_x: lt.origin_x + c0 * pw, origin_y: lt.origin_y + r0 * ph, ..lt };
+    let transform = powergis_data::raster::GeoTransform { origin_x: lt.origin_x + c0 * pw, origin_y: lt.origin_y + r0 * ph, ..lt };
     // Some file has to cover part of the area, or every cell would come out empty: each tile's
     // first file in turn until one does (the first file's header, read already, most often), at
     // most [`COVER_PROBES`] more headers, a header that can't be read ending it as reading would.
@@ -758,7 +758,7 @@ impl super::cube::TimeCube for StacCube {
     }
     /// The whole slice, when the area is one piece; read in pieces, a date's whole slice would be
     /// the block the pieces exist to avoid, so it is refused rather than cut to the top rows.
-    fn slice(&self, i: usize) -> Result<Option<(std::sync::Arc<rustgis_data::raster::Raster>, usize)>, String> {
+    fn slice(&self, i: usize) -> Result<Option<(std::sync::Arc<powergis_data::raster::Raster>, usize)>, String> {
         if self.pieces() > 1 {
             return Err(format!("this STAC cube is read in {} pieces: read it piece by piece (slice_of)", self.pieces()));
         }
@@ -783,8 +783,8 @@ impl super::cube::TimeCube for StacCube {
     /// Rows `piece × rows` on of the area at date `i`: each file's part of them, its values
     /// scaled as its metadata says, a cell the mean of the pixels read in it (one, or a block of
     /// the full images'); a cell no file covers (or none has a value for) is NaN.
-    fn slice_of(&self, i: usize, piece: usize) -> Result<Option<(std::sync::Arc<rustgis_data::raster::Raster>, usize)>, String> {
-        use crate::render::rustgis_tiles::cog;
+    fn slice_of(&self, i: usize, piece: usize) -> Result<Option<(std::sync::Arc<powergis_data::raster::Raster>, usize)>, String> {
+        use crate::render::powergis_tiles::cog;
         let files = self.files.get(i).ok_or_else(|| format!("no date {i}"))?;
         let top = u32::try_from(piece).ok().and_then(|p| p.checked_mul(self.rows)).filter(|t| *t < self.height).ok_or("no such piece")?;
         let h = self.rows.min(self.height - top);
@@ -794,7 +794,7 @@ impl super::cube::TimeCube for StacCube {
         let mut sum = vec![0.0f64; w as usize * h as usize];
         let mut count = vec![0u32; w as usize * h as usize];
         // The area's grid at the level read: a cell is `f` × `f` of its pixels.
-        let grid = rustgis_data::raster::GeoTransform {
+        let grid = powergis_data::raster::GeoTransform {
             pixel_width: self.transform.pixel_width / f64::from(f),
             pixel_height: self.transform.pixel_height / f64::from(f),
             ..self.transform
@@ -843,11 +843,11 @@ impl super::cube::TimeCube for StacCube {
             }
         }
         let vals: Vec<f32> = sum.iter().zip(&count).map(|(s, n)| if *n > 0 { (s / f64::from(*n)) as f32 } else { f32::NAN }).collect();
-        let transform = rustgis_data::raster::GeoTransform {
+        let transform = powergis_data::raster::GeoTransform {
             origin_y: self.transform.origin_y + f64::from(top) * self.transform.pixel_height,
             ..self.transform
         };
-        let r = rustgis_data::raster::Raster::new(
+        let r = powergis_data::raster::Raster::new(
             &self.label,
             w,
             h,
@@ -855,7 +855,7 @@ impl super::cube::TimeCube for StacCube {
             transform,
             self.crs,
             None,
-            rustgis_data::raster::ColorHint::Gray,
+            powergis_data::raster::ColorHint::Gray,
             "Float32",
         )
         .map_err(|e| e.to_string())?;
@@ -919,7 +919,7 @@ fn add_cube(s: &mut Session, p: &Value) -> CmdResult {
         // were (those it replaced, the same cube added before, included) and takes out the layers
         // it added. The rest (the view a file framed, the slider) comes back with the project
         // snapshot the command runs under (`Session::guarded`), as for any command that fails.
-        let (tiles_before, layers_before): (Vec<rustgis_map::TileLayer>, Vec<u32>) =
+        let (tiles_before, layers_before): (Vec<powergis_map::TileLayer>, Vec<u32>) =
             (s.map().tiles.clone(), s.map().layers.iter().map(|l| l.id).collect());
         let undo = |s: &mut Session| {
             let m = s.map_mut();
@@ -928,7 +928,7 @@ fn add_cube(s: &mut Session, p: &Value) -> CmdResult {
         };
         // A tile layer per grid tile, each reading its first file's header, within the map's room
         // for tile layers: a catalog without grid tiles (keyed by footprint) could make hundreds.
-        let room = rustgis_map::tiles::MAX_TILE_LAYERS.saturating_sub(s.map().tiles.len());
+        let room = powergis_map::tiles::MAX_TILE_LAYERS.saturating_sub(s.map().tiles.len());
         if tiles.len() > room {
             // Items naming no grid tile are told apart by footprint, which can differ scene by scene.
             let why = if !named_tiles {
@@ -939,7 +939,7 @@ fn add_cube(s: &mut Session, p: &Value) -> CmdResult {
             return Err(format!(
                 "{} grid tiles, and the map has room for {room} more tile layers (at most {}): {why}",
                 tiles.len(),
-                rustgis_map::tiles::MAX_TILE_LAYERS
+                powergis_map::tiles::MAX_TILE_LAYERS
             ));
         }
         // Every file a web address of sane length, as a project keeps them (TileLayer::repair),
@@ -990,9 +990,9 @@ fn add_cube(s: &mut Session, p: &Value) -> CmdResult {
         dates.dedup();
         // At most MAX_CUBE_ITEMS dates, well under the slider's steps; were it ever more, the cube
         // is refused rather than left with files the slider can't reach.
-        if dates.len() > rustgis_map::time::MAX_STEPS {
+        if dates.len() > powergis_map::time::MAX_STEPS {
             undo(s);
-            return Err(format!("{} dates; the time slider takes {} at most", dates.len(), rustgis_map::time::MAX_STEPS));
+            return Err(format!("{} dates; the time slider takes {} at most", dates.len(), powergis_map::time::MAX_STEPS));
         }
         // The slider over the cube's dates: on over them when it is off; when it is on, taking
         // them in (its own dates and the cube's, or its span widened to theirs), so every file
@@ -1006,12 +1006,12 @@ fn add_cube(s: &mut Session, p: &Value) -> CmdResult {
                 let mut all: Vec<f64> = t.dates.iter().chain(&dates).copied().collect();
                 all.sort_by(f64::total_cmp);
                 all.dedup();
-                if all.len() > rustgis_map::time::MAX_STEPS {
+                if all.len() > powergis_map::time::MAX_STEPS {
                     undo(s);
                     return Err(format!(
                         "the time slider's dates and the cube's make {}, more than its {} steps: take a shorter period",
                         all.len(),
-                        rustgis_map::time::MAX_STEPS
+                        powergis_map::time::MAX_STEPS
                     ));
                 }
                 json!({"dates": all, "date": t.current})
@@ -1038,7 +1038,7 @@ fn add_cube(s: &mut Session, p: &Value) -> CmdResult {
 
 #[cfg(all(test, not(target_arch = "wasm32")))]
 mod tests {
-    use rustgis_data::raster::GeoTransform;
+    use powergis_data::raster::GeoTransform;
 
     /// A piece's rows: as many as fit, whole tiles of rows when one fits, at least one; none when
     /// a single row is too many. Piauí at ~1 km over 25 years of 16-day composites (645 × 984

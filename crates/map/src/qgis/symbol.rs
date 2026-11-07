@@ -145,7 +145,7 @@ pub(super) fn read(sym: Node, reference: Option<f64>, turned: bool, layer: &str,
     {
         let k = (f64::from(out.symbol.size / own)).clamp(1e-3, 1e3);
         let scaled = format!("({text}) * {}", (k * 1e6).round() / 1e6);
-        if scaled.len() <= rustgis_data::query::MAX_LEN {
+        if scaled.len() <= powergis_data::query::MAX_LEN {
             by.size = Some(scaled);
         } else {
             report.skipped(layer, "a data-defined marker size too long to read");
@@ -910,7 +910,7 @@ fn property_text(property: Node) -> Option<String> {
         Some("3") => named("expression")?.trim().to_string(),
         _ => return None,
     };
-    Some(text).filter(|t| !t.is_empty() && t != "\"\"" && t.len() <= rustgis_data::query::MAX_LEN - 32)
+    Some(text).filter(|t| !t.is_empty() && t != "\"\"" && t.len() <= powergis_data::query::MAX_LEN - 32)
 }
 
 /// Takes the data-defined property `name` of a symbol layer (its settings `p`) of a `kind`

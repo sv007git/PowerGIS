@@ -31,7 +31,7 @@ for another round.
 `cargo xtask ci` runs `cargo fmt --all --check`,
 `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace -q` and
 `cargo xtask layers`. The pre-commit hooks also check TOML, YAML, JSON, whitespace and large files.
-CI separately builds `rustgis-web` for `wasm32-unknown-unknown` and runs
+CI separately builds `powergis-web` for `wasm32-unknown-unknown` and runs
 `cargo deny --locked check licenses` against `deny.toml`.
 
 Other workspace tasks:
@@ -77,20 +77,20 @@ The settings change every build's fingerprint, so the next build is a full one.
 **Build only what you're testing.** `cargo test --workspace` builds every crate's library, test
 binaries and examples; a change in `ui-egui` alone means its library twice (plain and for its unit
 tests), fifteen integration test binaries and the examples. While you work, name what you need:
-`cargo test -p rustgis-ui-egui --lib`, `cargo test -p rustgis-engine --test project_save`, or
-`cargo clippy -p rustgis-ui-egui --all-targets` to check without linking.
+`cargo test -p powergis-ui-egui --lib`, `cargo test -p powergis-engine --test project_save`, or
+`cargo clippy -p powergis-ui-egui --all-targets` to check without linking.
 
 **cargo-nextest.** [cargo-nextest](https://nexte.st) (`cargo install cargo-nextest --locked`) runs
 the test binaries side by side, each test in its own process, and filters tests by expression:
 
 ```sh
-cargo nextest run --workspace --no-fail-fast -E 'not (package(rustgis-engine) and test(hostile_params_never_panic))'
+cargo nextest run --workspace --no-fail-fast -E 'not (package(powergis-engine) and test(hostile_params_never_panic))'
 cargo test --workspace --doc   # nextest doesn't run doctests
 ```
 
 The engine's `hostile_params_never_panic`, which runs every command with junk parameters, is by far
 its slowest test; leaving it out while you iterate keeps a run short. Run it before you push, with
-`cargo nextest run -p rustgis-engine -E 'test(hostile_params_never_panic)'` or `cargo xtask ci`.
+`cargo nextest run -p powergis-engine -E 'test(hostile_params_never_panic)'` or `cargo xtask ci`.
 A test that fails now and then can be retried with `--retries 1`.
 
 **`opt-level` 0 for UI work.** The workspace crates build at `opt-level = 1`. With
@@ -213,10 +213,10 @@ public service. Extend these generators when adding cases.
 summarise, map, save, reopen and export, and the same saved job twice. Its real-data case,
 Shelby County's census tracts checked against the areas the Census Bureau publishes, is
 `#[ignore]`d: the nightly build downloads the public-domain files, pinned by checksum, and runs it
-with `RUSTGIS_WORKFLOW_DATA` naming their folder (the list of files is in `nightly.yml`). To run
+with `powergis_WORKFLOW_DATA` naming their folder (the list of files is in `nightly.yml`). To run
 it locally, download the files listed there into one folder, check them with `sha256sum` against
 the checksums beside them, and run
-`RUSTGIS_WORKFLOW_DATA=<folder> cargo test -p rustgis-engine --test workflows -- --ignored`.
+`powergis_WORKFLOW_DATA=<folder> cargo test -p powergis-engine --test workflows -- --ignored`.
 
 ## Documentation
 
@@ -227,7 +227,7 @@ pip install -r requirements_docs.txt
 zensical serve        # http://localhost:8000
 ```
 
-Images live in [rustgis-assets](https://github.com/opengeos/rustgis-assets) and are linked by
+Images live in [powergis-assets](https://github.com/opengeos/powergis-assets) and are linked by
 URL; don't commit images to this repository.
 
 For PR screenshots, GitHub web attachments are fine. The optional
@@ -237,8 +237,8 @@ image links; `gh` itself has no native standalone attachment-upload command.
 The screenshots are rendered by the app itself. From the repository root, run
 `crates/ui-egui/examples/shots/render.sh`; it needs ImageMagick (`magick`) and network access for
 tiles, plugins and the sample DEM. It runs the `ui_shot` scripts beside it and writes WebP files
-to `target/shots/`; copy them to `images/` in rustgis-assets. The `assistant` shot asks a real
-model, so set `RUSTGIS_ASSISTANT_PROVIDER` and the provider's key first, or it shows an empty
+to `target/shots/`; copy them to `images/` in powergis-assets. The `assistant` shot asks a real
+model, so set `powergis_ASSISTANT_PROVIDER` and the provider's key first, or it shows an empty
 pane (see [AI Assistant](user-guide/assistant.md#choosing-a-model)).
 
 ## Releases
@@ -254,6 +254,6 @@ The **Release** workflow then builds and attaches the Windows installers, zip an
 macOS DMGs, the Linux tarballs, `.deb` and `.rpm` packages and AppImages, and `SHA256SUMS`. To try the packaging locally:
 
 ```sh
-cargo build --release --locked -p rustgis -p rustgis-cli
+cargo build --release --locked -p powergis -p powergis-cli
 packaging/package.sh <version>  # writes dist/ for the host platform
 ```

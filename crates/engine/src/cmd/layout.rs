@@ -3,9 +3,9 @@
 
 use std::path::Path;
 
-use rustgis_geom::{Coord, Extent};
-use rustgis_map::Rgba;
-use rustgis_map::layout::{
+use powergis_geom::{Coord, Extent};
+use powergis_map::Rgba;
+use powergis_map::layout::{
     Arrange, ArrowStyle, CoordFormat, ElementKind, FontFamily, FrameShape, Grid, GridEdges, GridKind, GridStyle, Guides, Layout, LineDir,
     LineHead, MAX_COLORBAR_TICKS, MAX_GRID_WIDTH, MAX_GUIDES, MAX_SCALE_DIVISIONS, MAX_TICK_MM, MIN_ELEMENT_MM, MapSeries, Orientation,
     PAGES, ScaleBarStyle, ScaleUnits, TextAlign, TickSide, fit_scale, line_angle, line_at_angle, line_length,
@@ -125,7 +125,7 @@ pub fn commands() -> Vec<C> {
             let path = ps(p, "path").ok_or("path is required")?;
             let l = active(s, p)?.clone();
             let text = serde_json::to_string_pretty(&l).map_err(|e| e.to_string())?;
-            rustgis_data::io::write_atomic(Path::new(path), text.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(Path::new(path), text.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"path": path}))
         })
         .view()
@@ -256,7 +256,7 @@ pub(crate) fn page_size(p: &Value, current: Option<(f64, f64)>) -> Result<(f64, 
 fn view_frame(s: &Session, w_mm: f64) -> (Coord, f64) {
     let m = s.map();
     let ground_w = s.view_size.0 * m.ground_res();
-    (m.center_lonlat(), (ground_w / (w_mm / 1000.0)).clamp(rustgis_map::layout::MIN_FRAME_SCALE, rustgis_map::layout::MAX_FRAME_SCALE))
+    (m.center_lonlat(), (ground_w / (w_mm / 1000.0)).clamp(powergis_map::layout::MIN_FRAME_SCALE, powergis_map::layout::MAX_FRAME_SCALE))
 }
 
 /// The active map's bearing and pitch, for a frame showing its view.
@@ -275,8 +275,8 @@ fn frame_kind(s: &Session, map: &str, w: f64, shape: FrameShape) -> ElementKind 
         shape,
         grid: None,
         extent_of: None,
-        extent_color: rustgis_map::layout::INDICATOR_COLOR,
-        extent_width: rustgis_map::layout::INDICATOR_WIDTH,
+        extent_color: powergis_map::layout::INDICATOR_COLOR,
+        extent_width: powergis_map::layout::INDICATOR_WIDTH,
         bearing,
         pitch,
     }
@@ -417,10 +417,10 @@ fn projection_and_datum(s: &Session) -> (String, String) {
     // A UTM zone's EPSG code, named: its PROJ definition gives only an ellipsoid (SIRGAS 2000's
     // zones have +ellps=GRS80), and its label only the code.
     let code = label.strip_prefix("EPSG:").and_then(|n| n.parse::<u32>().ok());
-    if let Some((datum, zone, north)) = code.and_then(rustgis_data::raster::wkt::utm_of_code) {
+    if let Some((datum, zone, north)) = code.and_then(powergis_data::raster::wkt::utm_of_code) {
         return (format!("UTM zone {zone}{}", if north { "N" } else { "S" }), datum.to_string());
     }
-    let datum = rustgis_map::projection::lookup(&projection.code()).ok().and_then(|(def, _)| datum_of(&def));
+    let datum = powergis_map::projection::lookup(&projection.code()).ok().and_then(|(def, _)| datum_of(&def));
     (label, datum.unwrap_or_else(|| "WGS 84".to_string()))
 }
 
@@ -653,13 +653,13 @@ enum Locator {
 /// The scale at which `map` on the globe, centred on `center`, draws a globe `d_mm` across in a
 /// frame: the globe's visible disc as the renderer lays it out for the frame's camera at a probe
 /// scale, its size going as one over the scale.
-fn globe_scale(map: &rustgis_map::Map, center: Coord, d_mm: f64) -> f64 {
+fn globe_scale(map: &powergis_map::Map, center: Coord, d_mm: f64) -> f64 {
     const PROBE: f64 = 1e8;
-    let cam = rustgis_map::layout::frame_camera(map, center, PROBE, 0.0, 0.0);
-    let side = d_mm.max(1.0) * rustgis_map::layout::PT_PER_MM;
-    let radius = rustgis_map::globe::Globe::new(&cam, side, side).disc_radius();
+    let cam = powergis_map::layout::frame_camera(map, center, PROBE, 0.0, 0.0);
+    let side = d_mm.max(1.0) * powergis_map::layout::PT_PER_MM;
+    let radius = powergis_map::globe::Globe::new(&cam, side, side).disc_radius();
     if radius.is_finite() && radius > 0.0 {
-        (PROBE * 2.0 * radius / side).clamp(rustgis_map::layout::MIN_FRAME_SCALE, rustgis_map::layout::MAX_FRAME_SCALE)
+        (PROBE * 2.0 * radius / side).clamp(powergis_map::layout::MIN_FRAME_SCALE, powergis_map::layout::MAX_FRAME_SCALE)
     } else {
         PROBE
     }
@@ -1383,8 +1383,8 @@ fn publication(s: &mut Session, p: &Value) -> CmdResult {
             shape: FrameShape::Rectangle,
             grid: Some(grid),
             extent_of: None,
-            extent_color: rustgis_map::layout::INDICATOR_COLOR,
-            extent_width: rustgis_map::layout::INDICATOR_WIDTH,
+            extent_color: powergis_map::layout::INDICATOR_COLOR,
+            extent_width: powergis_map::layout::INDICATOR_WIDTH,
             bearing: 0.0,
             pitch: 0.0,
         },
@@ -1439,8 +1439,8 @@ fn publication(s: &mut Session, p: &Value) -> CmdResult {
             };
             // And made as this command makes them: no web tiles, only unlabelled polygon layers,
             // so a globe map made by hand under that name is left alone.
-            let made_here = |x: &rustgis_map::Map| {
-                x.tiles.is_empty() && x.layers.iter().all(|l| l.geometry_type() == rustgis_data::GeometryType::Polygon && !l.labels.enabled)
+            let made_here = |x: &powergis_map::Map| {
+                x.tiles.is_empty() && x.layers.iter().all(|l| l.geometry_type() == powergis_data::GeometryType::Polygon && !l.labels.enabled)
             };
             let orphan = s
                 .project
@@ -1457,19 +1457,19 @@ fn publication(s: &mut Session, p: &Value) -> CmdResult {
             // raster or streamed layer (read again) nor points and lines cluttering a small disc.
             // Not its web tiles (fetched and drawn over the basemap on the disc), swipe, time
             // slider, layer groups (their hidden layers left out here), bookmarks or animation.
-            let mut m = rustgis_map::Map::new(name);
+            let mut m = powergis_map::Map::new(name);
             m.basemap = src.basemap;
             m.graticule = src.graticule;
             m.body = src.body.clone();
-            m.set_projection(rustgis_map::Projection::Globe);
+            m.set_projection(powergis_map::Projection::Globe);
             let globe = globe_scale(&m, center, side * 0.92);
             // Each polygon simplified to a tenth of a millimetre on the disc (its scale in metres),
             // so the project keeps a sketch of the layers for it, not a second full copy of them.
             let tolerance_m = globe * 1e-4;
             // On the locator, sub-tolerance rings keep their outline rather than becoming triangles.
-            let sketch = |g: &rustgis_data::Geometry| {
-                let mut simple = rustgis_analysis::simplify_geometry(g, tolerance_m);
-                if let (rustgis_data::Geometry::Polygon(original), rustgis_data::Geometry::Polygon(reduced)) = (g, &mut simple) {
+            let sketch = |g: &powergis_data::Geometry| {
+                let mut simple = powergis_analysis::simplify_geometry(g, tolerance_m);
+                if let (powergis_data::Geometry::Polygon(original), powergis_data::Geometry::Polygon(reduced)) = (g, &mut simple) {
                     for (original, reduced) in original.iter().flatten().zip(reduced.iter_mut().flatten()) {
                         let mut extent = Extent::EMPTY;
                         // Keep the extent continuous across the antimeridian.
@@ -1478,7 +1478,7 @@ fn publication(s: &mut Session, p: &Value) -> CmdResult {
                             longitude += (c.x - longitude + 180.0).rem_euclid(360.0) - 180.0;
                             extent.expand(Coord::new(longitude, c.y));
                         }
-                        let projected = rustgis_geom::extent_to_merc(&extent);
+                        let projected = powergis_geom::extent_to_merc(&extent);
                         let size_m =
                             projected.width().hypot(projected.height()) * extent.center().y.clamp(-85.0, 85.0).to_radians().cos().max(0.01);
                         if size_m < tolerance_m {
@@ -1487,7 +1487,7 @@ fn publication(s: &mut Session, p: &Value) -> CmdResult {
                     }
                 }
                 match &simple {
-                    rustgis_data::Geometry::Polygon(polys) if polys.iter().flatten().all(|ring| ring.len() >= 4) => simple,
+                    powergis_data::Geometry::Polygon(polys) if polys.iter().flatten().all(|ring| ring.len() >= 4) => simple,
                     _ => g.clone(),
                 }
             };
@@ -1495,7 +1495,7 @@ fn publication(s: &mut Session, p: &Value) -> CmdResult {
                 .layers
                 .iter()
                 .filter(|l| {
-                    src.shows(l) && !l.is_raster() && l.source.is_none() && l.geometry_type() == rustgis_data::GeometryType::Polygon
+                    src.shows(l) && !l.is_raster() && l.source.is_none() && l.geometry_type() == powergis_data::GeometryType::Polygon
                 })
                 .map(|l| {
                     // (Sharing the rows: `Features` is copy-on-write, replaced just below.)
@@ -1539,10 +1539,10 @@ fn publication(s: &mut Session, p: &Value) -> CmdResult {
     // frame, no legend.
     let render_scale = crate::render::layout::frame_render_scale(s.map(), center, scale);
     let view = crate::render::View {
-        width: fw * rustgis_map::layout::PT_PER_MM,
-        height: fh * rustgis_map::layout::PT_PER_MM,
+        width: fw * powergis_map::layout::PT_PER_MM,
+        height: fh * powergis_map::layout::PT_PER_MM,
         pixels_per_point: 1.0,
-        camera: rustgis_map::layout::frame_camera(s.map(), center, scale, 0.0, 0.0),
+        camera: powergis_map::layout::frame_camera(s.map(), center, scale, 0.0, 0.0),
         sky: false,
     };
     let lonlat = crate::render::view_lonlat(s.map(), &view);
@@ -1598,8 +1598,8 @@ fn publication(s: &mut Session, p: &Value) -> CmdResult {
     surrounds.push((Surround::Arrow, aw, ah, 1));
     // The topmost visible raster drawn on a ramp gets a colorbar, under the legend in its box (a
     // map whose theme is a raster has its key there, which the legend's rows don't give).
-    let bar = rustgis_map::layout::colorbar_layer(s.map(), None)
-        .filter(|l| l.raster.as_ref().and_then(rustgis_map::layout::color_scale).is_some())
+    let bar = powergis_map::layout::colorbar_layer(s.map(), None)
+        .filter(|l| l.raster.as_ref().and_then(powergis_map::layout::color_scale).is_some())
         .map(|l| l.name.clone());
     let (bar_w, bar_h) = (if sheet { 50.0 * k } else { 40.0 }, COLORBAR_MM);
     let bar_part = if bar.is_some() { bar_h + if ch > 0.0 { 2.0 } else { 0.0 } } else { 0.0 };
@@ -1699,8 +1699,8 @@ fn publication(s: &mut Session, p: &Value) -> CmdResult {
                 shape: shape.clone(),
                 grid: None,
                 extent_of: Some(frame),
-                extent_color: rustgis_map::layout::INDICATOR_COLOR,
-                extent_width: rustgis_map::layout::INDICATOR_WIDTH,
+                extent_color: powergis_map::layout::INDICATOR_COLOR,
+                extent_width: powergis_map::layout::INDICATOR_WIDTH,
                 bearing: 0.0,
                 pitch: 0.0,
             },
@@ -2096,7 +2096,7 @@ fn add_element(s: &mut Session, p: &Value) -> CmdResult {
         "text" | "dynamicText" => {
             let default = if kind == "text" { "Text" } else { "{map} · {scale} · {date}" };
             let text: String = ps(p, "text").unwrap_or(default).chars().take(5000).collect();
-            let fonts = rustgis_map::graphics::FONT_SIZE;
+            let fonts = powergis_map::graphics::FONT_SIZE;
             let size = f(p, "size").unwrap_or(12.0).clamp(*fonts.start(), *fonts.end());
             let (italic, align, letter_spacing) = text_style(p, false, TextAlign::Left, 0.0)?;
             let (font, font_name) = text_font(p, (FontFamily::Sans, None))?;
@@ -2263,11 +2263,11 @@ fn colorbar_layer(s: &Session, l: &Layout, frame: u32, name: Option<&str>) -> Re
     };
     let m = s.project.maps.iter().find(|m| m.name.eq_ignore_ascii_case(&map)).ok_or_else(|| format!("no map '{map}'"))?;
     match name.map(str::trim).filter(|n| !n.is_empty()) {
-        Some(n) => match rustgis_map::layout::colorbar_layer(m, Some(n)) {
+        Some(n) => match powergis_map::layout::colorbar_layer(m, Some(n)) {
             Some(layer) => Ok(Some(layer.name.clone())),
             None => Err(format!("no raster layer '{n}' in {map}")),
         },
-        None => Ok(rustgis_map::layout::colorbar_layer(m, None).map(|l| l.name.clone())),
+        None => Ok(powergis_map::layout::colorbar_layer(m, None).map(|l| l.name.clone())),
     }
 }
 
@@ -2301,11 +2301,11 @@ fn ticks(p: &Value) -> Option<usize> {
 fn indicator_style(p: &Value, kind: Option<&ElementKind>) -> Result<(Rgba, f64), String> {
     let (c, w) = match kind {
         Some(ElementKind::MapFrame { extent_color, extent_width, .. }) => (*extent_color, *extent_width),
-        _ => (rustgis_map::layout::INDICATOR_COLOR, rustgis_map::layout::INDICATOR_WIDTH),
+        _ => (powergis_map::layout::INDICATOR_COLOR, powergis_map::layout::INDICATOR_WIDTH),
     };
     let given = |k: &str| p.get(k).is_some_and(|v| !v.is_null());
     let width = match (given("width"), f(p, "width")) {
-        (_, Some(v)) => v.clamp(rustgis_map::layout::MIN_INDICATOR_WIDTH, rustgis_map::layout::MAX_INDICATOR_WIDTH),
+        (_, Some(v)) => v.clamp(powergis_map::layout::MIN_INDICATOR_WIDTH, powergis_map::layout::MAX_INDICATOR_WIDTH),
         (true, None) => return Err("width must be a number of points".into()),
         (false, None) => w,
     };
@@ -2332,11 +2332,11 @@ fn grid_params(p: &Value, base: Grid) -> Result<Grid, String> {
         None => {}
         Some(Value::Null) => g.crs = None,
         Some(Value::String(c)) if c.trim().is_empty() => g.crs = None,
-        Some(Value::String(c)) if c.trim().chars().count() > rustgis_map::layout::MAX_GRID_CRS => {
-            return Err(format!("crs: at most {} characters", rustgis_map::layout::MAX_GRID_CRS));
+        Some(Value::String(c)) if c.trim().chars().count() > powergis_map::layout::MAX_GRID_CRS => {
+            return Err(format!("crs: at most {} characters", powergis_map::layout::MAX_GRID_CRS));
         }
         Some(Value::String(c)) => {
-            let crs = rustgis_data::raster::Crs::parse(c.trim()).map_err(|e| format!("crs: {e}"))?;
+            let crs = powergis_data::raster::Crs::parse(c.trim()).map_err(|e| format!("crs: {e}"))?;
             if crs.is_geographic() {
                 return Err(format!(
                     "crs: {} is geographic; a measured grid needs a projected system (a graticule draws degrees)",
@@ -2352,10 +2352,10 @@ fn grid_params(p: &Value, base: Grid) -> Result<Grid, String> {
     }
     if let Some(v) = f(p, "step") {
         g.step = match g.kind {
-            GridKind::Graticule => v.clamp(0.0, rustgis_map::layout::MAX_GRATICULE_STEP),
+            GridKind::Graticule => v.clamp(0.0, powergis_map::layout::MAX_GRATICULE_STEP),
             // (0 picks one; a step below a metre is a metre.)
             GridKind::Measured if v <= 0.0 => 0.0,
-            GridKind::Measured => v.clamp(rustgis_map::layout::MIN_MEASURED_STEP, rustgis_map::layout::MAX_MEASURED_STEP),
+            GridKind::Measured => v.clamp(powergis_map::layout::MIN_MEASURED_STEP, powergis_map::layout::MAX_MEASURED_STEP),
         };
     }
     g.color = color(p, "color", g.color)?;
@@ -2424,7 +2424,7 @@ pub(crate) fn text_style(p: &Value, italic: bool, align: TextAlign, spacing: f64
         None => align,
     };
     let spacing = match (given("letterSpacing"), f(p, "letterSpacing")) {
-        (_, Some(v)) => v.clamp(rustgis_map::layout::MIN_LETTER_SPACING, rustgis_map::layout::MAX_LETTER_SPACING),
+        (_, Some(v)) => v.clamp(powergis_map::layout::MIN_LETTER_SPACING, powergis_map::layout::MAX_LETTER_SPACING),
         (true, None) => return Err("letterSpacing must be a number of points".into()),
         (false, None) => spacing,
     };
@@ -2464,7 +2464,7 @@ pub(crate) fn text_font(p: &Value, current: (FontFamily, Option<String>)) -> Res
     let n = font.as_str().ok_or("font must be sans, serif or an installed font family's name")?;
     // Kept as a label's font is (trimmed, control characters out), then read as a generic name
     // or a family's.
-    let name = rustgis_map::symbology::font_name(n).ok_or("font must be sans, serif or an installed font family's name")?;
+    let name = powergis_map::symbology::font_name(n).ok_or("font must be sans, serif or an installed font family's name")?;
     if let Some(generic) = FontFamily::from_name(&name) {
         return match fallback {
             Some(_) => Err("fallback goes with a font family's name, not sans or serif".into()),
@@ -2479,16 +2479,16 @@ pub(crate) fn text_font(p: &Value, current: (FontFamily, Option<String>)) -> Res
 
 /// The installed family named `name` (in any case, as the index compares names): none while the
 /// app is still indexing them (a command runs on its interface thread, which mustn't wait).
-fn installed_family(name: &str) -> Option<&'static rustgis_render::families::Family> {
-    use rustgis_render::families;
+fn installed_family(name: &str) -> Option<&'static powergis_render::families::Family> {
+    use powergis_render::families;
     families::available()?.get(usize::from(families::find_ready(name)?))
 }
 
 /// Whether the face of `family` a text in `style` (bold, italic) draws in can be read (a file past
 /// the size PowerGIS reads, or a damaged one, can't): that face only, read once and kept, as
 /// drawing it would.
-fn readable(family: &rustgis_render::families::Family, (bold, italic): (bool, bool)) -> bool {
-    use rustgis_render::families;
+fn readable(family: &powergis_render::families::Family, (bold, italic): (bool, bool)) -> bool {
+    use powergis_render::families;
     families::pick(family, bold, italic).and_then(|(face, _)| families::bytes(face)).is_some()
 }
 
@@ -2497,7 +2497,7 @@ fn readable(family: &rustgis_render::families::Family, (bold, italic): (bool, bo
 /// the fonts not indexed yet), a name that says "Serif" without "Sans" (Noto Serif), else the
 /// sans.
 fn default_fallback(
-    installed: Option<&rustgis_render::families::Family>,
+    installed: Option<&powergis_render::families::Family>,
     name: &str,
     current: &(FontFamily, Option<String>),
 ) -> FontFamily {
@@ -2518,9 +2518,9 @@ fn default_fallback(
 /// indexing the installed fonts (its first seconds), a family named with no `fallback` given is
 /// told that its fallback came from its name, not the font.
 fn font_warning(font: FontFamily, name: Option<&str>, fallback_given: bool, style: (bool, bool)) -> Option<String> {
-    let serif = rustgis_render::fonts::serif_available();
+    let serif = powergis_render::fonts::serif_available();
     let drawn = if font == FontFamily::Serif && serif { "serif" } else { "sans-serif" };
-    let indexed = rustgis_render::families::available().is_some();
+    let indexed = powergis_render::families::available().is_some();
     match name {
         Some(n) if !indexed && !fallback_given => Some(format!(
             "the installed fonts are still being read, so {n}'s fallback ({drawn}) comes from its name, not the font: give \"fallback\" to choose it"
@@ -2530,7 +2530,7 @@ fn font_warning(font: FontFamily, name: Option<&str>, fallback_given: bool, styl
         Some(n) if indexed && installed_family(n).is_some_and(|f| !readable(f, style)) => Some(format!(
             "{n} is installed but its font can't be loaded (a file too large or damaged, or past the fonts PowerGIS keeps in memory), so the text is drawn in the {drawn}"
         )),
-        Some(n) if indexed && rustgis_render::families::find_ready(n).is_none() => {
+        Some(n) if indexed && powergis_render::families::find_ready(n).is_none() => {
             Some(format!("{n} is not installed on this computer, so the text is drawn in the {drawn}"))
         }
         Some(_) => None,
@@ -2545,8 +2545,8 @@ fn font_warning(font: FontFamily, name: Option<&str>, fallback_given: bool, styl
 fn legend_exclude(s: &Session, l: &Layout, frame: u32, p: &Value) -> Result<Option<Vec<String>>, String> {
     let Some(v) = p.get("exclude").filter(|v| !v.is_null()) else { return Ok(None) };
     let names = v.as_array().ok_or("exclude is a list of layer names")?;
-    if names.len() > rustgis_map::layout::MAX_LEGEND_EXCLUDED {
-        return Err(format!("a legend leaves out at most {} layers", rustgis_map::layout::MAX_LEGEND_EXCLUDED));
+    if names.len() > powergis_map::layout::MAX_LEGEND_EXCLUDED {
+        return Err(format!("a legend leaves out at most {} layers", powergis_map::layout::MAX_LEGEND_EXCLUDED));
     }
     let map_name = match l.element(frame).map(|e| &e.kind) {
         Some(ElementKind::MapFrame { map, .. }) => map.clone(),
@@ -2693,7 +2693,7 @@ fn update(s: &mut Session, p: &Value) -> CmdResult {
                     // number; otherwise it charts the layer's first numeric field.
                     None => match &e.kind {
                         ElementKind::Chart { field, .. } if nl.is_some() => {
-                            let numeric = |f: &&rustgis_data::Field| f.ty.is_numeric();
+                            let numeric = |f: &&powergis_data::Field| f.ty.is_numeric();
                             let keep = target.dataset.field_index(field).and_then(|i| target.dataset.fields.get(i)).filter(numeric);
                             let f = keep
                                 .or_else(|| target.dataset.fields.iter().find(numeric))
@@ -2880,7 +2880,7 @@ fn update(s: &mut Session, p: &Value) -> CmdResult {
             if let Some(t) = ps(p, "text") {
                 *text = t.chars().take(5000).collect();
             }
-            if let Some(v) = num("size", *rustgis_map::graphics::FONT_SIZE.start(), *rustgis_map::graphics::FONT_SIZE.end()) {
+            if let Some(v) = num("size", *powergis_map::graphics::FONT_SIZE.start(), *powergis_map::graphics::FONT_SIZE.end()) {
                 *size = v;
             }
             if let Some(c) = col {
@@ -2936,15 +2936,15 @@ fn update(s: &mut Session, p: &Value) -> CmdResult {
                 *map = m;
             }
             if let Some(v) = f(p, "bearing") {
-                *bearing = rustgis_map::camera::normalize_bearing(v);
+                *bearing = powergis_map::camera::normalize_bearing(v);
             }
             if let Some(v) = f(p, "pitch") {
-                *pitch = rustgis_map::camera::normalize_pitch(v);
+                *pitch = powergis_map::camera::normalize_pitch(v);
             }
             if let Some(g) = new_grid {
                 *grid = g;
             }
-            if let Some(v) = num("scale", rustgis_map::layout::MIN_FRAME_SCALE, rustgis_map::layout::MAX_FRAME_SCALE) {
+            if let Some(v) = num("scale", powergis_map::layout::MIN_FRAME_SCALE, powergis_map::layout::MAX_FRAME_SCALE) {
                 *scale = v;
             }
             if let Some(c) = new_center {
@@ -3011,7 +3011,7 @@ fn frame_zoom(s: &mut Session, p: &Value) -> CmdResult {
             let ground_w = s.view_size.0 * m.ground_res();
             let (c, sc) = (
                 m.center_lonlat(),
-                (ground_w / (w / 1000.0)).clamp(rustgis_map::layout::MIN_FRAME_SCALE, rustgis_map::layout::MAX_FRAME_SCALE),
+                (ground_w / (w / 1000.0)).clamp(powergis_map::layout::MIN_FRAME_SCALE, powergis_map::layout::MAX_FRAME_SCALE),
             );
             let (b, t) = view_turn(s);
             if let Some(ElementKind::MapFrame { center, scale, bearing, pitch, .. }) =
@@ -3091,7 +3091,7 @@ pub fn series_info(s: &Session, li: usize, page: usize) -> Option<(usize, String
 }
 
 /// A map series' index layer and its name field.
-fn series_layer(s: &Session, li: usize) -> Option<(&rustgis_map::Layer, Option<usize>)> {
+fn series_layer(s: &Session, li: usize) -> Option<(&powergis_map::Layer, Option<usize>)> {
     let l = s.project.layouts.get(li)?;
     let sr = l.series.as_ref()?;
     let map = match l.element(sr.frame).map(|e| &e.kind) {
@@ -3102,7 +3102,7 @@ fn series_layer(s: &Session, li: usize) -> Option<(&rustgis_map::Layer, Option<u
     Some((layer, layer.dataset.field_index(&sr.name_field)))
 }
 
-fn page_name(layer: &rustgis_map::Layer, fi: Option<usize>, row: usize) -> String {
+fn page_name(layer: &powergis_map::Layer, fi: Option<usize>, row: usize) -> String {
     fi.map(|i| layer.dataset.value(row, i).to_string()).unwrap_or_else(|| (row + 1).to_string())
 }
 
@@ -3153,7 +3153,7 @@ fn series_page(s: &mut Session, p: &Value) -> CmdResult {
 /// once.
 fn named_fonts_unread(layout: &Layout) -> Option<&'static str> {
     let named = layout.elements.iter().any(|e| matches!(&e.kind, ElementKind::Text { font_name: Some(_), .. }));
-    (named && rustgis_render::families::available().is_none()).then_some(
+    (named && powergis_render::families::available().is_none()).then_some(
         "the installed fonts are still being read, so texts in a named font family are drawn in their fallback: export again in a moment",
     )
 }
@@ -3180,7 +3180,7 @@ pub fn layout_bytes(s: &mut Session, li: usize, pdf: bool, dpi: f64, all: bool) 
         _ => vec![current],
     };
     let stepping = names.is_some() && pages.len() > 1;
-    let mut render_pages = || -> Result<(Vec<rustgis_render::pdf::Page>, Option<Vec<u8>>), String> {
+    let mut render_pages = || -> Result<(Vec<powergis_render::pdf::Page>, Option<Vec<u8>>), String> {
         let mut out = Vec::new();
         let mut png = None;
         let mut held = 0usize;
@@ -3189,7 +3189,7 @@ pub fn layout_bytes(s: &mut Session, li: usize, pdf: bool, dpi: f64, all: bool) 
                 series_page(s, &json!({"layout": li, "page": page}))?;
             }
             let layout = s.project.layouts.get(li).ok_or("no layout")?;
-            let info = rustgis_render::layout::PageInfo {
+            let info = powergis_render::layout::PageInfo {
                 page: page + 1,
                 pages: total,
                 page_name: match &names {
@@ -3197,11 +3197,11 @@ pub fn layout_bytes(s: &mut Session, li: usize, pdf: bool, dpi: f64, all: bool) 
                     None => info.as_ref().map(|i| i.1.clone()).unwrap_or_default(),
                 },
             };
-            let img = rustgis_render::layout::render(layout, &mut s.project.maps, dpi, &info).ok_or("the page is too large to draw")?;
+            let img = powergis_render::layout::render(layout, &mut s.project.maps, dpi, &info).ok_or("the page is too large to draw")?;
             // Each page is compressed as soon as it's drawn, within a memory budget.
             if pdf {
-                out.push(rustgis_render::pdf::Page::new(&img, layout.width, layout.height));
-                held += out.last().map_or(0, rustgis_render::pdf::Page::len);
+                out.push(powergis_render::pdf::Page::new(&img, layout.width, layout.height));
+                held += out.last().map_or(0, powergis_render::pdf::Page::len);
                 if held > PDF_BUDGET {
                     return Err(format!(
                         "the PDF passed {} MB at page {}; export at a lower dpi, or fewer pages",
@@ -3221,7 +3221,7 @@ pub fn layout_bytes(s: &mut Session, li: usize, pdf: bool, dpi: f64, all: bool) 
         *cur = saved.clone();
     }
     let (pages, png) = result?;
-    if pdf { Ok(rustgis_render::pdf::write(&pages, &saved.name)) } else { png.ok_or_else(|| "nothing to draw".to_string()) }
+    if pdf { Ok(powergis_render::pdf::write(&pages, &saved.name)) } else { png.ok_or_else(|| "nothing to draw".to_string()) }
 }
 
 fn export(s: &mut Session, p: &Value) -> CmdResult {
@@ -3231,7 +3231,7 @@ fn export(s: &mut Session, p: &Value) -> CmdResult {
     let pdf = lower.ends_with(".pdf");
     if lower.ends_with(".svg") {
         let text = layout_svg(s, li, f(p, "dpi").unwrap_or(150.0))?;
-        rustgis_data::io::write_atomic(Path::new(&path), text.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
+        powergis_data::io::write_atomic(Path::new(&path), text.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
         s.notify(format!("Exported {path}"), false);
         return Ok(json!({"path": path, "bytes": text.len()}));
     }
@@ -3239,7 +3239,7 @@ fn export(s: &mut Session, p: &Value) -> CmdResult {
         return Err("export to a .png, .pdf or .svg file".into());
     }
     let bytes = layout_bytes(s, li, pdf, f(p, "dpi").unwrap_or(150.0), b(p, "allPages").unwrap_or(true))?;
-    rustgis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+    powergis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
     s.notify(format!("Exported {path}"), false);
     Ok(json!({"path": path, "bytes": bytes.len()}))
 }
@@ -3249,14 +3249,14 @@ fn layout_svg(s: &mut Session, li: usize, dpi: f64) -> Result<String, String> {
     let dpi = if dpi.is_finite() { dpi.clamp(36.0, 600.0) } else { 150.0 };
     let current = s.project.layouts.get(li).ok_or("no layout")?.series.as_ref().map_or(0, |sr| sr.page);
     let series = series_info(s, li, current);
-    let info = rustgis_render::layout::PageInfo {
+    let info = powergis_render::layout::PageInfo {
         page: current + 1,
         pages: series.as_ref().map_or(1, |i| i.0),
         page_name: series.map(|i| i.1).unwrap_or_default(),
     };
     // Rendering borrows the current layout; it does not step or modify the series page.
     let layout = s.project.layouts.get(li).ok_or("no layout")?;
-    rustgis_render::svg::layout_svg(layout, &mut s.project.maps, dpi, &info)
+    powergis_render::svg::layout_svg(layout, &mut s.project.maps, dpi, &info)
         .ok_or_else(|| "could not draw the page; check its map sources and export size".into())
 }
 

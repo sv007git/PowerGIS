@@ -1,7 +1,7 @@
 //! Runs frames of the whole UI (no GPU) through every tab, pane, dialog and theme.
 
 use egui_kittest::kittest::Queryable;
-use rustgis_ui_egui::RustGisApp;
+use powergis_ui_egui::powergisApp;
 use serde_json::json;
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -9,19 +9,19 @@ mod remembered_database;
 
 mod remembered_s3;
 /// Builds a headless World Atlas UI for interaction tests.
-fn harness() -> egui_kittest::Harness<'static, RustGisApp> {
+fn harness() -> egui_kittest::Harness<'static, powergisApp> {
     egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
         },
-        RustGisApp::with_sample(),
+        powergisApp::with_sample(),
     )
 }
 
 /// Runs a layer command through Command Search and checks that the search closes.
-fn search_layer_command(h: &mut egui_kittest::Harness<'_, RustGisApp>, command: &str) {
+fn search_layer_command(h: &mut egui_kittest::Harness<'_, powergisApp>, command: &str) {
     h.state_mut().ui.command_search = Some(command.into());
     for _ in 0..3 {
         h.step();
@@ -37,7 +37,7 @@ fn search_layer_command(h: &mut egui_kittest::Harness<'_, RustGisApp>, command: 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_edit_dialogs_target_numeric_ids_with_duplicate_names() {
-    use rustgis_engine::data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value, raster::Crs, source::gpkg};
+    use powergis_engine::data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value, raster::Crs, source::gpkg};
 
     let dir = tempfile::tempdir().unwrap();
     let mut h = harness();
@@ -53,7 +53,7 @@ fn geopackage_edit_dialogs_target_numeric_ids_with_duplicate_names() {
     }
     let ids: Vec<_> = h.state().session.map().layers.iter().filter(|l| l.gpkg.is_some()).map(|l| l.id).collect();
     let (upper, lower) = (ids[0], ids[1]);
-    let source = |h: &egui_kittest::Harness<'_, RustGisApp>, id| {
+    let source = |h: &egui_kittest::Harness<'_, powergisApp>, id| {
         let edit = h.state().session.map().layer(id).unwrap().gpkg.as_ref().unwrap();
         (std::path::PathBuf::from(&edit.path), edit.table.clone())
     };
@@ -62,10 +62,10 @@ fn geopackage_edit_dialogs_target_numeric_ids_with_duplicate_names() {
     let stored = |path: &std::path::Path, table: &str| {
         gpkg::edit::EditTable::open(path, table).unwrap().read_editable(100).unwrap().features[0].attrs[0].clone()
     };
-    let pending = |h: &mut egui_kittest::Harness<'_, RustGisApp>, id| {
+    let pending = |h: &mut egui_kittest::Harness<'_, powergisApp>, id| {
         h.state_mut().run("gpkg.pendingEdits", json!({"layer": id})).unwrap()["updates"].as_u64().unwrap()
     };
-    let choose = |h: &mut egui_kittest::Harness<'_, RustGisApp>, from, to| {
+    let choose = |h: &mut egui_kittest::Harness<'_, powergisApp>, from, to| {
         let from_label = format!("Duplicate (#{from})");
         h.query_all_by_role(egui::accesskit::Role::ComboBox).find(|n| n.value().as_deref() == Some(from_label.as_str())).unwrap().click();
         h.run_steps(2);
@@ -73,7 +73,7 @@ fn geopackage_edit_dialogs_target_numeric_ids_with_duplicate_names() {
         h.run_steps(2);
         assert_eq!(h.state().dialogs.gpkg_layer, Some(to));
     };
-    let shown_count = |h: &egui_kittest::Harness<'_, RustGisApp>, count: &str| {
+    let shown_count = |h: &egui_kittest::Harness<'_, powergisApp>, count: &str| {
         let label = h.get_by_label("Changed rows").rect();
         assert!(
             h.query_all_by_label(count).any(|n| n.rect().left() > label.right() && (n.rect().center().y - label.center().y).abs() < 3.0),
@@ -149,7 +149,7 @@ fn geopackage_edit_dialogs_target_numeric_ids_with_duplicate_names() {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn write_dialog_gpkg(path: &std::path::Path) {
-    use rustgis_engine::data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value, raster::Crs, source::gpkg};
+    use powergis_engine::data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value, raster::Crs, source::gpkg};
     let mut data = Dataset::new("roads", GeometryType::Point, vec![Field::new("name", FieldType::Text)]);
     for x in [0.0, 1.0, 2.0] {
         data.push(Some(Geometry::Point(Coord::new(x, 20.0))), vec![Value::Text("original".into())]);
@@ -161,7 +161,7 @@ fn write_dialog_gpkg(path: &std::path::Path) {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_edit_dialogs_refuse_reused_layer_ids() {
-    use rustgis_engine::data::{Value, source::gpkg::edit::EditTable};
+    use powergis_engine::data::{Value, source::gpkg::edit::EditTable};
 
     for same_source in [false, true] {
         for intervening_frame in [false, true] {
@@ -234,7 +234,7 @@ fn geopackage_edit_dialogs_refuse_reused_layer_ids() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_edit_dialog_counts_follow_edits_and_surviving_undo_snapshots() {
-    use rustgis_engine::data::{Value, source::gpkg::edit::EditTable};
+    use powergis_engine::data::{Value, source::gpkg::edit::EditTable};
 
     for (dialog, button) in [("gpkgSave", "Save"), ("gpkgDiscard", "Discard")] {
         let dir = tempfile::tempdir().unwrap();
@@ -302,7 +302,7 @@ fn geopackage_edit_dialog_counts_follow_edits_and_surviving_undo_snapshots() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_edit_dialogs_refuse_map_and_project_identity_changes() {
-    use rustgis_engine::data::{Value, source::gpkg::edit::EditTable};
+    use powergis_engine::data::{Value, source::gpkg::edit::EditTable};
     for project_switch in [false, true] {
         for (dialog, button) in [("gpkgSave", "Save"), ("gpkgDiscard", "Discard")] {
             let dir = tempfile::tempdir().unwrap();
@@ -325,7 +325,7 @@ fn geopackage_edit_dialogs_refuse_map_and_project_identity_changes() {
                 let layer = other.maps[index].layer_mut(id).unwrap();
                 layer.gpkg.as_mut().unwrap().path = b.to_string_lossy().into_owned();
                 layer.dataset.features[0].attrs[0] = Value::Text("B pending".into());
-                let mut session = rustgis_engine::Session::new(other);
+                let mut session = powergis_engine::Session::new(other);
                 session.run("project.saveAs", &json!({"path": project})).unwrap();
             } else {
                 h.state_mut().run("map.new", json!({"name": "Editable B"})).unwrap();
@@ -392,7 +392,7 @@ fn geopackage_load_dialog_rejects_fractional_row_limits() {
     assert_eq!(layer.dataset.features.len(), 1);
     assert_eq!(
         layer.dataset.features[0].geometry,
-        Some(rustgis_engine::data::Geometry::Point(rustgis_engine::data::Coord::new(0.0, 20.0)))
+        Some(powergis_engine::data::Geometry::Point(powergis_engine::data::Coord::new(0.0, 20.0)))
     );
     h.state_mut().run("ui.dialog", json!({"name": "gpkgAddLayer"})).unwrap();
     h.state_mut().dialogs.a = path.to_string_lossy().into_owned();
@@ -415,7 +415,7 @@ fn polygon_no_fill_is_reachable_from_the_pane_and_the_ribbon() {
         h.state_mut().run("layer.symbology", json!({"type": "unique", "field": "continent"})).unwrap();
         h.state_mut().run("layer.outline", json!({"color": "#2E6B4F", "width": 2})).unwrap();
         let symbol =
-            |h: &egui_kittest::Harness<'_, RustGisApp>| h.state().session.map().layer_by_name("Countries").unwrap().renderer.base_symbol();
+            |h: &egui_kittest::Harness<'_, powergisApp>| h.state().session.map().layer_by_name("Countries").unwrap().renderer.base_symbol();
         let before = symbol(&h);
         if pane {
             h.state_mut().run("ui.pane.symbology", json!(null)).unwrap();
@@ -523,7 +523,7 @@ fn command_search_adds_sample_template_and_encoded_polyline_layers() {
     h.get_by_label("Points").click();
     h.step();
     let points = h.state().session.active_layer.and_then(|id| h.state().session.map().layer(id)).unwrap();
-    assert_eq!(points.geometry_type(), rustgis_ui_egui::rustgis_engine::data::GeometryType::Point);
+    assert_eq!(points.geometry_type(), powergis_ui_egui::powergis_engine::data::GeometryType::Point);
     assert_eq!(h.state().dialogs.open, None);
     search_layer_command(&mut h, "layer.addEncodedPolyline");
     h.state_mut().dialogs.text = "_p~iF~ps|U_ulLnnqC_mqNvxq`@".into();
@@ -591,7 +591,7 @@ fn command_search_workflow_collects_inputs_before_georeferencing() {
     let id = result["layer"].as_u64().unwrap() as u32;
     let before = h.state().session.map().layer(id).unwrap().extent();
     search_layer_command(&mut h, "raster.georeference");
-    assert_eq!(h.state().ui.right, Some(rustgis_ui_egui::RightPane::Workflows));
+    assert_eq!(h.state().ui.right, Some(powergis_ui_egui::RightPane::Workflows));
     assert_eq!(h.state().session.map().layer(id).unwrap().extent(), before);
     h.get_by_label("Fit To Map View").click();
     h.step();
@@ -599,14 +599,14 @@ fn command_search_workflow_collects_inputs_before_georeferencing() {
     assert_ne!(h.state().session.map().layer(id).unwrap().extent(), before);
     // Opening the same workflow again must keep it visible, not toggle its pane closed.
     search_layer_command(&mut h, "raster.georeference");
-    assert_eq!(h.state().ui.right, Some(rustgis_ui_egui::RightPane::Workflows));
+    assert_eq!(h.state().ui.right, Some(powergis_ui_egui::RightPane::Workflows));
     search_layer_command(&mut h, "Classification Wizard");
     assert_eq!(h.state().workflow.section, "classify");
-    assert_eq!(h.state().ui.right, Some(rustgis_ui_egui::RightPane::Workflows));
+    assert_eq!(h.state().ui.right, Some(powergis_ui_egui::RightPane::Workflows));
     // A section id matches no command row, so the workflow's own hit must stay listed.
     search_layer_command(&mut h, "deeplearning");
     assert_eq!(h.state().workflow.section, "deepLearning");
-    assert_eq!(h.state().ui.right, Some(rustgis_ui_egui::RightPane::Workflows));
+    assert_eq!(h.state().ui.right, Some(powergis_ui_egui::RightPane::Workflows));
 }
 
 /// Clipping follows a selection until the user explicitly opts out, even after changing it.
@@ -640,7 +640,7 @@ fn mcp_relay_early_start_wakes_queued_request_and_updates_ui() {
     use std::net::{SocketAddr, TcpStream};
     use std::time::{Duration, Instant};
 
-    let mut app = RustGisApp::with_sample();
+    let mut app = powergisApp::with_sample();
     app.run("ui.mcpRelay", json!({"port": 0})).expect("start relay before first UI context");
     let port = app.relay.as_ref().expect("relay started").port();
     assert!(app.run("ui.mcpRelay", json!({"port": port})).is_ok());
@@ -649,15 +649,15 @@ fn mcp_relay_early_start_wakes_queued_request_and_updates_ui() {
     let err = app.run("ui.mcpRelay", json!({"port": different})).expect_err("different port must be refused");
     assert!(err.contains("stop it first"), "{err}");
 
-    let token = rustgis_ui_egui::rustgis_assistant::relay::read_token(port).expect("relay token");
+    let token = powergis_ui_egui::powergis_assistant::relay::read_token(port).expect("relay token");
     let mut client = TcpStream::connect(SocketAddr::from(([127, 0, 0, 1], port))).expect("connect to relay");
     client.set_read_timeout(Some(Duration::from_millis(100))).expect("bounded reply poll");
-    writeln!(client, "{}", json!({"jsonrpc":"2.0","method":"rustgis/attach","params":{"access":false,"token":token}})).expect("attach");
+    writeln!(client, "{}", json!({"jsonrpc":"2.0","method":"powergis/attach","params":{"access":false,"token":token}})).expect("attach");
     writeln!(client, "{}", json!({"jsonrpc":"2.0","id":1,"method":"ping"})).expect("queue ping");
     client.flush().expect("flush request");
 
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -717,7 +717,7 @@ fn mcp_relay_early_start_wakes_queued_request_and_updates_ui() {
 }
 
 /// Check the actual displayed rows, not just the data that feeds the contents pane.
-fn assert_child_order(h: &mut egui_kittest::Harness<'_, RustGisApp>, labels: &[&str]) {
+fn assert_child_order(h: &mut egui_kittest::Harness<'_, powergisApp>, labels: &[&str]) {
     for _ in 0..3 {
         h.step();
     }
@@ -742,7 +742,7 @@ fn nested_children_from_kml_kmz_and_categorized_files_are_sorted() {
     }
     kml.push_str("</Document></kml>");
     let kml = kml.into_bytes();
-    let kmz = rustgis_engine::data::zip::write(&[("doc.kml".into(), kml.to_vec())]).unwrap();
+    let kmz = powergis_engine::data::zip::write(&[("doc.kml".into(), kml.to_vec())]).unwrap();
     let csv = b"lon,lat,category\n10,50,Zulu\n11,50,alpha\n12,50,Bravo\n";
     let geojson = serde_json::to_vec(&json!({"type":"FeatureCollection", "features":
         (["Zulu", "alpha", "Bravo"].map(|name| json!({"type":"Feature", "properties":{"category":name},
@@ -779,7 +779,7 @@ fn nested_ogc_children_sort_on_import_rename_refresh_and_reopen() {
     let mut h = harness();
     h.state_mut().run("project.new", json!(null)).unwrap();
     // Use supplied fixture documents/responses: no live service or network needed.
-    let params = |app: &mut RustGisApp, names: &[&str]| {
+    let params = |app: &mut powergisApp, names: &[&str]| {
         let fixture: serde_json::Value = serde_json::from_str(fixture_group_collections()).unwrap();
         let collections: Vec<_> = names
             .iter()
@@ -863,7 +863,7 @@ fn every_tab_pane_and_dialog_renders() {
     }
     h.state_mut().ui.backstage = false;
     // Every language, the collapsed and peeked ribbon.
-    for l in rustgis_ui_egui::i18n::Lang::all() {
+    for l in powergis_ui_egui::i18n::Lang::all() {
         h.state_mut().run("ui.language", json!({"code": l.code()})).unwrap();
         h.run();
     }
@@ -951,11 +951,11 @@ fn a_tab_strip_wider_than_the_window_scrolls_with_arrow_buttons() {
 #[test]
 fn plugins_install_from_a_file_after_a_prompt() {
     let _turn = PLUGINS.lock().unwrap_or_else(|e| e.into_inner());
-    let dir = std::env::temp_dir().join(format!("rustgis-ui-plugins-{}", std::process::id()));
-    rustgis_ui_egui::rustgis_engine::plugins::store::set_dir(Some(dir.join("installed")));
+    let dir = std::env::temp_dir().join(format!("powergis-ui-plugins-{}", std::process::id()));
+    powergis_ui_egui::powergis_engine::plugins::store::set_dir(Some(dir.join("installed")));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("ui-test.rgplugin");
-    std::fs::write(&file, rustgis_ui_egui::rustgis_engine::plugins::testing::package("ui-test", &["edit"])).unwrap();
+    std::fs::write(&file, powergis_ui_egui::powergis_engine::plugins::testing::package("ui-test", &["edit"])).unwrap();
     let mut h = harness();
     for _ in 0..4 {
         h.step();
@@ -964,11 +964,11 @@ fn plugins_install_from_a_file_after_a_prompt() {
     h.step();
     h.step();
     assert!(h.state().plugins.confirm.is_some(), "asks first");
-    assert!(rustgis_ui_egui::rustgis_engine::plugins::get("ui-test").is_none());
+    assert!(powergis_ui_egui::powergis_engine::plugins::get("ui-test").is_none());
     h.get_by_label("Install").click();
     h.step();
     h.step();
-    assert!(rustgis_ui_egui::rustgis_engine::plugins::get("ui-test").is_some());
+    assert!(powergis_ui_egui::powergis_engine::plugins::get("ui-test").is_some());
     // Its commands are on the Plugins tab, and run from there.
     h.state_mut().ui.tab = "Plugins".into();
     h.step();
@@ -998,14 +998,14 @@ fn plugins_install_from_a_file_after_a_prompt() {
     h.step();
     h.get_by_label("Uninstall").click();
     h.step();
-    assert!(rustgis_ui_egui::rustgis_engine::plugins::get("ui-test").is_none());
+    assert!(powergis_ui_egui::powergis_engine::plugins::get("ui-test").is_none());
     let _ = std::fs::remove_dir_all(&dir);
 }
 
 #[test]
 fn plugins_can_have_a_tab_of_their_own() {
     let _turn = PLUGINS.lock().unwrap_or_else(|e| e.into_inner());
-    use rustgis_ui_egui::rustgis_engine::plugins as rp;
+    use powergis_ui_egui::powergis_engine::plugins as rp;
     let mut m: serde_json::Value = serde_json::from_str(&rp::testing::manifest("ui-tab", &[])).unwrap();
     // Its own names, so the other tests (which share the loaded plugins) don't see them.
     m["commands"][0]["label"] = json!("Tab Hello");
@@ -1058,7 +1058,7 @@ fn plugins_can_have_a_tab_of_their_own() {
 #[test]
 fn plugin_small_ribbon_columns_and_nested_menus_preserve_actions() {
     let _turn = PLUGINS.lock().unwrap_or_else(|e| e.into_inner());
-    use rustgis_ui_egui::rustgis_engine::plugins as rp;
+    use powergis_ui_egui::powergis_engine::plugins as rp;
     let mut m: serde_json::Value = serde_json::from_str(&rp::testing::manifest("ui-small", &[])).unwrap();
     m["commands"] = json!([
         {"id": "e", "label": "Compact Error"},
@@ -1165,18 +1165,18 @@ fn plugin_small_ribbon_columns_and_nested_menus_preserve_actions() {
     assert!(h.state().session.notices_since(mark).iter().any(|n| n.error && n.text.contains("nope")), "the nested command must run");
     h.get_by_label("Compact Panel").click();
     h.run_steps(2);
-    assert_eq!(h.state().ui.right, Some(rustgis_ui_egui::RightPane::Plugin));
+    assert_eq!(h.state().ui.right, Some(powergis_ui_egui::RightPane::Plugin));
     h.get_by_label("Panel is open");
     h.query_all_by_label("Compact Panel").find(|n| n.rect().top() < panel.bottom()).unwrap().click();
     h.run_steps(2);
-    assert_ne!(h.state().ui.right, Some(rustgis_ui_egui::RightPane::Plugin));
+    assert_ne!(h.state().ui.right, Some(powergis_ui_egui::RightPane::Plugin));
     assert!(h.query_by_label("Panel is open").is_none(), "the compact panel button still toggles its pane");
     rp::unload("ui-small");
 }
 
 #[test]
 fn browse_lists_thousands_of_plugins_quickly() {
-    use rustgis_ui_egui::rustgis_engine::plugins::registry;
+    use powergis_ui_egui::powergis_engine::plugins::registry;
     let _turn = PLUGINS.lock().unwrap_or_else(|e| e.into_inner());
     let sha = "a".repeat(64);
     let list: Vec<serde_json::Value> = (0..5000)
@@ -1188,7 +1188,7 @@ fn browse_lists_thousands_of_plugins_quickly() {
                 "sha256": sha, "size": 123_456, "permissions": ["edit"]})
         })
         .collect();
-    let entries = registry::parse(&json!({"plugins": list}).to_string(), "https://plugins.rustgis.app/registry.json").unwrap();
+    let entries = registry::parse(&json!({"plugins": list}).to_string(), "https://plugins.powergis.app/registry.json").unwrap();
     assert_eq!(entries.len(), 5000);
     let mut h = harness();
     for _ in 0..4 {
@@ -1227,7 +1227,7 @@ fn browse_lists_thousands_of_plugins_quickly() {
             .iter()
             .map(|n| json!({"id": n.to_lowercase(), "name": n, "version": "1.0.0", "package": "https://packages.example.com/x.rgplugin", "sha256": sha}))
             .collect();
-        registry::parse(&json!({"plugins": list}).to_string(), "https://plugins.rustgis.app/registry.json").unwrap()
+        registry::parse(&json!({"plugins": list}).to_string(), "https://plugins.powergis.app/registry.json").unwrap()
     };
     h.state_mut().plugins.set_registry(Some(Ok(two("Alpha", "Beta"))));
     h.step();
@@ -1275,7 +1275,7 @@ fn start_up_preferences() {
     let store: Arc<Mutex<HashMap<String, String>>> = Arc::default();
     let services = || {
         let (load, save) = (store.clone(), store.clone());
-        rustgis_ui_egui::Services {
+        powergis_ui_egui::Services {
             load_pref: Some(Box::new(move |k| load.lock().unwrap().get(k).cloned())),
             save_pref: Some(Box::new(move |k, v| {
                 save.lock().unwrap().insert(k.to_string(), v.to_string());
@@ -1283,13 +1283,13 @@ fn start_up_preferences() {
             ..Default::default()
         }
     };
-    let mut app = RustGisApp::with_sample().with_services(services());
+    let mut app = powergisApp::with_sample().with_services(services());
     assert!(app.run("ui.startup", json!({"projection": "nope"})).is_err());
     let r = app.run("ui.startup", json!({"blank": true, "projection": "epsg:3010"})).unwrap();
     assert_eq!(r, json!({"blank": true, "project": "blank", "lastProject": null, "projection": "EPSG:3010", "extent": null}));
     assert_eq!(store.lock().unwrap().get("start_project").map(String::as_str), Some("blank"));
 
-    let mut app = RustGisApp::with_sample().with_services(services());
+    let mut app = powergisApp::with_sample().with_services(services());
     app.start(&Default::default()).unwrap();
     assert!(app.session.map().layers.is_empty());
     assert_eq!(app.session.map().projection.code(), "EPSG:3010");
@@ -1297,8 +1297,8 @@ fn start_up_preferences() {
 
     // The web app's `?projection=robinson` without `?blank`: the sample still goes when the
     // preference says blank; an explicit `Some(false)` keeps it.
-    let mut app = RustGisApp::with_sample().with_services(services());
-    let start = |blank, projection: &str, extent: Option<&str>| rustgis_ui_egui::Start {
+    let mut app = powergisApp::with_sample().with_services(services());
+    let start = |blank, projection: &str, extent: Option<&str>| powergis_ui_egui::Start {
         blank,
         projection: Some(projection.into()),
         extent: extent.map(String::from),
@@ -1310,17 +1310,17 @@ fn start_up_preferences() {
     assert!(app.start(&start(Some(false), "EPSG:4326", None)).is_err(), "degrees are refused");
 
     // A start extent: saved from the view, or given by the shell (`?extent=`).
-    let mut app = RustGisApp::with_sample().with_services(services());
+    let mut app = powergisApp::with_sample().with_services(services());
     app.start(&start(Some(true), "EPSG:3010", Some("10.5,55,24.5,69.5"))).unwrap();
     let view = app.session.run("map.extent", &json!(null)).unwrap();
-    let e = rustgis_ui_egui::parse_extent(&view["extent"].as_array().unwrap().iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","))
+    let e = powergis_ui_egui::parse_extent(&view["extent"].as_array().unwrap().iter().map(|x| x.to_string()).collect::<Vec<_>>().join(","))
         .unwrap();
     assert!(e[0] < 11.0 && e[2] > 24.0 && e[1] < 55.5 && e[3] > 69.0, "Sweden is in view: {e:?}");
     assert!(e[2] - e[0] < 90.0 && e[3] - e[1] < 25.0, "and not the world: {e:?}");
     assert!(app.start(&start(None, "EPSG:3010", Some("10,60,5,50"))).is_err(), "west after east");
     app.run("ui.startup", json!({"extent": "view"})).unwrap();
     assert!(store.lock().unwrap().get("start_extent").is_some_and(|v| v.split(',').count() == 4));
-    let mut again = RustGisApp::with_sample().with_services(services());
+    let mut again = powergisApp::with_sample().with_services(services());
     assert!(again.ui.start_extent.is_some());
     again.start(&Default::default()).unwrap();
     assert!(again.run("ui.startup", json!({"extent": [1, 2]})).is_err());
@@ -1347,7 +1347,7 @@ fn connections_persist_and_import_once() {
         Arc::new(Mutex::new(HashMap::from([("data_sources".to_string(), old.clone()), ("s3_connections".to_string(), old_s3.clone())])));
     let services = || {
         let (load, save) = (store.clone(), store.clone());
-        rustgis_ui_egui::Services {
+        powergis_ui_egui::Services {
             load_pref: Some(Box::new(move |k| load.lock().unwrap().get(k).cloned())),
             save_pref: Some(Box::new(move |k, v| {
                 save.lock().unwrap().insert(k.to_string(), v.to_string());
@@ -1355,7 +1355,7 @@ fn connections_persist_and_import_once() {
             ..Default::default()
         }
     };
-    let mut app = RustGisApp::with_sample().with_services(services());
+    let mut app = powergisApp::with_sample().with_services(services());
     let kinds: Vec<_> = app.session.connections.connections.iter().map(|c| c.kind.as_str()).collect();
     assert_eq!(kinds, ["wms", "postgres", "s3"]);
     assert_eq!(app.session.connections.find("Lake").unwrap().options["credentials"], "profile");
@@ -1363,13 +1363,13 @@ fn connections_persist_and_import_once() {
     assert_eq!(store.lock().unwrap()["data_sources"], old);
     assert_eq!(store.lock().unwrap()["s3_connections"], old_s3);
     app.run("connection.remove", json!({"id":"Prod"})).unwrap();
-    let mut again = RustGisApp::with_sample().with_services(services());
+    let mut again = powergisApp::with_sample().with_services(services());
     assert_eq!(again.session.connections.connections.len(), 2);
     assert!(again.session.connections.find("Prod").is_none());
     for id in ["State WMS", "Lake"] {
         again.run("connection.remove", json!({"id":id})).unwrap();
     }
-    let empty = RustGisApp::with_sample().with_services(services());
+    let empty = powergisApp::with_sample().with_services(services());
     assert!(empty.session.connections.connections.is_empty(), "an empty saved list must not import again");
 }
 
@@ -1383,7 +1383,7 @@ fn start_with_a_project_file_or_the_last_one() {
     let store: Arc<Mutex<HashMap<String, String>>> = Arc::default();
     let services = || {
         let (load, save) = (store.clone(), store.clone());
-        rustgis_ui_egui::Services {
+        powergis_ui_egui::Services {
             load_pref: Some(Box::new(move |k| load.lock().unwrap().get(k).cloned())),
             save_pref: Some(Box::new(move |k, v| {
                 save.lock().unwrap().insert(k.to_string(), v.to_string());
@@ -1391,7 +1391,7 @@ fn start_with_a_project_file_or_the_last_one() {
             ..Default::default()
         }
     };
-    let dir = std::env::temp_dir().join(format!("rustgis-start-with-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-start-with-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     // Removed however the test ends, passed or failed.
     struct TempDir(std::path::PathBuf);
@@ -1407,7 +1407,7 @@ fn start_with_a_project_file_or_the_last_one() {
 
     // Saving records the last project, by its full path. It's saved in a projection that is
     // neither the default nor the Start-up one.
-    let mut app = RustGisApp::with_sample().with_services(services());
+    let mut app = powergisApp::with_sample().with_services(services());
     app.run("map.projection", json!({"type": "EPSG:3010"})).unwrap();
     app.run("project.saveAs", json!({"path": shown(&a)})).unwrap();
     assert_eq!(pref("last_project"), Some(shown(&a)));
@@ -1416,7 +1416,7 @@ fn start_with_a_project_file_or_the_last_one() {
     let r = app.run("ui.startup", json!({"project": "last", "projection": "robinson", "extent": [10.5, 55.0, 24.5, 69.5]})).unwrap();
     assert_eq!((r["project"].clone(), r["lastProject"].clone()), (json!("last"), json!(shown(&a))));
     assert_eq!(pref("start_project").as_deref(), Some("last"));
-    let mut started = RustGisApp::with_sample().with_services(services());
+    let mut started = powergisApp::with_sample().with_services(services());
     started.start(&Default::default()).unwrap();
     assert_eq!(started.session.path.as_deref(), Some(a.as_path()));
     assert_eq!(started.session.map().projection.code(), "EPSG:3010");
@@ -1424,13 +1424,13 @@ fn start_with_a_project_file_or_the_last_one() {
     assert!(!started.session.dirty() && !started.session.can_undo());
     // A shell's blank wins: a file on the command line (true) or --sample (false).
     for (blank, sample) in [(true, false), (false, true)] {
-        let mut shell = RustGisApp::with_sample().with_services(services());
-        shell.start(&rustgis_ui_egui::Start { blank: Some(blank), ..Default::default() }).unwrap();
+        let mut shell = powergisApp::with_sample().with_services(services());
+        shell.start(&powergis_ui_egui::Start { blank: Some(blank), ..Default::default() }).unwrap();
         assert!(shell.session.path.is_none() && shell.session.map().layers.is_empty() != sample, "blank: {blank}");
     }
     // After a crash, the start-up project (which may be what crashed) isn't opened.
-    let mut crashed = RustGisApp::with_sample().with_services(services());
-    crashed.start(&rustgis_ui_egui::Start { after_crash: true, ..Default::default() }).unwrap();
+    let mut crashed = powergisApp::with_sample().with_services(services());
+    crashed.start(&powergis_ui_egui::Start { after_crash: true, ..Default::default() }).unwrap();
     assert!(crashed.session.path.is_none() && !crashed.session.map().layers.is_empty());
     assert!(crashed.session.notices.iter().any(|n| n.error), "{:?}", crashed.session.notices);
 
@@ -1450,12 +1450,12 @@ fn start_with_a_project_file_or_the_last_one() {
     app.run("project.saveAs", json!({"path": shown(&b)})).unwrap();
     let r = app.run("ui.startup", json!({"project": {"path": shown(&a)}})).unwrap();
     assert_eq!(r["project"], json!({"path": shown(&a)}));
-    let mut started = RustGisApp::with_sample().with_services(services());
+    let mut started = powergisApp::with_sample().with_services(services());
     assert_eq!(started.ui.last_project, Some(shown(&b)));
     started.start(&Default::default()).unwrap();
     assert_eq!(started.session.path.as_deref(), Some(a.as_path()), "the picked project, not the last one");
 
-    // A save that doesn't go through RustGisApp::run (the MCP relay, the assistant) counts too,
+    // A save that doesn't go through powergisApp::run (the MCP relay, the assistant) counts too,
     // once a frame sees it.
     let c = dir.join("c.rgis");
     started.session.run("project.saveAs", &json!({"path": shown(&c)})).unwrap();
@@ -1464,19 +1464,19 @@ fn start_with_a_project_file_or_the_last_one() {
 
     // A project that no longer opens leaves the sample, says why, and is tried again next time.
     std::fs::remove_file(&a).unwrap();
-    let mut started = RustGisApp::with_sample().with_services(services());
+    let mut started = powergisApp::with_sample().with_services(services());
     started.start(&Default::default()).unwrap();
     assert!(started.session.path.is_none() && !started.session.map().layers.is_empty());
     assert!(started.session.notices.iter().any(|n| n.error && n.text.contains("a.rgis")), "{:?}", started.session.notices);
     assert_eq!(pref("start_project"), Some(format!("file:{}", shown(&a))));
     // A stored path is trimmed, and one that isn't a project file isn't opened.
     store.lock().unwrap().insert("start_project".into(), format!("file:  {}  ", shown(&b)));
-    let mut started = RustGisApp::with_sample().with_services(services());
-    assert_eq!(started.ui.start_with, rustgis_ui_egui::StartWith::File(shown(&b)));
+    let mut started = powergisApp::with_sample().with_services(services());
+    assert_eq!(started.ui.start_with, powergis_ui_egui::StartWith::File(shown(&b)));
     started.start(&Default::default()).unwrap();
     assert_eq!(started.session.path.as_deref(), Some(b.as_path()));
     store.lock().unwrap().insert("start_project".into(), format!("file:{}", shown(&dir.join("notes.txt"))));
-    let mut started = RustGisApp::with_sample().with_services(services());
+    let mut started = powergisApp::with_sample().with_services(services());
     started.start(&Default::default()).unwrap();
     assert!(started.session.path.is_none() && started.session.notices.iter().any(|n| n.error && n.text.contains("notes.txt")));
     // Back to the sample, as `blank` still says.
@@ -1487,14 +1487,14 @@ fn start_with_a_project_file_or_the_last_one() {
     store.lock().unwrap().insert("start_project".into(), "last".into());
     let web = |store: &Arc<Mutex<HashMap<String, String>>>| {
         let load = store.clone();
-        rustgis_ui_egui::Services {
+        powergis_ui_egui::Services {
             load_pref: Some(Box::new(move |k| load.lock().unwrap().get(k).cloned())),
             open_async: Some(Box::new(|_: &str| {})),
             ..Default::default()
         }
     };
-    let mut browser = RustGisApp::with_sample().with_services(web(&store));
-    assert_eq!(browser.ui.start_with, rustgis_ui_egui::StartWith::Sample);
+    let mut browser = powergisApp::with_sample().with_services(web(&store));
+    assert_eq!(browser.ui.start_with, powergis_ui_egui::StartWith::Sample);
     // Refused before the path is looked at: a missing one says so too.
     for path in [shown(&b), shown(&dir.join("missing.rgis"))] {
         let err = browser.run("ui.startup", json!({"project": {"path": path}})).unwrap_err();
@@ -1536,7 +1536,7 @@ fn a_task_is_recorded_from_what_changes_the_project_and_edited_in_its_pane() {
     assert_eq!(task.steps[5].title, "Buffer", "a tool's step has the tool's name");
     assert_eq!(task.steps[0].params["color"], json!("#336699"));
     // It opens in the Tasks pane, ready to edit.
-    assert_eq!(app.ui.right, Some(rustgis_ui_egui::RightPane::Tasks));
+    assert_eq!(app.ui.right, Some(powergis_ui_egui::RightPane::Tasks));
     assert!(app.ws.task_editing && app.ws.task == "Lesson");
     // The symbol editor sets the active layer's colour without naming it: the step names the
     // layer, and a drag is one step.
@@ -1584,7 +1584,7 @@ fn a_task_is_recorded_from_what_changes_the_project_and_edited_in_its_pane() {
     assert_eq!(app.session.project.tasks.iter().find(|t| t.name == "Long").unwrap().steps.len(), 200);
     app.run("task.remove", json!({"task": "Long"})).unwrap();
     // Undo said once per recording.
-    let said = |app: &RustGisApp| app.session.notices.iter().filter(|n| n.text.contains("Edit Steps")).count();
+    let said = |app: &powergisApp| app.session.notices.iter().filter(|n| n.text.contains("Edit Steps")).count();
     let before = said(app);
     app.run("ui.taskRecord", json!({})).unwrap();
     app.run("layer.color", json!({"layer": "Lakes", "color": "#445566"})).unwrap();
@@ -1651,8 +1651,8 @@ Distance: 100 km."
 
 #[test]
 fn show_me_points_at_where_a_steps_command_is() {
-    use rustgis_ui_egui::RightPane;
-    use rustgis_ui_egui::rustgis_engine::project::TaskStep;
+    use powergis_ui_egui::RightPane;
+    use powergis_ui_egui::powergis_engine::project::TaskStep;
     let step = |command: &str, params: serde_json::Value| TaskStep {
         title: "x".into(),
         instructions: String::new(),
@@ -1661,7 +1661,7 @@ fn show_me_points_at_where_a_steps_command_is() {
     };
     let mut h = harness();
     h.step();
-    let show = |h: &mut egui_kittest::Harness<'static, RustGisApp>, st: TaskStep| {
+    let show = |h: &mut egui_kittest::Harness<'static, powergisApp>, st: TaskStep| {
         h.state_mut().run("ui.taskShowMe", serde_json::to_value(&st).unwrap()).unwrap();
         for _ in 0..6 {
             h.step();
@@ -1762,11 +1762,11 @@ fn settings_and_help_tabs_always_show() {
 fn delimited_text_options_go_with_the_picked_file() {
     let asked = std::sync::Arc::new(std::sync::Mutex::new(Vec::<String>::new()));
     let log = asked.clone();
-    let services = rustgis_ui_egui::Services {
+    let services = powergis_ui_egui::Services {
         open_async: Some(Box::new(move |purpose: &str| log.lock().unwrap().push(purpose.to_string()))),
         ..Default::default()
     };
-    let mut app = RustGisApp::with_sample().with_services(services);
+    let mut app = powergisApp::with_sample().with_services(services);
     app.run("ui.addDelimited", json!(null)).unwrap();
     app.run("ui.addDelimited", json!({"x": "east", "y": "north", "crs": "EPSG:2263", "delimiter": ";"})).unwrap();
     assert_eq!(asked.lock().unwrap().as_slice(), ["text", "text"]);
@@ -1774,13 +1774,13 @@ fn delimited_text_options_go_with_the_picked_file() {
     let r = app.open_picked("dropped.csv", b"lon,lat\n3,4\n").unwrap();
     let e = app.session.map().layer(r["layer"].as_u64().unwrap() as u32).unwrap().extent();
     assert_eq!((e.min_x, e.min_y), (3.0, 4.0));
-    let picked = format!("{}parks.csv", rustgis_ui_egui::DELIMITED_PICK);
+    let picked = format!("{}parks.csv", powergis_ui_egui::DELIMITED_PICK);
     let r = app.open_picked(&picked, b"name;east;north\nCentral Park;992000;220000\n").unwrap();
     let id = r["layer"].as_u64().unwrap() as u32;
     let e = app.session.map().layer(id).unwrap().extent();
     assert!((e.min_x + 73.96).abs() < 0.05 && (e.min_y - 40.78).abs() < 0.05, "{e:?}");
     // The options were used up: the next pick is read as it is.
-    let picked = format!("{}plain.csv", rustgis_ui_egui::DELIMITED_PICK);
+    let picked = format!("{}plain.csv", powergis_ui_egui::DELIMITED_PICK);
     let r = app.open_picked(&picked, b"lon,lat\n1,2\n").unwrap();
     let e = app.session.map().layer(r["layer"].as_u64().unwrap() as u32).unwrap().extent();
     assert_eq!((e.min_x, e.min_y), (1.0, 2.0));
@@ -1790,10 +1790,10 @@ fn delimited_text_options_go_with_the_picked_file() {
 /// found by name picked), and the ones picked there place it.
 #[test]
 fn delimited_text_dialog_lists_the_picked_files_columns() {
-    let services = rustgis_ui_egui::Services { open_async: Some(Box::new(|_: &str| {})), ..Default::default() };
-    let app = RustGisApp::with_sample().with_services(services);
+    let services = powergis_ui_egui::Services { open_async: Some(Box::new(|_: &str| {})), ..Default::default() };
+    let app = powergisApp::with_sample().with_services(services);
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -1801,7 +1801,7 @@ fn delimited_text_dialog_lists_the_picked_files_columns() {
         app,
     );
     h.state_mut().run("ui.addDelimited", json!(null)).unwrap();
-    let picked = format!("{}parks.csv", rustgis_ui_egui::DELIMITED_PICK);
+    let picked = format!("{}parks.csv", powergis_ui_egui::DELIMITED_PICK);
     h.state_mut().open_picked(&picked, b"name;east;north\nCentral Park;992000;220000\n").unwrap();
     assert_eq!(h.state().dialogs.open, Some("addCsv"));
     assert_eq!(h.state().dialogs.list, ["name", "east", "north"]);
@@ -1821,7 +1821,7 @@ fn delimited_text_dialog_lists_the_picked_files_columns() {
     assert!((e.min_x + 73.96).abs() < 0.05 && (e.min_y - 40.78).abs() < 0.05, "{e:?}");
     // A file whose columns are found: picked for you.
     h.state_mut().run("ui.addDelimited", json!(null)).unwrap();
-    let picked = format!("{}stops.csv", rustgis_ui_egui::DELIMITED_PICK);
+    let picked = format!("{}stops.csv", powergis_ui_egui::DELIMITED_PICK);
     h.state_mut().open_picked(&picked, b"stop,Lat,Lon\nA,1,2\n").unwrap();
     assert_eq!((h.state().dialogs.a.as_str(), h.state().dialogs.b.as_str()), ("Lon", "Lat"));
 }
@@ -1831,8 +1831,8 @@ fn delimited_text_dialog_lists_the_picked_files_columns() {
 #[test]
 fn a_placed_text_is_edited_in_the_format_pane() {
     use egui::accesskit::Role;
-    use rustgis_ui_egui::RightPane;
-    use rustgis_ui_egui::rustgis_engine::map::graphics;
+    use powergis_ui_egui::RightPane;
+    use powergis_ui_egui::powergis_engine::map::graphics;
     let mut h = harness();
     let first = h.state_mut().run("graphics.add", json!({"shape": "text", "points": [[10, 50]], "text": "First", "fontSize": 20})).unwrap();
     let second = h.state_mut().run("graphics.add", json!({"shape": "text", "points": [[20, 40]], "text": "Second"})).unwrap();
@@ -1840,7 +1840,7 @@ fn a_placed_text_is_edited_in_the_format_pane() {
     h.state_mut().run("select.rows", json!({"layer": layer, "rows": [first["row"]]})).unwrap();
     h.state_mut().run("ui.dialog", json!({"name": "graphicText", "layer": layer, "row": row})).unwrap();
     assert_eq!((h.state().dialogs.open, h.state().ui.right), (None, Some(RightPane::Format)), "the pane, not the dialog");
-    let selection = |h: &egui_kittest::Harness<'_, RustGisApp>| {
+    let selection = |h: &egui_kittest::Harness<'_, powergisApp>| {
         h.state().session.map().layer(layer.as_u64().unwrap() as u32).unwrap().selection.clone()
     };
     assert_eq!(selection(&h), [row.as_u64().unwrap() as usize]);
@@ -1874,7 +1874,7 @@ fn a_placed_text_is_typed_over_in_the_format_pane() {
     h.step();
     click_map(&mut h);
     assert_eq!(selected_text(&h).as_deref(), Some("Text"));
-    assert_eq!((h.state().ui.right, h.state().dialogs.open), (Some(rustgis_ui_egui::RightPane::Format), None));
+    assert_eq!((h.state().ui.right, h.state().dialogs.open), (Some(powergis_ui_egui::RightPane::Format), None));
     assert_eq!(h.state().session.tool.code(), "explore");
     h.event(egui::Event::Text("Hello".into()));
     h.step();
@@ -1934,7 +1934,7 @@ fn data_from_a_web_address_lands_later() {
 #[test]
 fn an_unnamed_cog_address_is_read_in_place() {
     use std::io::{Read, Write};
-    let body = rustgis_engine::data::raster::cog::example(2048, 256);
+    let body = powergis_engine::data::raster::cog::example(2048, 256);
     let total = body.len();
     let sent = std::sync::Arc::new(std::sync::atomic::AtomicUsize::new(0));
     let count = sent.clone();
@@ -2040,7 +2040,7 @@ fn service_features_are_read_page_by_page_off_the_frame() {
     let base = server.base.clone();
     h.state_mut().run("ui.addUrl", json!({"url": format!("{base}{layer}/query?{q}"), "name": "Parcels", "service": true})).unwrap();
     h.state_mut().run("ui.addUrl", json!({"url": format!("{base}/collections/wells/items"), "name": "Wells", "service": true})).unwrap();
-    let ids = |app: &RustGisApp, name: &str| {
+    let ids = |app: &powergisApp, name: &str| {
         app.session.map().layer_by_name(name).map(|l| l.dataset.features.iter().map(|f| f.attrs[0].as_f64()).collect::<Vec<_>>())
     };
     wait_for_ogc(&mut h, |app| ids(app, "Parcels").is_some() && ids(app, "Wells").is_some());
@@ -2278,7 +2278,7 @@ fn add_service_keeps_and_picks_connections() {
             stream.write_all(body).unwrap();
         }
     });
-    let wait_for_listing = |h: &mut egui_kittest::Harness<'_, RustGisApp>| {
+    let wait_for_listing = |h: &mut egui_kittest::Harness<'_, powergisApp>| {
         for _ in 0..100 {
             h.step();
             if h.state().ui.service.as_ref().is_some_and(|c| c.listing.is_some() || c.error.is_some() || c.failure.is_some()) {
@@ -2402,7 +2402,7 @@ fn s3_dialog_selects_the_kept_connection_after_a_blank_name_connect() {
     assert!(h.query_by_label("Save as Connection").is_none());
     assert!(h.query_by_label("Rename it to save it: a connection has this name").is_none());
     assert!(h.query_all_by_role(egui::accesskit::Role::ComboBox).any(|n| n.value().as_deref() == Some("default")));
-    rustgis_ui_egui::rustgis_engine::render::rustgis_tiles::s3::disconnect("default");
+    powergis_ui_egui::powergis_engine::render::powergis_tiles::s3::disconnect("default");
 }
 
 /// A table list and the table chosen belong to the address they were listed for: editing the
@@ -2688,12 +2688,12 @@ fn connections_tree_browses_and_adds() {
     });
     // Frames 0.05 s apart, so two clicks fall within egui's double-click delay.
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_max_steps(64).with_step_dt(0.05).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
         },
-        RustGisApp::with_sample(),
+        powergisApp::with_sample(),
     );
     h.state_mut().run("connection.new", json!({"kind":"wms","address":format!("http://{addr}/wms"),"name":"Local"})).unwrap();
     h.state_mut().run("ui.pane.sources", json!({})).unwrap();
@@ -2759,16 +2759,16 @@ fn connections_tree_browses_and_adds() {
 fn web_save_asks_for_the_file_name() {
     let got = std::sync::Arc::new(std::sync::Mutex::new(Vec::<(String, Vec<u8>)>::new()));
     let log = got.clone();
-    let services = rustgis_ui_egui::Services {
+    let services = powergis_ui_egui::Services {
         download: Some(Box::new(move |name: &str, bytes: Vec<u8>| {
             log.lock().unwrap().push((name.to_string(), bytes));
             Ok(())
         })),
         ..Default::default()
     };
-    let app = RustGisApp::with_sample().with_services(services);
+    let app = powergisApp::with_sample().with_services(services);
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -2932,10 +2932,10 @@ fn dialogs_can_be_moved() {
 /// remembered; unticking it stops the relay.
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
-fn letting_agents_control_rustgis_starts_the_relay_and_shows_how_to_connect() {
+fn letting_agents_control_powergis_starts_the_relay_and_shows_how_to_connect() {
     use std::sync::{Arc, Mutex};
     let saved: Arc<Mutex<Vec<(String, String)>>> = Arc::default();
-    let mut app = RustGisApp::with_sample();
+    let mut app = powergisApp::with_sample();
     let sink = saved.clone();
     app.services.save_pref = Some(Box::new(move |k: &str, v: &str| {
         if let Ok(mut s) = sink.lock() {
@@ -2946,7 +2946,7 @@ fn letting_agents_control_rustgis_starts_the_relay_and_shows_how_to_connect() {
     // The connection instructions expand below the checkbox: keep the settings above the
     // bottom composer so both pointer clicks reach the checkbox.
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 2000.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -2962,7 +2962,7 @@ fn letting_agents_control_rustgis_starts_the_relay_and_shows_how_to_connect() {
     assert!(h.query_by_label("Add this MCP server to your agent:").is_none(), "nothing to connect to while it's off");
     // Whether the default port is free decides which path the box takes here: a PowerGIS already
     // open on this machine may hold it.
-    let free = std::net::TcpListener::bind(("127.0.0.1", rustgis_ui_egui::rustgis_assistant::relay::DEFAULT_PORT)).is_ok();
+    let free = std::net::TcpListener::bind(("127.0.0.1", powergis_ui_egui::powergis_assistant::relay::DEFAULT_PORT)).is_ok();
     h.get_by_label("Let your Agents Control PowerGIS").click();
     h.step();
     h.step();
@@ -2997,7 +2997,7 @@ fn letting_agents_control_rustgis_starts_the_relay_and_shows_how_to_connect() {
 fn agents_on_this_computer_switches_tick_and_stick() {
     use std::sync::{Arc, Mutex};
     let saved: Arc<Mutex<Vec<(String, String)>>> = Arc::default();
-    let mut app = RustGisApp::with_sample();
+    let mut app = powergisApp::with_sample();
     let sink = saved.clone();
     app.services.save_pref = Some(Box::new(move |k: &str, v: &str| {
         if let Ok(mut s) = sink.lock() {
@@ -3006,7 +3006,7 @@ fn agents_on_this_computer_switches_tick_and_stick() {
     }));
     app.run("ui.pane.assistant", json!({})).expect("opens the assistant");
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 2000.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -3033,7 +3033,7 @@ fn agents_on_this_computer_switches_tick_and_stick() {
 #[path = "../../../tests/support/ogc_server.rs"]
 mod ogc_server;
 
-fn wait_for_ogc(h: &mut egui_kittest::Harness<'static, RustGisApp>, ready: impl Fn(&RustGisApp) -> bool) {
+fn wait_for_ogc(h: &mut egui_kittest::Harness<'static, powergisApp>, ready: impl Fn(&powergisApp) -> bool) {
     let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
     loop {
         h.step();
@@ -3071,9 +3071,9 @@ fn ogc_landing_connect_and_add_use_fixture_documents() {
     let dataset = &h.state().session.map().layer_by_name("Places").unwrap().dataset;
     assert_eq!(h.state().session.map().service_groups[0].name, "My OGC Layer");
     assert_eq!(dataset.features.len(), 1);
-    assert_eq!(dataset.features[0].geometry, Some(rustgis_engine::data::Geometry::Point(rustgis_engine::geom::Coord::new(10., 50.))));
+    assert_eq!(dataset.features[0].geometry, Some(powergis_engine::data::Geometry::Point(powergis_engine::geom::Coord::new(10., 50.))));
     let name = dataset.fields.iter().position(|f| f.name == "name").unwrap();
-    assert_eq!(dataset.features[0].attrs[name], rustgis_engine::data::Value::Text("Test Place".into()));
+    assert_eq!(dataset.features[0].attrs[name], powergis_engine::data::Value::Text("Test Place".into()));
     server.assert_fixture_requests(&[ROOT, CATALOG, ITEMS]);
 }
 
@@ -3241,9 +3241,9 @@ fn ogc_group_background_import_does_not_land_in_a_new_project() {
 /// the header's last ✕ closes them all.
 #[test]
 fn right_panes_open_as_tabs() {
-    use rustgis_ui_egui::RightPane::{Bookmarks, Geoprocessing, History};
+    use powergis_ui_egui::RightPane::{Bookmarks, Geoprocessing, History};
     let mut h = harness();
-    let tabs = |h: &egui_kittest::Harness<'_, RustGisApp>| (h.state().ui.right, h.state().ui.right_open.clone());
+    let tabs = |h: &egui_kittest::Harness<'_, powergisApp>| (h.state().ui.right, h.state().ui.right_open.clone());
     for pane in ["ui.pane.history", "ui.pane.geoprocessing", "ui.pane.bookmarks"] {
         h.state_mut().run(pane, json!({})).unwrap();
         h.step();
@@ -3294,7 +3294,7 @@ fn right_panes_open_as_tabs() {
 #[test]
 fn plugin_panels_run_their_commands_when_a_slider_is_let_go() {
     let _turn = PLUGINS.lock().unwrap_or_else(|e| e.into_inner());
-    use rustgis_ui_egui::rustgis_engine::plugins as rp;
+    use powergis_ui_egui::powergis_engine::plugins as rp;
     rp::load(rp::Package::from_zip(&rp::testing::panel_package("ui-panel")).unwrap(), "test").unwrap();
     let mut h = harness();
     for _ in 0..4 {
@@ -3308,8 +3308,8 @@ fn plugin_panels_run_their_commands_when_a_slider_is_let_go() {
     for _ in 0..3 {
         h.step();
     }
-    assert_eq!(h.state().ui.right, Some(rustgis_ui_egui::RightPane::Plugin));
-    let release = |h: &egui_kittest::Harness<'_, RustGisApp>| h.state().session.plugin_panels["ui-panel"].slider("release");
+    assert_eq!(h.state().ui.right, Some(powergis_ui_egui::RightPane::Plugin));
+    let release = |h: &egui_kittest::Harness<'_, powergisApp>| h.state().session.plugin_panels["ui-panel"].slider("release");
     assert_eq!(release(&h), 12);
     assert!(h.query_by_label("Location metadata").is_some());
     // Dragging the slider shows where it would go and runs nothing until it is let go.
@@ -3361,7 +3361,7 @@ fn plugin_panels_run_their_commands_when_a_slider_is_let_go() {
 /// its ⋯ menu; the pane says when it ran.
 #[test]
 fn a_run_opens_again_in_its_tool_from_the_history() {
-    use rustgis_ui_egui::RightPane;
+    use powergis_ui_egui::RightPane;
     let mut h = harness();
     h.state_mut().run("gp.run", json!({"tool": "buffer", "params": {"input": "Cities", "distance": 100}})).unwrap();
     h.state_mut().run("ui.pane.history", json!({})).unwrap();
@@ -3395,7 +3395,7 @@ fn a_selected_text_is_dragged_on_the_map() {
     // The pane took the focus to type over the text: Enter ends it.
     h.key_press(egui::Key::Enter);
     h.step();
-    let anchor = |h: &egui_kittest::Harness<'_, RustGisApp>| {
+    let anchor = |h: &egui_kittest::Harness<'_, powergisApp>| {
         let l = h.state().session.map().layers.iter().find(|l| l.selection.len() == 1).unwrap();
         l.dataset.features[l.selection[0]].geometry.as_ref().unwrap().label_point().unwrap()
     };
@@ -3428,15 +3428,15 @@ fn a_selected_text_is_dragged_on_the_map() {
 }
 
 /// The text of the one text graphic selected, if that is what is selected.
-fn selected_text(h: &egui_kittest::Harness<'_, RustGisApp>) -> Option<String> {
-    use rustgis_ui_egui::rustgis_engine::map::graphics;
+fn selected_text(h: &egui_kittest::Harness<'_, powergisApp>) -> Option<String> {
+    use powergis_ui_egui::powergis_engine::map::graphics;
     let mut rows = h.state().session.map().layers.iter().flat_map(|l| l.selection.iter().map(move |r| (l, *r)));
     let (l, row) = rows.next().filter(|_| rows.next().is_none())?;
     graphics::label(&l.dataset, row).map(str::to_string)
 }
 
 /// A primary click in the middle of the map.
-fn click_map(h: &mut egui_kittest::Harness<'_, RustGisApp>) {
+fn click_map(h: &mut egui_kittest::Harness<'_, powergisApp>) {
     let at = egui::pos2(700.0, 500.0);
     h.input_mut().events.push(egui::Event::PointerMoved(at));
     for pressed in [true, false] {
@@ -3470,7 +3470,7 @@ fn dynamic_text_is_a_menu_of_values_that_starts_the_text() {
     // pane).
     click_map(&mut h);
     assert_eq!(selected_text(&h).as_deref(), Some("{scale}"));
-    assert_eq!(h.state().ui.right, Some(rustgis_ui_egui::RightPane::Format));
+    assert_eq!(h.state().ui.right, Some(powergis_ui_egui::RightPane::Format));
     // Text starts with "Text" again. The pane is closed first: its Text section's header is a
     // button too.
     h.state_mut().run("ui.pane.format", json!({"close": true})).unwrap();
@@ -3558,7 +3558,7 @@ fn the_popup_closes_when_its_feature_is_deleted() {
     h.state_mut().run("ui.identify", json!({"lon": -30.0, "lat": -40.0})).unwrap();
     h.step();
     // The feature the popup shows, by its feature id.
-    let shown = |h: &egui_kittest::Harness<'_, RustGisApp>| {
+    let shown = |h: &egui_kittest::Harness<'_, powergisApp>| {
         h.state().map.popup.as_ref().and_then(|p| p.info["results"].get(p.index).unwrap_or(&p.info)["fid"].as_u64())
     };
     let fid = shown(&h);
@@ -3592,7 +3592,7 @@ fn a_shortcut_that_cannot_run_says_why() {
     h.state_mut().run("edit.enable", json!({"on": false})).unwrap();
     h.state_mut().run("select.rows", json!({"layer": "Countries", "rows": [0]})).unwrap();
     let rows =
-        |h: &egui_kittest::Harness<'_, RustGisApp>| h.state().session.map().layer_by_name("Countries").map(|l| l.dataset.features.len());
+        |h: &egui_kittest::Harness<'_, powergisApp>| h.state().session.map().layer_by_name("Countries").map(|l| l.dataset.features.len());
     let before = rows(&h);
     let mark = h.state().session.notice_mark();
     h.key_press(egui::Key::Delete);
@@ -3620,7 +3620,7 @@ fn ctrl_shift_z_redoes_rather_than_undoing() {
     let mut h = harness();
     h.step();
     let rows =
-        |h: &egui_kittest::Harness<'_, RustGisApp>| h.state().session.map().layer_by_name("Countries").map(|l| l.dataset.features.len());
+        |h: &egui_kittest::Harness<'_, powergisApp>| h.state().session.map().layer_by_name("Countries").map(|l| l.dataset.features.len());
     let before = rows(&h);
     h.state_mut().run("select.rows", json!({"layer": "Countries", "rows": [0]})).unwrap();
     h.state_mut().run("edit.delete", json!(null)).unwrap();
@@ -3654,7 +3654,7 @@ fn help_shortcuts_lists_the_keymap() {
 
 #[test]
 fn geometry_calculator_switching_back_creates_a_unique_field() {
-    use rustgis_ui_egui::rustgis_engine::{
+    use powergis_ui_egui::powergis_engine::{
         data::{Dataset, Field, FieldType, Geometry, GeometryType, Value},
         geom::Coord,
     };
@@ -3700,8 +3700,8 @@ fn geometry_calculator_switching_back_creates_a_unique_field() {
 
 #[test]
 fn unique_symbology_lets_the_user_choose_a_text_field_before_applying() {
-    use rustgis_ui_egui::rustgis_engine::data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
-    use rustgis_ui_egui::rustgis_engine::geom::Coord;
+    use powergis_ui_egui::powergis_engine::data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_ui_egui::powergis_engine::geom::Coord;
 
     let mut h = harness();
     let mut ds = Dataset::new(
@@ -3725,7 +3725,7 @@ fn unique_symbology_lets_the_user_choose_a_text_field_before_applying() {
     h.get_by_role_and_label(egui::accesskit::Role::Button, "Apply").click();
     h.step();
     let layer = h.state().session.map().layer(id).unwrap();
-    assert!(matches!(layer.renderer, rustgis_ui_egui::rustgis_engine::map::Renderer::Unique { ref field, .. } if field == "other"));
+    assert!(matches!(layer.renderer, powergis_ui_egui::powergis_engine::map::Renderer::Unique { ref field, .. } if field == "other"));
     assert_eq!(h.state().ui.symbology_pending, None);
 }
 
@@ -3749,7 +3749,7 @@ fn unique_symbology_pending_choice_follows_its_context() {
         assert!(h.state_mut().run("layer.symbology", json!({"type": "unique", "field": "missing field"})).is_err());
         assert!(h.state().ui.symbology_pending.is_some());
         if change != "external renderer" {
-            h.state_mut().ui.close_right(rustgis_ui_egui::RightPane::Symbology);
+            h.state_mut().ui.close_right(powergis_ui_egui::RightPane::Symbology);
         }
         match change {
             "map" => {
@@ -3765,7 +3765,7 @@ fn unique_symbology_pending_choice_follows_its_context() {
                 h.state_mut().run("edit.undo", json!(null)).unwrap();
             }
             "external renderer" => {
-                // Commands from other clients can bypass RustGisApp::run.
+                // Commands from other clients can bypass powergisApp::run.
                 h.state_mut().session.run("layer.symbology", &json!({"type": "unique", "field": "name"})).unwrap();
                 h.step();
             }
@@ -3813,7 +3813,7 @@ fn map_and_layout_tabs_rename_from_their_menus() {
 
 #[test]
 fn line_strokes_editor_edits_one_class() {
-    use rustgis_engine::map::symbology::ClassRef;
+    use powergis_engine::map::symbology::ClassRef;
     let mut h = harness();
     let app = h.state_mut();
     app.run("layer.select", json!({"layer": "Rivers"})).unwrap();
@@ -3823,7 +3823,7 @@ fn line_strokes_editor_edits_one_class() {
     app.run("ui.pane.symbology", json!({})).unwrap();
     h.step();
     h.step();
-    let class_strokes = |h: &egui_kittest::Harness<'_, RustGisApp>, c: &ClassRef| {
+    let class_strokes = |h: &egui_kittest::Harness<'_, powergisApp>, c: &ClassRef| {
         h.state().session.map().layer_by_name("Rivers").unwrap().renderer.class_strokes(c).unwrap().len()
     };
     // The layer's strokes first; class 1 is marked as having its own.
@@ -3852,11 +3852,11 @@ fn line_strokes_editor_edits_one_class() {
 #[test]
 fn zonal_statistics_shows_available_band_range() {
     use egui_kittest::kittest::NodeT;
-    use rustgis_engine::data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    use powergis_engine::data::raster::{ColorHint, Crs, GeoTransform, Raster};
     let mut h = harness();
     let gt = GeoTransform { origin_x: 0.0, origin_y: 1.0, pixel_width: 1.0, pixel_height: -1.0 };
     let raster = Raster::new("dem", 1, 1, vec![vec![1.0]], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
-    h.state_mut().session.map_mut().add_raster("dem", rustgis_engine::map::RasterLayer::from_path(raster, "dem.tif"));
+    h.state_mut().session.map_mut().add_raster("dem", powergis_engine::map::RasterLayer::from_path(raster, "dem.tif"));
     h.state_mut().run("ui.pane.workflows", json!(null)).unwrap();
     h.state_mut().workflow.section = "zonalStats";
     h.state_mut().workflow.layer = "dem".into();

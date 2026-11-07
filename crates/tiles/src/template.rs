@@ -1,6 +1,6 @@
 //! Tile addresses and Web Mercator tile math.
 
-use rustgis_geom::{Extent, MERCATOR_R};
+use powergis_geom::{Extent, MERCATOR_R};
 
 /// Half the Web Mercator world's width, in metres.
 pub const HALF_WORLD: f64 = std::f64::consts::PI * MERCATOR_R;

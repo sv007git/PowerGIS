@@ -6,7 +6,7 @@
 use egui::vec2;
 use serde_json::{Value, json};
 
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 /// The catalogue search: its form, the request under way and the records found so far.
 #[derive(Default)]
@@ -41,14 +41,14 @@ const KINDS: [(&str, &str); 7] = [
 ];
 
 /// Asks for a page of records: the first (`start` 1) replaces those found, a later one adds to them.
-pub fn search(app: &mut RustGisApp, start: u64) {
+pub fn search(app: &mut powergisApp, start: u64) {
     let st = &app.ui.csw;
     let mut p = if start <= 1 || !st.asked.is_object() {
         let mut p = json!({"url": st.url.trim(), "query": st.query.trim()});
         // The map's area now, not when More is pressed.
         if st.use_view {
             p["bbox"] =
-                rustgis_engine::cmd::catalogs::area(&app.session, &json!({"bbox": "view"})).map_or_else(|_| json!("view"), |a| json!(a));
+                powergis_engine::cmd::catalogs::area(&app.session, &json!({"bbox": "view"})).map_or_else(|_| json!("view"), |a| json!(a));
         }
         p
     } else {
@@ -56,7 +56,7 @@ pub fn search(app: &mut RustGisApp, start: u64) {
     };
     let asked = p.clone();
     p["start"] = json!(start);
-    match rustgis_engine::cmd::service::records_request(&app.session, &p) {
+    match powergis_engine::cmd::service::records_request(&app.session, &p) {
         Ok(request) => {
             let st = &mut app.ui.csw;
             st.error = None;
@@ -74,7 +74,7 @@ pub fn search(app: &mut RustGisApp, start: u64) {
 }
 
 /// Reads a page of records once it has arrived.
-pub fn poll(app: &mut RustGisApp) {
+pub fn poll(app: &mut powergisApp) {
     let Some((_, slot)) = &app.ui.csw.waiting else { return };
     let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else { return };
     let Some((mut p, _)) = app.ui.csw.waiting.take() else { return };
@@ -96,7 +96,7 @@ pub fn poll(app: &mut RustGisApp) {
 }
 
 /// The catalogue form (the Type row is the dialog's) and its records.
-pub fn form(app: &mut RustGisApp, ui: &mut egui::Ui, kinds: impl FnOnce(&mut RustGisApp, &mut egui::Ui)) {
+pub fn form(app: &mut powergisApp, ui: &mut egui::Ui, kinds: impl FnOnce(&mut powergisApp, &mut egui::Ui)) {
     let mut go = false;
     egui::Grid::new("csw").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
         let input_label = ui.label(tl!("Address"));
@@ -139,7 +139,7 @@ pub fn form(app: &mut RustGisApp, ui: &mut egui::Ui, kinds: impl FnOnce(&mut Rus
 
 /// The records found: each with its abstract (on hover), a Zoom to its bounds and a button per
 /// link PowerGIS can follow.
-fn records(app: &mut RustGisApp, ui: &mut egui::Ui) {
+fn records(app: &mut powergisApp, ui: &mut egui::Ui) {
     let list = crate::sourcespane::connections_snapshot(app);
     let st = &app.ui.csw;
     if st.records.is_empty() && st.matched == 0 {

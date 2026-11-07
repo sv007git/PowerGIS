@@ -18,7 +18,7 @@ mod index;
 use super::{Batch, FeatureSource, Reproject, Request, SourceInfo, clamp_limit};
 use crate::io::group_rings;
 use crate::{DataError, Feature, Field, FieldType, Geometry, GeometryType, Result, Value};
-use rustgis_geom::{Coord, Extent};
+use powergis_geom::{Coord, Extent};
 
 fn bad(msg: impl std::fmt::Display) -> DataError {
     DataError::Format(format!("Shapefile: {msg}"))

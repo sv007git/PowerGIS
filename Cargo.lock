@@ -4185,6 +4185,305 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a6394b9e965e73d0a289ee54f589087e2c676aedf60885baf52c76b771e4958"
 
 [[package]]
+name = "powergis"
+version = "0.5.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "embed-resource",
+ "log",
+ "muda",
+ "objc2 0.6.5",
+ "objc2-app-kit 0.3.2",
+ "objc2-foundation 0.3.2",
+ "powergis-assistant",
+ "powergis-engine",
+ "powergis-keychain",
+ "powergis-ui-egui",
+ "serde_json",
+ "tiny-skia 0.12.0",
+ "winit",
+]
+
+[[package]]
+name = "powergis-analysis"
+version = "0.5.0"
+dependencies = [
+ "a5",
+ "geo",
+ "log",
+ "powergis-data",
+ "powergis-geom",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "powergis-assistant"
+version = "0.5.0"
+dependencies = [
+ "base64 0.23.1",
+ "getrandom 0.4.3",
+ "log",
+ "powergis-engine",
+ "ring",
+ "rustix 1.1.6",
+ "serde_json",
+ "sha2 0.11.1",
+ "tempfile",
+ "ureq",
+ "web-time",
+ "zip",
+]
+
+[[package]]
+name = "powergis-cli"
+version = "0.5.0"
+dependencies = [
+ "powergis-assistant",
+ "powergis-engine",
+ "powergis-keychain",
+ "serde_json",
+]
+
+[[package]]
+name = "powergis-data"
+version = "0.5.0"
+dependencies = [
+ "arrow-array",
+ "arrow-schema",
+ "base64 0.23.1",
+ "bytes",
+ "calamine",
+ "crs-definitions",
+ "csv",
+ "encoding_rs",
+ "flatgeobuf",
+ "geo",
+ "geozero",
+ "image",
+ "laz",
+ "lz4_flex",
+ "miniz_oxide 0.9.1",
+ "mysql",
+ "parquet",
+ "postgres",
+ "powergis-geom",
+ "proj4rs",
+ "roxmltree",
+ "rusqlite",
+ "rustix 1.1.6",
+ "rustls",
+ "ruzstd",
+ "serde",
+ "serde_json",
+ "shapefile",
+ "tempfile",
+ "thiserror 2.0.21",
+ "tiberius",
+ "tiff",
+ "tokio",
+ "tokio-postgres-rustls",
+ "tokio-util",
+ "url",
+ "webpki-roots",
+ "weezl 0.2.1",
+ "zstd 0.14.3",
+]
+
+[[package]]
+name = "powergis-engine"
+version = "0.5.0"
+dependencies = [
+ "base64 0.23.1",
+ "iana-time-zone",
+ "image",
+ "log",
+ "postgres",
+ "powergis-analysis",
+ "powergis-data",
+ "powergis-geolibre",
+ "powergis-geom",
+ "powergis-map",
+ "powergis-plugins",
+ "powergis-render",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sys-locale",
+ "tiny-skia 0.12.0",
+ "web-time",
+]
+
+[[package]]
+name = "powergis-geolibre"
+version = "0.5.0"
+dependencies = [
+ "flate2",
+ "log",
+ "powergis-analysis",
+ "powergis-data",
+ "powergis-geom",
+ "serde_json",
+ "sha2 0.11.1",
+ "tar",
+ "ureq",
+ "zip",
+]
+
+[[package]]
+name = "powergis-geom"
+version = "0.5.0"
+dependencies = [
+ "geographiclib-rs",
+ "serde",
+]
+
+[[package]]
+name = "powergis-keychain"
+version = "0.5.0"
+dependencies = [
+ "apple-native-keyring-store",
+ "keyring-core",
+ "powergis-data",
+ "windows-native-keyring-store",
+ "zbus-secret-service-keyring-store",
+]
+
+[[package]]
+name = "powergis-map"
+version = "0.5.0"
+dependencies = [
+ "base64 0.23.1",
+ "powergis-data",
+ "powergis-geom",
+ "proj4rs",
+ "roxmltree",
+ "serde",
+ "serde_json",
+ "web-time",
+]
+
+[[package]]
+name = "powergis-plugins"
+version = "0.5.0"
+dependencies = [
+ "base64 0.23.1",
+ "log",
+ "powergis-analysis",
+ "powergis-data",
+ "rustix 1.1.6",
+ "serde",
+ "serde_json",
+ "sha2 0.11.1",
+ "ureq",
+ "wasmi",
+ "wat",
+ "zip",
+]
+
+[[package]]
+name = "powergis-python"
+version = "0.5.0"
+dependencies = [
+ "powergis-engine",
+ "powergis-keychain",
+ "pyo3",
+ "pyo3-build-config",
+ "serde_json",
+]
+
+[[package]]
+name = "powergis-render"
+version = "0.5.0"
+dependencies = [
+ "ab_glyph",
+ "base64 0.23.1",
+ "bytemuck",
+ "epaint_default_fonts",
+ "image",
+ "log",
+ "lyon",
+ "miniz_oxide 0.9.1",
+ "powergis-data",
+ "powergis-geom",
+ "powergis-map",
+ "powergis-tiles",
+ "serde_json",
+ "tempfile",
+ "tiny-skia 0.12.0",
+ "unicode-segmentation",
+ "web-time",
+]
+
+[[package]]
+name = "powergis-tiles"
+version = "0.5.0"
+dependencies = [
+ "base64 0.23.1",
+ "brotli",
+ "brotli-decompressor",
+ "geo",
+ "getrandom 0.4.3",
+ "image",
+ "log",
+ "miniz_oxide 0.9.1",
+ "powergis-data",
+ "powergis-geom",
+ "roxmltree",
+ "ruzstd",
+ "serde_json",
+ "sha2 0.11.1",
+ "tiny-skia 0.12.0",
+ "ureq",
+ "web-time",
+]
+
+[[package]]
+name = "powergis-ui-egui"
+version = "0.5.0"
+dependencies = [
+ "base64 0.23.1",
+ "bytemuck",
+ "egui",
+ "egui-wgpu",
+ "egui_extras",
+ "egui_kittest",
+ "image",
+ "log",
+ "pollster 1.0.1",
+ "powergis-assistant",
+ "powergis-engine",
+ "powergis-plugins",
+ "rfd",
+ "rustix 1.1.6",
+ "serde",
+ "serde_json",
+ "sys-locale",
+ "tempfile",
+ "unicode-normalization",
+ "web-time",
+]
+
+[[package]]
+name = "powergis-web"
+version = "0.5.0"
+dependencies = [
+ "eframe",
+ "egui",
+ "js-sys",
+ "log",
+ "powergis-engine",
+ "powergis-ui-egui",
+ "rfd",
+ "serde_json",
+ "wasm-bindgen",
+ "wasm-bindgen-futures",
+ "web-sys",
+ "web-time",
+]
+
+[[package]]
 name = "ppv-lite86"
 version = "0.2.21"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -4656,305 +4955,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "cfcb3a22ef46e85b45de6ee7e79d063319ebb6594faafcf1c225ea92ab6e9b92"
 dependencies = [
  "semver",
-]
-
-[[package]]
-name = "rustgis"
-version = "0.5.0"
-dependencies = [
- "eframe",
- "egui",
- "embed-resource",
- "log",
- "muda",
- "objc2 0.6.5",
- "objc2-app-kit 0.3.2",
- "objc2-foundation 0.3.2",
- "rustgis-assistant",
- "rustgis-engine",
- "rustgis-keychain",
- "rustgis-ui-egui",
- "serde_json",
- "tiny-skia 0.12.0",
- "winit",
-]
-
-[[package]]
-name = "rustgis-analysis"
-version = "0.5.0"
-dependencies = [
- "a5",
- "geo",
- "log",
- "rustgis-data",
- "rustgis-geom",
- "serde",
- "serde_json",
-]
-
-[[package]]
-name = "rustgis-assistant"
-version = "0.5.0"
-dependencies = [
- "base64 0.23.1",
- "getrandom 0.4.3",
- "log",
- "ring",
- "rustgis-engine",
- "rustix 1.1.6",
- "serde_json",
- "sha2 0.11.1",
- "tempfile",
- "ureq",
- "web-time",
- "zip",
-]
-
-[[package]]
-name = "rustgis-cli"
-version = "0.5.0"
-dependencies = [
- "rustgis-assistant",
- "rustgis-engine",
- "rustgis-keychain",
- "serde_json",
-]
-
-[[package]]
-name = "rustgis-data"
-version = "0.5.0"
-dependencies = [
- "arrow-array",
- "arrow-schema",
- "base64 0.23.1",
- "bytes",
- "calamine",
- "crs-definitions",
- "csv",
- "encoding_rs",
- "flatgeobuf",
- "geo",
- "geozero",
- "image",
- "laz",
- "lz4_flex",
- "miniz_oxide 0.9.1",
- "mysql",
- "parquet",
- "postgres",
- "proj4rs",
- "roxmltree",
- "rusqlite",
- "rustgis-geom",
- "rustix 1.1.6",
- "rustls",
- "ruzstd",
- "serde",
- "serde_json",
- "shapefile",
- "tempfile",
- "thiserror 2.0.21",
- "tiberius",
- "tiff",
- "tokio",
- "tokio-postgres-rustls",
- "tokio-util",
- "url",
- "webpki-roots",
- "weezl 0.2.1",
- "zstd 0.14.3",
-]
-
-[[package]]
-name = "rustgis-engine"
-version = "0.5.0"
-dependencies = [
- "base64 0.23.1",
- "iana-time-zone",
- "image",
- "log",
- "postgres",
- "rusqlite",
- "rustgis-analysis",
- "rustgis-data",
- "rustgis-geolibre",
- "rustgis-geom",
- "rustgis-map",
- "rustgis-plugins",
- "rustgis-render",
- "serde",
- "serde_json",
- "sys-locale",
- "tiny-skia 0.12.0",
- "web-time",
-]
-
-[[package]]
-name = "rustgis-geolibre"
-version = "0.5.0"
-dependencies = [
- "flate2",
- "log",
- "rustgis-analysis",
- "rustgis-data",
- "rustgis-geom",
- "serde_json",
- "sha2 0.11.1",
- "tar",
- "ureq",
- "zip",
-]
-
-[[package]]
-name = "rustgis-geom"
-version = "0.5.0"
-dependencies = [
- "geographiclib-rs",
- "serde",
-]
-
-[[package]]
-name = "rustgis-keychain"
-version = "0.5.0"
-dependencies = [
- "apple-native-keyring-store",
- "keyring-core",
- "rustgis-data",
- "windows-native-keyring-store",
- "zbus-secret-service-keyring-store",
-]
-
-[[package]]
-name = "rustgis-map"
-version = "0.5.0"
-dependencies = [
- "base64 0.23.1",
- "proj4rs",
- "roxmltree",
- "rustgis-data",
- "rustgis-geom",
- "serde",
- "serde_json",
- "web-time",
-]
-
-[[package]]
-name = "rustgis-plugins"
-version = "0.5.0"
-dependencies = [
- "base64 0.23.1",
- "log",
- "rustgis-analysis",
- "rustgis-data",
- "rustix 1.1.6",
- "serde",
- "serde_json",
- "sha2 0.11.1",
- "ureq",
- "wasmi",
- "wat",
- "zip",
-]
-
-[[package]]
-name = "rustgis-python"
-version = "0.5.0"
-dependencies = [
- "pyo3",
- "pyo3-build-config",
- "rustgis-engine",
- "rustgis-keychain",
- "serde_json",
-]
-
-[[package]]
-name = "rustgis-render"
-version = "0.5.0"
-dependencies = [
- "ab_glyph",
- "base64 0.23.1",
- "bytemuck",
- "epaint_default_fonts",
- "image",
- "log",
- "lyon",
- "miniz_oxide 0.9.1",
- "rustgis-data",
- "rustgis-geom",
- "rustgis-map",
- "rustgis-tiles",
- "serde_json",
- "tempfile",
- "tiny-skia 0.12.0",
- "unicode-segmentation",
- "web-time",
-]
-
-[[package]]
-name = "rustgis-tiles"
-version = "0.5.0"
-dependencies = [
- "base64 0.23.1",
- "brotli",
- "brotli-decompressor",
- "geo",
- "getrandom 0.4.3",
- "image",
- "log",
- "miniz_oxide 0.9.1",
- "roxmltree",
- "rustgis-data",
- "rustgis-geom",
- "ruzstd",
- "serde_json",
- "sha2 0.11.1",
- "tiny-skia 0.12.0",
- "ureq",
- "web-time",
-]
-
-[[package]]
-name = "rustgis-ui-egui"
-version = "0.5.0"
-dependencies = [
- "base64 0.23.1",
- "bytemuck",
- "egui",
- "egui-wgpu",
- "egui_extras",
- "egui_kittest",
- "image",
- "log",
- "pollster 1.0.1",
- "rfd",
- "rustgis-assistant",
- "rustgis-engine",
- "rustgis-plugins",
- "rustix 1.1.6",
- "serde",
- "serde_json",
- "sys-locale",
- "tempfile",
- "unicode-normalization",
- "web-time",
-]
-
-[[package]]
-name = "rustgis-web"
-version = "0.5.0"
-dependencies = [
- "eframe",
- "egui",
- "js-sys",
- "log",
- "rfd",
- "rustgis-engine",
- "rustgis-ui-egui",
- "serde_json",
- "wasm-bindgen",
- "wasm-bindgen-futures",
- "web-sys",
- "web-time",
 ]
 
 [[package]]

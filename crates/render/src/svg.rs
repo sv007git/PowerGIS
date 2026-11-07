@@ -6,8 +6,8 @@
 use std::fmt::Write as _;
 
 use base64::Engine;
-use rustgis_map::Map;
-use rustgis_map::layout::{ElementKind, FontFamily, Layout, LineHead, PT_PER_MM, TextAlign, frame_camera};
+use powergis_map::Map;
+use powergis_map::layout::{ElementKind, FontFamily, Layout, LineHead, PT_PER_MM, TextAlign, frame_camera};
 
 use crate::layout::{MAX_PIXELS, PageInfo, expand, page_geometry, render_element};
 
@@ -160,7 +160,7 @@ fn picture_dpi(layout: &Layout, dpi: f64) -> f64 {
 }
 
 /// A line element as the page draws it: a shaft and a filled triangle for each head, in millimetres.
-fn line(s: &mut String, [(x0, y0), (x1, y1)]: [(f64, f64); 2], color: rustgis_map::Rgba, width: f64, head: LineHead, ppp: f64) {
+fn line(s: &mut String, [(x0, y0), (x1, y1)]: [(f64, f64); 2], color: powergis_map::Rgba, width: f64, head: LineHead, ppp: f64) {
     let w = (width / PT_PER_MM).max(0.5 / (ppp * PT_PER_MM));
     let (at_start, at_end) = (matches!(head, LineHead::Start | LineHead::Both), matches!(head, LineHead::End | LineHead::Both));
     let len = (x1 - x0).hypot(y1 - y0);
@@ -191,7 +191,7 @@ fn line(s: &mut String, [(x0, y0), (x1, y1)]: [(f64, f64); 2], color: rustgis_ma
 }
 
 /// ` stroke="…" stroke-width="…"` for an outline `width` points wide, or `stroke="none"`.
-fn stroke(color: rustgis_map::Rgba, width: f64) -> String {
+fn stroke(color: powergis_map::Rgba, width: f64) -> String {
     if width > 0.0 {
         format!(r#"{} stroke-width="{}""#, paint("stroke", color), num(width / PT_PER_MM))
     } else {
@@ -200,7 +200,7 @@ fn stroke(color: rustgis_map::Rgba, width: f64) -> String {
 }
 
 /// ` fill="#rrggbb"` (or stroke), with its opacity when it isn't opaque.
-fn paint(attr: &str, c: rustgis_map::Rgba) -> String {
+fn paint(attr: &str, c: powergis_map::Rgba) -> String {
     let [r, g, b, a] = c.0;
     let mut out = format!(r##" {attr}="#{r:02x}{g:02x}{b:02x}""##);
     if a < 255 {
@@ -353,11 +353,11 @@ mod tests {
 
     #[test]
     fn failed_required_map_render_fails_the_svg_export() {
-        use rustgis_data::{Dataset, GeometryType};
+        use powergis_data::{Dataset, GeometryType};
         let (layout, mut maps, _) = page();
         maps[0].add_dataset(Dataset::new("Missing", GeometryType::Point, vec![]));
         let dir = tempfile::tempdir().unwrap();
-        let mut source = rustgis_map::source::SourceLayer::default();
+        let mut source = powergis_map::source::SourceLayer::default();
         source.path = Some(dir.path().join("missing.shp").display().to_string());
         maps[0].layers[0].source = Some(source);
         assert!(layout_svg(&layout, &mut maps, 72.0, &PageInfo::default()).is_none());
@@ -401,7 +401,7 @@ mod tests {
         assert_eq!((num(297.0), num(0.1234), num(-0.0001), num(f64::NAN)), ("297".into(), "0.123".into(), "0".into(), "0".into()));
         assert_eq!(esc("a & <b> \"c\" 'd'\u{1}"), "a &amp; &lt;b&gt; &quot;c&quot; &apos;d&apos;");
         assert_eq!(esc("valid\u{fffe}\u{ffff}\t🙂"), "valid\t🙂");
-        assert_eq!(paint("fill", rustgis_map::Rgba::new(255, 0, 16, 128)), r##" fill="#ff0010" fill-opacity="0.502""##);
-        assert_eq!(stroke(rustgis_map::Rgba::rgb(0, 0, 0), 0.0), r#" stroke="none""#);
+        assert_eq!(paint("fill", powergis_map::Rgba::new(255, 0, 16, 128)), r##" fill="#ff0010" fill-opacity="0.502""##);
+        assert_eq!(stroke(powergis_map::Rgba::rgb(0, 0, 0), 0.0), r#" stroke="none""#);
     }
 }

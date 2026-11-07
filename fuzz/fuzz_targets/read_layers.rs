@@ -4,7 +4,7 @@
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;
-use rustgis_data::io::{READ_EXTENSIONS, read_layers};
+use powergis_data::io::{READ_EXTENSIONS, read_layers};
 
 fuzz_target!(|data: &[u8]| {
     let Some((&pick, bytes)) = data.split_first() else { return };

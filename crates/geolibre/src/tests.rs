@@ -1,7 +1,7 @@
 use super::*;
-use rustgis_analysis::RasterInput;
-use rustgis_data::raster::{ColorHint, GeoTransform, Raster};
-use rustgis_data::{Feature, Field, FieldType, Geometry};
+use powergis_analysis::RasterInput;
+use powergis_data::raster::{ColorHint, GeoTransform, Raster};
+use powergis_data::{Feature, Field, FieldType, Geometry};
 
 /// A 40 × 40 DEM rising to the east (UTM 17N, 30 m pixels) and a point inside it.
 struct Fixture {
@@ -20,9 +20,9 @@ impl Fixture {
         let dem = Raster::new("dem", 40, 40, vec![band], gt, Crs::from_epsg(32617).unwrap(), None, ColorHint::Gray, "Float32").unwrap();
         // The DEM's centre, in longitude/latitude.
         let centre = Crs::from_epsg(32617).unwrap().transformer().unwrap().to_lonlat(Coord::new(500_600.0, 4_649_400.0)).unwrap();
-        let mut points = Dataset::new("pts", rustgis_data::GeometryType::Point, vec![Field::new("id", FieldType::Integer)]);
-        points.features.push(Feature { id: 1, geometry: Some(Geometry::Point(centre)), attrs: vec![rustgis_data::Value::Int(1)] });
-        let tiff = rustgis_data::raster::geotiff::write(&dem, 0).unwrap();
+        let mut points = Dataset::new("pts", powergis_data::GeometryType::Point, vec![Field::new("id", FieldType::Integer)]);
+        points.features.push(Feature { id: 1, geometry: Some(Geometry::Point(centre)), attrs: vec![powergis_data::Value::Int(1)] });
+        let tiff = powergis_data::raster::geotiff::write(&dem, 0).unwrap();
         let scan = dem.clone().into_scan().unwrap();
         Fixture { dem, scan, points, tiff }
     }
@@ -46,7 +46,7 @@ impl Inputs for Fixture {
 }
 
 /// The fixture, or `None` (the test is skipped) when no runner is installed: set
-/// `RUSTGIS_GEOLIBRE` to a `geolibre` executable, or put one on PATH, to run these.
+/// `powergis_GEOLIBRE` to a `geolibre` executable, or put one on PATH, to run these.
 fn setup() -> Option<Fixture> {
     register();
     if runner::find().is_none() {
@@ -88,10 +88,10 @@ fn runner_values_and_choices() {
 #[test]
 fn manifests_become_tool_forms() {
     let Some(_) = setup() else { return };
-    let tools = rustgis_analysis::external_tools_of(crate::SOURCE);
+    let tools = powergis_analysis::external_tools_of(crate::SOURCE);
     assert!(tools.len() > 1000, "{}", tools.len());
-    let slope = rustgis_analysis::tool("geolibre:slope").unwrap();
-    assert!(rustgis_analysis::is_external(slope));
+    let slope = powergis_analysis::tool("geolibre:slope").unwrap();
+    assert!(powergis_analysis::is_external(slope));
     // Grouped by the runner's taxonomy; a runner from before it, by the coarse category.
     assert!(matches!(slope.toolbox, "GeoLibre › Terrain › Derivatives" | "GeoLibre › Raster"), "{}", slope.toolbox);
     assert_eq!(slope.params.first().map(|p| p.kind), Some(ParamKind::RasterLayer));
@@ -102,12 +102,12 @@ fn manifests_become_tool_forms() {
     assert_eq!(units.default, "\"degrees\"");
     assert_eq!(serde_json::from_str::<Value>(units.default).unwrap(), json!("degrees"));
     // The built-in Buffer still wins by name.
-    assert_eq!(rustgis_analysis::tool("Buffer").map(|t| t.id), Some("buffer"));
+    assert_eq!(powergis_analysis::tool("Buffer").map(|t| t.id), Some("buffer"));
     // GeoLibre's choices aren't enforced by PowerGIS (#406 covers the built-in tools): some take
     // a comma-separated list of options, which its runner checks.
     let glcm = tools.iter().find(|t| t.id == "geolibre:glcm_texture").unwrap();
     let list = json!({"input": "dem", "features": "contrast,energy"});
-    assert_eq!(rustgis_analysis::resolve_params(glcm, &list).unwrap()["features"], "contrast,energy");
+    assert_eq!(powergis_analysis::resolve_params(glcm, &list).unwrap()["features"], "contrast,energy");
 }
 
 #[test]
@@ -136,13 +136,13 @@ fn inputs_of_several_layers_are_layer_lists() {
 #[test]
 fn slope_runs_on_a_raster_layer() {
     let Some(f) = setup() else { return };
-    let r = rustgis_analysis::run("geolibre:slope", &f, &json!({"input": "dem", "units": "degrees"})).unwrap();
+    let r = powergis_analysis::run("geolibre:slope", &f, &json!({"input": "dem", "units": "degrees"})).unwrap();
     // An embedded raster is staged as a file with its extension.
-    assert!(rustgis_analysis::run("geolibre:slope", &f, &json!({"input": "embedded"})).is_ok());
+    assert!(powergis_analysis::run("geolibre:slope", &f, &json!({"input": "embedded"})).is_ok());
     let Output::Layers(layers) = r.output else { panic!("layers") };
     let Some(OutputLayer::Raster { name, bytes, file_name }) = layers.first() else { panic!("a raster: {layers:?}") };
     assert_eq!(name, "Slope");
-    let out = rustgis_data::raster::read_bytes(file_name, bytes).unwrap();
+    let out = powergis_data::raster::read_bytes(file_name, bytes).unwrap();
     assert_eq!((out.width, out.height), (40, 40));
     assert_eq!(out.crs, Crs::from_epsg(32617).unwrap(), "keeps the DEM's coordinate system");
     // A 3 m rise per 30 m pixel is about 5.7°.
@@ -153,11 +153,11 @@ fn slope_runs_on_a_raster_layer() {
 #[test]
 fn vector_tools_work_in_metres_and_return_lonlat() {
     let Some(f) = setup() else { return };
-    let r = rustgis_analysis::run("geolibre:buffer_vector", &f, &json!({"input": "pts", "distance": "1000"})).unwrap();
+    let r = powergis_analysis::run("geolibre:buffer_vector", &f, &json!({"input": "pts", "distance": "1000"})).unwrap();
     let Output::Layers(layers) = r.output else { panic!("layers") };
     let Some(OutputLayer::Vector(ds)) = layers.first() else { panic!("a vector layer: {layers:?}") };
     let Some(Some(Geometry::Polygon(polys))) = ds.features.first().map(|f| f.geometry.clone()) else { panic!("a polygon") };
-    let area = rustgis_geom::geodesic_ring_area_m2(&polys[0][0]).abs();
+    let area = powergis_geom::geodesic_ring_area_m2(&polys[0][0]).abs();
     let circle = std::f64::consts::PI * 1000.0 * 1000.0;
     assert!((area / circle - 1.0).abs() < 0.05, "a 1 km buffer, not 1000 degrees: {area}");
 }
@@ -165,7 +165,7 @@ fn vector_tools_work_in_metres_and_return_lonlat() {
 #[test]
 fn rasters_and_points_meet_in_one_coordinate_system() {
     let Some(f) = setup() else { return };
-    let r = rustgis_analysis::run("geolibre:extract_raster_values_at_points", &f, &json!({"rasters": "dem", "points": "pts"})).unwrap();
+    let r = powergis_analysis::run("geolibre:extract_raster_values_at_points", &f, &json!({"rasters": "dem", "points": "pts"})).unwrap();
     let Output::Layers(layers) = r.output else { panic!("layers") };
     let Some(OutputLayer::Vector(ds)) = layers.first() else { panic!("points: {layers:?}") };
     let p: Option<Coord> = ds.features.first().and_then(|f| f.geometry.as_ref()).map(|g| g.extent().center());
@@ -180,18 +180,18 @@ fn rasters_and_points_meet_in_one_coordinate_system() {
 #[test]
 fn bad_inputs_are_errors_not_crashes() {
     let Some(f) = setup() else { return };
-    assert!(rustgis_analysis::run("geolibre:slope", &f, &json!({})).unwrap_err().contains("required"));
-    assert!(rustgis_analysis::run("geolibre:slope", &f, &json!({"input": "nope"})).unwrap_err().contains("no layer or file"));
-    assert!(rustgis_analysis::run("geolibre:slope", &f, &json!({"input": "pts"})).is_err(), "a vector where a raster belongs");
+    assert!(powergis_analysis::run("geolibre:slope", &f, &json!({})).unwrap_err().contains("required"));
+    assert!(powergis_analysis::run("geolibre:slope", &f, &json!({"input": "nope"})).unwrap_err().contains("no layer or file"));
+    assert!(powergis_analysis::run("geolibre:slope", &f, &json!({"input": "pts"})).is_err(), "a vector where a raster belongs");
     // Every tool with junk in every field fails cleanly: inputs that don't exist stop it before
     // it runs.
-    for t in rustgis_analysis::external_tools_of(crate::SOURCE) {
+    for t in powergis_analysis::external_tools_of(crate::SOURCE) {
         if !t.params.iter().any(|p| matches!(p.kind, ParamKind::RasterLayer | ParamKind::VectorLayer | ParamKind::Layer | ParamKind::Path))
         {
             continue;
         }
         let junk: serde_json::Map<String, Value> = t.params.iter().map(|p| (p.name.to_string(), json!("nope;(("))).collect();
-        assert!(rustgis_analysis::run(t.id, &f, &Value::Object(junk)).is_err(), "{}", t.id);
+        assert!(powergis_analysis::run(t.id, &f, &Value::Object(junk)).is_err(), "{}", t.id);
     }
 }
 
@@ -215,7 +215,7 @@ fn prepare_and_finish_without_a_runner() {
     let placed = json!({"id": "slope", "taxonomy": {"category": "Terrain", "subcategory": "Derivatives"}});
     assert_eq!(toolbox_of(&placed, "Raster"), "GeoLibre › Terrain › Derivatives");
     assert_eq!(toolbox_of(&json!({"taxonomy": {"category": " ", "subcategory": 3}}), "Raster"), "GeoLibre › Raster");
-    let params = rustgis_analysis::resolve_params(&spec, &json!({"input": "pts", "others": "dem;dem", "distance": "250"})).unwrap();
+    let params = powergis_analysis::resolve_params(&spec, &json!({"input": "pts", "others": "dem;dem", "distance": "250"})).unwrap();
     let job = prepare_with(&spec, &meta, &f, &params).unwrap();
     // Inputs are staged as numbered files, even the same layer twice.
     let names: Vec<&str> = job.files.iter().map(|(n, _)| n.as_str()).collect();
@@ -236,7 +236,7 @@ fn prepare_and_finish_without_a_runner() {
     assert_eq!(option_value(&json!("2.5"), Data::Number), json!(2.5));
     assert!(job.argv("C:\\scratch").iter().any(|a| a == "--output=C:\\scratch\\output.geojson"), "Windows folders");
     // A scan has no coordinates to hand a tool: refused before anything is staged.
-    let scan = rustgis_analysis::resolve_params(&spec, &json!({"input": "pts", "others": "scan", "distance": "250"})).unwrap();
+    let scan = powergis_analysis::resolve_params(&spec, &json!({"input": "pts", "others": "scan", "distance": "250"})).unwrap();
     let e = prepare_with(&spec, &meta, &f, &scan).unwrap_err();
     assert!(e.contains("no coordinates"), "{e}");
 
@@ -286,11 +286,11 @@ fn defaults_are_left_to_the_runner() {
     let (spec, meta) = spec_of(&manifest).unwrap();
     // The form fills in the defaults (as text, as it sends them): none of the optional ones go.
     let params =
-        rustgis_analysis::resolve_params(&spec, &json!({"dem": "embedded", "fix_flats": "true", "flat_increment": "0.0001"})).unwrap();
+        powergis_analysis::resolve_params(&spec, &json!({"dem": "embedded", "fix_flats": "true", "flat_increment": "0.0001"})).unwrap();
     let job = prepare_with(&spec, &meta, &f, &params).unwrap();
     assert_eq!(job.argv("/work"), ["--dem=/work/in0-embedded.tif", "--z=2", "--output=/work/output.tif"]);
     // Changed values go, a required one always does.
-    let params = rustgis_analysis::resolve_params(
+    let params = powergis_analysis::resolve_params(
         &spec,
         &json!({"dem": "embedded", "fix_flats": false, "flat_increment": 0.001, "flat_resolution": "natural", "max_depth": 5}),
     )

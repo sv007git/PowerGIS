@@ -7,7 +7,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use tiny_skia::{
     FillRule, FilterQuality, LineCap, LineJoin, Paint, PathBuilder, Pattern, Pixmap, PixmapPaint, Rect, SpreadMode, Stroke, StrokeDash,
     Transform,
@@ -1195,7 +1195,7 @@ pub(crate) mod tests {
                 },
             ],
         });
-        let dir = std::env::temp_dir().join(format!("rustgis-pick-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-pick-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("pick.pmtiles");
         let meta = r#"{"vector_layers":[{"id":"parks"},{"id":"roads"},{"id":"pois"},{"id":"plots"}]}"#;
@@ -1295,7 +1295,7 @@ pub(crate) mod tests {
             metadata: serde_json::json!({"vector_layers": [{"id": "pois"}]}),
         };
         let tiles = vec![(1, 0, 0, tile), (1, 1, 0, crate::mvt::encode(&crate::mvt::Tile::default()))];
-        let dir = std::env::temp_dir().join(format!("rustgis-pick-edge-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-pick-edge-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("edge.pmtiles");
         std::fs::write(&path, crate::pmtiles::write(tiles, &new).unwrap()).unwrap();

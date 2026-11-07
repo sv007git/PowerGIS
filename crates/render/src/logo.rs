@@ -1,6 +1,6 @@
-//! The PowerGIS logo, drawn in code: a rust-coloured cog framing a globe split into four
-//! segments by white gaps, with a tilted orbit. The same design is published as SVG in
-//! rustgis-assets; this keeps the app free of image files.
+//! The PowerGIS brand logo, drawn in code: a high-tech electric power ring framing a
+//! multi-segment geospatial globe with latitude/longitude coordinate grid, an electric
+//! energy lightning bolt core, and an orbital telemetry trajectory.
 
 use tiny_skia::{
     Color, FillRule, GradientStop, LineCap, LinearGradient, Mask, Paint, PathBuilder, Pixmap, Point, SpreadMode, Stroke, Transform,
@@ -25,23 +25,25 @@ fn solid(r: u8, g: u8, b: u8, a: u8) -> Paint<'static> {
     p
 }
 
-const RUST: ((u8, u8, u8), (u8, u8, u8)) = ((0xE4, 0x78, 0x3D), (0xA8, 0x3F, 0x24));
+const POWER_BLUE: ((u8, u8, u8), (u8, u8, u8)) = ((0x00, 0xC6, 0xFF), (0x00, 0x52, 0xD4));
+const ENERGY_GOLD: ((u8, u8, u8), (u8, u8, u8)) = ((0xFF, 0xEB, 0x3B), (0xFF, 0x8F, 0x00));
 
 /// The logo as a premultiplied RGBA pixmap of `size`×`size` pixels (16..=1024).
 pub fn pixmap(size: u32) -> Option<Pixmap> {
     let size = size.clamp(16, 1024);
     let mut pm = Pixmap::new(size, size)?;
     let t = Transform::from_scale(size as f32 / 512.0, size as f32 / 512.0);
-    let rust = gradient(RUST.0, RUST.1, 0.0, 0.0, 512.0, 512.0);
+    let power_grad = gradient(POWER_BLUE.0, POWER_BLUE.1, 0.0, 0.0, 512.0, 512.0);
+    let energy_grad = gradient(ENERGY_GOLD.0, ENERGY_GOLD.1, 190.0, 110.0, 330.0, 400.0);
 
-    // Cog.
+    // 1. Outer Power Gear & Generator Ring
     let mut pb = PathBuilder::new();
     let teeth = 12;
     let step = std::f32::consts::TAU / teeth as f32;
     let mut first = true;
     for i in 0..teeth {
         let a = i as f32 * step - std::f32::consts::FRAC_PI_2;
-        for (frac, r) in [(-0.5, 212.0), (-0.31, 212.0), (-0.21, 246.0), (0.21, 246.0), (0.31, 212.0)] {
+        for (frac, r) in [(-0.5, 216.0), (-0.30, 216.0), (-0.18, 248.0), (0.18, 248.0), (0.30, 216.0)] {
             let ang = a + frac * step;
             let (x, y) = (C + r * ang.cos(), C + r * ang.sin());
             if first {
@@ -53,13 +55,13 @@ pub fn pixmap(size: u32) -> Option<Pixmap> {
         }
     }
     pb.close();
-    pm.fill_path(&pb.finish()?, &rust, FillRule::Winding, t, None);
+    pm.fill_path(&pb.finish()?, &power_grad, FillRule::Winding, t, None);
     let white = solid(255, 255, 255, 255);
-    pm.fill_path(&PathBuilder::from_circle(C, C, 184.0)?, &white, FillRule::Winding, t, None);
+    pm.fill_path(&PathBuilder::from_circle(C, C, 186.0)?, &white, FillRule::Winding, t, None);
 
-    // Globe segments, clipped to a circle.
+    // 2. Globe segments, clipped to spherical circle
     let mut mask = Mask::new(size, size)?;
-    mask.fill_path(&PathBuilder::from_circle(C, C, 166.0)?, FillRule::Winding, true, t);
+    mask.fill_path(&PathBuilder::from_circle(C, C, 168.0)?, FillRule::Winding, true, t);
     let seg = |cmds: &dyn Fn(&mut PathBuilder)| -> Option<tiny_skia::Path> {
         let mut pb = PathBuilder::new();
         cmds(&mut pb);
@@ -92,15 +94,19 @@ pub fn pixmap(size: u32) -> Option<Pixmap> {
         pb.line_to(280.0, 452.0);
         pb.cubic_to(250.0, 400.0, 222.0, 330.0, 214.0, 262.0);
     })?;
+
+    // High-tech electric geospatial theme colors
     for (path, (a, b), (x0, y0, x1, y1)) in [
-        (&blue, ((0x3B, 0x8E, 0xDB), (0x1F, 0x5F, 0xA8)), (60.0, 60.0, 250.0, 282.0)),
-        (&teal, ((0x22, 0xB5, 0xA2), (0x0E, 0x85, 0x76)), (214.0, 60.0, 452.0, 262.0)),
-        (&green, ((0x8C, 0xC8, 0x4B), (0x4E, 0x9A, 0x2E)), (60.0, 250.0, 280.0, 452.0)),
-        (&gold, ((0xF8, 0xC1, 0x50), (0xE3, 0x9A, 0x22)), (214.0, 226.0, 452.0, 452.0)),
+        (&blue, ((0x00, 0x83, 0x8F), (0x00, 0x4D, 0x40)), (60.0, 60.0, 250.0, 282.0)),
+        (&teal, ((0x00, 0x91, 0xEA), (0x01, 0x57, 0x9B)), (214.0, 60.0, 452.0, 262.0)),
+        (&green, ((0x00, 0xC8, 0x53), (0x1B, 0x5E, 0x20)), (60.0, 250.0, 280.0, 452.0)),
+        (&gold, ((0x02, 0x88, 0xD1), (0x0D, 0x47, 0xA1)), (214.0, 226.0, 452.0, 452.0)),
     ] {
         pm.fill_path(path, &gradient(a, b, x0, y0, x1, y1), FillRule::Winding, t, Some(&mask));
     }
-    let gap = Stroke { width: 14.0, line_cap: LineCap::Round, ..Stroke::default() };
+
+    // Latitude and longitude graticule rings
+    let gap = Stroke { width: 12.0, line_cap: LineCap::Round, ..Stroke::default() };
     let mut pb = PathBuilder::new();
     pb.move_to(250.0, 60.0);
     pb.cubic_to(215.0, 150.0, 205.0, 230.0, 214.0, 262.0);
@@ -109,15 +115,31 @@ pub fn pixmap(size: u32) -> Option<Pixmap> {
     pb.cubic_to(100.0, 262.0, 150.0, 250.0, 214.0, 262.0);
     pb.cubic_to(300.0, 250.0, 380.0, 236.0, 452.0, 226.0);
     pm.stroke_path(&pb.finish()?, &white, &gap, t, Some(&mask));
+
     let mut pb = PathBuilder::new();
     pb.move_to(70.0, 170.0);
     pb.cubic_to(170.0, 135.0, 330.0, 125.0, 440.0, 150.0);
     pb.move_to(75.0, 360.0);
     pb.cubic_to(180.0, 345.0, 330.0, 335.0, 440.0, 345.0);
-    pm.stroke_path(&pb.finish()?, &solid(255, 255, 255, 140), &Stroke { width: 5.0, ..Stroke::default() }, t, Some(&mask));
+    pm.stroke_path(&pb.finish()?, &solid(255, 255, 255, 140), &Stroke { width: 4.5, ..Stroke::default() }, t, Some(&mask));
 
-    // Orbit: the front half of an ellipse tilted by -28°, ending in a node.
-    let (rx, ry, tilt) = (226.0f32, 70.0f32, (-28.0f32).to_radians());
+    // 3. Central Power Energy Lightning Bolt Symbol
+    let mut bolt_pb = PathBuilder::new();
+    bolt_pb.move_to(272.0, 114.0);
+    bolt_pb.line_to(196.0, 246.0);
+    bolt_pb.line_to(252.0, 246.0);
+    bolt_pb.line_to(224.0, 396.0);
+    bolt_pb.line_to(326.0, 232.0);
+    bolt_pb.line_to(268.0, 232.0);
+    bolt_pb.close();
+    let bolt_path = bolt_pb.finish()?;
+
+    // Stroke bolt in white shadow, then fill with radiant energy gradient
+    pm.stroke_path(&bolt_path, &white, &Stroke { width: 14.0, line_cap: LineCap::Round, ..Stroke::default() }, t, None);
+    pm.fill_path(&bolt_path, &energy_grad, FillRule::Winding, t, None);
+
+    // 4. Orbit: the front half of an ellipse tilted by -28°, ending in a glowing power node
+    let (rx, ry, tilt) = (228.0f32, 70.0f32, (-28.0f32).to_radians());
     let mut pb = PathBuilder::new();
     for i in 0..=64 {
         let th = std::f32::consts::PI * (1.0 - i as f32 / 64.0);
@@ -126,11 +148,11 @@ pub fn pixmap(size: u32) -> Option<Pixmap> {
         if i == 0 { pb.move_to(x, y) } else { pb.line_to(x, y) }
     }
     let orbit = pb.finish()?;
-    pm.stroke_path(&orbit, &white, &Stroke { width: 24.0, line_cap: LineCap::Round, ..Stroke::default() }, t, None);
-    pm.stroke_path(&orbit, &rust, &Stroke { width: 11.0, line_cap: LineCap::Round, ..Stroke::default() }, t, None);
+    pm.stroke_path(&orbit, &white, &Stroke { width: 22.0, line_cap: LineCap::Round, ..Stroke::default() }, t, None);
+    pm.stroke_path(&orbit, &power_grad, &Stroke { width: 10.0, line_cap: LineCap::Round, ..Stroke::default() }, t, None);
     let (nx, ny) = (C + rx * tilt.cos(), C + rx * tilt.sin());
     pm.fill_path(&PathBuilder::from_circle(nx, ny, 22.0)?, &white, FillRule::Winding, t, None);
-    pm.fill_path(&PathBuilder::from_circle(nx, ny, 14.0)?, &rust, FillRule::Winding, t, None);
+    pm.fill_path(&PathBuilder::from_circle(nx, ny, 14.0)?, &energy_grad, FillRule::Winding, t, None);
     Some(pm)
 }
 

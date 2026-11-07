@@ -2,7 +2,7 @@
 //! layer offered only in a national system (EPSG:2056, EPSG:31287) or in longitude/latitude, a
 //! WMTS layer whose tile matrix set is in one. The map still shows Web Mercator tiles: each is
 //! made from what the service gives for its area in the layer's own system — one GetMap picture,
-//! or the tiles of the matrix nearest its detail — warped into place (`rustgis_tiles::warp`).
+//! or the tiles of the matrix nearest its detail — warped into place (`powergis_tiles::warp`).
 //!
 //! A WMS layer also keeps every system its service offers it in ([`System`]): on a map drawn in
 //! one of them (EPSG:2056 chosen as the map's projection) it is asked for in that system and
@@ -13,13 +13,13 @@
 //! never reaches the server: [`MARK`], the map tile (`{z}/{x}/{y}`), and how the layer is laid
 //! out.
 
-use rustgis_geom::{Coord, merc_to_lonlat};
+use powergis_geom::{Coord, merc_to_lonlat};
 
 use super::encode;
 use crate::raster::{Crs, Transformer};
 
 /// Marks a layer address drawn in another coordinate system (see the module docs).
-pub const MARK: &str = "#rustgis-warp=";
+pub const MARK: &str = "#powergis-warp=";
 
 /// An address drawn on request with its pictures' size, `w` × `h` (numbers or placeholders): a
 /// map service export's `size` (an ArcGIS `…/export` or `…/exportImage` address), else a WMS's
@@ -576,10 +576,10 @@ mod tests {
     /// template for any picture.
     #[test]
     fn addresses_sized() {
-        let wms = "https://m.org/wms?LAYERS=a&width=256&HEIGHT=256&size=big&BBOX={bbox-epsg-3857}#rustgis-warp={z}/{x}/{y};crs=3857";
+        let wms = "https://m.org/wms?LAYERS=a&width=256&HEIGHT=256&size=big&BBOX={bbox-epsg-3857}#powergis-warp={z}/{x}/{y};crs=3857";
         assert_eq!(
             sized(wms, "1024", "1024"),
-            "https://m.org/wms?LAYERS=a&width=1024&HEIGHT=1024&size=big&BBOX={bbox-epsg-3857}#rustgis-warp={z}/{x}/{y};crs=3857"
+            "https://m.org/wms?LAYERS=a&width=1024&HEIGHT=1024&size=big&BBOX={bbox-epsg-3857}#powergis-warp={z}/{x}/{y};crs=3857"
         );
         let export = "https://s.org/arcgis/rest/services/x/MapServer/export?bbox={bbox-epsg-3857}&size=256,256&width=9";
         assert_eq!(
@@ -629,7 +629,7 @@ mod tests {
         let (base, _, back) = Warp::parse(&filled).unwrap();
         assert_eq!((base, back), ("https://m.example.org/wms?BBOX={nbbox}", wms));
         assert!(Warp::parse("https://x.example.org/{z}/{x}/{y}.png").is_none());
-        assert!(Warp::parse("https://x.example.org/a#rustgis-warp=1/0/0;crs=2056").is_none(), "no layout");
+        assert!(Warp::parse("https://x.example.org/a#powergis-warp=1/0/0;crs=2056").is_none(), "no layout");
         assert_eq!(matrix_in_address("EPSG:2056:{ncol}/a b"), "EPSG:2056:%7Bncol%7D%2Fa%20b");
         // A world's box in Europe's LAEA reaches west of its centre (10° E): Iberia is in it.
         let world = native_box(&transformer(3035).unwrap(), [-180.0, -90.0, 180.0, 90.0]).unwrap();
@@ -759,16 +759,16 @@ mod tests {
     #[test]
     fn junk_fragments_are_refused() {
         for junk in [
-            "https://x.org/#rustgis-warp=",
-            "https://x.org/#rustgis-warp=99999999999/0/0;crs=2056;map=east",
-            "https://x.org/#rustgis-warp=1/0/0;crs=99999999;map=east",
-            "https://x.org/#rustgis-warp=1/0/0;crs=2056;tiles=a|NaN|1|1|256|256|1|1",
-            "https://x.org/#rustgis-warp=1/0/0;crs=2056;tiles=a|0|0|0|256|256|1|1",
-            "https://x.org/#rustgis-warp=1/0/0;crs=2056;tiles=a|0|0|1|0|256|1|1",
-            "https://x.org/#rustgis-warp=1/0/0;crs=2056;tiles=a|0|0|1|256|256|0|1",
-            "https://x.org/#rustgis-warp=1/0/0;crs=2056;tiles=",
-            "https://x.org/#rustgis-warp=1/0/0;crs=2056;in=1,2,x;map=east;sys=x|y",
-            "https://x.org/#rustgis-warp=a/b/c;crs=2056;map=east",
+            "https://x.org/#powergis-warp=",
+            "https://x.org/#powergis-warp=99999999999/0/0;crs=2056;map=east",
+            "https://x.org/#powergis-warp=1/0/0;crs=99999999;map=east",
+            "https://x.org/#powergis-warp=1/0/0;crs=2056;tiles=a|NaN|1|1|256|256|1|1",
+            "https://x.org/#powergis-warp=1/0/0;crs=2056;tiles=a|0|0|0|256|256|1|1",
+            "https://x.org/#powergis-warp=1/0/0;crs=2056;tiles=a|0|0|1|0|256|1|1",
+            "https://x.org/#powergis-warp=1/0/0;crs=2056;tiles=a|0|0|1|256|256|0|1",
+            "https://x.org/#powergis-warp=1/0/0;crs=2056;tiles=",
+            "https://x.org/#powergis-warp=1/0/0;crs=2056;in=1,2,x;map=east;sys=x|y",
+            "https://x.org/#powergis-warp=a/b/c;crs=2056;map=east",
         ] {
             let parsed = Warp::parse(junk);
             assert!(parsed.as_ref().is_none_or(|(_, _, w)| w.area.is_none() && w.systems.is_empty()), "{junk}: {parsed:?}");

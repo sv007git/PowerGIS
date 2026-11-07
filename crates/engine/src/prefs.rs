@@ -2,7 +2,7 @@
 //! string values. The desktop reads and writes it; the command line and Python read it for
 //! `--use-saved-secrets` / `use_saved_secrets`.
 
-use rustgis_data::secrets::{Reporting, SecretStore};
+use powergis_data::secrets::{Reporting, SecretStore};
 use serde_json::{Map, Value};
 use std::path::Path;
 use std::sync::{Arc, Mutex};
@@ -14,7 +14,7 @@ static WRITE_LOCK: Mutex<()> = Mutex::new(());
 /// Reads the desktop preferences. A missing file is normal; unreadable or malformed files
 /// return an error without including any preference values in the diagnostic.
 pub fn read() -> Result<Map<String, Value>, String> {
-    match rustgis_data::dirs::config_dir() {
+    match powergis_data::dirs::config_dir() {
         Some(dir) => read_at(&dir.join(FILE)),
         None => Ok(Map::new()),
     }
@@ -38,7 +38,7 @@ fn read_at(path: &Path) -> Result<Map<String, Value>, String> {
 /// `prefs.json.bad` (kept for the user to repair) and a new one started; an unreadable one is
 /// never overwritten. A temporary file and rename avoid truncating the old file on a crash.
 pub fn write(key: &str, value: &str) -> Result<(), String> {
-    let dir = rustgis_data::dirs::config_dir().ok_or("the settings folder isn't available")?;
+    let dir = powergis_data::dirs::config_dir().ok_or("the settings folder isn't available")?;
     let _guard = WRITE_LOCK.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     write_at(&dir.join(FILE), key, value)
 }
@@ -81,7 +81,7 @@ pub fn opt_in(
         warn(format!("saved secrets can't be used ({error}); going on without them"));
     });
     let store: Arc<dyn SecretStore> = Arc::new(store);
-    crate::render::rustgis_tiles::earthdata::set_secret_store(Some(store.clone()));
+    crate::render::powergis_tiles::earthdata::set_secret_store(Some(store.clone()));
     use_saved_secrets(s, &prefs, store);
     prefs
 }
@@ -106,7 +106,7 @@ mod tests {
 
     #[test]
     fn preference_updates_preserve_other_values_and_set_malformed_files_aside() {
-        let dir = std::env::temp_dir().join(format!("rustgis-preferences-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-preferences-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join(FILE);
         assert_eq!(read_at(&path).unwrap(), Map::new());

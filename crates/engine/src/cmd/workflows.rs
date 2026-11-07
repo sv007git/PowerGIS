@@ -2,10 +2,10 @@
 //! and the workflows (suitability, visibility, lines of sight, interpolation, network routes,
 //! neighbourhoods, simulation, data profiles, exploration, similarity and format conversion).
 
-use rustgis_analysis::{network, rasterops};
-use rustgis_data::raster::Raster;
-use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as Attr};
-use rustgis_geom::{Coord, Extent};
+use powergis_analysis::{network, rasterops};
+use powergis_data::raster::Raster;
+use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as Attr};
+use powergis_geom::{Coord, Extent};
 use serde_json::{Value, json};
 
 use super::{b, f, ps};
@@ -122,8 +122,8 @@ fn point(p: &Value, k: &str) -> Result<Coord, String> {
 /// Adds a computed raster as a layer (embedded as a GeoTIFF, so it saves with the project).
 fn add_raster(s: &mut Session, r: Raster) -> CmdResult {
     let name = r.name.clone();
-    let bytes = rustgis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
-    let layer = rustgis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes);
+    let bytes = powergis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
+    let layer = powergis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes);
     super::raster::add_raster(s, &name, layer)
 }
 
@@ -208,7 +208,7 @@ pub fn gallery_list(kind: &str) -> CmdResult {
     };
     let mut out: Vec<Value> = ids
         .iter()
-        .filter_map(|id| rustgis_analysis::tool(id))
+        .filter_map(|id| powergis_analysis::tool(id))
         .map(|t| json!({"id": t.id, "name": t.name, "summary": t.summary, "command": "gp.run"}))
         .collect();
     if kind == "raster" {
@@ -221,7 +221,7 @@ pub fn gallery_list(kind: &str) -> CmdResult {
             out.push(json!({"id": id, "name": name, "summary": summary, "command": id}));
         }
         out.extend(
-            rustgis_analysis::tools()
+            powergis_analysis::tools()
                 .filter(|t| t.toolbox.to_lowercase().contains("raster"))
                 .take(40)
                 .map(|t| json!({"id": t.id, "name": t.name, "summary": t.summary, "command": "gp.run"})),
@@ -245,16 +245,16 @@ fn new_model(s: &mut Session, p: &Value) -> CmdResult {
                 let Some(tool) = super::gp::tool_id(&r.tool) else { continue };
                 let mut params = r.params.clone();
                 // Only layer parameters can name an earlier output.
-                let spec = rustgis_analysis::tool(tool);
+                let spec = powergis_analysis::tool(tool);
                 let is_layer = |k: &str| {
                     spec.and_then(|t| t.params.iter().find(|p| p.name == k)).is_some_and(|p| {
                         matches!(
                             p.kind,
-                            rustgis_analysis::ParamKind::Layer
-                                | rustgis_analysis::ParamKind::PolygonLayer
-                                | rustgis_analysis::ParamKind::PointLayer
-                                | rustgis_analysis::ParamKind::RasterLayer
-                                | rustgis_analysis::ParamKind::VectorLayer
+                            powergis_analysis::ParamKind::Layer
+                                | powergis_analysis::ParamKind::PolygonLayer
+                                | powergis_analysis::ParamKind::PointLayer
+                                | powergis_analysis::ParamKind::RasterLayer
+                                | powergis_analysis::ParamKind::VectorLayer
                         )
                     })
                 };
@@ -363,7 +363,7 @@ fn export_model(s: &mut Session, p: &Value) -> CmdResult {
     let file: String = name.chars().map(|c| if c.is_alphanumeric() || c == '-' || c == '_' { c } else { '_' }).collect();
     match ps(p, "path") {
         Some(path) => {
-            rustgis_data::io::write_atomic(std::path::Path::new(path), text.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(std::path::Path::new(path), text.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"model": name, "path": path}))
         }
         None => Ok(json!({"model": name, "fileName": format!("{file}.model.json"), "text": text})),
@@ -642,7 +642,7 @@ fn line_of_sight(s: &mut Session, p: &Value) -> CmdResult {
     }
     let id = super::layer::add_dataset(s, ds);
     if let Some(l) = s.map_mut().layer_mut(id)
-        && let Ok(r) = rustgis_map::Renderer::unique(&l.dataset, &[], "visible", rustgis_map::Ramp::default(), l.renderer.base_symbol())
+        && let Ok(r) = powergis_map::Renderer::unique(&l.dataset, &[], "visible", powergis_map::Ramp::default(), l.renderer.base_symbol())
     {
         l.renderer = r;
     }
@@ -873,16 +873,16 @@ fn convert(s: &mut Session, p: &Value) -> CmdResult {
     let name_field =
         ps(p, "nameField").and_then(|n| ds.field_index(n)).or_else(|| ds.fields.iter().position(|f| f.name.eq_ignore_ascii_case("name")));
     let text = match ps(p, "format").ok_or("format is required")? {
-        "geojson" => rustgis_data::io::to_geojson(ds).to_string(),
-        "csv" => rustgis_data::io::to_csv(ds).map_err(|e| e.to_string())?,
-        "kml" => rustgis_data::interop::to_kml(ds, name_field),
-        "gpx" => rustgis_data::interop::to_gpx(ds, name_field),
-        "wkt" => rustgis_data::interop::to_wkt_csv(ds),
+        "geojson" => powergis_data::io::to_geojson(ds).to_string(),
+        "csv" => powergis_data::io::to_csv(ds).map_err(|e| e.to_string())?,
+        "kml" => powergis_data::interop::to_kml(ds, name_field),
+        "gpx" => powergis_data::interop::to_gpx(ds, name_field),
+        "wkt" => powergis_data::interop::to_wkt_csv(ds),
         f => return Err(format!("unknown format '{f}'")),
     };
     match ps(p, "path") {
         Some(path) => {
-            rustgis_data::io::write_atomic(std::path::Path::new(path), text.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(std::path::Path::new(path), text.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"path": path, "bytes": text.len()}))
         }
         None => Ok(json!({"text": text})),

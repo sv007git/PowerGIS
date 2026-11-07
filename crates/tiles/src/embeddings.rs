@@ -17,9 +17,9 @@
 //! Nothing here waits on the network: searches and reads take a callback (the app's, off the
 //! frame), with blocking forms for the command line.
 
-use rustgis_data::source::{Batch, Request, parquet::Vectors};
-use rustgis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
-use rustgis_geom::{Coord, Extent};
+use powergis_data::source::{Batch, Request, parquet::Vectors};
+use powergis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
+use powergis_geom::{Coord, Extent};
 use serde_json::{Value as Json, json};
 
 use crate::cog::Look;
@@ -345,7 +345,7 @@ pub fn search_aef(bbox: [f64; 4], year: i32, done: Box<dyn FnOnce(Result<Found, 
         Ok(b) => b,
         Err(e) => return done(Err(e)),
     };
-    rustgis_data::source::query_url(
+    powergis_data::source::query_url(
         AEF_INDEX,
         vec![AEF_HREF.into()],
         aef_request(bbox),
@@ -360,7 +360,7 @@ pub fn search_aef(bbox: [f64; 4], year: i32, done: Box<dyn FnOnce(Result<Found, 
 pub fn search_aef_blocking(bbox: [f64; 4], year: i32) -> Result<Found, String> {
     let bbox = check_bbox(bbox)?;
     let (fields, batch) =
-        rustgis_data::source::query_url_blocking(AEF_INDEX, vec![AEF_HREF.into()], aef_request(bbox)).map_err(|e| e.to_string())?;
+        powergis_data::source::query_url_blocking(AEF_INDEX, vec![AEF_HREF.into()], aef_request(bbox)).map_err(|e| e.to_string())?;
     Ok((aef_tiles(&fields, &batch, year, bbox), batch.complete))
 }
 
@@ -410,7 +410,7 @@ pub fn mgrs_tile(lon: f64, lat: f64) -> Option<String> {
     // Band X runs from 72° N to 84° N (12°, not 8°).
     let band = *b"CDEFGHJKLMNPQRSTUVWX".get((((lat + 80.0) / 8.0).floor() as usize).min(19))?;
     let code = if lat >= 0.0 { 32600 + zone } else { 32700 + zone };
-    let t = rustgis_data::raster::Crs::from_epsg(code)?.transformer().ok()?;
+    let t = powergis_data::raster::Crs::from_epsg(code)?.transformer().ok()?;
     let c = t.from_lonlat(Coord::new(lon, lat))?;
     let cols: &[u8] = match zone % 3 {
         1 => b"ABCDEFGH",
@@ -544,7 +544,7 @@ pub fn load_points(url: &str, bbox: [f64; 4], done: Box<dyn FnOnce(Result<Vector
         Ok(b) => b,
         Err(e) => return done(Err(e)),
     };
-    rustgis_data::source::vectors_url(
+    powergis_data::source::vectors_url(
         url,
         ei_extent(bbox),
         "embedding".into(),
@@ -557,7 +557,7 @@ pub fn load_points(url: &str, bbox: [f64; 4], done: Box<dyn FnOnce(Result<Vector
 #[cfg(not(target_arch = "wasm32"))]
 pub fn load_points_blocking(url: &str, bbox: [f64; 4]) -> Result<Vectors, String> {
     let bbox = check_bbox(bbox)?;
-    rustgis_data::source::vectors_url_blocking(url, ei_extent(bbox), "embedding".into(), (EARTH_INDEX_MAX_GROUPS, EARTH_INDEX_MAX_POINTS))
+    powergis_data::source::vectors_url_blocking(url, ei_extent(bbox), "embedding".into(), (EARTH_INDEX_MAX_GROUPS, EARTH_INDEX_MAX_POINTS))
         .map_err(|e| e.to_string())
 }
 

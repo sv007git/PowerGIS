@@ -3,21 +3,21 @@
 //! sketches, labels, the identify pop-up, scale bar and north arrow, and the map view tabs.
 
 use egui::{Align2, Color32, CornerRadius, Pos2, Rect, Sense, Stroke, Ui, pos2, vec2};
-use rustgis_engine::Tool;
-use rustgis_engine::analysis::{
+use powergis_engine::Tool;
+use powergis_engine::analysis::{
     network::{radius_boundary_point, radius_distance_m},
     selection::MAX_POINTS,
 };
-use rustgis_engine::geom::{Coord, Extent, geodesic_length_m, geodesic_ring_area_m2};
-use rustgis_engine::map::layout::TextAlign;
-use rustgis_engine::map::projection::Flat;
-use rustgis_engine::map::{Camera, Globe, Projection};
-use rustgis_engine::render::rustgis_tiles::Unfinished;
-use rustgis_engine::render::{PlacedLabel, Rendered, View};
+use powergis_engine::geom::{Coord, Extent, geodesic_length_m, geodesic_ring_area_m2};
+use powergis_engine::map::layout::TextAlign;
+use powergis_engine::map::projection::Flat;
+use powergis_engine::map::{Camera, Globe, Projection};
+use powergis_engine::render::powergis_tiles::Unfinished;
+use powergis_engine::render::{PlacedLabel, Rendered, View};
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, c32, regular, semibold};
-use crate::{RustGisApp, icons};
+use crate::{powergisApp, icons};
 
 #[derive(Clone, Copy, PartialEq, Debug)]
 struct Key {
@@ -125,7 +125,7 @@ impl Popup {
             if capabilities {
                 fetched.push((url.to_string(), asks.len()));
             }
-            let slot = crate::fetch_into_limited(url, rustgis_engine::data::ogc::MAX_INFO_BYTES);
+            let slot = crate::fetch_into_limited(url, powergis_engine::data::ogc::MAX_INFO_BYTES);
             let request = (!capabilities).then(|| url.to_string());
             asks.push(Ask { layer, also: Vec::new(), capabilities, request, slot });
         }
@@ -168,8 +168,8 @@ fn index_after(before: &[Value], index: usize, after: &[Value]) -> usize {
 /// first, as identify ranks what it finds itself: a WMS layer drawn over the feature found comes
 /// before it, and with topmost, the map's pop-up mode by default, takes its place once it answers
 /// with features. `None` with nothing to show.
-fn with_answers(map: &rustgis_engine::map::Map, info: &Value, found: Vec<Value>) -> Option<Value> {
-    use rustgis_engine::map::Drawn;
+fn with_answers(map: &powergis_engine::map::Map, info: &Value, found: Vec<Value>) -> Option<Value> {
+    use powergis_engine::map::Drawn;
     let mut all = results_of(info);
     all.extend(found);
     // A tile layer's results show while it draws: one hidden since must not keep a later answer
@@ -190,7 +190,7 @@ fn with_answers(map: &rustgis_engine::map::Map, info: &Value, found: Vec<Value>)
     };
     // Stable: each layer's results keep the order identify or the service gave them.
     all.sort_by_cached_key(place);
-    if map.popup_mode == rustgis_engine::map::PopupMode::Topmost {
+    if map.popup_mode == powergis_engine::map::PopupMode::Topmost {
         let top = all.first().map(place);
         all.retain(|v| Some(place(v)) == top);
     }
@@ -270,7 +270,7 @@ pub struct MapView {
     /// The next click splits the selected lines there (Editing pane › Split).
     pub split_mode: bool,
     /// The vertex chosen with the Edit Vertices tool (layer, row, vertex): Delete removes it.
-    pub vertex: Option<(u32, usize, rustgis_engine::data::VertexId)>,
+    pub vertex: Option<(u32, usize, powergis_engine::data::VertexId)>,
     /// The vertex being dragged with the Edit Vertices tool.
     pub vertex_drag: Option<crate::vertexedit::VertexDrag>,
     /// Non-owning source identity for the held vertex gesture; never persisted with the project.
@@ -338,7 +338,7 @@ pub struct MapView {
     /// The split map's offscreen MSAA target (its own slot — main and split differ in size).
     pub(crate) gpu_target_split: std::sync::Arc<std::sync::Mutex<Option<crate::mapgpu::SceneTarget>>>,
     pub(crate) render_state: Option<egui_wgpu::RenderState>,
-    /// The GPU map backend, for now gated on the RUSTGIS_GPU environment variable.
+    /// The GPU map backend, for now gated on the powergis_GPU environment variable.
     pub gpu_enabled: bool,
     /// Rolling map-frame timestamps (for the status-bar FPS readout).
     frame_times: std::collections::VecDeque<f64>,
@@ -407,7 +407,7 @@ impl Default for MapView {
             gpu_turn_declined: None,
             gpu_target_split: std::sync::Arc::new(std::sync::Mutex::new(None)),
             render_state: None,
-            gpu_enabled: std::env::var_os("RUSTGIS_GPU").is_some(),
+            gpu_enabled: std::env::var_os("powergis_GPU").is_some(),
             frame_times: std::collections::VecDeque::new(),
         }
     }
@@ -508,7 +508,7 @@ fn now(ui: &Ui) -> f64 {
 
 /// Shows the active map workspace, discarding stale node gestures after map-tab changes and
 /// before rendering their overlays or consuming pointer releases.
-pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui) {
     let t = Tokens::get(ui.ctx());
     crate::modelbuilder::follow_view(app);
     view_tabs(app, ui, &t);
@@ -542,7 +542,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// Plays the map's animation: the camera moves through the keyframes in real time.
-fn animate(app: &mut RustGisApp, ui: &mut Ui) {
+fn animate(app: &mut powergisApp, ui: &mut Ui) {
     let Some((t, k)) = app.ws.playing else { return };
     let keys = app.session.map().animation.clone();
     let (Some(a), Some(b)) = (keys.get(k), keys.get(k + 1)) else {
@@ -554,7 +554,7 @@ fn animate(app: &mut RustGisApp, ui: &mut Ui) {
     let e = t.min(1.0);
     let s = e * e * (3.0 - 2.0 * e);
     let c = Coord::new(a.center.x + (b.center.x - a.center.x) * s, a.center.y + (b.center.y - a.center.y) * s);
-    let sc = rustgis_engine::map::camera::scale_between(a.scale, b.scale, s);
+    let sc = powergis_engine::map::camera::scale_between(a.scale, b.scale, s);
     let m = app.session.map_mut();
     if let Some(mc) = m.to_map(c) {
         m.camera.center = mc;
@@ -565,7 +565,7 @@ fn animate(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// The second map of a side-by-side view: drawn read-only at its own (or the linked) camera.
-fn split_view(app: &mut RustGisApp, ui: &mut Ui, other: usize, rect: Rect, t: &Tokens) {
+fn split_view(app: &mut powergisApp, ui: &mut Ui, other: usize, rect: Rect, t: &Tokens) {
     let (w, h) = (rect.width() as f64, rect.height() as f64);
     if w < 4.0 || h < 4.0 {
         return;
@@ -593,7 +593,7 @@ fn split_view(app: &mut RustGisApp, ui: &mut Ui, other: usize, rect: Rect, t: &T
         && m.camera.bearing == 0.0
         && m.camera.pitch == 0.0
         && m.view.effects.is_none()
-        && m.view.color_vision == rustgis_engine::map::view::ColorVision::Normal;
+        && m.view.color_vision == powergis_engine::map::view::ColorVision::Normal;
     // Fresh GPU scene? Keep it. Stale? Rebuild. Either way `rendered_gpu` tracks whether the
     // split map draws from `split_gpu` this frame.
     let mut rendered_gpu = gpu_ok && app.map.split_gpu.as_ref().is_some_and(|(k, _, _)| *k == key);
@@ -604,8 +604,8 @@ fn split_view(app: &mut RustGisApp, ui: &mut Ui, other: usize, rect: Rect, t: &T
             app.map.gpu_renderer = Some(std::sync::Arc::new(crate::mapgpu::GpuMapRenderer::new(rs)));
         }
         if let (Some(r), Some(rs)) = (&app.map.gpu_renderer, &app.map.render_state)
-            && let Some(rustgis_engine::render::RenderOutput::Gpu(scene)) =
-                rustgis_engine::render::render_backend(m, &view, rustgis_engine::render::Backend::Gpu)
+            && let Some(powergis_engine::render::RenderOutput::Gpu(scene)) =
+                powergis_engine::render::render_backend(m, &view, powergis_engine::render::Backend::Gpu)
         {
             // None = the scene exceeds the device's limits: the CPU path below renders it.
             if let Some(bufs) = crate::mapgpu::SceneBuffers::from_scene(&rs.device, &rs.queue, r, &scene, m.camera, [w, h], ppp) {
@@ -617,7 +617,7 @@ fn split_view(app: &mut RustGisApp, ui: &mut Ui, other: usize, rect: Rect, t: &T
     if !rendered_gpu {
         app.map.split_gpu = None;
         if app.map.split.as_ref().is_none_or(|(k, _, _)| *k != key)
-            && let Some(r) = rustgis_engine::render::render(m, &view)
+            && let Some(r) = powergis_engine::render::render(m, &view)
         {
             let img = egui::ColorImage::from_rgba_premultiplied([r.pixmap.width() as usize, r.pixmap.height() as usize], r.pixmap.data());
             match app.map.split.take() {
@@ -669,7 +669,7 @@ fn split_view(app: &mut RustGisApp, ui: &mut Ui, other: usize, rect: Rect, t: &T
     }
 }
 
-fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn main_view(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     let t = *t;
     let rect = ui.available_rect_before_wrap();
     let resp = ui.allocate_rect(rect, Sense::click_and_drag());
@@ -711,9 +711,9 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         && app.map.render_state.is_some()
         && !globe_view
         && ((cam.bearing == 0.0 && cam.pitch == 0.0)
-            || (app.map.gpu_turn_declined != Some(rev) && rustgis_engine::render::gpu_may_turn(app.session.map(), &turned_view)))
+            || (app.map.gpu_turn_declined != Some(rev) && powergis_engine::render::gpu_may_turn(app.session.map(), &turned_view)))
         && app.session.map().view.effects.is_none()
-        && app.session.map().view.color_vision == rustgis_engine::map::view::ColorVision::Normal;
+        && app.session.map().view.color_vision == powergis_engine::map::view::ColorVision::Normal;
     let mut draped = if globe_view && moving {
         let (key, tiles) = drape_state(app);
         app.map.drape.prepare(ui.ctx(), app.session.map_mut(), key, tiles, w, h, ppp, time)
@@ -753,7 +753,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         size: [(w as f32 * ppp).round() as usize, (h as f32 * ppp).round() as usize],
         draft,
         tiles: 0,
-        sources: rustgis_engine::map::source::generation(),
+        sources: powergis_engine::map::source::generation(),
         // Read only for tiled maps (see `keeps_frame`).
         shown: if app.session.map().tiles.is_empty() { 0 } else { shown_layers(&app.session) },
     };
@@ -761,9 +761,9 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     static WAKER: std::sync::Once = std::sync::Once::new();
     WAKER.call_once(|| {
         let ctx = ui.ctx().clone();
-        rustgis_engine::render::rustgis_tiles::cache::set_waker(move || ctx.request_repaint());
+        powergis_engine::render::powergis_tiles::cache::set_waker(move || ctx.request_repaint());
         let ctx = ui.ctx().clone();
-        rustgis_engine::map::source::set_waker(move || ctx.request_repaint());
+        powergis_engine::map::source::set_waker(move || ctx.request_repaint());
     });
     let mut key = key;
     // A scene whose tile layers are all live places them for every frame: tiles arriving need no
@@ -771,7 +771,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     if gpu_ok && cam.bearing == 0.0 && cam.pitch == 0.0 && app.map.live_rev == Some(app.session.revision) {
         key.tiles = 0;
     } else if fetches_tiles(app.session.map()) {
-        key.tiles = rustgis_engine::render::rustgis_tiles::cache::generation();
+        key.tiles = powergis_engine::render::powergis_tiles::cache::generation();
         if let Some(held) = held_tiles(key, app.map.tilt_settle.key(), app.map.key, time - app.map.last_render) {
             key.tiles = held;
             ui.ctx().request_repaint_after(std::time::Duration::from_secs_f64(TILE_REDRAW_GAP));
@@ -873,11 +873,11 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                 app.map.render_ms = done.ms;
                 app.map.motion_cost = full_cost(done.ms as f64, &done.view, (w, h), ppp);
                 match r {
-                    rustgis_engine::render::RenderOutput::Cpu(r) => {
+                    powergis_engine::render::RenderOutput::Cpu(r) => {
                         app.map.gpu_frame = None;
                         show_frame(app, ui.ctx(), r, &done.view, (w, h), k, time, globe_view);
                     }
-                    rustgis_engine::render::RenderOutput::Gpu(scene) => {
+                    powergis_engine::render::RenderOutput::Gpu(scene) => {
                         if !show_gpu_frame(app, scene, &done.view, k, time) {
                             // Device limits can decline a scene: compose the CPU fallback on
                             // the worker too, keeping oversized images off the UI thread.
@@ -894,9 +894,9 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         if app.map.key != Some(key) && !app.map.tilt_settle.busy() {
             let view = View { width: w, height: h, pixels_per_point: ppp as f64, camera: cam, sky: true };
             if tilted {
-                rustgis_engine::render::sync_tilted_view(app.session.map_mut(), &view);
+                powergis_engine::render::sync_tilted_view(app.session.map_mut(), &view);
             }
-            let backend = if gpu_ok { rustgis_engine::render::Backend::GpuLive } else { rustgis_engine::render::Backend::Cpu };
+            let backend = if gpu_ok { powergis_engine::render::Backend::GpuLive } else { powergis_engine::render::Backend::Cpu };
             app.map.tilt_settle.start_backend(ui.ctx(), key, app.session.map().clone(), view, backend);
         }
         let shown = (app.map.texture.is_some() || app.map.gpu_frame.is_some())
@@ -915,7 +915,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                 app.map.preview_attempt = Some(key);
                 let preview_ppp = f64::from(ppp.min(0.75)).min((524_288.0 / (w * h)).sqrt());
                 let view = View { width: w, height: h, pixels_per_point: preview_ppp, camera: cam, sky: true };
-                if let Some(r) = rustgis_engine::render::render(app.session.map_mut(), &view) {
+                if let Some(r) = powergis_engine::render::render(app.session.map_mut(), &view) {
                     app.map.gpu_frame = None;
                     show_frame(app, ui.ctx(), r, &view, (w, h), Key { draft: true, ..key }, time, false);
                 }
@@ -1035,7 +1035,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             let out = match (&app.map.gpu_renderer, &app.map.render_state) {
                 (Some(_), Some(_)) => {
                     let (out, s) = drawing(interacting, || {
-                        rustgis_engine::render::render_backend(app.session.map_mut(), &view, rustgis_engine::render::Backend::GpuLive)
+                        powergis_engine::render::render_backend(app.session.map_mut(), &view, powergis_engine::render::Backend::GpuLive)
                     });
                     lacks = s;
                     out
@@ -1045,7 +1045,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             // A turned or tilted view the GPU declined comes back drawn on the CPU: shown, and
             // such views stay there until the map or its data change.
             let out = match out {
-                Some(rustgis_engine::render::RenderOutput::Cpu(r)) if cam.bearing != 0.0 || cam.pitch != 0.0 => {
+                Some(powergis_engine::render::RenderOutput::Cpu(r)) if cam.bearing != 0.0 || cam.pitch != 0.0 => {
                     app.map.gpu_turn_declined = Some(rev);
                     app.map.gpu_frame = None;
                     show_frame(app, ui.ctx(), r, &view, (w, h), key, time, false);
@@ -1054,7 +1054,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                 }
                 other => other,
             };
-            if let Some(rustgis_engine::render::RenderOutput::Gpu(scene)) = out {
+            if let Some(powergis_engine::render::RenderOutput::Gpu(scene)) = out {
                 let key = Key { draft: key.draft || motion.is_some() || lacks.is_some(), ..key };
                 rendered_gpu = show_gpu_frame(app, scene, &view, key, time);
             }
@@ -1070,7 +1070,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             }
             app.map.gpu_frame = None;
             let view = View { width: vw, height: vh, pixels_per_point: vppp as f64, camera: cam, sky: true };
-            let (r, s) = drawing(interacting, || rustgis_engine::render::render(app.session.map_mut(), &view));
+            let (r, s) = drawing(interacting, || powergis_engine::render::render(app.session.map_mut(), &view));
             lacks = s;
             if let Some(r) = r {
                 // Mid-motion the frame stands in for the real one, which follows once it settles.
@@ -1205,7 +1205,7 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             if let Some((x, y)) = m.and_then(|m| cam.try_to_screen(m, w, h)).filter(|s| sky.is_none_or(|sky| s.1 > sky)) {
                 let moved = turns.then(|| {
                     let mut l = l.clone();
-                    rustgis_engine::render::turn_label(&mut l, &at);
+                    powergis_engine::render::turn_label(&mut l, &at);
                     l
                 });
                 draw_label(&painter, moved.as_ref().unwrap_or(l), rect.min + vec2(x as f32, y as f32));
@@ -1226,21 +1226,21 @@ fn main_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 
 /// What a drape of the map shows besides the view (see `DrapeKey`), and the tiles come so far (0
 /// for a map that fetches none): a change of either draws it again.
-fn drape_state(app: &RustGisApp) -> (crate::globe_drape::DrapeKey, u64) {
-    let key = crate::globe_drape::DrapeKey { rev: app.session.revision, sources: rustgis_engine::map::source::generation() };
-    let tiles = if fetches_tiles(app.session.map()) { rustgis_engine::render::rustgis_tiles::cache::generation() } else { 0 };
+fn drape_state(app: &powergisApp) -> (crate::globe_drape::DrapeKey, u64) {
+    let key = crate::globe_drape::DrapeKey { rev: app.session.revision, sources: powergis_engine::map::source::generation() };
+    let tiles = if fetches_tiles(app.session.map()) { powergis_engine::render::powergis_tiles::cache::generation() } else { 0 };
     (key, tiles)
 }
 
 /// Whether the map draws from web tiles (its tile layers, or elevation tiles for its terrain):
 /// tiles arriving draw it again.
-fn fetches_tiles(m: &rustgis_engine::map::Map) -> bool {
+fn fetches_tiles(m: &powergis_engine::map::Map) -> bool {
     !m.tiles.is_empty()
-        || m.view.terrain.as_ref().is_some_and(|t| matches!(t.source, rustgis_engine::map::view::TerrainSource::Tiles { .. }))
+        || m.view.terrain.as_ref().is_some_and(|t| matches!(t.source, powergis_engine::map::view::TerrainSource::Tiles { .. }))
 }
 
 /// Uploads a composed GPU scene, whether built in place or by the frame worker.
-fn show_gpu_frame(app: &mut RustGisApp, scene: rustgis_engine::render::gpu_scene::GpuScene, view: &View, key: Key, time: f64) -> bool {
+fn show_gpu_frame(app: &mut powergisApp, scene: powergis_engine::render::gpu_scene::GpuScene, view: &View, key: Key, time: f64) -> bool {
     let Some(rs) = &app.map.render_state else { return false };
     let r = app.map.gpu_renderer.get_or_insert_with(|| std::sync::Arc::new(crate::mapgpu::GpuMapRenderer::new(rs)));
     let cam = view.camera;
@@ -1281,7 +1281,7 @@ fn show_gpu_frame(app: &mut RustGisApp, scene: rustgis_engine::render::gpu_scene
 /// labels, credits and tile errors.
 #[allow(clippy::too_many_arguments)]
 fn show_frame(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     ctx: &egui::Context,
     r: Rendered,
     view: &View,
@@ -1367,14 +1367,14 @@ fn motion_gap(ms: f64) -> f64 {
 }
 
 /// Draws with `f`, the tile pictures the map lacks drawn at the pace of a map `moving` or not
-/// (see `rustgis_tiles::Pace`); and what the frame still lacks.
+/// (see `powergis_tiles::Pace`); and what the frame still lacks.
 fn drawing<R>(moving: bool, f: impl FnOnce() -> R) -> (R, Option<Unfinished>) {
-    use rustgis_engine::render::rustgis_tiles::{Pace, paced};
+    use powergis_engine::render::powergis_tiles::{Pace, paced};
     paced(if moving { Pace::Moving } else { Pace::Settling }, f)
 }
 
 /// Where the map's last frame (drawn for `tex_camera`) lies on screen for the camera `cam`.
-fn tex_rect(app: &RustGisApp, cam: Camera, rect: Rect, globe_view: bool) -> Rect {
+fn tex_rect(app: &powergisApp, cam: Camera, rect: Rect, globe_view: bool) -> Rect {
     let (w, h) = (rect.width() as f64, rect.height() as f64);
     let old = app.map.tex_camera;
     if globe_view {
@@ -1494,7 +1494,7 @@ fn draw_label_ink(p: &egui::Painter, l: &PlacedLabel, at: Pos2, halo: bool, text
     }
     // A selected text graphic: framed as laid out, under the text.
     if l.framed {
-        let cyan = c32(rustgis_engine::render::SELECTION);
+        let cyan = c32(powergis_engine::render::SELECTION);
         p.rect(r.expand(3.0), 0.0, cyan.gamma_multiply(40.0 / 255.0), Stroke::new(2.0, cyan), egui::StrokeKind::Outside);
     }
     if let Some(h) = l.halo.filter(|h| halo && h.a() > 0) {
@@ -1570,12 +1570,12 @@ const MAX_HALO_COATS: usize = 64;
 /// colour shared among the rings. A halo of a few points (QGIS's usual buffer) is solid with few
 /// copies; a very wide one is approximated, and a see-through one is about one coat (copies
 /// overlap near the letters, so it is a little darker there): an export draws both exactly.
-fn halo_coats(l: &PlacedLabel, h: rustgis_engine::map::Rgba) -> (Vec<egui::Vec2>, Color32) {
+fn halo_coats(l: &PlacedLabel, h: powergis_engine::map::Rgba) -> (Vec<egui::Vec2>, Color32) {
     let Some(width) = l.halo_width else {
         let ring = [(-1.0, 0.0), (1.0, 0.0), (0.0, -1.0), (0.0, 1.0), (-0.8, -0.8), (0.8, 0.8), (-0.8, 0.8), (0.8, -0.8)];
         return (ring.into_iter().map(|(x, y)| vec2(x, y)).collect(), c32(h));
     };
-    let reach = rustgis_engine::render::halo_reach(width) * 1.33;
+    let reach = powergis_engine::render::halo_reach(width) * 1.33;
     // No width, or one that isn't a number: no halo.
     if reach.is_nan() || reach <= 0.0 {
         return (Vec::new(), c32(h));
@@ -1603,13 +1603,13 @@ fn halo_coats(l: &PlacedLabel, h: rustgis_engine::map::Rgba) -> (Vec<egui::Vec2>
 }
 
 /// The globe as seen in this view, when the map is a globe.
-fn globe(app: &RustGisApp, rect: Rect) -> Option<Globe> {
+fn globe(app: &powergisApp, rect: Rect) -> Option<Globe> {
     let m = app.session.map();
     (m.projection == Projection::Globe).then(|| Globe::new(&m.camera, rect.width() as f64, rect.height() as f64))
 }
 
 /// The longitude/latitude under a screen point (`None` off the globe).
-pub(crate) fn screen_to_lonlat(app: &RustGisApp, rect: Rect, p: Pos2) -> Option<Coord> {
+pub(crate) fn screen_to_lonlat(app: &powergisApp, rect: Rect, p: Pos2) -> Option<Coord> {
     let (w, h) = (rect.width() as f64, rect.height() as f64);
     let (x, y) = ((p.x - rect.min.x) as f64, (p.y - rect.min.y) as f64);
     match globe(app, rect) {
@@ -1620,7 +1620,7 @@ pub(crate) fn screen_to_lonlat(app: &RustGisApp, rect: Rect, p: Pos2) -> Option<
 }
 
 /// The screen point of a longitude/latitude (`None` behind the globe).
-pub(crate) fn lonlat_to_screen(app: &RustGisApp, rect: Rect, c: Coord) -> Option<Pos2> {
+pub(crate) fn lonlat_to_screen(app: &powergisApp, rect: Rect, c: Coord) -> Option<Pos2> {
     let (w, h) = (rect.width() as f64, rect.height() as f64);
     let (x, y) = match globe(app, rect) {
         Some(g) => g.forward(c)?,
@@ -1632,8 +1632,8 @@ pub(crate) fn lonlat_to_screen(app: &RustGisApp, rect: Rect, c: Coord) -> Option
 /// The text graphic drawn on top under the screen point `p`, as (layer id, row): one whose text,
 /// with its dynamic values filled in as drawn, covers the point. A layer that isn't selectable
 /// (`layer.selectable`) is passed over: its texts can't be picked, so can't be edited either.
-pub(crate) fn text_graphic_at(app: &RustGisApp, ctx: &egui::Context, rect: Rect, p: Pos2) -> Option<(u32, usize)> {
-    use rustgis_engine::map::graphics;
+pub(crate) fn text_graphic_at(app: &powergisApp, ctx: &egui::Context, rect: Rect, p: Pos2) -> Option<(u32, usize)> {
+    use powergis_engine::map::graphics;
     let (map, scale) = (app.session.map(), app.session.scale());
     let tokens = graphics::TokenValues::of(map, scale);
     // Only what is drawn, as render_frame draws it: the first layer on top, and in a layer the
@@ -1646,7 +1646,7 @@ pub(crate) fn text_graphic_at(app: &RustGisApp, ctx: &egui::Context, rect: Rect,
             if let Some((centre, d)) = clip {
                 let e = g.extent();
                 let near = Coord::new(centre.x.clamp(e.min_x, e.max_x), centre.y.clamp(e.min_y, e.max_y));
-                if e.is_empty() || rustgis_engine::geom::haversine_m(centre, near) > d {
+                if e.is_empty() || powergis_engine::geom::haversine_m(centre, near) > d {
                     return None;
                 }
             }
@@ -1660,13 +1660,13 @@ pub(crate) fn text_graphic_at(app: &RustGisApp, ctx: &egui::Context, rect: Rect,
 /// A text graphic as the map shows it: the screen point its block is centred on, and its text
 /// (the dynamic values filled in) laid out as [`draw_label`] lays it out, style and all.
 fn text_shown(
-    app: &RustGisApp,
+    app: &powergisApp,
     rect: Rect,
-    tokens: &rustgis_engine::map::graphics::TokenValues,
-    l: &rustgis_engine::map::Layer,
+    tokens: &powergis_engine::map::graphics::TokenValues,
+    l: &powergis_engine::map::Layer,
     row: usize,
 ) -> Option<(Pos2, egui::text::LayoutJob)> {
-    use rustgis_engine::map::graphics;
+    use powergis_engine::map::graphics;
     let ds = &l.dataset;
     let text = graphics::expand(graphics::label(ds, row)?, tokens);
     let at = lonlat_to_screen(app, rect, ds.features.get(row)?.geometry.as_ref()?.label_point()?)?;
@@ -1684,7 +1684,7 @@ fn text_shown(
 
 /// Centres the map on a place as it moves along (a simulated drive), keeping the zoom; the map
 /// treats it like a pan, shifting its last frame between redraws.
-pub(crate) fn follow(app: &mut RustGisApp, c: Coord, time: f64) {
+pub(crate) fn follow(app: &mut powergisApp, c: Coord, time: f64) {
     let m = app.session.map_mut();
     if let Some(at) = m.to_map(c) {
         m.camera.center = at;
@@ -1693,7 +1693,7 @@ pub(crate) fn follow(app: &mut RustGisApp, c: Coord, time: f64) {
 }
 
 /// Pans the flat map, or turns the globe, by a screen offset.
-fn pan(app: &mut RustGisApp, dx: f64, dy: f64, w: f64, h: f64) {
+fn pan(app: &mut powergisApp, dx: f64, dy: f64, w: f64, h: f64) {
     let m = app.session.map_mut();
     if m.projection == Projection::Globe {
         Globe::drag(&mut m.camera, dx, dy, w, h);
@@ -1703,14 +1703,14 @@ fn pan(app: &mut RustGisApp, dx: f64, dy: f64, w: f64, h: f64) {
 }
 
 /// Turns the map or the globe by `degrees` about the view's centre.
-fn turn_by(app: &mut RustGisApp, degrees: f64) {
+fn turn_by(app: &mut powergisApp, degrees: f64) {
     let cam = &mut app.session.map_mut().camera;
     let bearing = cam.bearing + degrees;
     cam.set_bearing(bearing);
 }
 
 /// Tilts the map or the globe by `degrees`.
-fn tilt_by(app: &mut RustGisApp, degrees: f64) {
+fn tilt_by(app: &mut powergisApp, degrees: f64) {
     if degrees != 0.0 {
         let cam = &mut app.session.map_mut().camera;
         let pitch = cam.pitch + degrees;
@@ -1719,7 +1719,7 @@ fn tilt_by(app: &mut RustGisApp, degrees: f64) {
 }
 
 /// Zooms by `factor` about a screen point.
-fn zoom(app: &mut RustGisApp, factor: f64, x: f64, y: f64, w: f64, h: f64) {
+fn zoom(app: &mut powergisApp, factor: f64, x: f64, y: f64, w: f64, h: f64) {
     let m = app.session.map_mut();
     if m.projection == Projection::Globe {
         Globe::zoom_at(&mut m.camera, factor, x, y, w, h);
@@ -1732,7 +1732,7 @@ fn selection_tool(tool: Tool) -> bool {
     matches!(tool, Tool::SelectPolygon | Tool::SelectLasso | Tool::SelectRadius)
 }
 
-fn cancel_changed_selection(app: &mut RustGisApp, rect: Rect) {
+fn cancel_changed_selection(app: &mut powergisApp, rect: Rect) {
     if app.map.selection_gesture.as_ref().is_some_and(|g| {
         let map = app.session.map();
         // Polygon vertices are lon/lat and remain valid when the view moves between clicks.
@@ -1746,7 +1746,7 @@ fn cancel_changed_selection(app: &mut RustGisApp, rect: Rect) {
     }
 }
 
-fn begin_selection(app: &mut RustGisApp, rect: Rect) {
+fn begin_selection(app: &mut powergisApp, rect: Rect) {
     if app.map.selection_gesture.is_none() {
         let map = app.session.map();
         app.map.selection_gesture = Some(SelectionGesture {
@@ -1759,7 +1759,7 @@ fn begin_selection(app: &mut RustGisApp, rect: Rect) {
     }
 }
 
-fn selection_error(app: &mut RustGisApp, error: String) {
+fn selection_error(app: &mut powergisApp, error: String) {
     app.map.cancel_sketch();
     app.session.notify(error, true);
 }
@@ -1772,7 +1772,7 @@ fn selection_limit() -> String {
     tl!("Selection outline is too complex; draw a simpler area.").to_string()
 }
 
-fn selection_coord(app: &RustGisApp, rect: Rect, point: Pos2, flat: &Flat) -> Result<Coord, String> {
+fn selection_coord(app: &powergisApp, rect: Rect, point: Pos2, flat: &Flat) -> Result<Coord, String> {
     if !rect.contains(point) {
         return Err(invalid_selection());
     }
@@ -1782,7 +1782,7 @@ fn selection_coord(app: &RustGisApp, rect: Rect, point: Pos2, flat: &Flat) -> Re
 }
 
 /// A globe's screen edges must be sampled before converting to the command's planar space.
-fn append_selection_point(app: &RustGisApp, rect: Rect, points: &mut Vec<Coord>, end: Pos2) -> Result<(), String> {
+fn append_selection_point(app: &powergisApp, rect: Rect, points: &mut Vec<Coord>, end: Pos2) -> Result<(), String> {
     let flat = Flat::of(&app.session.map().projection);
     let start = points.last().and_then(|c| lonlat_to_screen(app, rect, *c));
     let samples = if app.session.map().projection == Projection::Globe {
@@ -1809,7 +1809,7 @@ fn append_selection_point(app: &RustGisApp, rect: Rect, points: &mut Vec<Coord>,
     Ok(())
 }
 
-fn add_selection_point(app: &mut RustGisApp, rect: Rect, point: Pos2, force: bool) -> Result<(), String> {
+fn add_selection_point(app: &mut powergisApp, rect: Rect, point: Pos2, force: bool) -> Result<(), String> {
     let near = app.map.sketch.last().and_then(|c| lonlat_to_screen(app, rect, *c)).is_some_and(|p| (p - point).length() < 3.0);
     if near && !force {
         return selection_coord(app, rect, point, &Flat::of(&app.session.map().projection)).map(|_| ());
@@ -1832,7 +1832,7 @@ fn selection_mode(ui: &Ui) -> &'static str {
     })
 }
 
-fn finish_area_selection(app: &mut RustGisApp, ui: &Ui, rect: Rect) {
+fn finish_area_selection(app: &mut powergisApp, ui: &Ui, rect: Rect) {
     let mut points = std::mem::take(&mut app.map.sketch);
     let result = (|| {
         if let Some(first) = points.first().and_then(|c| lonlat_to_screen(app, rect, *c)) {
@@ -1848,7 +1848,7 @@ fn finish_area_selection(app: &mut RustGisApp, ui: &Ui, rect: Rect) {
     }
 }
 
-fn selection_interact(app: &mut RustGisApp, ui: &Ui, resp: &egui::Response, rect: Rect) {
+fn selection_interact(app: &mut powergisApp, ui: &Ui, resp: &egui::Response, rect: Rect) {
     let tool = app.session.tool;
     // While a shortcut is being captured, Escape cancels the capture, not the sketch.
     if !app.ui.shortcut_editor.capturing() && ui.input(|i| i.key_pressed(egui::Key::Escape)) {
@@ -1938,7 +1938,7 @@ fn selection_interact(app: &mut RustGisApp, ui: &Ui, resp: &egui::Response, rect
     }
 }
 
-fn validate_radius(app: &RustGisApp, center: Coord, radius: f64) -> Result<(), String> {
+fn validate_radius(app: &powergisApp, center: Coord, radius: f64) -> Result<(), String> {
     if !radius.is_finite() || radius <= 0.0 || radius > 5_000_000.0 {
         return Err(invalid_selection());
     }
@@ -1950,7 +1950,7 @@ fn validate_radius(app: &RustGisApp, center: Coord, radius: f64) -> Result<(), S
 }
 
 /// Subdivision is bounded to 64 * 2^8 intervals, independently of zoom or hostile input.
-fn radius_outline(app: &RustGisApp, rect: Rect, center: Coord, radius: f64) -> Result<Vec<Option<Pos2>>, String> {
+fn radius_outline(app: &powergisApp, rect: Rect, center: Coord, radius: f64) -> Result<Vec<Option<Pos2>>, String> {
     validate_radius(app, center, radius)?;
     let flat = Flat::of(&app.session.map().projection);
     let point = |angle| -> Result<(Coord, Option<Pos2>), String> {
@@ -2008,7 +2008,7 @@ fn selection_readout(p: &egui::Painter, rect: Rect, t: &Tokens, text: String) {
     p.galley(bg.center() - galley.size() / 2.0, galley, t.text);
 }
 
-fn selection_preview(app: &mut RustGisApp, p: &egui::Painter, rect: Rect, t: &Tokens) {
+fn selection_preview(app: &mut powergisApp, p: &egui::Painter, rect: Rect, t: &Tokens) {
     let stroke = Stroke::new(2.0, t.accent);
     if app.session.tool == Tool::SelectRadius {
         if let Some((center, end)) = app.map.sketch.first().copied().zip(app.map.sketch.get(1).copied()) {
@@ -2094,7 +2094,7 @@ fn selection_preview(app: &mut RustGisApp, p: &egui::Painter, rect: Rect, t: &To
     }
 }
 
-fn interact(app: &mut RustGisApp, ui: &mut Ui, resp: &egui::Response, rect: Rect) {
+fn interact(app: &mut powergisApp, ui: &mut Ui, resp: &egui::Response, rect: Rect) {
     let (w, h) = (rect.width() as f64, rect.height() as f64);
     let time = now(ui);
     let hover = resp.hover_pos();
@@ -2294,7 +2294,7 @@ fn interact(app: &mut RustGisApp, ui: &mut Ui, resp: &egui::Response, rect: Rect
     if let Some((_, DragKind::Text { layer, row, origin })) = app.map.drag {
         let end = resp.interact_pointer_pos().or_else(|| ui.input(|i| i.pointer.latest_pos()));
         let map = app.session.map();
-        let tokens = rustgis_engine::map::graphics::TokenValues::of(map, app.session.scale());
+        let tokens = powergis_engine::map::graphics::TokenValues::of(map, app.session.scale());
         let shown = map.layer(layer).and_then(|l| text_shown(app, rect, &tokens, l, row));
         if resp.drag_stopped() {
             app.map.drag = None;
@@ -2575,7 +2575,7 @@ fn interact(app: &mut RustGisApp, ui: &mut Ui, resp: &egui::Response, rect: Rect
     }
 }
 
-fn finish_sketch(app: &mut RustGisApp) {
+fn finish_sketch(app: &mut powergisApp) {
     let tool = app.session.tool;
     let pts = app.map.sketch.clone();
     match tool {
@@ -2604,7 +2604,7 @@ fn finish_sketch(app: &mut RustGisApp) {
 }
 
 /// A point snapped to nearby features (when snapping is on).
-fn snapped(app: &mut RustGisApp, c: Coord) -> Coord {
+fn snapped(app: &mut powergisApp, c: Coord) -> Coord {
     if !app.session.map().editing.snapping.enabled {
         return c;
     }
@@ -2615,7 +2615,7 @@ fn snapped(app: &mut RustGisApp, c: Coord) -> Coord {
 }
 
 /// Feature creation parameters with the Editing pane's chosen template, if it belongs to the layer.
-fn with_template(app: &RustGisApp, mut p: Value) -> Value {
+fn with_template(app: &powergisApp, mut p: Value) -> Value {
     let t = &app.forms.template;
     let has = app
         .session
@@ -2629,7 +2629,7 @@ fn with_template(app: &RustGisApp, mut p: Value) -> Value {
 }
 
 /// Adds a graphic drawn with a tool, then returns to Explore unless the tool is kept.
-pub fn finish_graphic(app: &mut RustGisApp, shape: &str, pts: Vec<Coord>) {
+pub fn finish_graphic(app: &mut powergisApp, shape: &str, pts: Vec<Coord>) {
     let coords: Vec<[f64; 2]> = pts.iter().map(|c| [c.x, c.y]).collect();
     let ok = app.run("graphics.add", json!({"shape": shape, "points": coords})).is_ok();
     app.map.cancel_sketch();
@@ -2639,7 +2639,7 @@ pub fn finish_graphic(app: &mut RustGisApp, shape: &str, pts: Vec<Coord>) {
     }
 }
 
-fn overlays(app: &mut RustGisApp, ui: &mut Ui, p: &egui::Painter, rect: Rect, t: &Tokens) {
+fn overlays(app: &mut powergisApp, ui: &mut Ui, p: &egui::Painter, rect: Rect, t: &Tokens) {
     let accent = t.accent;
     // Box drag.
     if let (Some((start, DragKind::Box)), Some(cur)) = (app.map.drag, ui.input(|i| i.pointer.latest_pos())) {
@@ -2758,7 +2758,7 @@ fn overlays(app: &mut RustGisApp, ui: &mut Ui, p: &egui::Painter, rect: Rect, t:
                 (None, Some((k, at))) if *k == key => *at,
                 _ => {
                     // Asked directly, not as a command: commands mark the map changed.
-                    let at = rustgis_engine::cmd::design::snap_at(&mut app.session, c).map(|(at, _)| at);
+                    let at = powergis_engine::cmd::design::snap_at(&mut app.session, c).map(|(at, _)| at);
                     app.map.snap = Some((key, at));
                     at
                 }
@@ -2957,7 +2957,7 @@ fn overlays(app: &mut RustGisApp, ui: &mut Ui, p: &egui::Painter, rect: Rect, t:
     }
 }
 
-fn scale_bar(app: &RustGisApp, p: &egui::Painter, rect: Rect, t: &Tokens) {
+fn scale_bar(app: &powergisApp, p: &egui::Painter, rect: Rect, t: &Tokens) {
     let m_per_pt = app.session.map().ground_res();
     let d = crate::measure_units::scale_distance(m_per_pt * 130.0, app.ui.measurement_imperial);
     if d <= 0.0 {
@@ -3010,13 +3010,13 @@ enum Home<'a> {
     NoLayer,
     /// Its layer has been removed.
     LayerGone,
-    Layer(&'a rustgis_engine::map::Layer),
+    Layer(&'a powergis_engine::map::Layer),
 }
 
 /// Keeps the popup to features still on the map (#465): the ones deleted, undone away or in a
 /// removed layer leave its list, and it closes when the one it shows is gone or another map is in
 /// view. Checked once per change of the session.
-fn follow_popup(app: &mut RustGisApp) {
+fn follow_popup(app: &mut powergisApp) {
     if app.map.popup_rev == app.session.revision {
         return;
     }
@@ -3075,7 +3075,7 @@ fn follow_popup(app: &mut RustGisApp) {
 
 /// Adds what the WMS layers asked answer to the popup, asking a layer from a project once its
 /// service's capabilities say how; failures are told. The popup closes when nothing was found.
-fn follow_asks(app: &mut RustGisApp, ctx: &egui::Context) {
+fn follow_asks(app: &mut powergisApp, ctx: &egui::Context) {
     let (active, opened) = (app.session.project.active_map, app.session.opened);
     let Some(pp) = &mut app.map.popup else { return };
     if pp.asks.is_empty() {
@@ -3104,7 +3104,7 @@ fn follow_asks(app: &mut RustGisApp, ctx: &egui::Context) {
     let mut next = Vec::new();
     // Only answers from layers drawn are shown: one hidden while its answer came would otherwise
     // take the pop-up from a feature in view.
-    let exists = |app: &RustGisApp, layer: &str| app.session.map().tiles.iter().any(|t| t.name == layer && t.draws());
+    let exists = |app: &powergisApp, layer: &str| app.session.map().tiles.iter().any(|t| t.name == layer && t.draws());
     for (layer, also, capabilities, request, r) in landed {
         // Layers removed, renamed or hidden while the answer came: nothing to show, nothing to
         // tell. The first of a service's layers still there takes the capabilities for the rest.
@@ -3113,7 +3113,7 @@ fn follow_asks(app: &mut RustGisApp, ctx: &egui::Context) {
         let also: Vec<String> = group.collect();
         // The fetch's failure, or an answer that isn't text, is told here; the command tells its
         // own errors (naming the layer).
-        let text = match r.and_then(|bytes| rustgis_engine::data::ogc::answer_text(&bytes).map(std::borrow::Cow::into_owned)) {
+        let text = match r.and_then(|bytes| powergis_engine::data::ogc::answer_text(&bytes).map(std::borrow::Cow::into_owned)) {
             Ok(text) => text,
             Err(e) => {
                 app.session.notify(crate::i18n::fmt("{layer}: {e}", &[("layer", &layer), ("e", &e)]), true);
@@ -3141,7 +3141,7 @@ fn follow_asks(app: &mut RustGisApp, ctx: &egui::Context) {
         for (layer, r) in replies {
             let Ok(v) = r else { continue };
             if let Some(url) = v["url"].as_str() {
-                let slot = crate::fetch_into_limited(url, rustgis_engine::data::ogc::MAX_INFO_BYTES);
+                let slot = crate::fetch_into_limited(url, powergis_engine::data::ogc::MAX_INFO_BYTES);
                 next.push(Ask { layer, also: Vec::new(), capabilities: false, request: Some(url.to_string()), slot });
             }
             found.extend(v["results"].as_array().cloned().unwrap_or_default());
@@ -3176,7 +3176,7 @@ fn follow_asks(app: &mut RustGisApp, ctx: &egui::Context) {
     }
 }
 
-fn popup(app: &mut RustGisApp, ui: &mut Ui, rect: Rect) {
+fn popup(app: &mut powergisApp, ui: &mut Ui, rect: Rect) {
     follow_asks(app, ui.ctx());
     follow_popup(app);
     let Some(pp) = &app.map.popup else { return };
@@ -3383,7 +3383,7 @@ fn popup(app: &mut RustGisApp, ui: &mut Ui, rect: Rect) {
 /// a pop-up mustn't fill the undo history; the new revision redraws the map. Found again by its
 /// feature id: a streamed layer may have read another window since the click, moving the feature
 /// to another row (or out of the layer: then nothing is selected).
-fn select_shown(app: &mut RustGisApp) {
+fn select_shown(app: &mut powergisApp) {
     let Some(pp) = &app.map.popup else { return };
     let shown = pp.info["results"].get(pp.index).and_then(|r| Some((u32::try_from(r["layerId"].as_u64()?).ok()?, r["fid"].as_u64()?)));
     let found = shown.and_then(|(id, fid)| {
@@ -3391,7 +3391,7 @@ fn select_shown(app: &mut RustGisApp) {
         Some((id, row))
     });
     if let Some((id, row)) = found {
-        rustgis_engine::cmd::select::set(&mut app.session, id, vec![row], rustgis_engine::cmd::select::Mode::New);
+        powergis_engine::cmd::select::set(&mut app.session, id, vec![row], powergis_engine::cmd::select::Mode::New);
     } else {
         app.session.map_mut().clear_selection();
     }
@@ -3405,7 +3405,7 @@ pub(crate) fn is_picture(v: &str) -> bool {
 }
 
 /// The texture of a picture value, decoded once and kept while the same value is shown.
-fn picture_texture(app: &mut RustGisApp, ctx: &egui::Context, value: &str) -> Result<egui::TextureHandle, String> {
+fn picture_texture(app: &mut powergisApp, ctx: &egui::Context, value: &str) -> Result<egui::TextureHandle, String> {
     use base64::Engine;
     use std::hash::{Hash, Hasher};
     let mut h = std::collections::hash_map::DefaultHasher::new();
@@ -3446,7 +3446,7 @@ pub(crate) fn decode_picture(bytes: &[u8]) -> Result<image::RgbaImage, String> {
 }
 
 /// The on-screen navigator: a north compass, zoom in and out, and four pan arrows.
-fn navigator(app: &mut RustGisApp, ui: &mut Ui, p: &egui::Painter, rect: Rect, t: &Tokens) {
+fn navigator(app: &mut powergisApp, ui: &mut Ui, p: &egui::Painter, rect: Rect, t: &Tokens) {
     let c = pos2(rect.min.x + 52.0, rect.min.y + 112.0);
     p.circle_filled(c, 34.0, t.ribbon.gamma_multiply(0.92));
     p.circle_stroke(c, 34.0, Stroke::new(1.0, t.border_strong));
@@ -3479,7 +3479,7 @@ fn navigator(app: &mut RustGisApp, ui: &mut Ui, p: &egui::Painter, rect: Rect, t
 }
 
 /// View tabs above the map, one per map in the project, like document tabs.
-fn view_tabs(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn view_tabs(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     let (r, _) = ui.allocate_exact_size(vec2(ui.available_width(), 30.0), Sense::hover());
     ui.painter().rect_filled(r, 0.0, t.tab_strip);
     ui.painter().line_segment([pos2(r.min.x, r.max.y - 0.5), pos2(r.max.x, r.max.y - 0.5)], Stroke::new(1.0, t.border));
@@ -3642,7 +3642,7 @@ pub enum Deletion {
 
 /// Asks before deleting the map or layout in `app.map.deleting` (tab close buttons, the
 /// Browser): a whole map or layout goes in one click. The commands themselves never ask.
-pub fn confirm_delete(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn confirm_delete(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(d) = app.map.deleting.clone() else { return };
     // Gone meanwhile (a command, the assistant), or the last map now: nothing left to ask.
     let p = &app.session.project;
@@ -3696,13 +3696,13 @@ pub fn confirm_delete(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// The map shown side by side, while its name finds one (a deleted or renamed map's doesn't).
-pub(crate) fn split_map(app: &RustGisApp) -> Option<usize> {
+pub(crate) fn split_map(app: &powergisApp) -> Option<usize> {
     let n = app.ws.split.as_deref()?;
     app.session.project.maps.iter().position(|m| m.name.eq_ignore_ascii_case(n))
 }
 
 /// Deletes a map (`map.remove`); the popup goes with the active map, even behind an open layout.
-pub(crate) fn delete_map(app: &mut RustGisApp, name: &str) {
+pub(crate) fn delete_map(app: &mut powergisApp, name: &str) {
     let p = &app.session.project;
     let was_active = p.maps.get(p.active_map).is_some_and(|m| m.name.eq_ignore_ascii_case(name));
     if app.run("map.remove", json!({"name": name})).is_ok() && was_active {
@@ -3750,7 +3750,7 @@ const TILE_SHRINK: f64 = 1.5;
 /// view: the view lies inside the extent its meshes were tessellated for, so moving them leaves
 /// no gaps. Only the view's camera and size matter to that extent.
 fn scene_covers(scene: Camera, cam: Camera, w: f64, h: f64) -> bool {
-    use rustgis_engine::render::{GPU_CULL_MARGIN, cull_extent};
+    use powergis_engine::render::{GPU_CULL_MARGIN, cull_extent};
     let held = cull_extent(&View { width: w, height: h, pixels_per_point: 1.0, camera: scene, sky: true }, GPU_CULL_MARGIN);
     let e = cam.extent(w, h);
     !e.is_empty() && e.min_x >= held.min_x && e.min_y >= held.min_y && e.max_x <= held.max_x && e.max_y <= held.max_y
@@ -3765,7 +3765,7 @@ const KEEP_FRAME_S: f64 = KEEP_FRAME_MS as f64 / 1000.0;
 /// Which project and map are open, the map's backdrop, and which of its layers, groups and tile
 /// layers are drawn, in order: a frame of other layers (one hidden, added, removed or moved since,
 /// another basemap, map or project) shows a preview of the change instead of staying on screen.
-fn shown_layers(session: &rustgis_engine::Session) -> u64 {
+fn shown_layers(session: &powergis_engine::Session) -> u64 {
     use std::hash::{Hash, Hasher};
     let mut h = std::hash::DefaultHasher::new();
     let project = &session.project;
@@ -3937,7 +3937,7 @@ mod tile_redraw_tests {
 #[cfg(test)]
 mod halo_tests {
     use super::*;
-    use rustgis_engine::map::Rgba;
+    use powergis_engine::map::Rgba;
 
     #[test]
     fn a_backgrounds_outline_is_its_rectangle_rounded_and_turned() {
@@ -3994,7 +3994,7 @@ mod halo_tests {
         for w in [0.5, 1.42, 3.0, 10.0, 1e9] {
             let (offsets, _) = halo_coats(&label(Some(w)), Rgba::rgb(255, 255, 255));
             let far = offsets.iter().map(|o| o.length()).fold(0.0, f32::max);
-            let reach = rustgis_engine::render::halo_reach(w) * 1.33;
+            let reach = powergis_engine::render::halo_reach(w) * 1.33;
             assert!((far - reach).abs() < 1e-3 && offsets.len() <= MAX_HALO_COATS, "{w}: {far} of {reach}, {}", offsets.len());
         }
         assert!(halo_coats(&label(Some(0.0)), Rgba::rgb(255, 255, 255)).0.is_empty(), "no width, no halo");
@@ -4083,7 +4083,7 @@ mod tests {
     /// click, no longer is.
     #[test]
     fn a_popup_opens_on_the_top_result_after_its_wait() {
-        let mut s = rustgis_engine::Session::new(rustgis_engine::sample::world_project());
+        let mut s = powergis_engine::Session::new(powergis_engine::sample::world_project());
         let url = "https://wms.example.org/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=over&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng";
         s.run("map.addTiles", &json!({"url": url, "name": "Over", "overlay": true})).unwrap();
         s.run("map.popupMode", &json!({"mode": "visible"})).unwrap();
@@ -4094,7 +4094,7 @@ mod tests {
         // Its answer already in, not fetched.
         info.as_object_mut().unwrap().remove("featureInfo");
         let (map, opened) = (s.project.active_map, s.opened);
-        let mut app = RustGisApp::new(s);
+        let mut app = powergisApp::new(s);
         let mut pp = Popup::new(info, Coord::new(8.6, 46.65), map, opened);
         let answer = br#"{"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"Bern"},"geometry":null}]}"#;
         let slot = std::sync::Arc::new(std::sync::Mutex::new(Some(Ok(answer.to_vec()))));
@@ -4113,7 +4113,7 @@ mod tests {
     /// after them, and topmost keeps Switzerland.
     #[test]
     fn a_wms_answer_takes_its_place_in_the_drawing_order() {
-        let mut s = rustgis_engine::Session::new(rustgis_engine::sample::world_project());
+        let mut s = powergis_engine::Session::new(powergis_engine::sample::world_project());
         s.run("map.addTiles", &json!({"url": "https://wms.example.org/{z}/{x}/{y}.png", "name": "Over", "overlay": true})).unwrap();
         s.run("map.addTiles", &json!({"url": "https://base.example.org/{z}/{x}/{y}.png", "name": "Under"})).unwrap();
         let answer = |layer: &str| json!({"layer": layer, "tileLayer": layer, "sourceLayer": null, "attributes": {"name": "Bern"}});
@@ -4151,7 +4151,7 @@ mod tests {
         // Hidden with its result in the pop-up and no answer to come: the result goes at once.
         s.map_mut().tiles.iter_mut().filter(|t| t.name == "Over").for_each(|t| t.visible = true);
         let (map, opened) = (s.project.active_map, s.opened);
-        let mut app = RustGisApp::new(s);
+        let mut app = powergisApp::new(s);
         let mut popup = Popup::new(over, Coord::new(8.6, 46.65), map, opened);
         popup.index = 1;
         app.map.popup = Some(popup);
@@ -4165,8 +4165,8 @@ mod tests {
         assert_eq!((shown(&popup.info), popup.index), (vec!["Countries".to_string()], 0), "hidden, in the pop-up");
     }
 
-    fn selection_harness() -> egui_kittest::Harness<'static, RustGisApp> {
-        let mut app = RustGisApp::new(rustgis_engine::Session::new(rustgis_engine::Project::default()));
+    fn selection_harness() -> egui_kittest::Harness<'static, powergisApp> {
+        let mut app = powergisApp::new(powergis_engine::Session::new(powergis_engine::Project::default()));
         app.run("layer.template", json!({"template": "points", "name": "Points"})).unwrap();
         for point in [[0.5, 0.5], [2.0, 2.0], [2.5, 0.5], [4.0, 4.0]] {
             app.run("edit.addFeature", json!({"layer": "Points", "geometry": {"type": "Point", "coordinates": point}})).unwrap();
@@ -4174,7 +4174,7 @@ mod tests {
         app.run("select.clear", Value::Null).unwrap();
         let mut h =
             egui_kittest::Harness::builder().with_size(vec2(1400.0, 860.0)).with_step_dt(0.016).with_max_steps(10_000).build_ui_state(
-                |ui, app: &mut RustGisApp| {
+                |ui, app: &mut powergisApp| {
                     let ctx = ui.ctx().clone();
                     app.logic(&ctx);
                     app.ui(ui);
@@ -4190,11 +4190,11 @@ mod tests {
         h
     }
 
-    fn selection_screen(h: &egui_kittest::Harness<'_, RustGisApp>, point: [f64; 2]) -> Pos2 {
+    fn selection_screen(h: &egui_kittest::Harness<'_, powergisApp>, point: [f64; 2]) -> Pos2 {
         lonlat_to_screen(h.state(), h.state().map.view_rect.unwrap().0, Coord::new(point[0], point[1])).unwrap()
     }
 
-    fn selection_pointer(h: &mut egui_kittest::Harness<'_, RustGisApp>, at: Pos2, pressed: Option<bool>, modifiers: egui::Modifiers) {
+    fn selection_pointer(h: &mut egui_kittest::Harness<'_, powergisApp>, at: Pos2, pressed: Option<bool>, modifiers: egui::Modifiers) {
         h.event(egui::Event::ModifiersChanged(modifiers));
         h.event(egui::Event::PointerMoved(at));
         if let Some(pressed) = pressed {
@@ -4203,13 +4203,13 @@ mod tests {
         h.step();
     }
 
-    fn selection_click(h: &mut egui_kittest::Harness<'_, RustGisApp>, point: [f64; 2]) {
+    fn selection_click(h: &mut egui_kittest::Harness<'_, powergisApp>, point: [f64; 2]) {
         let at = selection_screen(h, point);
         selection_pointer(h, at, Some(true), egui::Modifiers::NONE);
         selection_pointer(h, at, Some(false), egui::Modifiers::NONE);
     }
 
-    fn selection_rows(h: &egui_kittest::Harness<'_, RustGisApp>) -> Vec<usize> {
+    fn selection_rows(h: &egui_kittest::Harness<'_, powergisApp>) -> Vec<usize> {
         h.state().session.map().layer_by_name("Points").unwrap().selection.clone()
     }
 
@@ -4370,11 +4370,11 @@ mod tests {
 
     #[test]
     fn a_globe_visibility_preview_drops_the_old_labels() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("map.body", json!({"name": "moon", "basemap": false})).expect("Moon");
         app.run("map.projection", json!({"type": "globe"})).expect("globe");
         let mut h = egui_kittest::Harness::builder().with_size(vec2(900.0, 550.0)).with_max_steps(10_000).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
@@ -4396,7 +4396,7 @@ mod tests {
     /// A frame is kept only through changes that leave the same layers shown in the same order.
     #[test]
     fn the_shown_layers_change_with_visibility_order_and_tile_placement_not_style() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("map.addTiles", json!({"url": "http://127.0.0.1:9/{z}/{x}/{y}.png", "name": "Offline"})).expect("tile layer");
         let before = shown_layers(&app.session);
         app.run("layer.transparency", json!({"layer": "Countries", "value": 50})).expect("transparency");
@@ -4424,21 +4424,21 @@ mod tests {
     /// included, so every step of a slider drag made the map flicker.
     #[test]
     fn a_style_change_over_tiles_keeps_the_frame_instead_of_a_preview() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         // Nothing listens there: the tiles fail, the map still draws.
         app.run("map.addTiles", json!({"url": "http://127.0.0.1:9/{z}/{x}/{y}.png", "name": "Offline"})).expect("tile layer");
         // Short steps: a kept frame gives way to a preview after `KEEP_FRAME_S` of the harness's time,
         // 6000 steps here (at least 12 s with the waits below), far longer than a debug frame takes.
         let mut h =
             egui_kittest::Harness::builder().with_size(vec2(900.0, 550.0)).with_step_dt(0.000_05).with_max_steps(10_000).build_ui_state(
-                |ui, app: &mut RustGisApp| {
+                |ui, app: &mut powergisApp| {
                     let ctx = ui.ctx().clone();
                     app.logic(&ctx);
                     app.ui(ui);
                 },
                 app,
             );
-        let exact = |h: &mut egui_kittest::Harness<'_, RustGisApp>, what: &str| {
+        let exact = |h: &mut egui_kittest::Harness<'_, powergisApp>, what: &str| {
             let end = std::time::Instant::now() + std::time::Duration::from_secs(20);
             loop {
                 h.step();
@@ -4491,14 +4491,14 @@ mod tests {
     fn a_pane_drag_draws_the_map_once_it_stops() {
         let mut h =
             egui_kittest::Harness::builder().with_size(vec2(1200.0, 700.0)).with_step_dt(1.0 / 60.0).with_max_steps(10_000).build_ui_state(
-                |ui, app: &mut RustGisApp| {
+                |ui, app: &mut powergisApp| {
                     let ctx = ui.ctx().clone();
                     app.logic(&ctx);
                     app.ui(ui);
                 },
-                RustGisApp::with_sample(),
+                powergisApp::with_sample(),
             );
-        let settled = |h: &mut egui_kittest::Harness<'_, RustGisApp>, what: &str| {
+        let settled = |h: &mut egui_kittest::Harness<'_, powergisApp>, what: &str| {
             let end = std::time::Instant::now() + std::time::Duration::from_secs(10);
             while h.state().map.key.is_none_or(|k| k.draft || k.size != h.state().map.view_px) || h.state().map.drawing() {
                 assert!(std::time::Instant::now() < end, "{what}");
@@ -4544,7 +4544,7 @@ mod tests {
     /// would vanish until the motion stopped.
     #[test]
     fn gpu_fast_path_needs_the_scene_to_cover_the_view() {
-        let scene = RustGisApp::with_sample().session.map().camera;
+        let scene = powergisApp::with_sample().session.map().camera;
         let (w, h) = (800.0, 600.0);
         assert!(scene_covers(scene, scene, w, h));
         assert!(scene_covers(scene, Camera { res: scene.res * 0.5, ..scene }, w, h), "zooming in");
@@ -4575,14 +4575,14 @@ mod tests {
     /// the width its spacing gives it, as the map view lays it out.
     #[test]
     fn a_styled_text_graphic_is_hit_as_drawn() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let c = app.session.map().center_lonlat();
         let r = app.run("graphics.add", json!({"shape": "text", "points": [[c.x, c.y]], "text": "Wide", "fontSize": 20})).unwrap();
         let (layer, row) = (r["layer"].clone(), r["row"].clone());
         let hit = r["layer"].as_u64().zip(r["row"].as_u64()).map(|(l, r)| (l as u32, r as usize));
         let rect = Rect::from_min_size(Pos2::ZERO, vec2(800.0, 600.0));
         // Past the plain text's right end, within the spaced text's.
-        let probe = |app: &RustGisApp| {
+        let probe = |app: &powergisApp| {
             let mut found = None;
             let mut out = egui::Context::default().run_ui(Default::default(), |ui| {
                 let at = lonlat_to_screen(app, rect, c).unwrap();
@@ -4599,7 +4599,7 @@ mod tests {
     /// A text graphic is found anywhere on its text, not only at its anchor (#420).
     #[test]
     fn text_graphics_are_hit_on_their_text() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let c = app.session.map().center_lonlat();
         let r = app
             .run("graphics.add", json!({"shape": "text", "points": [[c.x, c.y]], "text": "A long piece of text", "fontSize": 20}))
@@ -4634,7 +4634,7 @@ mod tests {
         // Nor text clipped away by the view's clipping distance (it sits ~3,300 km from the
         // centre), or on a fully transparent layer.
         app.run("group.set", json!({"group": "Notes", "visible": true})).unwrap();
-        let probe = |app: &RustGisApp| {
+        let probe = |app: &powergisApp| {
             let mut found = None;
             let mut out = egui::Context::default().run_ui(Default::default(), |ui| {
                 let at = lonlat_to_screen(app, rect, Coord::new(c.x, c.y - 30.0)).unwrap();

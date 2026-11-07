@@ -2,9 +2,9 @@
 //! Relationships, and Edit › Manage Edits, Snapping, Features (modify tools), Elevation and
 //! Corrections. Every feature edit goes through [`apply`], which enforces the layer's design.
 
-use rustgis_data::{Feature, FieldType, Geometry, GeometryType, Value};
-use rustgis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
-use rustgis_map::design::{
+use powergis_data::{Feature, FieldType, Geometry, GeometryType, Value};
+use powergis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
+use powergis_map::design::{
     AttributeRule, ContingentSet, Domain, DomainKind, Elevation, FeatureTemplate, Relationship, RuleKind, Subtype, Subtypes, TopologyRule,
 };
 use serde_json::{Value as Json, json};
@@ -130,13 +130,13 @@ pub(crate) fn apply(s: &mut Session, id: u32, changes: Vec<Change>) -> Result<()
     }
     // Validation. Domains and contingent values are checked on the fields an edit changed (all
     // of a new feature's), so a value set before the domain doesn't block unrelated edits.
-    let constraints: Vec<(String, String, rustgis_data::query::Expr)> = l
+    let constraints: Vec<(String, String, powergis_data::query::Expr)> = l
         .design
         .rules
         .iter()
         .filter(|r| r.kind == RuleKind::Constraint)
         .filter_map(|rule| {
-            rustgis_data::query::parse(&rule.expression, &l.dataset).ok().map(|e| (rule.name.clone(), rule.expression.clone(), e))
+            powergis_data::query::parse(&rule.expression, &l.dataset).ok().map(|e| (rule.name.clone(), rule.expression.clone(), e))
         })
         .collect();
     let changed_fields = |r: usize| -> Option<Vec<bool>> {
@@ -171,7 +171,7 @@ pub(crate) fn apply(s: &mut Session, id: u32, changes: Vec<Change>) -> Result<()
             }
         }
         for (name, expr, e) in &constraints {
-            if !rustgis_data::query::eval(e, &l.dataset, *r) {
+            if !powergis_data::query::eval(e, &l.dataset, *r) {
                 return Err(format!("the edit breaks the rule {name} ({expr})"));
             }
         }
@@ -191,7 +191,7 @@ pub(crate) fn apply(s: &mut Session, id: u32, changes: Vec<Change>) -> Result<()
         // Features are copied into the archive only when the layer keeps one.
         if archiving {
             let fid = c.before.as_ref().or(after).map(|f| f.id).unwrap_or(0);
-            entries.push(rustgis_map::design::ArchiveEntry { time: t, id: fid, before: c.before.clone(), after: after.cloned() });
+            entries.push(powergis_map::design::ArchiveEntry { time: t, id: fid, before: c.before.clone(), after: after.cloned() });
         }
     }
     if let Some(archive) = &mut l.design.archive {
@@ -427,7 +427,7 @@ fn distance_unit_metres(p: &Json) -> Result<f64, String> {
         _ => return Err("units must be Meters, Feet, Kilometers or Miles".into()),
     };
     let unit = if units.is_empty() { "Meters" } else { units };
-    rustgis_geom::distance_unit_metres(&unit.to_ascii_lowercase()).ok_or_else(|| "units must be Meters, Feet, Kilometers or Miles".into())
+    powergis_geom::distance_unit_metres(&unit.to_ascii_lowercase()).ok_or_else(|| "units must be Meters, Feet, Kilometers or Miles".into())
 }
 
 /// A point moved by metres east and north (Web Mercator stretched to the point's latitude).
@@ -471,7 +471,7 @@ fn modify(s: &mut Session, change: impl Fn(&Geometry) -> Option<Geometry>) -> Cm
 fn set_geometry(s: &mut Session, p: &Json) -> CmdResult {
     let id = s.layer_id(p)?;
     let row = p.get("row").and_then(Json::as_u64).ok_or("row is required")? as usize;
-    let g = p.get("geometry").and_then(rustgis_data::io::geometry_from_geojson).ok_or("geometry must be a GeoJSON geometry")?;
+    let g = p.get("geometry").and_then(powergis_data::io::geometry_from_geojson).ok_or("geometry must be a GeoJSON geometry")?;
     replace_geometry(s, id, row, g)?;
     Ok(Json::Null)
 }
@@ -488,7 +488,7 @@ fn edit_vertex(s: &mut Session, p: &Json) -> CmdResult {
             Some(v) => v.as_u64().map(|n| Some(n as usize)).ok_or_else(|| format!("{k} must be a whole number")),
         }
     };
-    let v = rustgis_data::VertexId::new(num("part")?.unwrap_or(0), num("ring")?.unwrap_or(0), num("index")?.ok_or("index is required")?);
+    let v = powergis_data::VertexId::new(num("part")?.unwrap_or(0), num("ring")?.unwrap_or(0), num("index")?.ok_or("index is required")?);
     let at = || -> Result<Coord, String> {
         let (lon, lat) = (f(p, "lon").ok_or("lon is required")?, f(p, "lat").ok_or("lat is required")?);
         if !(lon.is_finite() && lat.is_finite()) || lon.abs() > 360.0 || lat.abs() > 90.0 {
@@ -508,7 +508,7 @@ fn edit_vertex(s: &mut Session, p: &Json) -> CmdResult {
         "move" => (g.move_vertex(v, at()?).ok_or("no such vertex")?, v),
         "insert" => {
             let g = g.insert_vertex(v, at()?).ok_or("vertices can only be inserted in lines and polygons")?;
-            (g, rustgis_data::VertexId::new(v.part, v.ring, v.index + 1))
+            (g, powergis_data::VertexId::new(v.part, v.ring, v.index + 1))
         }
         "delete" => (g.delete_vertex(v)?, v),
         a => return Err(format!("unknown action '{a}'")),
@@ -559,7 +559,7 @@ fn merge(s: &mut Session, _: &Json) -> CmdResult {
     if geoms.len() != sel.len() || geoms.windows(2).any(|w| w.first().map(kind) != w.get(1).map(kind)) {
         return Err("merge features of one kind (all points, all lines or all polygons), each with a shape".into());
     }
-    let merged = rustgis_analysis::topology::merge(&geoms).ok_or("these features can't be merged")?;
+    let merged = powergis_analysis::topology::merge(&geoms).ok_or("these features can't be merged")?;
     let keep = sel.first().copied().ok_or("nothing selected")?;
     let mut changes = Vec::new();
     for r in sel.iter().skip(1).rev() {
@@ -587,7 +587,7 @@ fn explode(s: &mut Session, _: &Json) -> CmdResult {
     sel.dedup();
     for r in sel {
         let Some(f) = l.dataset.features.get(r).cloned() else { continue };
-        let parts = f.geometry.as_ref().map(rustgis_analysis::topology::explode).unwrap_or_default();
+        let parts = f.geometry.as_ref().map(powergis_analysis::topology::explode).unwrap_or_default();
         if parts.len() < 2 {
             continue;
         }
@@ -646,7 +646,7 @@ fn split(s: &mut Session, p: &Json) -> CmdResult {
         let mut second = vec![q];
         second.extend(part.iter().skip(si + 1).copied());
         // At (or within a centimetre of) the line's ends isn't a split.
-        let near = |a: Option<&Coord>| a.is_some_and(|a| rustgis_geom::haversine_m(*a, q) < 0.01);
+        let near = |a: Option<&Coord>| a.is_some_and(|a| powergis_geom::haversine_m(*a, q) < 0.01);
         if first.len() < 2 || second.len() < 2 || near(first.first()) || near(second.last()) {
             continue;
         }
@@ -801,7 +801,7 @@ fn subtypes(s: &mut Session, p: &Json) -> CmdResult {
     // Unique values by subtype code.
     if symbolize {
         let base = l.renderer.base_symbol();
-        l.renderer = rustgis_map::Renderer::unique(&l.dataset, &[], &fname, rustgis_map::Ramp::default(), base)?;
+        l.renderer = powergis_map::Renderer::unique(&l.dataset, &[], &fname, powergis_map::Ramp::default(), base)?;
     }
     let n = subs.len();
     l.design.subtypes = Some(Subtypes { field: fname, subtypes: subs });
@@ -835,7 +835,7 @@ fn attribute_rule(s: &mut Session, p: &Json) -> CmdResult {
                 .ok_or_else(|| format!("no field named '{fl}'"))?
         }
         RuleKind::Constraint => {
-            rustgis_data::query::parse(&expression, &l.dataset)?;
+            powergis_data::query::parse(&expression, &l.dataset)?;
             String::new()
         }
     };
@@ -951,7 +951,7 @@ fn archive_restore(s: &mut Session, p: &Json) -> CmdResult {
             (Some(a), Some(b)) if a == b => continue,
             _ => counts.modified += 1,
         }
-        entries.push(rustgis_map::design::ArchiveEntry { time, id: fid, before, after });
+        entries.push(powergis_map::design::ArchiveEntry { time, id: fid, before, after });
     }
     if let Some(archive) = &mut l.design.archive {
         archive.extend(entries);
@@ -1091,7 +1091,7 @@ pub fn snap_except(s: &mut Session, c: Coord, skip: Option<(u32, usize)>) -> Opt
 /// first node; a closed line's two endpoints remain distinct, as in `Geometry::move_vertex`.
 /// Invalid addresses are ignored. Point/multipoint targets retain the existing snapping policy.
 /// Moving a point or multipoint still excludes its whole feature, as with [`snap_except`].
-pub fn snap_vertex_except(s: &mut Session, c: Coord, skip: Option<(u32, usize, rustgis_data::VertexId)>) -> Option<(Coord, &'static str)> {
+pub fn snap_vertex_except(s: &mut Session, c: Coord, skip: Option<(u32, usize, powergis_data::VertexId)>) -> Option<(Coord, &'static str)> {
     let skip = skip.filter(|(id, row, v)| {
         s.map().layer(*id).and_then(|l| l.dataset.features.get(*row)).and_then(|f| f.geometry.as_ref()).and_then(|g| g.vertex(*v)).is_some()
     });
@@ -1104,7 +1104,7 @@ fn snap_excluding(
     s: &mut Session,
     c: Coord,
     skip: Option<(u32, usize)>,
-    vertex: Option<(u32, usize, rustgis_data::VertexId)>,
+    vertex: Option<(u32, usize, powergis_data::VertexId)>,
 ) -> Option<(Coord, &'static str)> {
     let sn = s.map().editing.snapping;
     if !sn.enabled {
@@ -1235,7 +1235,7 @@ fn topology_rules(s: &mut Session, p: &Json) -> CmdResult {
 
 /// Checks every topology rule; the errors are kept for the Error Inspector.
 fn topology_validate(s: &mut Session, p: &Json) -> CmdResult {
-    use rustgis_analysis::topology as t;
+    use powergis_analysis::topology as t;
     let tol = f(p, "toleranceM").unwrap_or(1.0).clamp(0.0, 10_000.0);
     let mut errors = Vec::new();
     // Rules whose check stopped early (an error or work limit): their counts are partial.

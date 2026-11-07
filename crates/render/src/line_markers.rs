@@ -3,7 +3,7 @@
 //! an interval counts from the line's start and its middle is the whole line's however much of it
 //! shows; only the marks near the image are drawn.
 
-use rustgis_map::{LineMark, LineMarkers, Placements, Rgba};
+use powergis_map::{LineMark, LineMarkers, Placements, Rgba};
 use tiny_skia::{FillRule, LineCap, Path, PathBuilder, Pixmap, Stroke, Transform};
 
 use crate::{marker_path, marker_reach, paint};
@@ -152,7 +152,7 @@ fn places(run: &Run, m: &LineMarkers, ppp: f64, near: Window, room: usize) -> Ve
     };
     let last = run.pts.len().saturating_sub(1);
     if m.at.has(Placements::INTERVAL) {
-        let step = f64::from(m.interval).max(f64::from(rustgis_map::symbology::MIN_MARKER_INTERVAL)) * ppp;
+        let step = f64::from(m.interval).max(f64::from(powergis_map::symbology::MIN_MARKER_INTERVAL)) * ppp;
         let stretch = f64::from(m.average_angle) * ppp;
         // Segment by segment, skipping those off the image without visiting their marks.
         for i in 0..last {

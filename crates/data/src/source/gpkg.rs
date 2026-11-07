@@ -9,7 +9,7 @@ use crate::raster::Crs;
 use crate::{DataError, Feature, Field, FieldType, GeometryType, Result, Value, wkb};
 use rusqlite::types::ValueRef;
 use rusqlite::{Connection, OpenFlags, params_from_iter};
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
 
@@ -89,7 +89,7 @@ impl GpkgSource {
             let nanos = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_nanos()).unwrap_or(0);
             let salt = std::collections::hash_map::RandomState::new();
             let tag = std::hash::BuildHasher::hash_one(&salt, (nanos, N.fetch_add(1, Ordering::Relaxed)));
-            let p = std::env::temp_dir().join(format!("rustgis-{}-{tag:016x}.gpkg", std::process::id()));
+            let p = std::env::temp_dir().join(format!("powergis-{}-{tag:016x}.gpkg", std::process::id()));
             let mut o = std::fs::OpenOptions::new();
             o.write(true).create_new(true);
             // Readable by this user only: the copy holds their data, in a shared folder.
@@ -556,7 +556,7 @@ fn temp_database_beside(path: &Path) -> Result<tempfile::TempPath> {
     // Drop the file handle before SQLite opens it, including on Windows. TempPath cleans up on
     // every error, and persist_noclobber refuses files created after the check above as well.
     let mut builder = tempfile::Builder::new();
-    builder.prefix(".rustgis-gpkg-").suffix(".tmp");
+    builder.prefix(".powergis-gpkg-").suffix(".tmp");
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

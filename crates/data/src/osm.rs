@@ -10,7 +10,7 @@
 
 use std::collections::HashMap;
 
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 use crate::{DataError, Dataset, Field, FieldType, Geometry, GeometryType, ReadReport, Result, Value};
 

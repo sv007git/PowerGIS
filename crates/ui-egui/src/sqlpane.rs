@@ -9,7 +9,7 @@ use egui::{RichText, Ui};
 use serde_json::{Value, json};
 
 use crate::theme::Tokens;
-use crate::{RustGisApp, Slot, i18n};
+use crate::{powergisApp, Slot, i18n};
 
 /// The queries kept in the history (newest first).
 const HISTORY: usize = 30;
@@ -95,7 +95,7 @@ pub struct State {
     shown: (String, String),
     running: Option<Answer<Value>>,
     #[cfg(not(target_arch = "wasm32"))]
-    adding: Option<(String, String, Answer<rustgis_engine::data::source::duckdb::Output>)>,
+    adding: Option<(String, String, Answer<powergis_engine::data::source::duckdb::Output>)>,
     /// Tables and their columns of the database named, for completion.
     names: Vec<(String, String)>,
     names_for: String,
@@ -134,7 +134,7 @@ fn database_text(a: &str) -> String {
 }
 
 /// Lands queries, Add to Map runs and name lists that finished.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let st = &mut app.ui.sql;
     let pending = st.running.is_some() || st.names_job.is_some();
     if let Some(slot) = &st.running
@@ -189,11 +189,11 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 
 /// Starts a query's preview off the frame.
 #[cfg(not(target_arch = "wasm32"))]
-fn run(app: &mut RustGisApp) {
-    use rustgis_engine::data::source::duckdb;
+fn run(app: &mut powergisApp) {
+    use powergis_engine::data::source::duckdb;
     let st = &mut app.ui.sql;
     let db_text = database_text(&st.database);
-    let db = rustgis_engine::cmd::layer::database_param(&json!({"database": db_text, "password": st.password}));
+    let db = powergis_engine::cmd::layer::database_param(&json!({"database": db_text, "password": st.password}));
     let sql = st.text.clone();
     st.shown = (sql.clone(), db_text.clone());
     st.result = None;
@@ -202,7 +202,7 @@ fn run(app: &mut RustGisApp) {
     let db2 = db.clone();
     std::thread::spawn(move || {
         let r = duckdb::preview(&duckdb::Query { sql: &sql, database: db2.as_ref(), crs: None }, PREVIEW_ROWS)
-            .map(|p| rustgis_engine::cmd::sql::preview_json(&p))
+            .map(|p| powergis_engine::cmd::sql::preview_json(&p))
             .map_err(|e| e.to_string());
         *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r);
     });
@@ -224,7 +224,7 @@ fn run(app: &mut RustGisApp) {
 
 /// Runs the editor's query now (`ui.pane.sql` with `"run"`): off the frame on the desktop; the web
 /// app has no DuckDB.
-pub fn run_now(app: &mut RustGisApp) {
+pub fn run_now(app: &mut powergisApp) {
     #[cfg(not(target_arch = "wasm32"))]
     if app.ui.sql.running.is_none() && !app.ui.sql.text.trim().is_empty() {
         run(app);
@@ -235,10 +235,10 @@ pub fn run_now(app: &mut RustGisApp) {
 
 /// Runs the shown query again in full, off the frame, and adds its result as layers.
 #[cfg(not(target_arch = "wasm32"))]
-fn add_to_map(app: &mut RustGisApp) {
-    use rustgis_engine::data::source::duckdb;
+fn add_to_map(app: &mut powergisApp) {
+    use powergis_engine::data::source::duckdb;
     let (sql, db_text) = app.ui.sql.shown.clone();
-    let db = rustgis_engine::cmd::layer::database_param(&json!({"database": db_text, "password": app.ui.sql.password}));
+    let db = powergis_engine::cmd::layer::database_param(&json!({"database": db_text, "password": app.ui.sql.password}));
     let slot: Answer<duckdb::Output> = Slot::default();
     let land = slot.clone();
     let sql2 = sql.clone();
@@ -296,13 +296,13 @@ fn word_before(text: &str, at: usize) -> (usize, String) {
     (start, chars.get(start..).map(|w| w.iter().collect()).unwrap_or_default())
 }
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         egui::Frame::NONE.inner_margin(egui::Margin::symmetric(12, 8)).show(ui, |ui| body(app, ui, t));
     });
 }
 
-fn body(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn body(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     if cfg!(target_arch = "wasm32") {
         ui.label(
             RichText::new(tl!(
@@ -413,7 +413,7 @@ fn body(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     history(app, ui);
 }
 
-fn results(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn results(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     match &app.ui.sql.result {
         None => {}
         Some(Err(e)) => {
@@ -453,7 +453,7 @@ fn results(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     }
 }
 
-fn history(app: &mut RustGisApp, ui: &mut Ui) {
+fn history(app: &mut powergisApp, ui: &mut Ui) {
     if app.ui.sql.history.is_empty() {
         return;
     }

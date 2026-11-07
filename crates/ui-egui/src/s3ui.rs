@@ -1,17 +1,17 @@
 //! S3…: connect to Amazon S3 or an S3-compatible service, browse a bucket a level at a time, and
 //! add an object by its `s3://` address. Listings are fetched off the frame through the tile
 //! cache's downloads (a thread natively, the browser's fetch on the web), signed by
-//! `rustgis_tiles::s3` when the connection has credentials. Browsing through a saved
+//! `powergis_tiles::s3` when the connection has credentials. Browsing through a saved
 //! connection's login names that login in every address it fetches or adds.
 
 use egui::vec2;
-use rustgis_engine::Session;
-use rustgis_engine::connections::Connection;
-use rustgis_engine::render::rustgis_tiles::{cache, s3};
+use powergis_engine::Session;
+use powergis_engine::connections::Connection;
+use powergis_engine::render::powergis_tiles::{cache, s3};
 use serde_json::{Value, json};
 
 use crate::connectionui::translated;
-use crate::{RustGisApp, Slot, i18n};
+use crate::{powergisApp, Slot, i18n};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -91,7 +91,7 @@ fn take(slot: &Answer) -> Option<Result<Vec<u8>, String>> {
 }
 
 /// Lands listings.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let st = &mut app.ui.s3;
     if let Some(slot) = &st.listing_job {
         match take(slot) {
@@ -181,7 +181,7 @@ fn list(st: &mut State, binding: Option<&str>) {
 }
 
 /// Puts a saved connection in the form, without carrying secrets from the previous one.
-pub(crate) fn fill(app: &mut RustGisApp, c: &Connection) {
+pub(crate) fn fill(app: &mut powergisApp, c: &Connection) {
     let st = &mut app.ui.s3;
     st.name = c.name.clone();
     st.endpoint = c.address.clone();
@@ -199,7 +199,7 @@ pub(crate) fn fill(app: &mut RustGisApp, c: &Connection) {
 /// A saved connection picked: browsed at once when it is live or can log in with nothing typed
 /// (a profile, the environment, anonymously, or the keys saved on this computer, which this
 /// choice may ask the system to unlock); else the form waits for its keys.
-fn pick(app: &mut RustGisApp, c: &Connection) {
+fn pick(app: &mut powergisApp, c: &Connection) {
     fill(app, c);
     app.ui.s3.connection = Some(c.id.clone());
     if app.session.has_s3_login(&c.id) {
@@ -219,7 +219,7 @@ fn form_name(st: &State) -> String {
 
 /// The saved connection the form stands for, when one was picked and nothing typed since changes
 /// its definition (name, endpoint, region, where its keys come from).
-fn unchanged_saved(app: &RustGisApp) -> Option<Connection> {
+fn unchanged_saved(app: &powergisApp) -> Option<Connection> {
     let st = &app.ui.s3;
     let id = st.connection.as_deref()?;
     let c = app.session.connections.connections.iter().find(|c| c.id == id && c.kind == "s3")?;
@@ -240,7 +240,7 @@ fn unchanged_saved(app: &RustGisApp) -> Option<Connection> {
 /// Connects: a picked saved connection, unchanged, logs in by its id (with the keys typed, or
 /// those saved on this computer); a form whose typed keys are to be remembered is first saved as
 /// a new connection; anything else is a session-only connection, as it always was.
-fn connect(app: &mut RustGisApp) {
+fn connect(app: &mut powergisApp) {
     app.ui.s3.warning = None;
     let remember = app.ui.s3.remember && app.ui.s3.source == "keys" && app.session.database_logins.has_store();
     if remember && (app.ui.s3.key.trim().is_empty() || app.ui.s3.secret.trim().is_empty()) {
@@ -301,7 +301,7 @@ fn connect(app: &mut RustGisApp) {
 
 /// Logs in to the saved connection `c` (the form's typed keys, if any; else what it needs no
 /// typing for, saved keys included) and browses with it. Remembering is asked only here.
-fn log_in_saved(app: &mut RustGisApp, c: &Connection, remember: bool) {
+fn log_in_saved(app: &mut powergisApp, c: &Connection, remember: bool) {
     let st = &app.ui.s3;
     let mut p = json!({"id": c.id});
     if st.source == "keys" && (!st.key.trim().is_empty() || !st.secret.is_empty()) {
@@ -332,7 +332,7 @@ fn log_in_saved(app: &mut RustGisApp, c: &Connection, remember: bool) {
 /// Remember on a form that is no saved connection (or one whose definition was changed): saved
 /// as a new connection first, under a name no other has, then logged in to keep its keys. A
 /// name taken leaves the form as it is.
-fn remember_new(app: &mut RustGisApp) {
+fn remember_new(app: &mut powergisApp) {
     let st = &app.ui.s3;
     let (name, endpoint, region) = (form_name(st), st.endpoint.trim().to_string(), st.region.trim().to_string());
     if app.session.connections.connections.iter().any(|c| c.name.to_lowercase() == name.to_lowercase()) {
@@ -358,7 +358,7 @@ fn remember_new(app: &mut RustGisApp) {
 }
 
 /// Opens the S3 browser on a session connection (the Data Sources pane's S3 list).
-pub fn open_connection(app: &mut RustGisApp, name: &str) {
+pub fn open_connection(app: &mut powergisApp, name: &str) {
     let st = &mut app.ui.s3;
     if st.conn != name {
         st.conn = name.to_string();
@@ -384,7 +384,7 @@ fn reset_browse(st: &mut State) {
 /// (its endpoint, region or login changed, which also ends its session) is filled in again
 /// and what was listed for the old settings dropped; one removed is let go. The first look at
 /// a connection only records it.
-fn sync(app: &mut RustGisApp) {
+fn sync(app: &mut powergisApp) {
     let list = crate::sourcespane::connections_snapshot(app);
     let st = &mut app.ui.s3;
     let Some(id) = st.connection.clone() else {
@@ -411,7 +411,7 @@ fn sync(app: &mut RustGisApp) {
 }
 
 /// The dialog: a connection, then a bucket browsed a level at a time.
-pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn dialog(app: &mut powergisApp, ui: &mut egui::Ui) {
     sync(app);
     ui.label(egui::RichText::new(tl!("Amazon S3, or an S3-compatible service (MinIO, Cloudflare R2, Wasabi…) by its endpoint. Keys are kept until PowerGIS closes; a saved connection keeps its name, endpoint and region, never its secret.")).weak());
     egui::CollapsingHeader::new(tl!("Connection")).default_open(s3::connections().is_empty()).show(ui, |ui| connection_form(app, ui));
@@ -427,7 +427,7 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
     }
 }
 
-fn connection_form(app: &mut RustGisApp, ui: &mut egui::Ui) {
+fn connection_form(app: &mut powergisApp, ui: &mut egui::Ui) {
     let list = crate::sourcespane::connections_snapshot(app);
     let st = &app.ui.s3;
     // A blank name connects as "default" (see `connect`), so it is that connection's name here too.
@@ -527,7 +527,7 @@ fn connection_form(app: &mut RustGisApp, ui: &mut egui::Ui) {
     }
 }
 
-fn browse(app: &mut RustGisApp, ui: &mut egui::Ui) {
+fn browse(app: &mut powergisApp, ui: &mut egui::Ui) {
     let conns = s3::connections();
     let st = &mut app.ui.s3;
     // A connection since forgotten: back to anonymous (never another connection's keys).
@@ -657,7 +657,7 @@ mod tests {
 
     #[test]
     fn anonymous_connection_can_be_kept_and_picked_after_disconnect() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.ui.s3.name = "keep-s3-test".into();
         app.ui.s3.endpoint = "https://s3.example.com".into();
         app.ui.s3.region = "eu-west-1".into();
@@ -684,7 +684,7 @@ mod tests {
 
     #[test]
     fn picking_typed_keys_clears_previous_secrets_and_waits_for_connect() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let v = app
             .run(
                 "connection.new",
@@ -719,7 +719,7 @@ mod tests {
 
     #[test]
     fn browsing_through_a_saved_login_names_it_and_a_session_connection_does_not() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let v = app
             .run(
                 "connection.new",
@@ -733,7 +733,7 @@ mod tests {
         assert_eq!(app.ui.s3.conn, c.name);
         s3::grant_saved(&binding, "bound-bucket").unwrap();
         let url = through(Some(&binding), "s3://bound-bucket/a.tif".into()).unwrap();
-        assert!(url.starts_with(rustgis_engine::data::s3_address::PREFIX), "{url}");
+        assert!(url.starts_with(powergis_engine::data::s3_address::PREFIX), "{url}");
         assert!(url.ends_with("s3://bound-bucket/a.tif"), "{url}");
         s3::disconnect(&c.name);
         assert!(saved_binding(&app.session, &c.name).is_none());
@@ -742,7 +742,7 @@ mod tests {
 
     #[test]
     fn editing_or_removing_the_picked_connection_refills_the_form_and_drops_its_listing() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let v = app
             .run(
                 "connection.new",
@@ -778,10 +778,10 @@ mod tests {
 
     #[test]
     fn s3_saved_picker_and_connection_entry_reauthenticate_a_foreign_session_login() {
-        use rustgis_engine::data::secrets::MemorySecrets;
+        use powergis_engine::data::secrets::MemorySecrets;
         use std::sync::Arc;
         let app = || {
-            RustGisApp::with_sample().with_services(crate::Services { secrets: Some(Arc::new(MemorySecrets::new())), ..Default::default() })
+            powergisApp::with_sample().with_services(crate::Services { secrets: Some(Arc::new(MemorySecrets::new())), ..Default::default() })
         };
         let mut a = app();
         let mut b = app();
@@ -796,7 +796,7 @@ mod tests {
         let id = v["id"].as_str().unwrap();
         a.run("connection.login", json!({"id":id,"accessKeyId":"UIOWNERKEYA","secretAccessKey":"ui-owner-secret-a","remember":true}))
             .unwrap();
-        b.session.connections = rustgis_engine::connections::Connections::from_json(&a.session.connections.to_json());
+        b.session.connections = powergis_engine::connections::Connections::from_json(&a.session.connections.to_json());
         b.run("connection.login", json!({"id":id,"accessKeyId":"UIOWNERKEYB","secretAccessKey":"ui-owner-secret-b","remember":true}))
             .unwrap();
         let c = b.session.connections.find(id).unwrap().clone();
@@ -813,7 +813,7 @@ mod tests {
 
     #[test]
     fn s3_saved_picker_retains_ordinary_session_login_semantics() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let name = "s3-ui-unmapped-session";
         app.run(
             "s3.connect",

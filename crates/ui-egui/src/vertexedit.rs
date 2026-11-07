@@ -4,11 +4,11 @@
 //! `edit.moveSharedVertex`; other edits use `edit.vertex`. Each is one command for undo and rules.
 
 use egui::{Color32, Painter, Pos2, Rect, Stroke, vec2};
-use rustgis_engine::data::{Feature, Geometry, VertexId};
-use rustgis_engine::geom::Coord;
+use powergis_engine::data::{Feature, Geometry, VertexId};
+use powergis_engine::geom::Coord;
 use serde_json::json;
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::mapview::{lonlat_to_screen, screen_to_lonlat};
 
 /// How near (points) the pointer must be to a vertex, a midpoint or an edge to take it.
@@ -51,7 +51,7 @@ pub(crate) struct DragOwner {
 impl DragOwner {
     /// Captures the selected source's allocation, not a global revision: styling or moving the
     /// camera can change the session revision without changing the gesture's source.
-    fn capture(app: &RustGisApp, d: VertexDrag) -> Option<Self> {
+    fn capture(app: &powergisApp, d: VertexDrag) -> Option<Self> {
         let map = app.session.map();
         let layer = map.layer(d.layer)?;
         Some(Self {
@@ -67,13 +67,13 @@ impl DragOwner {
 
     /// A gesture is usable only in its original context while its source is still an editable
     /// target. Row edits or a changed shared mode cancel; styles and camera changes do not.
-    fn matches(&self, app: &RustGisApp, d: VertexDrag) -> bool {
+    fn matches(&self, app: &powergisApp, d: VertexDrag) -> bool {
         let map = app.session.map();
         self.project == app.session.opened
             && self.map == app.session.project.active_map
             && self.map_name == map.name
             && self.shared == app.map.move_shared_vertices
-            && app.session.tool == rustgis_engine::Tool::EditVertices
+            && app.session.tool == powergis_engine::Tool::EditVertices
             && map.layer(d.layer).is_some_and(|l| self.rows.ptr_eq(&l.dataset.features.allocation_key()))
             && targets(app).iter().any(|(l, r, g)| *l == d.layer && *r == d.row && g.vertex(d.vertex).is_some())
     }
@@ -81,7 +81,7 @@ impl DragOwner {
 
 /// Drops a stale preview and its pending pointer release before either can act on new source
 /// rows. This also runs when a map is shown without pointer movement; cancellation creates no edit.
-pub(crate) fn cancel_stale_drag(app: &mut RustGisApp) {
+pub(crate) fn cancel_stale_drag(app: &mut powergisApp) {
     let Some(d) = app.map.vertex_drag else {
         app.map.vertex_drag_owner = None;
         return;
@@ -101,7 +101,7 @@ enum Handle {
 
 /// The features whose vertices the tool edits: the selected features of visible feature layers
 /// held in memory (a layer read in place from its file can't be edited), when editing is on.
-fn targets(app: &RustGisApp) -> Vec<(u32, usize, &Geometry)> {
+fn targets(app: &powergisApp) -> Vec<(u32, usize, &Geometry)> {
     let m = app.session.map();
     if !m.editing.settings.enabled {
         return Vec::new();
@@ -121,7 +121,7 @@ fn targets(app: &RustGisApp) -> Vec<(u32, usize, &Geometry)> {
 }
 
 /// The screen points of an edge's ends, when both are in view.
-fn edge_on_screen(app: &RustGisApp, rect: Rect, a: Coord, b: Coord) -> Option<(Pos2, Pos2)> {
+fn edge_on_screen(app: &powergisApp, rect: Rect, a: Coord, b: Coord) -> Option<(Pos2, Pos2)> {
     Some((lonlat_to_screen(app, rect, a)?, lonlat_to_screen(app, rect, b)?))
 }
 
@@ -134,7 +134,7 @@ fn nearest_on(a: Pos2, b: Pos2, p: Pos2) -> Pos2 {
 }
 
 /// The handle under a screen point: a vertex first, then a midpoint, then an edge.
-fn handle_at(app: &RustGisApp, rect: Rect, p: Pos2) -> Option<Handle> {
+fn handle_at(app: &powergisApp, rect: Rect, p: Pos2) -> Option<Handle> {
     // Features nowhere near the pointer aren't searched: their extents (in degrees) padded by
     // the reach of a handle around it.
     let near = screen_to_lonlat(app, rect, p).map(|c| {
@@ -183,7 +183,7 @@ fn handle_at(app: &RustGisApp, rect: Rect, p: Pos2) -> Option<Handle> {
 
 /// A press at `origin` starts dragging the vertex or midpoint there, capturing the source rows
 /// and map context before previewing. A later source change cancels rather than retargets it.
-pub fn drag_start(app: &mut RustGisApp, rect: Rect, origin: Pos2) -> bool {
+pub fn drag_start(app: &mut powergisApp, rect: Rect, origin: Pos2) -> bool {
     let drag = match handle_at(app, rect, origin) {
         Some(Handle::Vertex(layer, row, vertex, at)) => VertexDrag { layer, row, vertex, insert: false, at, snapped: false },
         Some(Handle::Edge(layer, row, vertex, at)) => VertexDrag { layer, row, vertex, insert: true, at, snapped: false },
@@ -200,15 +200,15 @@ pub fn drag_start(app: &mut RustGisApp, rect: Rect, origin: Pos2) -> bool {
 /// Point/multipoint moves keep whole-feature exclusion. An insertion also excludes its whole
 /// feature, so its source edge cannot become a target. Stale source ownership cancels first,
 /// even when this pointer position cannot be projected.
-pub fn drag_to(app: &mut RustGisApp, rect: Rect, p: Pos2) {
+pub fn drag_to(app: &mut powergisApp, rect: Rect, p: Pos2) {
     cancel_stale_drag(app);
     let Some(c) = screen_to_lonlat(app, rect, p) else { return };
     let Some(d) = app.map.vertex_drag else { return };
     // Asked directly, not as a command: commands mark the map changed, redrawing it every frame.
     let snap = if d.insert {
-        rustgis_engine::cmd::design::snap_except(&mut app.session, c, Some((d.layer, d.row)))
+        powergis_engine::cmd::design::snap_except(&mut app.session, c, Some((d.layer, d.row)))
     } else {
-        rustgis_engine::cmd::design::snap_vertex_except(&mut app.session, c, Some((d.layer, d.row, d.vertex)))
+        powergis_engine::cmd::design::snap_vertex_except(&mut app.session, c, Some((d.layer, d.row, d.vertex)))
     };
     if let Some(d) = &mut app.map.vertex_drag {
         d.at = snap.map_or(c, |(at, _)| at);
@@ -218,7 +218,7 @@ pub fn drag_to(app: &mut RustGisApp, rect: Rect, p: Pos2) {
 
 /// Letting go commits a still-owned move or insertion as one edit. A queued release after a
 /// source/context change is discarded, preserving the current geometry and undo/redo history.
-pub fn drag_stop(app: &mut RustGisApp) {
+pub fn drag_stop(app: &mut powergisApp) {
     // Cancellation also drops the pending Vertex pointer action, swallowing a stale release.
     cancel_stale_drag(app);
     let Some(d) = app.map.vertex_drag.take() else { return };
@@ -234,7 +234,7 @@ pub fn drag_stop(app: &mut RustGisApp) {
 
 /// Sends a polygon move through the shared command only when opted in; insertion and other
 /// geometry kinds retain `edit.vertex`. Held drags check ownership; edge clicks commit directly.
-fn commit(app: &mut RustGisApp, d: VertexDrag) {
+fn commit(app: &mut powergisApp, d: VertexDrag) {
     let action = if d.insert { "insert" } else { "move" };
     let mut p = json!({
         "layer": d.layer, "row": d.row, "action": action,
@@ -267,7 +267,7 @@ fn commit(app: &mut RustGisApp, d: VertexDrag) {
 
 /// A click chooses the vertex under it, inserts a vertex on the edge under it, or else selects
 /// the feature there (Shift adds it to the selection).
-pub fn click(app: &mut RustGisApp, rect: Rect, p: Pos2, c: Coord, shift: bool) {
+pub fn click(app: &mut powergisApp, rect: Rect, p: Pos2, c: Coord, shift: bool) {
     match handle_at(app, rect, p) {
         Some(Handle::Vertex(layer, row, v, _)) => app.map.vertex = Some((layer, row, v)),
         Some(Handle::Edge(layer, row, vertex, at)) => commit(app, VertexDrag { layer, row, vertex, insert: true, at, snapped: false }),
@@ -280,7 +280,7 @@ pub fn click(app: &mut RustGisApp, rect: Rect, p: Pos2, c: Coord, shift: bool) {
 }
 
 /// Delete removes the chosen vertex; `false` when none is chosen.
-pub fn delete_chosen(app: &mut RustGisApp) -> bool {
+pub fn delete_chosen(app: &mut powergisApp) -> bool {
     let Some((layer, row, v)) = app.map.vertex else { return false };
     // A vertex chosen before an undo, or on a feature no longer selected, is gone: Delete then
     // deletes the selected features as usual.
@@ -311,7 +311,7 @@ fn neighbours(g: &Geometry, v: VertexId) -> Vec<Coord> {
 }
 
 /// The original coordinate shared by a polygon move, before any projected preview is drawn.
-fn shared_origin(app: &RustGisApp, d: VertexDrag) -> Option<Coord> {
+fn shared_origin(app: &powergisApp, d: VertexDrag) -> Option<Coord> {
     if !app.map.move_shared_vertices || d.insert {
         return None;
     }
@@ -354,7 +354,7 @@ fn shared_edges<'a>(features: impl Iterator<Item = &'a Feature>, original: Coord
 
 /// Reprojects only the cached incident edges, including unselected neighbours. Each frame's
 /// shared overlay work is bounded independently of layer size and never mutates source rows.
-fn draw_shared(app: &RustGisApp, p: &Painter, rect: Rect, d: VertexDrag, preview: &SharedPreview, accent: Color32) {
+fn draw_shared(app: &powergisApp, p: &Painter, rect: Rect, d: VertexDrag, preview: &SharedPreview, accent: Color32) {
     for &(a, b) in &preview.edges {
         let a = if a == preview.original { d.at } else { a };
         let b = if b == preview.original { d.at } else { b };
@@ -365,7 +365,7 @@ fn draw_shared(app: &RustGisApp, p: &Painter, rect: Rect, d: VertexDrag, preview
 }
 
 /// The pointer's cursor over a handle.
-pub fn cursor(app: &RustGisApp, rect: Rect, p: Pos2) -> Option<egui::CursorIcon> {
+pub fn cursor(app: &powergisApp, rect: Rect, p: Pos2) -> Option<egui::CursorIcon> {
     if app.map.vertex_drag.is_some() {
         return Some(egui::CursorIcon::Grabbing);
     }
@@ -376,7 +376,7 @@ pub fn cursor(app: &RustGisApp, rect: Rect, p: Pos2) -> Option<egui::CursorIcon>
 }
 
 /// Draws the handles, the chosen vertex and, mid-drag, the edges the vertex pulls.
-pub fn draw(app: &RustGisApp, p: &Painter, rect: Rect, accent: Color32) {
+pub fn draw(app: &powergisApp, p: &Painter, rect: Rect, accent: Color32) {
     let green = Color32::from_rgb(0x16, 0x9A, 0x5A);
     let drag = app.map.vertex_drag;
     let shared = drag.and_then(|d| app.map.vertex_drag_owner.as_ref()?.preview.as_ref().map(|preview| (d, preview)));
@@ -443,7 +443,7 @@ pub fn draw(app: &RustGisApp, p: &Painter, rect: Rect, accent: Color32) {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use rustgis_engine::{Project, Session, data::Dataset};
+    use powergis_engine::{Project, Session, data::Dataset};
 
     std::thread_local! {
         /// Deterministic traversal evidence, confined to the current test thread.
@@ -462,9 +462,9 @@ mod tests {
     }
 
     /// Only the first row is selected; remaining rows must still participate in shared moves.
-    fn app(geometries: impl Iterator<Item = Geometry>) -> RustGisApp {
+    fn app(geometries: impl Iterator<Item = Geometry>) -> powergisApp {
         let mut session = Session::new(Project::new("Shared preview cache"));
-        let mut data = Dataset::new("Parcels", rustgis_engine::data::GeometryType::Polygon, vec![]);
+        let mut data = Dataset::new("Parcels", powergis_engine::data::GeometryType::Polygon, vec![]);
         data.features =
             geometries.enumerate().map(|(id, g)| Feature { id: id as u64, geometry: Some(g), attrs: vec![] }).collect::<Vec<_>>().into();
         let id = session.map_mut().add_dataset(data);
@@ -472,7 +472,7 @@ mod tests {
         session.map_mut().layer_mut(id).unwrap().selection = vec![0];
         session.map_mut().camera.res = 1000.;
         session.map_mut().editing.snapping.enabled = false;
-        let mut app = RustGisApp::new(session);
+        let mut app = powergisApp::new(session);
         app.run("tool.set", json!({"tool":"editVertices"})).unwrap();
         app.run("ui.moveSharedVertices", json!({"on":true})).unwrap();
         app.session.clear_history();

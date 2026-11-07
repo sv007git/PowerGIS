@@ -3,8 +3,8 @@
 
 use std::path::Path;
 
-use rustgis_data::raster::Crs;
-use rustgis_render::View;
+use powergis_data::raster::Crs;
+use powergis_render::View;
 use serde_json::{Value, json};
 
 use super::{f, need_layer, ps};
@@ -22,7 +22,7 @@ pub fn commands() -> Vec<C> {
         C::new("share.exportTable", "Export Table", "Publish › Output", |s, p| {
             let path = ps(p, "path").ok_or("path is required")?;
             let t = s.project.tables.get(s.table_index(p)?).ok_or("no such table")?;
-            rustgis_data::io::write_path(&t.dataset, Path::new(path)).map_err(|e| e.to_string())?;
+            powergis_data::io::write_path(&t.dataset, Path::new(path)).map_err(|e| e.to_string())?;
             Ok(json!({"path": path}))
         })
         .params(
@@ -48,7 +48,7 @@ pub fn map_png(s: &mut Session, width: Option<f64>, height: Option<f64>, dpi: Op
         camera.clamp();
     }
     let view = View { width: w, height: h, pixels_per_point: ppp, camera, sky: false };
-    rustgis_render::render_png(s.map_mut(), &view)
+    powergis_render::render_png(s.map_mut(), &view)
 }
 
 /// The map view on one PDF page (for printing): the page is the view's shape at 96 points per
@@ -58,10 +58,10 @@ pub fn map_pdf(s: &mut Session, dpi: f64) -> Result<Vec<u8>, String> {
     let ppp = (dpi / 96.0).clamp(0.5, 6.0);
     let view =
         View { width: vw.clamp(16.0, 8000.0), height: vh.clamp(16.0, 8000.0), pixels_per_point: ppp, camera: s.map().camera, sky: false };
-    let png = rustgis_render::render_png(s.map_mut(), &view)?;
-    let pm = rustgis_render::decode_png(&png).ok_or("could not draw the map")?;
+    let png = powergis_render::render_png(s.map_mut(), &view)?;
+    let pm = powergis_render::decode_png(&png).ok_or("could not draw the map")?;
     let mm = |pt: f64| pt * 25.4 / 96.0;
-    Ok(rustgis_render::pdf::write(&[rustgis_render::pdf::Page::new(&pm, mm(view.width), mm(view.height))], &s.map().name))
+    Ok(powergis_render::pdf::write(&[powergis_render::pdf::Page::new(&pm, mm(view.width), mm(view.height))], &s.map().name))
 }
 
 fn export_map(s: &mut Session, p: &Value) -> CmdResult {
@@ -69,7 +69,7 @@ fn export_map(s: &mut Session, p: &Value) -> CmdResult {
     // A style added with its own view: the export waits for it to load, as it does for tiles.
     super::tiles::follow_style_view(s, web_time::Duration::from_secs(30));
     let png = map_png(s, f(p, "width"), f(p, "height"), f(p, "dpi"))?;
-    rustgis_data::io::write_atomic(std::path::Path::new(&path), &png).map_err(|e| format!("{path}: {e}"))?;
+    powergis_data::io::write_atomic(std::path::Path::new(&path), &png).map_err(|e| format!("{path}: {e}"))?;
     s.notify(format!("Exported {path}"), false);
     Ok(json!({"path": path, "bytes": png.len()}))
 }
@@ -83,22 +83,22 @@ fn export_layer(s: &mut Session, p: &Value) -> CmdResult {
     let ext = Path::new(&path).extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
     // A streamed layer exports its whole source, not the features read for the view: a chunk at
     // a time where the source and format allow, so its size isn't limited by memory.
-    let chunks = if l.is_streamed() && rustgis_data::export::streams(&ext) { l.chunk_export()? } else { None };
+    let chunks = if l.is_streamed() && powergis_data::export::streams(&ext) { l.chunk_export()? } else { None };
     let whole = if l.is_streamed() && chunks.is_none() { Some(l.load_all()?) } else { None };
     let ds = chunks.as_ref().map(|(_, layer)| layer).or(whole.as_ref()).unwrap_or(&l.dataset);
     // GeoJSON, KML and GPX are longitude/latitude; the others keep the layer's own system unless
     // told another.
     let crs = match ps(p, "crs").map(str::trim).filter(|c| !c.is_empty()) {
         Some(text) => Crs::parse(text)?,
-        None => rustgis_data::io::default_export_crs(ds, &ext),
+        None => powergis_data::io::default_export_crs(ds, &ext),
     };
     let (written, left_out) = match &chunks {
         Some((src, layer)) => {
-            let e = rustgis_data::export::write_source_in(src.as_ref(), layer, Path::new(&path), crs).map_err(|e| e.to_string())?;
+            let e = powergis_data::export::write_source_in(src.as_ref(), layer, Path::new(&path), crs).map_err(|e| e.to_string())?;
             (e.written, e.left_out)
         }
         None => {
-            let left_out = rustgis_data::io::write_path_in(ds, Path::new(&path), crs).map_err(|e| e.to_string())?;
+            let left_out = powergis_data::io::write_path_in(ds, Path::new(&path), crs).map_err(|e| e.to_string())?;
             (ds.features.len().saturating_sub(left_out), left_out)
         }
     };
@@ -107,7 +107,7 @@ fn export_layer(s: &mut Session, p: &Value) -> CmdResult {
     if left_out > 0 {
         s.notify(format!("{path}: {left_out} features without drawable geometry were left out"), false);
     }
-    if matches!(ext.as_str(), "shp" | "zip") && rustgis_data::raster::wkt::to_wkt(crs).is_none() {
+    if matches!(ext.as_str(), "shp" | "zip") && powergis_data::raster::wkt::to_wkt(crs).is_none() {
         s.notify(format!("{path}: no .prj written, as {} has no WKT form", crs.label()), false);
     }
     s.notify(format!("Exported {path}"), false);

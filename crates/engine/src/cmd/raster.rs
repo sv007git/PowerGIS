@@ -4,12 +4,12 @@
 use std::path::Path;
 use std::sync::Arc;
 
-use rustgis_data::raster::{self, Raster};
-use rustgis_geom::Extent;
-use rustgis_map::raster::{
+use powergis_data::raster::{self, Raster};
+use powergis_geom::Extent;
+use powergis_map::raster::{
     Normalizer, RasterLayer, RasterMask, RasterRenderer, RasterStyle, Resampling, Stretch, classify_masked, unique_values,
 };
-use rustgis_map::{ClassMethod, Ramp, RasterDefaults};
+use powergis_map::{ClassMethod, Ramp, RasterDefaults};
 use serde_json::{Value, json};
 
 use super::{b, f, ps};
@@ -427,7 +427,7 @@ pub fn add_path(s: &mut Session, path: &str, name: Option<&str>, scan: bool) -> 
 /// subdataset (a NetCDF variable) and `"crs"` gives a coordinate system the file doesn't say.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn add_gdal_path(s: &mut Session, p: &Value, path: &str) -> CmdResult {
-    use rustgis_data::raster::gdal;
+    use powergis_data::raster::gdal;
     let text = |k: &str| ps(p, k).map(str::trim).filter(|v| !v.is_empty());
     let c = gdal::convert(Path::new(path), text("layer"), text("crs")).map_err(|e| format!("{path}: {e}"))?;
     let r = raster::read_converted(Path::new(path), &c).map_err(|e| format!("{path}: {e}"))?;
@@ -481,7 +481,7 @@ pub(crate) fn add_named_bytes(s: &mut Session, p: &Value, name: String, bytes: V
     // A geotagged photo (an upload, a drop): a point in the photo layer, so several uploads
     // gather in one.
     let scan = wants_scan(p, &name)?;
-    if !scan && rustgis_data::photo::is_photo_name(&name) {
+    if !scan && powergis_data::photo::is_photo_name(&name) {
         let layer = ps(p, "name").map(str::trim).filter(|n| !n.is_empty()).unwrap_or(super::layer::PHOTOS).to_string();
         return super::layer::add_photos_to(s, &layer, |reader| reader.add(&name, &bytes));
     }
@@ -501,8 +501,8 @@ pub(crate) fn add_named_bytes(s: &mut Session, p: &Value, name: String, bytes: V
         return add_raster(s, &title, RasterLayer::from_bytes(r, name, bytes));
     }
     // An MBTiles archive: held in memory and drawn as a tile layer.
-    if rustgis_data::mbtiles::is_mbtiles_name(&name) {
-        let url = crate::render::rustgis_tiles::mbtiles::register(&name, &bytes)?;
+    if powergis_data::mbtiles::is_mbtiles_name(&name) {
+        let url = crate::render::powergis_tiles::mbtiles::register(&name, &bytes)?;
         let mut q = json!({"url": url, "kind": "mbtiles", "top": true});
         if let Some(n) = ps(p, "name") {
             q["name"] = json!(n);
@@ -510,15 +510,15 @@ pub(crate) fn add_named_bytes(s: &mut Session, p: &Value, name: String, bytes: V
         return super::tiles::add(s, &q);
     }
     // A spreadsheet's sheet.
-    if rustgis_data::sheets::is_sheet_name(&name) {
+    if powergis_data::sheets::is_sheet_name(&name) {
         return super::layer::add_sheet(s, p, &name, &bytes);
     }
     // Files of several layers: zipped Shapefiles, KML/KMZ, GPX, GeoRSS, LandXML.
-    if rustgis_data::io::is_multi_layer_name(&name) {
+    if powergis_data::io::is_multi_layer_name(&name) {
         return super::layer::add_layers(s, p, &name, &bytes);
     }
     // GeoParquet and FlatGeobuf uploads (binary vector files).
-    if rustgis_data::source::is_source_name(&name) {
+    if powergis_data::source::is_source_name(&name) {
         return super::layer::add_source(s, p, super::layer::Origin::Bytes(&name, std::sync::Arc::new(bytes)));
     }
     let text = String::from_utf8(bytes).map_err(|_| format!("{name} is not a text file"))?;
@@ -786,7 +786,7 @@ fn export(s: &mut Session, p: &Value) -> CmdResult {
         cog = Some(raster::cogwrite::write_file(&r, bi, Path::new(&path)).map_err(|e| format!("{path}: {e}"))?);
     } else {
         let (_, bytes) = geotiff_bytes(s, p)?;
-        rustgis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+        powergis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
     }
     let note = match r.overview {
         Some((fw, fh)) => format!(" (the {} × {} overview of the {fw} × {fh} raster)", r.width, r.height),
@@ -806,7 +806,7 @@ fn export(s: &mut Session, p: &Value) -> CmdResult {
 /// Pixel values of the topmost visible raster under a longitude/latitude point.
 pub fn identify(s: &Session, lon: f64, lat: f64) -> Option<Value> {
     let scale = s.scale();
-    let c = rustgis_geom::Coord::new(lon, lat);
+    let c = powergis_geom::Coord::new(lon, lat);
     s.map().layers.iter().filter(|l| s.map().draws_at(l, scale)).find_map(|l| {
         let r = l.raster.as_ref()?.data.as_ref()?;
         let (col, row) = r.pixel_at(c)?;
@@ -816,7 +816,7 @@ pub fn identify(s: &Session, lon: f64, lat: f64) -> Option<Value> {
         }
         let mut attrs = serde_json::Map::new();
         for (b, v) in r.bands.iter().zip(&vals) {
-            attrs.insert(b.name.clone(), json!(v.map(|v| rustgis_map::symbology::fmt_num(v as f64)).unwrap_or_else(|| "NoData".into())));
+            attrs.insert(b.name.clone(), json!(v.map(|v| powergis_map::symbology::fmt_num(v as f64)).unwrap_or_else(|| "NoData".into())));
         }
         attrs.insert("Pixel".into(), json!(format!("{col}, {row}")));
         Some(json!({"layer": l.name, "layerId": l.id, "raster": true, "attributes": attrs}))

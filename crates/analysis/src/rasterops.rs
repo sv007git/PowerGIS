@@ -4,8 +4,8 @@
 
 use std::ops::Range;
 
-use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, Transformer};
-use rustgis_geom::{Coord, Extent};
+use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, Transformer};
+use powergis_geom::{Coord, Extent};
 
 /// The no-data value written by these operations.
 pub const NODATA: f32 = -3.4e38;
@@ -211,7 +211,7 @@ pub fn weighted_overlay(criteria: &[(Vec<f32>, f64)]) -> Result<Vec<f32>, String
 
 /// Metres between two longitude/latitude points.
 fn dist_m(a: Coord, b: Coord) -> f64 {
-    rustgis_geom::haversine_m(a, b)
+    powergis_geom::haversine_m(a, b)
 }
 
 /// Elevation (bilinear) at a longitude/latitude point.
@@ -543,7 +543,7 @@ pub fn zonal_means(r: &Raster, bands: &[usize], rings: &[Vec<Coord>]) -> Option<
         for col in 0..r.width as i64 {
             let w = r.transform.to_world(col as f64 + 0.5, row as f64 + 0.5);
             let Some(ll) = r.transformer().to_lonlat(w) else { continue };
-            if !e.contains(ll) || !rustgis_data::geometry::polygon_contains(rings, ll) {
+            if !e.contains(ll) || !powergis_data::geometry::polygon_contains(rings, ll) {
                 continue;
             }
             let vals: Option<Vec<f64>> = bands.iter().map(|b| r.value(*b, col, row).map(f64::from)).collect();

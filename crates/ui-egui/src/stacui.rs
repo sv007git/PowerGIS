@@ -7,10 +7,10 @@
 //! A static catalog (a `catalog.json` or `collection.json` rather than an API) is browsed: its
 //! child catalogs and collections are picked from a list, and Find Items walks the tree from the
 //! one picked, several documents at a time, filtering the items found here (see
-//! `rustgis_tiles::stac::catalog`). Web Data's services are presets of the dialog ([`Preset`]).
+//! `powergis_tiles::stac::catalog`). Web Data's services are presets of the dialog ([`Preset`]).
 
 use egui::vec2;
-use rustgis_engine::render::rustgis_tiles::{
+use powergis_engine::render::powergis_tiles::{
     cache,
     stac::{
         self, Item,
@@ -19,7 +19,7 @@ use rustgis_engine::render::rustgis_tiles::{
 };
 use serde_json::json;
 
-use crate::{RustGisApp, Slot, i18n};
+use crate::{powergisApp, Slot, i18n};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -236,7 +236,7 @@ const THUMB_BYTES: usize = 2 << 20;
 const THUMBS_PER_FRAME: usize = 4;
 
 /// Lands preview pictures: decoded (bounded in size) and made textures.
-fn poll_thumbs(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll_thumbs(app: &mut powergisApp, ctx: &egui::Context) {
     let mut loading = false;
     let mut decoded = 0;
     for (url, t) in app.ui.stac.thumbs.iter_mut() {
@@ -279,7 +279,7 @@ fn want_thumbs(st: &mut State) {
             continue;
         }
         let ok = !stac::needs_signing(&a.href)
-            && rustgis_engine::render::rustgis_tiles::address::check(
+            && powergis_engine::render::powergis_tiles::address::check(
                 &a.href,
                 Some(item.origin.as_deref().unwrap_or("https://item.invalid/")),
             )
@@ -295,7 +295,7 @@ fn want_thumbs(st: &mut State) {
 }
 
 /// Lands collections and search results.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     poll_thumbs(app, ctx);
     poll_walk(app, ctx);
     let Some((_, slot)) = &app.ui.stac.waiting else { return };
@@ -371,7 +371,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 
 /// Drives a static catalog's walk: lands the documents fetched, asks for the next ones (a few at
 /// a time) and, once it is over, shows the items found.
-fn poll_walk(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll_walk(app: &mut powergisApp, ctx: &egui::Context) {
     let Some((walk, fetching)) = &mut app.ui.stac.walk else { return };
     let mut i = 0;
     while let Some((url, slot)) = fetching.get(i) {
@@ -427,7 +427,7 @@ fn poll_walk(app: &mut RustGisApp, ctx: &egui::Context) {
 /// set up for it: a static catalog's children are fetched. `{"catalog": address}` browses to a
 /// catalog or collection below it, `{"phase": "pre" | "post"}` sets the phase and
 /// `{"search": true}` finds items at once.
-pub fn open_preset(app: &mut RustGisApp, preset: Option<Preset>, p: &serde_json::Value) -> Result<(), String> {
+pub fn open_preset(app: &mut powergisApp, preset: Option<Preset>, p: &serde_json::Value) -> Result<(), String> {
     app.run("ui.dialog", serde_json::json!({"name": "stac"}))?;
     if let Some(preset) = preset
         && shown_preset(&app.ui.stac) != Some(preset)
@@ -458,7 +458,7 @@ pub fn open_preset(app: &mut RustGisApp, preset: Option<Preset>, p: &serde_json:
     }
     // A catalog or collection below the static catalog's top, by its address.
     if let Some(url) = p.get("catalog").and_then(serde_json::Value::as_str).map(str::trim).filter(|u| !u.is_empty()) {
-        rustgis_engine::render::rustgis_tiles::address::check(url, None)?;
+        powergis_engine::render::powergis_tiles::address::check(url, None)?;
         if !catalog::is_static(&app.ui.stac.api) {
             return Err("catalog is a static STAC catalog's catalog.json or collection.json".into());
         }
@@ -496,7 +496,7 @@ fn days_ago(n: u64) -> String {
 
 /// Adds an asset by its address, signing it first when it needs it (a token in hand is used; one
 /// still to fetch is fetched off the frame, and the asset added when it lands).
-fn add_signed(app: &mut RustGisApp, href: &str, name: &str) {
+fn add_signed(app: &mut powergisApp, href: &str, name: &str) {
     if !stac::needs_signing(href) {
         return add_url(app, href, name);
     }
@@ -513,14 +513,14 @@ fn add_signed(app: &mut RustGisApp, href: &str, name: &str) {
     }
 }
 
-fn add_url(app: &mut RustGisApp, href: &str, name: &str) {
+fn add_url(app: &mut powergisApp, href: &str, name: &str) {
     if let Err(e) = app.run("ui.addUrl", json!({"url": href, "name": name, "zoom": true})) {
         app.ui.stac.error = Some(e);
     }
 }
 
 /// Adds an item's asset (the one named, else the default) under the item's name.
-fn add_item_asset(app: &mut RustGisApp, item: &Item, key: Option<&str>) {
+fn add_item_asset(app: &mut powergisApp, item: &Item, key: Option<&str>) {
     match item.asset_href(key) {
         Ok((key, href)) => add_signed(app, &href, &format!("{} {key}", item.id)),
         Err(e) => app.ui.stac.error = Some(e),
@@ -529,9 +529,9 @@ fn add_item_asset(app: &mut RustGisApp, item: &Item, key: Option<&str>) {
 
 /// Opens the dialog on an item's or a collection's address (a `?stac=` link), fetching it off
 /// the frame.
-pub fn open_link(app: &mut RustGisApp, url: &str) -> Result<(), String> {
+pub fn open_link(app: &mut powergisApp, url: &str) -> Result<(), String> {
     let url = url.trim();
-    rustgis_engine::render::rustgis_tiles::address::check(url, None)?;
+    powergis_engine::render::powergis_tiles::address::check(url, None)?;
     app.run("ui.dialog", serde_json::json!({"name": "stac"}))?;
     let slot = fetch(url);
     app.ui.stac.error = None;
@@ -542,7 +542,7 @@ pub fn open_link(app: &mut RustGisApp, url: &str) -> Result<(), String> {
 
 /// A linked document: an item is shown and its default asset added; a collection is chosen in the
 /// dialog, with its API, ready to search.
-fn landed_link(app: &mut RustGisApp, url: &str, r: Result<Vec<u8>, String>) {
+fn landed_link(app: &mut powergisApp, url: &str, r: Result<Vec<u8>, String>) {
     let bytes = match r {
         Ok(b) => b,
         Err(e) => {
@@ -557,7 +557,7 @@ fn landed_link(app: &mut RustGisApp, url: &str, r: Result<Vec<u8>, String>) {
     let api = stac::api_of(&bytes, url);
     // Without one, the dialog keeps its API, and says which it is.
     let unknown =
-        |app: &RustGisApp| i18n::fmt("The link doesn't say its STAC API: Find Items searches {api}", &[("api", &app.ui.stac.api)]);
+        |app: &powergisApp| i18n::fmt("The link doesn't say its STAC API: Find Items searches {api}", &[("api", &app.ui.stac.api)]);
     match kind {
         Some((t, _)) if t == "Feature" => match stac::parse_item(&bytes, url) {
             Ok(mut item) => {
@@ -595,13 +595,13 @@ fn landed_link(app: &mut RustGisApp, url: &str, r: Result<Vec<u8>, String>) {
 }
 
 /// Replaces the last search's footprints with this one's, and frames them.
-fn show_footprints(app: &mut RustGisApp) {
+fn show_footprints(app: &mut powergisApp) {
     if let Some(old) = app.ui.stac.footprints.take()
         && app.session.map().layer(old).is_some()
     {
         let _ = app.run("layer.remove", json!({"layer": old}));
     }
-    let fc = rustgis_engine::render::rustgis_tiles::stac::footprints_geojson(&app.ui.stac.items);
+    let fc = powergis_engine::render::powergis_tiles::stac::footprints_geojson(&app.ui.stac.items);
     let added = if fc["features"].as_array().is_none_or(Vec::is_empty) {
         Ok(None)
     } else {
@@ -623,7 +623,7 @@ fn show_footprints(app: &mut RustGisApp) {
 
 /// Moves a static catalog's browsing to a node (`None`: the catalog itself) and fetches its
 /// children.
-fn browse(app: &mut RustGisApp, to: Option<(String, String)>) {
+fn browse(app: &mut powergisApp, to: Option<(String, String)>) {
     let st = &mut app.ui.stac;
     // A walk of the last node is dropped: its items aren't this one's.
     st.walk = None;
@@ -639,7 +639,7 @@ fn browse(app: &mut RustGisApp, to: Option<(String, String)>) {
 }
 
 /// Goes back up a static catalog to the node at `depth` in the trail.
-fn browse_up(app: &mut RustGisApp, depth: usize) {
+fn browse_up(app: &mut powergisApp, depth: usize) {
     let st = &mut app.ui.stac;
     st.walk = None;
     let Some((title, url)) = st.trail.get(depth).cloned() else { return };
@@ -649,12 +649,12 @@ fn browse_up(app: &mut RustGisApp, depth: usize) {
 }
 
 /// Fetches the children of the static catalog's node (or of the catalog itself).
-fn fetch_children(app: &mut RustGisApp) {
+fn fetch_children(app: &mut powergisApp) {
     let st = &mut app.ui.stac;
     st.children.clear();
     st.error = None;
     let url = if st.node.is_empty() { st.api.trim().to_string() } else { st.node.clone() };
-    if let Err(e) = rustgis_engine::render::rustgis_tiles::address::check(&url, None) {
+    if let Err(e) = powergis_engine::render::powergis_tiles::address::check(&url, None) {
         st.error = Some(e);
         return;
     }
@@ -669,7 +669,7 @@ fn shown_preset(st: &State) -> Option<Preset> {
 }
 
 /// The dialog's title: the Web Data service's, or STAC Search.
-pub fn title(app: &RustGisApp) -> &'static str {
+pub fn title(app: &powergisApp) -> &'static str {
     shown_preset(&app.ui.stac).map(Preset::title).unwrap_or("STAC Search")
 }
 
@@ -702,7 +702,7 @@ fn drop_listing(st: &mut State) {
 }
 
 /// The dialog.
-pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn dialog(app: &mut powergisApp, ui: &mut egui::Ui) {
     let busy = app.ui.stac.waiting.is_some() || app.ui.stac.walk.is_some();
     let is_static = catalog::is_static(&app.ui.stac.api);
     let mut list = false;
@@ -900,7 +900,7 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
 /// Add as Time Series (opengeos/PowerGIS#559): when an API's items span several dates, a band of
 /// them as a data cube on the time slider (`stac.addCube`), with an optional fixed range.
 #[cfg(not(target_arch = "wasm32"))]
-fn cube_row(app: &mut RustGisApp, ui: &mut egui::Ui, busy: bool) {
+fn cube_row(app: &mut powergisApp, ui: &mut egui::Ui, busy: bool) {
     let st = &app.ui.stac;
     if catalog::is_static(&st.api) || st.collection.trim().is_empty() {
         return;
@@ -991,7 +991,7 @@ fn cube_row(app: &mut RustGisApp, ui: &mut egui::Ui, busy: bool) {
 }
 
 /// Finds items: an API's search, or a walk of a static catalog from the node picked.
-fn find_items(app: &mut RustGisApp) {
+fn find_items(app: &mut powergisApp) {
     let st = &app.ui.stac;
     // A catalog's children still coming don't hold a search up.
     if st.walk.is_some() || st.waiting.as_ref().is_some_and(|(a, _)| !matches!(a, Asked::Children(_))) {
@@ -1022,13 +1022,13 @@ fn find_items(app: &mut RustGisApp) {
     if st.use_view {
         p["bbox"] = json!("view");
     }
-    let search = rustgis_engine::cmd::stac::search_params(&app.session, &p);
+    let search = powergis_engine::cmd::stac::search_params(&app.session, &p);
     app.ui.stac.asked_area = search.as_ref().ok().and_then(|s| s.bbox);
     app.ui.stac.error = None;
     if is_static {
         let st = &app.ui.stac;
         let root = if st.node.is_empty() { st.api.trim().to_string() } else { st.node.clone() };
-        let walk = rustgis_engine::render::rustgis_tiles::address::check(&root, None)
+        let walk = powergis_engine::render::powergis_tiles::address::check(&root, None)
             .and(search)
             .and_then(|s| Ok(Walk::new(&root, catalog::Filter::from_search(&s, Some(st.phase.as_str()))?, s.limit)));
         match walk {
@@ -1052,7 +1052,7 @@ fn find_items(app: &mut RustGisApp) {
 
 /// The items found, as cards: the preview picture, the item's id, its collection, date and cloud
 /// cover, and Zoom, the asset to add, Add and Details (its properties).
-fn results(app: &mut RustGisApp, ui: &mut egui::Ui) {
+fn results(app: &mut powergisApp, ui: &mut egui::Ui) {
     if app.ui.stac.items.is_empty() {
         return;
     }
@@ -1125,7 +1125,7 @@ fn results(app: &mut RustGisApp, ui: &mut egui::Ui) {
         app.ui.stac.details = if app.ui.stac.details == Some(i) { None } else { Some(i) };
     }
     if let Some(e) = zoom.and_then(|i| app.ui.stac.items.get(i)).and_then(|i| i.bbox) {
-        app.session.zoom_to(&rustgis_engine::geom::Extent::new(e[0], e[1], e[2], e[3]));
+        app.session.zoom_to(&powergis_engine::geom::Extent::new(e[0], e[1], e[2], e[3]));
         app.map.invalidate();
     }
     if let Some(i) = add {
@@ -1158,7 +1158,7 @@ fn properties(ui: &mut egui::Ui, i: usize, item: &Item) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::RustGisApp;
+    use crate::powergisApp;
 
     #[test]
     fn presets_open_the_dialog_set_up() {
@@ -1170,7 +1170,7 @@ mod tests {
         assert_eq!(State::default().collection, "sentinel-2-c1-l2a");
         let d = days_ago(0);
         assert!(d.len() == 10 && d.starts_with("20"), "{d}");
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         assert!(app.run("ui.stac.nope", json!({})).is_err());
         // An API's preset fetches nothing until Find Items.
         app.run("ui.stac.sentinel2", serde_json::Value::Null).unwrap();
@@ -1196,7 +1196,7 @@ mod tests {
     /// link being opened goes on.
     #[test]
     fn a_late_answer_from_the_previous_api_is_dropped() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let ctx = egui::Context::default();
         let late: Answer = Slot::default();
         app.ui.stac.api = "https://one.example/stac".into();
@@ -1227,14 +1227,14 @@ mod tests {
     #[test]
     fn a_catalog_picked_during_a_pending_listing_is_browsed() {
         use egui_kittest::kittest::Queryable;
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         // Nothing listens on port 9 of the loopback address: the browse is refused, harmlessly.
         app.run("connection.new", json!({"kind":"stac","name":"Local catalog","address":"http://127.0.0.1:9/catalog.json"})).unwrap();
         app.ui.stac.api = "https://one.example/stac".into();
         app.ui.stac.waiting = Some((Asked::Collections("https://one.example/stac".into()), Slot::default()));
         let mut h = egui_kittest::Harness::builder()
             .with_size(egui::vec2(900.0, 700.0))
-            .build_ui_state(|ui, app: &mut RustGisApp| dialog(app, ui), app);
+            .build_ui_state(|ui, app: &mut powergisApp| dialog(app, ui), app);
         h.step();
         h.step();
         h.query_all_by_role(egui::accesskit::Role::ComboBox).find(|n| n.value().as_deref() == Some("Other")).unwrap().click();

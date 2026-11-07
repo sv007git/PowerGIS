@@ -4,9 +4,9 @@
 use std::collections::{BTreeMap, HashMap};
 use std::path::Path;
 
-use rustgis_map::Layer;
-use rustgis_map::report::{Block, Doc, MAX_GROUPS, MAX_ITEMS, Report, ReportChart, Section, Stat, StatKind};
-use rustgis_map::symbology::fmt_num;
+use powergis_map::Layer;
+use powergis_map::report::{Block, Doc, MAX_GROUPS, MAX_ITEMS, Report, ReportChart, Section, Stat, StatKind};
+use powergis_map::symbology::fmt_num;
 use serde_json::{Value, json};
 
 use super::{b, f, ps};
@@ -218,7 +218,7 @@ pub fn commands() -> Vec<C> {
                 return Err("export to a .pdf or .png file".into());
             }
             let (bytes, pages) = report_bytes(s, i, dpi, pdf)?;
-            rustgis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"path": path, "pages": pages, "bytes": bytes.len()}))
         })
         .view()
@@ -310,7 +310,7 @@ fn add_section(s: &mut Session, p: &Value, sec: Section) -> CmdResult {
 
 /// Drops what a layer lacks from a report (fields, groups, statistics, sort, picture,
 /// attachments, chart, and a where clause it can't read), so the report draws on that layer.
-fn fit_to_layer(r: &mut Report, ds: &rustgis_data::Dataset) {
+fn fit_to_layer(r: &mut Report, ds: &powergis_data::Dataset) {
     let has = |n: &str| ds.field_index(n).is_some();
     r.fields.retain(|f| has(f));
     r.groups.retain(|f| has(f));
@@ -322,13 +322,13 @@ fn fit_to_layer(r: &mut Report, ds: &rustgis_data::Dataset) {
     if r.fields.is_empty() {
         r.fields = ds.fields.iter().take(MAX_ITEMS).map(|f| f.name.clone()).collect();
     }
-    if !r.where_clause.is_empty() && rustgis_data::query::parse(&r.where_clause, ds).is_err() {
+    if !r.where_clause.is_empty() && powergis_data::query::parse(&r.where_clause, ds).is_err() {
         r.where_clause.clear();
     }
 }
 
 /// A join key: numbers by value (so 1 and 1.0 match), anything else as text; empty for none.
-fn join_key(ds: &rustgis_data::Dataset, row: usize, fi: Option<usize>) -> String {
+fn join_key(ds: &powergis_data::Dataset, row: usize, fi: Option<usize>) -> String {
     match fi.and_then(|fi| ds.value(row, fi).as_f64()) {
         Some(x) => format!("{x}"),
         None => cell(ds, row, fi),
@@ -391,7 +391,7 @@ fn new_report(s: &mut Session, p: &Value) -> CmdResult {
     r.groups = fields_of("groups")?;
     r.groups.truncate(MAX_GROUPS);
     if let Some(w) = ps(p, "where").map(str::trim).filter(|w| !w.is_empty()) {
-        rustgis_data::query::parse(w, ds)?;
+        powergis_data::query::parse(w, ds)?;
         r.where_clause = w.to_string();
     }
     r.selected_only = b(p, "selectedOnly").unwrap_or(false);
@@ -469,7 +469,7 @@ fn update(s: &mut Session, p: &Value) -> CmdResult {
     if let Some(w) = ps(p, "where") {
         let w = w.trim();
         if !w.is_empty() {
-            rustgis_data::query::parse(w, &l.ok_or("the report's layer isn't in the project")?.dataset)?;
+            powergis_data::query::parse(w, &l.ok_or("the report's layer isn't in the project")?.dataset)?;
         }
         r.where_clause = w.to_string();
     }
@@ -529,7 +529,7 @@ fn subreport(s: &mut Session, p: &Value) -> CmdResult {
 }
 
 /// Every map's relationships.
-fn relationships(s: &Session) -> impl Iterator<Item = &rustgis_map::design::Relationship> {
+fn relationships(s: &Session) -> impl Iterator<Item = &powergis_map::design::Relationship> {
     s.project.maps.iter().flat_map(|m| m.editing.relationships.iter())
 }
 
@@ -537,7 +537,7 @@ fn save(s: &mut Session, p: &Value, template: bool) -> CmdResult {
     let path = ps(p, "path").ok_or("path is required")?;
     let i = index(s, p)?;
     let bytes = report_file(s, i, template)?;
-    rustgis_data::io::write_atomic(Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+    powergis_data::io::write_atomic(Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
     Ok(json!({"path": path}))
 }
 
@@ -578,15 +578,15 @@ fn open(s: &mut Session, p: &Value) -> CmdResult {
 }
 
 /// A record's value as report text (nulls blank).
-fn cell(ds: &rustgis_data::Dataset, row: usize, fi: Option<usize>) -> String {
+fn cell(ds: &powergis_data::Dataset, row: usize, fi: Option<usize>) -> String {
     match fi.map(|fi| ds.value(row, fi)) {
-        None | Some(rustgis_data::Value::Null) => String::new(),
+        None | Some(powergis_data::Value::Null) => String::new(),
         Some(v) => v.to_string(),
     }
 }
 
 /// Statistic lines for some records.
-fn stat_lines(r: &Report, ds: &rustgis_data::Dataset, rows: &[usize]) -> Vec<String> {
+fn stat_lines(r: &Report, ds: &powergis_data::Dataset, rows: &[usize]) -> Vec<String> {
     let mut out = vec![format!("{} records", rows.len())];
     for st in &r.stats {
         let fi = ds.field_index(&st.field);
@@ -621,7 +621,7 @@ fn picture_of(text: &str, folder: Option<&Path>) -> Option<(String, u32, u32)> {
     } else {
         super::graphics::picture(&json!({"image": t})).ok()?
     };
-    let (w, h) = rustgis_render::picture_size(&b64)?;
+    let (w, h) = powergis_render::picture_size(&b64)?;
     Some((b64, w, h))
 }
 
@@ -662,7 +662,7 @@ fn blocks(s: &Session, i: usize, out: &mut Vec<Block>, seen: &mut Vec<usize>, de
     }
     // The records: matching, selected, sorted by group then sort field.
     let mut rows: Vec<usize> =
-        if r.where_clause.trim().is_empty() { (0..ds.features.len()).collect() } else { rustgis_data::query::select(&r.where_clause, ds)? };
+        if r.where_clause.trim().is_empty() { (0..ds.features.len()).collect() } else { powergis_data::query::select(&r.where_clause, ds)? };
     if r.selected_only {
         let sel: std::collections::HashSet<usize> = layer.selection.iter().copied().collect();
         rows.retain(|row| sel.contains(row));
@@ -677,7 +677,7 @@ fn blocks(s: &Session, i: usize, out: &mut Vec<Block>, seen: &mut Vec<usize>, de
     }
     let key = |row: usize, fi: Option<usize>| -> Key {
         let v = fi.map(|fi| ds.value(row, fi));
-        match v.and_then(rustgis_data::Value::as_f64) {
+        match v.and_then(powergis_data::Value::as_f64) {
             Some(x) => Key::Num(x),
             None => Key::Text(v.map(ToString::to_string).unwrap_or_default()),
         }
@@ -728,7 +728,7 @@ fn blocks(s: &Session, i: usize, out: &mut Vec<Block>, seen: &mut Vec<usize>, de
     let mut pictures = 0usize;
     let mut picture_bytes = 0usize;
     // Subreports: related records per key value.
-    let subs: Vec<(String, Vec<String>, Vec<Option<usize>>, &rustgis_data::Dataset, HashMap<String, Vec<usize>>, Option<usize>)> = r
+    let subs: Vec<(String, Vec<String>, Vec<Option<usize>>, &powergis_data::Dataset, HashMap<String, Vec<usize>>, Option<usize>)> = r
         .sections
         .iter()
         .filter_map(|sec| {
@@ -900,9 +900,9 @@ fn blocks(s: &Session, i: usize, out: &mut Vec<Block>, seen: &mut Vec<usize>, de
 }
 
 /// The report's pages, laid out.
-pub fn pages(s: &Session, i: usize) -> Result<(Doc, Vec<rustgis_render::report::Page>), String> {
+pub fn pages(s: &Session, i: usize) -> Result<(Doc, Vec<powergis_render::report::Page>), String> {
     let doc = build(s, i)?;
-    let pages = rustgis_render::report::paginate(&doc);
+    let pages = powergis_render::report::paginate(&doc);
     Ok((doc, pages))
 }
 
@@ -913,16 +913,16 @@ pub fn report_bytes(s: &mut Session, i: usize, dpi: f64, pdf: bool) -> Result<(V
     let mut out = Vec::new();
     let mut held = 0usize;
     for k in 0..n {
-        let (img, w, h) = rustgis_render::report::draw_page(&doc, &pages, k, dpi, &s.project.layouts, &mut s.project.maps)
+        let (img, w, h) = powergis_render::report::draw_page(&doc, &pages, k, dpi, &s.project.layouts, &mut s.project.maps)
             .ok_or("the page is too large to draw")?;
         if !pdf {
             return Ok((img.encode_png().map_err(|e| e.to_string())?, pages.len()));
         }
-        out.push(rustgis_render::pdf::Page::new(&img, w, h));
-        held += out.last().map_or(0, rustgis_render::pdf::Page::len);
+        out.push(powergis_render::pdf::Page::new(&img, w, h));
+        held += out.last().map_or(0, powergis_render::pdf::Page::len);
         if held > PDF_BUDGET {
             return Err(format!("the PDF passed {} MB at page {}; export at a lower dpi", PDF_BUDGET >> 20, k + 1));
         }
     }
-    Ok((rustgis_render::pdf::write(&out, &doc.title), pages.len()))
+    Ok((powergis_render::pdf::write(&out, &doc.title), pages.len()))
 }

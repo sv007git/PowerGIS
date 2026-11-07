@@ -3,7 +3,7 @@
 ## Layouts
 
 <figure markdown="span">
-  ![A landscape A4 page layout with a map frame, title, legend, north arrow and scale bar, and the Publish tab open](https://assets.rustgis.app/images/layout.webp)
+  ![A landscape A4 page layout with a map frame, title, legend, north arrow and scale bar, and the Publish tab open](https://assets.powergis.app/images/layout.webp)
   <figcaption>A page layout with a map frame, title, legend, north arrow and scale bar.</figcaption>
 </figure>
 
@@ -297,7 +297,7 @@ The cells of a PowerGIS notebook contain PowerGIS commands, not Python, even in 
 A Jupyter notebook in another language, such as Python, or one that names no language, opens with
 its cells and outputs (text, results, errors and PNG images) but its code cells don't run here;
 saving it as `.ipynb` keeps its kernel, metadata, cell ids and outputs, so it still opens and runs
-in Jupyter. PowerGIS marks the `.ipynb` files it saves with the `rustgis` language, so their command
+in Jupyter. PowerGIS marks the `.ipynb` files it saves with the `powergis` language, so their command
 cells run when opened again. A notebook holds up to 1,000 cells of up to 200,000 characters each;
 a larger one is refused rather than opened in part. Notebooks opened from a file or an existing
 project cannot run commands that read or write files or run other scripts.

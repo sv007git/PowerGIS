@@ -6,7 +6,7 @@
 use super::{Batch, FeatureSource, Reproject, Request, Sampler, Shared, SourceInfo, clamp_limit, in_request};
 use crate::sqlite::{Db, Table, Val};
 use crate::{DataError, Feature, Field, FieldType, GeometryType, Result, Value, wkb};
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use std::ops::ControlFlow;
 
 /// A feature table of a GeoPackage held in memory.

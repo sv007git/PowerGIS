@@ -28,9 +28,9 @@ use std::io::Write;
 
 const WAT: &str = r#"
 (module
-  (import "rustgis" "call" (func $call (param i32 i32) (result i32)))
-  (import "rustgis" "result" (func $result (param i32)))
-  (import "rustgis" "log" (func $log (param i32 i32)))
+  (import "powergis" "call" (func $call (param i32 i32) (result i32)))
+  (import "powergis" "result" (func $result (param i32)))
+  (import "powergis" "log" (func $log (param i32 i32)))
   (memory (export "memory") 2)
   (global $heap (mut i32) (i32.const 8192))
   (data (i32.const 0) "{\22ok\22:{\22hello\22:\22world\22}}")
@@ -40,7 +40,7 @@ const WAT: &str = r#"
   (data (i32.const 2048) "PANEL_DATA")
   (data (i32.const 256) "{\22ok\22:{\22layers\22:[{\22name\22:\22Made\22,\22geojson\22:{\22type\22:\22FeatureCollection\22,\22features\22:[{\22type\22:\22Feature\22,\22properties\22:{\22n\22:1},\22geometry\22:{\22type\22:\22Point\22,\22coordinates\22:[1,2]}}]}}],\22messages\22:[\22made\22]}}")
   (data (i32.const 1024) "{\22ok\22:{\22selection\22:{\22layer\22:\22Cities\22,\22rows\22:[0,2]}}}")
-  (func $alloc (export "rustgis_alloc") (param $n i32) (result i32)
+  (func $alloc (export "powergis_alloc") (param $n i32) (result i32)
     (local $p i32)
     (local.set $p (global.get $heap))
     (global.set $heap (i32.add (global.get $heap) (local.get $n)))
@@ -57,7 +57,7 @@ const WAT: &str = r#"
       (local.set $s (i32.add (local.get $s) (i32.const 1)))
       (local.set $n (i32.sub (local.get $n) (i32.const 1)))
       (br $l))))
-  (func (export "rustgis_call") (param $p i32) (param $n i32) (result i64)
+  (func (export "powergis_call") (param $p i32) (param $n i32) (result i64)
     (local $c i32) (local $len i32) (local $buf i32)
     (local.set $c (i32.load8_u (i32.add (local.get $p) (i32.const 15))))
     (if (i32.eq (local.get $c) (i32.const 104)) (then
@@ -229,7 +229,7 @@ pub fn zip_of(files: &[(&str, &[u8])]) -> Vec<u8> {
 
 /// The argument that tells a test binary, started as a process plugin, to act as one (see
 /// [`serve_if_child`]). It doubles as a test filter that matches no test.
-const CHILD_MARK: &str = "rustgis-plugin-child-mode";
+const CHILD_MARK: &str = "powergis-plugin-child-mode";
 
 /// `run` for a process plugin played by this test binary: it starts the test named `test` (in
 /// the crate's tests, it calls [`serve_if_child`]) and nothing else.

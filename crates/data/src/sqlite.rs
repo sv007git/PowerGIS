@@ -751,7 +751,7 @@ mod tests {
     #[test]
     fn reads_what_sqlite_writes() {
         for page_size in [512, 4096, 65_536] {
-            let path = std::env::temp_dir().join(format!("rustgis-sqlite-{}-{page_size}.db", std::process::id()));
+            let path = std::env::temp_dir().join(format!("powergis-sqlite-{}-{page_size}.db", std::process::id()));
             let _ = std::fs::remove_file(&path);
             {
                 let c = rusqlite::Connection::open(&path).unwrap();
@@ -858,7 +858,7 @@ mod tests {
     #[test]
     fn reads_without_rowid_tables() {
         for page_size in [512, 4096] {
-            let path = std::env::temp_dir().join(format!("rustgis-sqlite-wr-{}-{page_size}.db", std::process::id()));
+            let path = std::env::temp_dir().join(format!("powergis-sqlite-wr-{}-{page_size}.db", std::process::id()));
             let _ = std::fs::remove_file(&path);
             {
                 let c = rusqlite::Connection::open(&path).unwrap();

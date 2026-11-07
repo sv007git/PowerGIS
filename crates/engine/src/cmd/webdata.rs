@@ -449,7 +449,7 @@ fn fields_add(s: &mut Session, p: &Value) -> CmdResult {
         .retain(|t| !(t.url == url && t.overlay && t.name != name && (t.name == both || (density && fields && parts.contains(&t.name)))));
     // The view's Web Mercator zoom (known on the Web Mercator map and the globe, whose camera
     // counts Web Mercator metres; another projection's units differ).
-    let mercator = matches!(s.map().projection, rustgis_map::globe::Projection::WebMercator | rustgis_map::globe::Projection::Globe);
+    let mercator = matches!(s.map().projection, powergis_map::globe::Projection::WebMercator | powergis_map::globe::Projection::Globe);
     let zoom = (156_543.033_928 / s.map().camera.res.max(1e-9)).log2();
     if fields && mercator && zoom < f64::from(FIELDS_ZOOM) - 0.5 {
         r["note"] = json!(format!("fields are drawn from zoom {FIELDS_ZOOM}: zoom in to see them"));
@@ -481,7 +481,7 @@ mod tests {
 
     #[test]
     fn style_layer_limits_agree() {
-        assert_eq!(rustgis_map::tiles::MAX_STYLE_LAYER_COUNT, crate::render::rustgis_tiles::source::MAX_OWN_STYLE_LAYERS);
+        assert_eq!(powergis_map::tiles::MAX_STYLE_LAYER_COUNT, crate::render::powergis_tiles::source::MAX_OWN_STYLE_LAYERS);
     }
 
     #[test]

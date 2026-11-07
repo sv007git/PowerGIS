@@ -4,8 +4,8 @@
 //! shows its stars; between comets the view sleeps until the next one is due.
 
 use egui::{Color32, Painter, Pos2, Rect, Stroke, pos2, vec2};
-use rustgis_engine::map::Globe;
-use rustgis_engine::render::GLOBE_GLOW;
+use powergis_engine::map::Globe;
+use powergis_engine::render::GLOBE_GLOW;
 
 /// Mean seconds between one comet ending and the next appearing (GeoLibre's 0.5 % chance per
 /// 60 Hz frame).

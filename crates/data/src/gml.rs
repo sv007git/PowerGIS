@@ -13,7 +13,7 @@
 use std::collections::BTreeMap;
 
 use roxmltree::{Node, ParsingOptions};
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 use crate::raster::Crs;
 use crate::{DataError, Dataset, Field, Geometry, GeometryType, ReadReport, Result, Value};

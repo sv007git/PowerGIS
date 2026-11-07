@@ -1,11 +1,11 @@
-use rustgis_engine::{Project, Session, cmd::design::EditCounts};
+use powergis_engine::{Project, Session, cmd::design::EditCounts};
 use serde_json::{Value, json};
 
 /// Failed Save As preserves session state and history, and a later save can still succeed.
 #[test]
 fn failed_save_as_preserves_project_state_and_a_later_save_succeeds() -> Result<(), String> {
     let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map_err(|e| e.to_string())?.as_nanos();
-    let root = std::env::temp_dir().join(format!("rustgis-save-failure-{}-{nonce}", std::process::id()));
+    let root = std::env::temp_dir().join(format!("powergis-save-failure-{}-{nonce}", std::process::id()));
     std::fs::create_dir(&root).map_err(|e| e.to_string())?;
     let original = root.join("original.rgis");
     let occupied = root.join("occupied.rgis");
@@ -71,7 +71,7 @@ fn failed_save_as_preserves_project_state_and_a_later_save_succeeds() -> Result<
 }
 
 #[test]
-fn project_from_newer_rustgis_reports_update_message() {
+fn project_from_newer_powergis_reports_update_message() {
     let json = serde_json::json!({
         "format": 9999,
         "name": "future project"

@@ -4,7 +4,7 @@
 //! github-actions, both flagging the missing settle render).
 //! Planetary tile scenes also reuse uploaded images and preview layer changes immediately.
 
-use rustgis_ui_egui::RustGisApp;
+use powergis_ui_egui::powergisApp;
 use serde_json::{Value, json};
 
 /// The tile cache and the streamed layers' reads are global: their generations are part of
@@ -17,8 +17,8 @@ fn one_at_a_time() -> std::sync::MutexGuard<'static, ()> {
 
 /// Waits for worker results, downloaded tiles and the GPU callbacks that upload their pictures.
 /// UI steps alone do not run paced uploads; every candidate settled frame must be painted.
-fn wait_for_frame(h: &mut egui_kittest::Harness<'_, RustGisApp>) {
-    use rustgis_ui_egui::rustgis_engine::render::rustgis_tiles::cache;
+fn wait_for_frame(h: &mut egui_kittest::Harness<'_, powergisApp>) {
+    use powergis_ui_egui::powergis_engine::render::powergis_tiles::cache;
     // A hang guard: a software adapter (WARP on the Windows runners) is many times slower.
     let end = std::time::Instant::now() + std::time::Duration::from_secs(60);
     loop {
@@ -45,17 +45,17 @@ fn wait_for_frame(h: &mut egui_kittest::Harness<'_, RustGisApp>) {
 }
 
 fn serve_planet_tiles() {
-    use rustgis_ui_egui::rustgis_engine::render::rustgis_tiles;
+    use powergis_ui_egui::powergis_engine::render::powergis_tiles;
     let mut png = std::io::Cursor::new(Vec::new());
     image::RgbaImage::from_fn(256, 256, |x, y| image::Rgba([100 + (x / 2) as u8, 30 + (y / 8) as u8, 50, 255]))
         .write_to(&mut png, image::ImageFormat::Png)
         .expect("tile");
-    rustgis_tiles::cache::set_fetcher(move |_, done| done(Ok(png.get_ref().clone())));
+    powergis_tiles::cache::set_fetcher(move |_, done| done(Ok(png.get_ref().clone())));
 }
 
 /// A wgpu harness sharing one render state with the app (the ui_shot pattern), so the GPU
 /// backend engages. `None` on hosts without an adapter.
-fn harness() -> Option<egui_kittest::Harness<'static, RustGisApp>> {
+fn harness() -> Option<egui_kittest::Harness<'static, powergisApp>> {
     let setup = egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew::without_display_handle());
     let instance = pollster::block_on(setup.new_instance());
     let rs = pollster::block_on(egui_wgpu::RenderState::create(
@@ -65,7 +65,7 @@ fn harness() -> Option<egui_kittest::Harness<'static, RustGisApp>> {
         egui_wgpu::RendererOptions::PREDICTABLE,
     ))
     .ok()?;
-    let mut app = RustGisApp::with_sample();
+    let mut app = powergisApp::with_sample();
     app.set_render_state(Some(rs.clone()));
     app.run("ui.map.gpu", json!({"on": true})).expect("gpu on");
     Some(
@@ -75,7 +75,7 @@ fn harness() -> Option<egui_kittest::Harness<'static, RustGisApp>> {
             .with_max_steps(10_000)
             .renderer(egui_kittest::wgpu::WgpuTestRenderer::from_render_state(rs))
             .build_ui_state(
-                |ui, app: &mut RustGisApp| {
+                |ui, app: &mut powergisApp| {
                     let ctx = ui.ctx().clone();
                     app.logic(&ctx);
                     app.ui(ui);
@@ -116,20 +116,20 @@ fn settling_after_a_camera_animation_re_renders_fully() {
 }
 
 /// Compare the displayed GPU picture with the exact ground under the current camera.
-fn assert_gpu_picture_matches_cpu(h: &mut egui_kittest::Harness<'_, RustGisApp>) {
+fn assert_gpu_picture_matches_cpu(h: &mut egui_kittest::Harness<'_, powergisApp>) {
     assert!(h.output().shapes.iter().any(|s| matches!(s.shape, egui::Shape::Callback(_))), "the GPU backend engaged");
     // Exercise the actual blit shader as well: a shifted/scaled image must sample the same
     // ground as an exact CPU render, even when its rectangle extends past the window.
     let image = h.render().expect("moving GPU image");
     let rect = h.state().map.view_rect.expect("map rectangle").0;
-    let view = rustgis_ui_egui::rustgis_engine::render::View {
+    let view = powergis_ui_egui::powergis_engine::render::View {
         width: rect.width() as f64,
         height: rect.height() as f64,
         pixels_per_point: 1.0,
         camera: h.state().session.map().camera,
         sky: true,
     };
-    let expected = rustgis_ui_egui::rustgis_engine::render::render(&mut h.state().session.map().clone(), &view).expect("CPU reference");
+    let expected = powergis_ui_egui::powergis_engine::render::render(&mut h.state().session.map().clone(), &view).expect("CPU reference");
     let mut error = 0u32;
     let mut samples = 0u32;
     for y in (rect.height() as u32 / 3..rect.height() as u32 * 2 / 3).step_by(11) {
@@ -145,7 +145,7 @@ fn assert_gpu_picture_matches_cpu(h: &mut egui_kittest::Harness<'_, RustGisApp>)
 
 #[test]
 fn zooming_a_planet_with_raster_tiles_reuses_the_gpu_frame() {
-    use rustgis_ui_egui::rustgis_engine::map::{TileKind, TileLayer};
+    use powergis_ui_egui::powergis_engine::map::{TileKind, TileLayer};
     let _serial = one_at_a_time();
     serve_planet_tiles();
     let Some(mut h) = harness() else { return };
@@ -202,7 +202,7 @@ fn zooming_a_planet_with_raster_tiles_reuses_the_gpu_frame() {
 
 #[test]
 fn planet_layer_toggles_show_in_the_next_frame_and_stale_jobs_do_not_restore_them() {
-    use rustgis_ui_egui::rustgis_engine::{
+    use powergis_ui_egui::powergis_engine::{
         data::{GeometryType, io::read_geojson},
         map::{Renderer, Rgba, Symbol, TileKind, TileLayer},
     };
@@ -249,7 +249,7 @@ fn planet_layer_toggles_show_in_the_next_frame_and_stale_jobs_do_not_restore_the
 
 #[test]
 fn tiled_camera_playback_does_not_start_settling_jobs() {
-    use rustgis_ui_egui::rustgis_engine::map::{TileKind, TileLayer};
+    use powergis_ui_egui::powergis_engine::map::{TileKind, TileLayer};
     let _serial = one_at_a_time();
     serve_planet_tiles();
     for gpu in [false, true] {
@@ -283,7 +283,7 @@ fn tiled_camera_playback_does_not_start_settling_jobs() {
 /// zoom are placed mid-motion.
 #[test]
 fn raster_tiles_move_with_the_camera_on_the_gpu() {
-    use rustgis_ui_egui::rustgis_engine::map::{TileKind, TileLayer};
+    use powergis_ui_egui::powergis_engine::map::{TileKind, TileLayer};
     let _serial = one_at_a_time();
     serve_planet_tiles();
     let Some(mut h) = harness() else { return };
@@ -296,7 +296,7 @@ fn raster_tiles_move_with_the_camera_on_the_gpu() {
     wait_for_frame(&mut h);
     assert!(h.state().map.moves_on_gpu(), "the tiles are placed on the GPU, not drawn into a picture of the view");
     let before = h.state().map.full_frame_camera();
-    let wheel = |h: &mut egui_kittest::Harness<'_, RustGisApp>, steps: usize| {
+    let wheel = |h: &mut egui_kittest::Harness<'_, powergisApp>, steps: usize| {
         for _ in 0..steps {
             h.input_mut().events.push(egui::Event::PointerMoved(egui::pos2(450.0, 300.0)));
             h.input_mut().events.push(egui::Event::MouseWheel {
@@ -334,9 +334,9 @@ fn raster_tiles_move_with_the_camera_on_the_gpu() {
 /// so CPU composition and finished downloads alone do not make the displayed frame complete.
 #[test]
 fn waiting_for_live_tiles_paints_until_the_top_layer_is_uploaded() {
-    use rustgis_ui_egui::rustgis_engine::{
+    use powergis_ui_egui::powergis_engine::{
         map::{TileKind, TileLayer},
-        render::rustgis_tiles,
+        render::powergis_tiles,
     };
     let _serial = one_at_a_time();
     let png = |color| {
@@ -346,7 +346,7 @@ fn waiting_for_live_tiles_paints_until_the_top_layer_is_uploaded() {
     };
     let bottom = png([180, 40, 40, 255]);
     let top = png([30, 40, 200, 255]);
-    rustgis_tiles::cache::set_fetcher(move |url, done| done(Ok(if url.contains("upload-top") { top.clone() } else { bottom.clone() })));
+    powergis_tiles::cache::set_fetcher(move |url, done| done(Ok(if url.contains("upload-top") { top.clone() } else { bottom.clone() })));
     let Some(mut h) = harness() else { return };
     h.state_mut().run("map.body", json!({"name": "moon", "basemap": false})).expect("Moon");
     h.state_mut().run("map.projection", json!({"type": "mercator"})).expect("projection");
@@ -379,9 +379,9 @@ fn waiting_for_live_tiles_paints_until_the_top_layer_is_uploaded() {
 /// flickered and stepped back on each wheel step out).
 #[test]
 fn live_tiles_move_with_a_scene_shown_as_a_picture() {
-    use rustgis_ui_egui::rustgis_engine::geom::Coord;
-    use rustgis_ui_egui::rustgis_engine::map::{TileKind, TileLayer};
-    use rustgis_ui_egui::rustgis_engine::render::rustgis_tiles;
+    use powergis_ui_egui::powergis_engine::geom::Coord;
+    use powergis_ui_egui::powergis_engine::map::{TileKind, TileLayer};
+    use powergis_ui_egui::powergis_engine::render::powergis_tiles;
     let _serial = one_at_a_time();
     // A checkerboard: tiles out of place show at once.
     let mut png = std::io::Cursor::new(Vec::new());
@@ -390,7 +390,7 @@ fn live_tiles_move_with_a_scene_shown_as_a_picture() {
     })
     .write_to(&mut png, image::ImageFormat::Png)
     .expect("tile");
-    rustgis_tiles::cache::set_fetcher(move |_, done| done(Ok(png.get_ref().clone())));
+    powergis_tiles::cache::set_fetcher(move |_, done| done(Ok(png.get_ref().clone())));
     let Some(mut h) = harness() else { return };
     let m = h.state_mut().session.map_mut();
     m.layers.clear();

@@ -16,7 +16,7 @@ use super::{Batch, Family, FeatureSource, Reproject, Request, SourceInfo, clamp_
 use crate::raster::Crs;
 use crate::{DataError, Feature, Field, FieldType, GeometryType, Result, Value, wkb};
 use postgres::types::ToSql;
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use std::time::Duration;
 
@@ -1372,8 +1372,8 @@ impl FeatureSource for PostgisSource {
                 let id = self.select.first().map(String::as_str).unwrap_or("0");
                 let rest: Vec<String> = self.select.iter().enumerate().skip(1).map(|(i, e)| format!("{e} AS c{i}")).collect();
                 format!(
-                    "SELECT \"rustgis id\" AS c0, {} FROM (SELECT t.*, {id} AS \"rustgis id\", row_number() OVER () AS \"rustgis rn\" \
-                     FROM {from} t WHERE {filter}) s WHERE (\"rustgis rn\" - 1) % {step} = 0 LIMIT {limit}",
+                    "SELECT \"powergis id\" AS c0, {} FROM (SELECT t.*, {id} AS \"powergis id\", row_number() OVER () AS \"powergis rn\" \
+                     FROM {from} t WHERE {filter}) s WHERE (\"powergis rn\" - 1) % {step} = 0 LIMIT {limit}",
                     rest.join(", ")
                 )
             };
@@ -1533,12 +1533,12 @@ mod tests {
         assert_eq!(field_cast("geometry"), None);
     }
 
-    /// Reads every table of a live database: `RUSTGIS_TEST_POSTGIS="host=… dbname=… user=…
-    /// password=…" cargo test -p rustgis-data -- --ignored postgis_live --nocapture`.
+    /// Reads every table of a live database: `powergis_TEST_POSTGIS="host=… dbname=… user=…
+    /// password=…" cargo test -p powergis-data -- --ignored postgis_live --nocapture`.
     #[test]
     #[ignore]
     fn postgis_live() {
-        let Ok(dsn) = std::env::var("RUSTGIS_TEST_POSTGIS") else { return };
+        let Ok(dsn) = std::env::var("powergis_TEST_POSTGIS") else { return };
         let db = super::super::duckdb::Database::parse(&dsn);
         let super::super::duckdb::Database::Postgres(dsn) = db else { panic!("not a connection") };
         let conn = connect(&dsn, true).unwrap_or_else(|e| panic!("{e}"));

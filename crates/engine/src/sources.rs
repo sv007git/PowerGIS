@@ -3,7 +3,7 @@
 //! desktop and web apps keep them with their preferences. Never a secret: addresses are kept
 //! without their passwords, tokens or signatures.
 
-use rustgis_data::source::credentials::{redact_query, secret_key};
+use powergis_data::source::credentials::{redact_query, secret_key};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -163,7 +163,7 @@ pub fn clean(mut s: Source) -> Result<Source, String> {
     s.address = redact(s.address.trim());
     // Provenance has its own structural bound; it must not consume the destination's limit.
     let (head, archive) = template_archive(&s.address).unwrap_or(("", s.address.as_str()));
-    let bounded = match rustgis_data::s3_address::parse(archive) {
+    let bounded = match powergis_data::s3_address::parse(archive) {
         Ok(Some(bound)) => head.len().saturating_add(bound.url.len()) <= MAX_TEXT,
         Ok(None) => s.address.len() <= MAX_TEXT,
         Err(_) => false,
@@ -330,7 +330,7 @@ pub fn redact_text(text: &str) -> String {
 /// before its archive (up to and with the first `@`), and the archive, whose address is the one
 /// that holds credentials and names a saved S3 connection.
 pub(crate) fn template_archive(address: &str) -> Option<(&str, &str)> {
-    use crate::render::rustgis_tiles::{cog, pmtiles};
+    use crate::render::powergis_tiles::{cog, pmtiles};
     let rest = [pmtiles::SCHEME, cog::SCHEME].iter().find_map(|s| address.strip_prefix(s))?;
     let (_, archive) = rest.split_once('@')?;
     let head = address.get(..address.len() - archive.len())?;
@@ -345,19 +345,19 @@ pub(crate) fn template_archive(address: &str) -> Option<(&str, &str)> {
 /// rebuilt; a tile template, in its archive.
 pub fn redact(address: &str) -> String {
     if let Some((head, archive)) = template_archive(address)
-        && rustgis_data::s3_address::is_wrapper(archive)
+        && powergis_data::s3_address::is_wrapper(archive)
     {
         return format!("{head}{}", redact(archive));
     }
-    if let Ok(Some(b)) = rustgis_data::s3_address::parse(address)
-        && let Ok(rebuilt) = rustgis_data::s3_address::bind(b.binding, b.endpoint, &redact(b.url))
+    if let Ok(Some(b)) = powergis_data::s3_address::parse(address)
+        && let Ok(rebuilt) = powergis_data::s3_address::bind(b.binding, b.endpoint, &redact(b.url))
     {
         return rebuilt;
     }
-    if let Some((public, _)) = rustgis_data::source::myconn::split_password(address) {
+    if let Some((public, _)) = powergis_data::source::myconn::split_password(address) {
         return public;
     }
-    if let Some((public, _)) = rustgis_data::source::msconn::split_password(address) {
+    if let Some((public, _)) = powergis_data::source::msconn::split_password(address) {
         return public;
     }
     let lower = address.to_ascii_lowercase();
@@ -365,13 +365,13 @@ pub fn redact(address: &str) -> String {
     // libpq's own rules (quoted values, escapes, `key = value`), without its secrets.
     if ["postgres:", "postgresql:", "pg:"].iter().any(|p| lower.starts_with(p)) {
         // One that can't be taken apart isn't kept (an empty address, refused by `clean`).
-        return rustgis_data::source::pgconn::public_label(address).unwrap_or_default();
+        return powergis_data::source::pgconn::public_label(address).unwrap_or_default();
     }
     let Some((scheme, rest)) = address.split_once("://") else { return address.to_string() };
     // The user and password go first, before anything splits the address: a password may hold
     // an unencoded `/`, `?`, `#` or `@`. They end at the last `@` before the first `/`, or (a `/`
     // in the password) at the last `@` with a `:` before it.
-    let cut = rustgis_data::source::pgconn::userinfo_end(rest);
+    let cut = powergis_data::source::pgconn::userinfo_end(rest);
     let rest = match cut {
         Some(i) => rest.get(i + 1..).unwrap_or(""),
         None => rest,
@@ -431,7 +431,7 @@ pub fn added_by(id: &str, p: &Value) -> Option<Source> {
                 }
             }
             // No API given: Earth Search, as the command takes.
-            Some(src("stac", text(p, "url").unwrap_or(crate::render::rustgis_tiles::stac::EARTH_SEARCH), None, Value::Object(extra)))
+            Some(src("stac", text(p, "url").unwrap_or(crate::render::powergis_tiles::stac::EARTH_SEARCH), None, Value::Object(extra)))
         }
         "layer.addSample" => Some(src("sample", text(p, "name")?, None, Value::Null)),
         _ => None,
@@ -533,12 +533,12 @@ mod tests {
 
     #[test]
     fn restored_sources_never_reuse_a_previous_process_login_binding() {
-        let address = rustgis_data::s3_address::bind("0123456789abcdef", "https://s3.example.org", "s3://data/a.fgb").unwrap();
+        let address = powergis_data::s3_address::bind("0123456789abcdef", "https://s3.example.org", "s3://data/a.fgb").unwrap();
         let source = Source { kind: "url".into(), name: "Saved".into(), address, extra: Value::Null };
         let text = serde_json::json!({"favourites": [source.clone()], "saved": [source.clone()], "recent": [source]}).to_string();
         let restored = Sources::from_json(&text);
         for source in restored.favourites.iter().chain(&restored.saved).chain(&restored.recent) {
-            let bound = rustgis_data::s3_address::parse(&source.address).unwrap().unwrap();
+            let bound = powergis_data::s3_address::parse(&source.address).unwrap().unwrap();
             assert_eq!(bound.binding, "");
             assert_eq!(bound.endpoint, "https://s3.example.org");
             assert_eq!(bound.url, "s3://data/a.fgb");
@@ -547,7 +547,7 @@ mod tests {
 
     #[test]
     fn a_saved_archive_still_bounds_its_template_head() {
-        let address = rustgis_data::s3_address::bind("", "", "s3://data/a.pmtiles").unwrap();
+        let address = powergis_data::s3_address::bind("", "", "s3://data/a.pmtiles").unwrap();
         let source = Source {
             kind: "url".into(),
             name: "Huge template".into(),

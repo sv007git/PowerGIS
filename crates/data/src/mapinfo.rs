@@ -9,7 +9,7 @@
 //! The file is hostile: counts are checked against what follows and bounded, and an object that
 //! can't be read ends the reading with a message, keeping what came before.
 
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 use crate::raster::Crs;
 use crate::raster::crs::CustomCrs;

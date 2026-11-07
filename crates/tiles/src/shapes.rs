@@ -12,7 +12,7 @@
 
 use std::sync::Arc;
 
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 
 use crate::cache::Payload;
 use crate::draw::{Drawn, Frame, Label, Pass, draw_layers, tiles_in};
@@ -405,7 +405,7 @@ mod tests {
                 Layer { name: "pois".into(), extent: 4096, features: vec![feature(GeomKind::Point, vec![vec![[2048.0, 2048.0]]], "cafe")] },
             ],
         };
-        let dir = std::env::temp_dir().join(format!("rustgis-shapes-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-shapes-{name}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("t.pmtiles");
         let new = crate::pmtiles::NewArchive {

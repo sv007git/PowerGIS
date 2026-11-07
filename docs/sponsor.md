@@ -30,10 +30,10 @@ Both go to [Qiusheng Wu](https://github.com/giswqs), the maintainer of PowerGIS 
   behind the macOS app, the Microsoft Store listing, and building the Windows and Linux
   [packages](installation.md) and the [Python package](python.md), which the project pays for
   whether or not anyone sponsors it.
-- **Hosting**: [rustgis.app](https://rustgis.app), the [web app](https://web.rustgis.app), the
-  [plugin registry](https://plugins.rustgis.app), the
-  [download mirror](https://downloads.rustgis.app) and the sample data and fonts at
-  assets.rustgis.app.
+- **Hosting**: [powergis.app](https://powergis.app), the [web app](https://web.powergis.app), the
+  [plugin registry](https://plugins.powergis.app), the
+  [download mirror](https://downloads.powergis.app) and the sample data and fonts at
+  assets.powergis.app.
 - **Documentation**: the [User Guide](user-guide/index.md) and examples that make the app usable
   without training.
 - **Support**: triaging issues, answering questions and reviewing community pull requests.

@@ -2,8 +2,8 @@
 # linux/amd64 and linux/arm64 (see docs/installation.md › Self-host the web app with Docker, and
 # The command line in Docker):
 #
-#   ghcr.io/opengeos/rustgis       the web app, served by nginx (the Dockerfile at the root)
-#   ghcr.io/opengeos/rustgis-cli   the command line (packaging/docker/cli.Dockerfile)
+#   ghcr.io/opengeos/powergis       the web app, served by nginx (the Dockerfile at the root)
+#   ghcr.io/opengeos/powergis-cli   the command line (packaging/docker/cli.Dockerfile)
 #
 # with the tags
 #
@@ -34,8 +34,8 @@ on:
       - Cargo.lock
       - .cargo/**
       - xtask/**
-      - apps/rustgis-web/**
-      - apps/rustgis-cli/**
+      - apps/powergis-web/**
+      - apps/powergis-cli/**
       - LICENSE
       - THIRD-PARTY-LICENSES.txt
   workflow_dispatch:
@@ -54,8 +54,8 @@ env:
   # Only main and releases publish; a pull request, or a manual run on another branch, only builds
   # and smoke-tests. (cli-manifest repeats this in its `if`, where env isn't available.)
   PUBLISH: ${{ github.event_name == 'release' || github.ref == 'refs/heads/main' }}
-  WEB_IMAGE: ghcr.io/opengeos/rustgis
-  CLI_IMAGE: ghcr.io/opengeos/rustgis-cli
+  WEB_IMAGE: ghcr.io/opengeos/powergis
+  CLI_IMAGE: ghcr.io/opengeos/powergis-cli
   # The tags of both images (docker/metadata-action); `latest` follows main, as `edge` does.
   TAGS: |
     type=edge,branch=main
@@ -95,11 +95,11 @@ jobs:
           labels: |
             org.opencontainers.image.title=PowerGIS web app
             org.opencontainers.image.description=The PowerGIS web app (WebAssembly), served by nginx
-            org.opencontainers.image.url=https://rustgis.app
+            org.opencontainers.image.url=https://powergis.app
           annotations: |
             org.opencontainers.image.title=PowerGIS web app
             org.opencontainers.image.description=The PowerGIS web app (WebAssembly), served by nginx
-            org.opencontainers.image.url=https://rustgis.app
+            org.opencontainers.image.url=https://powergis.app
 
       # The image for the runner's platform, loaded into Docker to check that it serves the app.
       - name: Build for the smoke test
@@ -108,14 +108,14 @@ jobs:
           context: .
           platforms: linux/amd64
           load: true
-          tags: rustgis:test
+          tags: powergis:test
           cache-from: type=gha,scope=web
           cache-to: type=gha,scope=web,mode=max
 
       - name: Smoke test
         run: |
           set -euo pipefail
-          docker run -d --name rustgis -p 8080:8080 rustgis:test
+          docker run -d --name powergis -p 8080:8080 powergis:test
           for _ in $(seq 30); do
             curl -sSf http://127.0.0.1:8080/healthz >/dev/null && break
             sleep 1
@@ -128,7 +128,7 @@ jobs:
 
       - name: Smoke test logs
         if: failure()
-        run: docker logs rustgis || true
+        run: docker logs powergis || true
 
       - name: Sign in to the GitHub Container Registry
         if: env.PUBLISH == 'true'
@@ -186,7 +186,7 @@ jobs:
           labels: |
             org.opencontainers.image.title=PowerGIS command line
             org.opencontainers.image.description=The PowerGIS command line: run commands and geoprocessing, render maps, inspect data
-            org.opencontainers.image.url=https://rustgis.app
+            org.opencontainers.image.url=https://powergis.app
 
       - name: Build for the smoke test
         uses: docker/build-push-action@v7
@@ -195,7 +195,7 @@ jobs:
           file: packaging/docker/cli.Dockerfile
           platforms: linux/${{ matrix.arch }}
           load: true
-          tags: rustgis-cli:test
+          tags: powergis-cli:test
           cache-from: type=gha,scope=cli-${{ matrix.arch }}
           cache-to: type=gha,scope=cli-${{ matrix.arch }},mode=max
 
@@ -204,12 +204,12 @@ jobs:
       - name: Smoke test
         run: |
           set -euo pipefail
-          docker run --rm rustgis-cli:test tools > "$RUNNER_TEMP/tools.txt"
+          docker run --rm powergis-cli:test tools > "$RUNNER_TEMP/tools.txt"
           grep -q buffer "$RUNNER_TEMP/tools.txt"
-          docker run --rm rustgis-cli:test logo logo.png --size 64   # into /data, unmounted
-          docker run --rm --entrypoint sh rustgis-cli:test -c \
-            'rustgis-cli run --sample --cmd "share.exportMap={\"path\":\"/tmp/map.png\"}" && test -s /tmp/map.png \
-            && test -s /usr/share/doc/rustgis/THIRD-PARTY-LICENSES.txt'
+          docker run --rm powergis-cli:test logo logo.png --size 64   # into /data, unmounted
+          docker run --rm --entrypoint sh powergis-cli:test -c \
+            'powergis-cli run --sample --cmd "share.exportMap={\"path\":\"/tmp/map.png\"}" && test -s /tmp/map.png \
+            && test -s /usr/share/doc/powergis/THIRD-PARTY-LICENSES.txt'
           echo "The image runs the command line."
 
       - name: Sign in to the GitHub Container Registry

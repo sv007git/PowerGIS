@@ -3,7 +3,7 @@
 
 use std::collections::BTreeMap;
 
-use rustgis_data::{Dataset, FieldType, GeometryType};
+use powergis_data::{Dataset, FieldType, GeometryType};
 use serde::{Deserialize, Serialize};
 
 use crate::color::{Ramp, Rgba};
@@ -979,7 +979,7 @@ impl Renderer {
                 // Text compares as it is; other values as they print.
                 let printed;
                 let v = match ds.value(row, fi) {
-                    rustgis_data::Value::Text(t) => t.as_str(),
+                    powergis_data::Value::Text(t) => t.as_str(),
                     v => {
                         printed = v.to_string();
                         printed.as_str()
@@ -2338,10 +2338,10 @@ impl LabelClass {
 
     /// Its clause, read against `ds`: `Some(None)` takes every feature, `Some(Some(e))` those
     /// matching `e`, and `None` (a clause that doesn't read) takes none.
-    pub fn query(&self, ds: &Dataset) -> Option<Option<rustgis_data::query::Expr>> {
+    pub fn query(&self, ds: &Dataset) -> Option<Option<powergis_data::query::Expr>> {
         match self.where_.as_deref().map(str::trim).filter(|w| !w.is_empty()) {
             None => Some(None),
-            Some(w) => rustgis_data::query::parse(w, ds).ok().map(Some),
+            Some(w) => powergis_data::query::parse(w, ds).ok().map(Some),
         }
     }
 }
@@ -2355,7 +2355,7 @@ pub type LabelKey = (u32, usize, usize, usize);
 /// A layer's label classes read against its data, in `Labeling::in_order`: every class whose
 /// clause takes a row labels it.
 pub struct LabelMatcher<'a> {
-    classes: Vec<(&'a LabelClass, Option<Option<rustgis_data::query::Expr>>)>,
+    classes: Vec<(&'a LabelClass, Option<Option<powergis_data::query::Expr>>)>,
 }
 
 impl<'a> LabelMatcher<'a> {
@@ -2367,7 +2367,7 @@ impl<'a> LabelMatcher<'a> {
     pub fn classes_of(&self, ds: &Dataset, row: usize) -> impl Iterator<Item = (usize, &'a LabelClass)> {
         self.classes.iter().enumerate().filter_map(move |(i, (c, q))| match q {
             Some(None) => Some((i, *c)),
-            Some(Some(e)) if rustgis_data::query::eval(e, ds, row) => Some((i, *c)),
+            Some(Some(e)) if powergis_data::query::eval(e, ds, row) => Some((i, *c)),
             _ => None,
         })
     }
@@ -2428,7 +2428,7 @@ impl Labeling {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Field, Value};
+    use powergis_data::{Field, Value};
 
     /// Labels saved before label classes (#618) read as the Default class alone, and are written
     /// back the same, so older versions still read a project without classes.

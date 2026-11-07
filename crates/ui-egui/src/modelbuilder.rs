@@ -4,19 +4,19 @@
 //! middle (input layers, tools and outputs joined by wires drawn from an output port to an input
 //! port; drag the background to pan, Ctrl+wheel or pinch to zoom), the selected node's settings on
 //! the right and the messages of the last check or run below. The graph itself lives in the engine
-//! (`rustgis_engine::model`), which validates, lays out and runs it: the canvas only edits a copy
+//! (`powergis_engine::model`), which validates, lays out and runs it: the canvas only edits a copy
 //! and saves it with `model.save`.
 
 use std::collections::HashMap;
 
 use egui::{Align2, Color32, CornerRadius, Pos2, Rect, Sense, Stroke, Ui, Vec2, pos2, vec2};
-use rustgis_engine::analysis::{ParamKind, ToolSpec};
-use rustgis_engine::data::GeometryType;
-use rustgis_engine::model::{self, IN, OUT, PortKind};
-use rustgis_engine::project::{ModelEdge, ModelGraph, ModelNode, ModelNodeKind};
+use powergis_engine::analysis::{ParamKind, ToolSpec};
+use powergis_engine::data::GeometryType;
+use powergis_engine::model::{self, IN, OUT, PortKind};
+use powergis_engine::project::{ModelEdge, ModelGraph, ModelNode, ModelNodeKind};
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::icons;
 use crate::theme::{Tokens, regular, semibold};
 
@@ -301,7 +301,7 @@ fn kind_color(kind: ModelNodeKind, t: &Tokens) -> Color32 {
 
 /// `ui.modelBuilder`: `{"name"?: model}` opens ModelBuilder (on that model); `{"close": true}`
 /// closes it, asking first about unsaved changes.
-pub fn command(app: &mut RustGisApp, p: &Value) -> Result<(), String> {
+pub fn command(app: &mut powergisApp, p: &Value) -> Result<(), String> {
     if p.get("close").and_then(Value::as_bool) == Some(true) {
         if app.mb.open {
             request(app, Pending::Close);
@@ -313,7 +313,7 @@ pub fn command(app: &mut RustGisApp, p: &Value) -> Result<(), String> {
 
 /// Opens ModelBuilder: on the model named (asking first if the canvas has unsaved changes), or
 /// as it was left.
-pub fn open(app: &mut RustGisApp, name: Option<&str>) -> Result<(), String> {
+pub fn open(app: &mut powergisApp, name: Option<&str>) -> Result<(), String> {
     forget_old_project(app);
     if let Some(n) = name {
         if !app.session.project.models.iter().any(|m| m.name.eq_ignore_ascii_case(n)) {
@@ -334,14 +334,14 @@ pub fn open(app: &mut RustGisApp, name: Option<&str>) -> Result<(), String> {
 }
 
 /// Brings ModelBuilder into view.
-fn show_view(app: &mut RustGisApp) {
+fn show_view(app: &mut powergisApp) {
     app.mb.active = true;
     app.mb.view_key = (app.session.project.active_map, app.session.active_layout);
     app.ws.catalog_view = false;
 }
 
 /// A name no model has yet.
-fn untitled(app: &RustGisApp) -> String {
+fn untitled(app: &powergisApp) -> String {
     let models = &app.session.project.models;
     let mut name = "Model".to_string();
     let mut i = 1;
@@ -352,7 +352,7 @@ fn untitled(app: &RustGisApp) -> String {
     name
 }
 
-fn load_saved(app: &mut RustGisApp, name: &str) {
+fn load_saved(app: &mut powergisApp, name: &str) {
     let Some(m) = app.session.project.models.iter().find(|m| m.name.eq_ignore_ascii_case(name)) else { return };
     let graph = m.graph.clone().unwrap_or_else(|| model::steps_to_graph(&m.steps));
     let imported = !app.session.trusted_models.contains(&m.name.to_ascii_lowercase());
@@ -361,7 +361,7 @@ fn load_saved(app: &mut RustGisApp, name: &str) {
 }
 
 /// Saves the canvas as a project model.
-fn save(app: &mut RustGisApp) -> bool {
+fn save(app: &mut powergisApp) -> bool {
     let name = app.mb.name.trim().to_string();
     let name = if name.is_empty() { untitled(app) } else { name };
     let mut p = json!({"name": app.mb.saved_as.clone().unwrap_or_else(|| name.clone()), "graph": app.mb.graph});
@@ -387,7 +387,7 @@ fn save(app: &mut RustGisApp) -> bool {
 }
 
 /// Runs the model on the canvas, node statuses and messages from the engine's report.
-fn run_model(app: &mut RustGisApp) {
+fn run_model(app: &mut powergisApp) {
     app.mb.status.clear();
     app.mb.log.clear();
     let mut p = json!({"name": app.mb.name.trim(), "graph": app.mb.graph});
@@ -439,7 +439,7 @@ fn run_model(app: &mut RustGisApp) {
 }
 
 /// The model's file: downloaded in the browser, else saved where the user picks.
-fn export(app: &mut RustGisApp) {
+fn export(app: &mut powergisApp) {
     match app.run("model.export", json!({"name": app.mb.name.trim(), "graph": app.mb.graph})) {
         Ok(v) => {
             let name = v["fileName"].as_str().unwrap_or("model.model.json").to_string();
@@ -447,7 +447,7 @@ fn export(app: &mut RustGisApp) {
             if app.services.download.is_some() {
                 app.download_bytes(&name, bytes);
             } else if let Some(path) = crate::dialogs::pick_save(&name, &["json"], tl!("PowerGIS model")) {
-                if let Err(e) = rustgis_engine::data::io::write_atomic(std::path::Path::new(&path), &bytes) {
+                if let Err(e) = powergis_engine::data::io::write_atomic(std::path::Path::new(&path), &bytes) {
                     app.mb.log(e.to_string(), LogKind::Error);
                 } else {
                     app.mb.log(crate::i18n::fmt("Exported to {path}.", &[("path", &path)]), LogKind::Ok);
@@ -459,7 +459,7 @@ fn export(app: &mut RustGisApp) {
 }
 
 /// Imports a model file (`*.model.json`, or a web tool) and opens it.
-pub(crate) fn import(app: &mut RustGisApp) {
+pub(crate) fn import(app: &mut powergisApp) {
     if let Some(open) = &app.services.open_async {
         app.ui.pending_open = Some("model.import");
         open("item");
@@ -472,7 +472,7 @@ pub(crate) fn import(app: &mut RustGisApp) {
 }
 
 /// Opens a model `model.import` just added.
-pub fn imported(app: &mut RustGisApp, v: &Value) {
+pub fn imported(app: &mut powergisApp, v: &Value) {
     if let Some(name) = v["model"].as_str() {
         load_saved(app, name);
         app.mb.open = true;
@@ -481,7 +481,7 @@ pub fn imported(app: &mut RustGisApp, v: &Value) {
 }
 
 /// Does what waited for the user to agree to drop unsaved changes.
-fn proceed(app: &mut RustGisApp, p: Pending) {
+fn proceed(app: &mut powergisApp, p: Pending) {
     match p {
         Pending::New => {
             let name = untitled(app);
@@ -496,7 +496,7 @@ fn proceed(app: &mut RustGisApp, p: Pending) {
     }
 }
 
-fn request(app: &mut RustGisApp, p: Pending) {
+fn request(app: &mut powergisApp, p: Pending) {
     if app.mb.dirty() && !app.mb.graph.nodes.is_empty() {
         app.mb.confirm = Some(p);
     } else {
@@ -506,7 +506,7 @@ fn request(app: &mut RustGisApp, p: Pending) {
 
 /// ModelBuilder's keys, before the app's own: Delete (or Backspace) deletes the selection,
 /// Ctrl+D duplicates the selected node, Ctrl+Z and Ctrl+Y undo and redo canvas edits.
-pub fn shortcuts(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn shortcuts(app: &mut powergisApp, ctx: &egui::Context) {
     if !app.mb.shown() || ctx.egui_wants_keyboard_input() {
         return;
     }
@@ -538,7 +538,7 @@ pub fn shortcuts(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// The view: toolbar, palette, canvas, inspector and messages.
-pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui) {
     let t = Tokens::get(ui.ctx());
     let full = ui.available_rect_before_wrap();
     ui.painter().rect_filled(full, 0.0, t.pane);
@@ -577,7 +577,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
     confirm(app, ui.ctx());
 }
 
-fn toolbar(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Problem]) {
+fn toolbar(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Problem]) {
     ui.horizontal_centered(|ui| {
         let (r, _) = ui.allocate_exact_size(vec2(22.0, 22.0), Sense::hover());
         icons::paint(ui.painter(), r, "modelbuilder", t.icon, t.accent);
@@ -672,7 +672,7 @@ fn toolbar(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Pro
 }
 
 /// The tools, by toolbox, to drag onto the canvas (or click to add).
-fn palette_ui(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, canvas: Rect) {
+fn palette_ui(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, canvas: Rect) {
     crate::widgets::search_field(ui, &mut app.mb.search, tl!("Search tools"));
     ui.add_space(4.0);
     let mut add: Option<Add> = None;
@@ -703,13 +703,13 @@ fn palette_ui(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, canvas: Rect) {
         Some(g) => g.2.push(tool),
         None => groups.push((group, open, vec![tool])),
     };
-    for tool in rustgis_engine::analysis::TOOLS.iter().filter(|x| matches(x)) {
+    for tool in powergis_engine::analysis::TOOLS.iter().filter(|x| matches(x)) {
         push(crate::i18n::location(tool.toolbox.split(" › ").next().unwrap_or(tool.toolbox)).to_string(), true, tool);
     }
-    for tool in rustgis_engine::analysis::external_tools_of(rustgis_engine::plugins::tools::SOURCE).iter().filter(|x| matches(x)) {
+    for tool in powergis_engine::analysis::external_tools_of(powergis_engine::plugins::tools::SOURCE).iter().filter(|x| matches(x)) {
         push(format!("{} › {}", tl!("Plugins"), tool.toolbox.rsplit(" › ").next().unwrap_or(tool.toolbox)), true, tool);
     }
-    let external = rustgis_engine::cmd::gp::geolibre_tools();
+    let external = powergis_engine::cmd::gp::geolibre_tools();
     for (k, tool) in external.iter().filter(|x| matches(x)).enumerate() {
         // A thousand tools: by category, closed until opened, and only the first matches.
         if !q.is_empty() && k >= 80 {
@@ -823,7 +823,7 @@ fn wire_distance(pts: [Pos2; 4], p: Pos2) -> f32 {
     (0..=32).map(|i| at(i as f32 / 32.0).distance(p)).fold(f32::INFINITY, f32::min)
 }
 
-fn canvas_ui(app: &mut RustGisApp, ui: &mut Ui, rect: Rect, t: &Tokens, problems: &[model::Problem]) {
+fn canvas_ui(app: &mut powergisApp, ui: &mut Ui, rect: Rect, t: &Tokens, problems: &[model::Problem]) {
     if app.mb.zoom <= 0.0 {
         app.mb.zoom = 1.0;
     }
@@ -1239,7 +1239,7 @@ fn keep_result(mb: &mut ModelBuilder, id: &str) {
 }
 
 /// The selected node's settings; with none selected, the model's problems and saved models.
-fn inspector_ui(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Problem]) {
+fn inspector_ui(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Problem]) {
     egui::ScrollArea::vertical().id_salt("mb_inspector").auto_shrink([false, false]).show(ui, |ui| {
         let Some(i) = app.mb.selected.as_ref().and_then(|id| app.mb.graph.nodes.iter().position(|n| &n.id == id)) else {
             overview(app, ui, t, problems);
@@ -1292,7 +1292,7 @@ fn inspector_ui(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, problems: &[model
     });
 }
 
-fn input_settings(app: &mut RustGisApp, ui: &mut Ui, i: usize, n: &ModelNode) {
+fn input_settings(app: &mut powergisApp, ui: &mut Ui, i: usize, n: &ModelNode) {
     let input_label = ui.label(egui::RichText::new(tl!("Layer")).size(12.0));
     let mut names: Vec<String> = app.session.map().layers.iter().map(|l| l.name.clone()).collect();
     names.extend(app.session.project.tables.iter().map(|t| t.name.clone()));
@@ -1320,7 +1320,7 @@ fn input_settings(app: &mut RustGisApp, ui: &mut Ui, i: usize, n: &ModelNode) {
 }
 
 /// Resolves the named input independently, so a join's fields come from its join input.
-fn source_input(app: &RustGisApp, n: &ModelNode, input: &str) -> Option<String> {
+fn source_input(app: &powergisApp, n: &ModelNode, input: &str) -> Option<String> {
     match app.mb.graph.edges.iter().find(|e| e.to == n.id && e.to_port == input) {
         Some(e) => app.mb.graph.nodes.iter().find(|u| u.id == e.from && u.kind == ModelNodeKind::Input).and_then(|u| u.layer.clone()),
         None => n.params.get(input).and_then(Value::as_str).map(str::to_string),
@@ -1329,7 +1329,7 @@ fn source_input(app: &RustGisApp, n: &ModelNode, input: &str) -> Option<String> 
 
 /// Fields of a known model input. Numeric parameters refer strictly to a standalone table ID;
 /// a wire takes precedence, and tool-produced schemas remain unknown until execution.
-fn input_fields<'a>(app: &'a RustGisApp, n: &ModelNode, input: &str) -> Option<&'a [rustgis_engine::data::Field]> {
+fn input_fields<'a>(app: &'a powergisApp, n: &ModelNode, input: &str) -> Option<&'a [powergis_engine::data::Field]> {
     if !app.mb.graph.edges.iter().any(|e| e.to == n.id && e.to_port == input)
         && let Some(id) = n.params.get(input).and_then(Value::as_u64)
     {
@@ -1339,7 +1339,7 @@ fn input_fields<'a>(app: &'a RustGisApp, n: &ModelNode, input: &str) -> Option<&
     crate::panes::input_dataset(&app.session, &name).map(|d| d.fields.as_slice())
 }
 
-fn tool_settings(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, i: usize, n: &ModelNode) {
+fn tool_settings(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, i: usize, n: &ModelNode) {
     let Some(spec) = model::tool_of(n) else {
         ui.label(
             egui::RichText::new(tl!("PowerGIS doesn't have this tool. Install the tools it comes from, or delete the node."))
@@ -1557,7 +1557,7 @@ fn set_param(n: &mut ModelNode, k: &str, v: Value) {
 }
 
 /// With nothing selected: how to build, what's wrong, and the project's models.
-fn overview(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Problem]) {
+fn overview(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Problem]) {
     ui.label(egui::RichText::new(tl!("Model")).font(semibold(14.0)));
     ui.add_space(4.0);
     for line in [
@@ -1623,7 +1623,7 @@ fn overview(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Pr
     }
 }
 
-fn log_ui(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Problem]) {
+fn log_ui(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Problem]) {
     egui::ScrollArea::vertical().id_salt("mb_log").auto_shrink([false, false]).stick_to_bottom(true).show(ui, |ui| {
         if problems.is_empty() && app.mb.log.is_empty() {
             let text = if app.mb.graph.nodes.is_empty() { tl!("Messages appear here.") } else { tl!("The model is ready to run.") };
@@ -1657,7 +1657,7 @@ fn log_ui(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, problems: &[model::Prob
 }
 
 /// Asks before dropping unsaved changes.
-fn confirm(app: &mut RustGisApp, ctx: &egui::Context) {
+fn confirm(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(p) = app.mb.confirm.clone() else { return };
     let mut answer = None;
     egui::Modal::new(egui::Id::unique("mb_confirm")).show(ctx, |ui| {
@@ -1693,7 +1693,7 @@ fn confirm(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Drops the canvas of a project no longer open (its model would be saved into this one).
-fn forget_old_project(app: &mut RustGisApp) {
+fn forget_old_project(app: &mut powergisApp) {
     if app.mb.project != app.session.project_starts {
         app.mb = ModelBuilder { project: app.session.project_starts, search: std::mem::take(&mut app.mb.search), ..Default::default() };
     }
@@ -1701,7 +1701,7 @@ fn forget_old_project(app: &mut RustGisApp) {
 
 /// Hides ModelBuilder when another map or layout came into view, and closes it when another
 /// project was opened.
-pub fn follow_view(app: &mut RustGisApp) {
+pub fn follow_view(app: &mut powergisApp) {
     forget_old_project(app);
     if app.mb.active && app.mb.view_key != (app.session.project.active_map, app.session.active_layout) {
         app.mb.active = false;
@@ -1715,10 +1715,10 @@ mod tests {
 
     use super::*;
 
-    fn harness(app: RustGisApp) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn harness(app: powergisApp) -> egui_kittest::Harness<'static, powergisApp> {
         let mut fonts = false;
         egui_kittest::Harness::builder().with_size(vec2(1300.0, 800.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -1736,7 +1736,7 @@ mod tests {
     /// dropped, the output named; the nodes show how they fared.
     #[test]
     fn a_model_drawn_on_the_canvas_runs_and_saves() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("ui.modelBuilder", Value::Null).unwrap();
         assert!(app.mb.shown());
         let input = app.mb.add(&Add::Input, pos2(0.0, 0.0));
@@ -1770,7 +1770,7 @@ mod tests {
     /// it; a map tab clicked (or a map activated) hides ModelBuilder, its tab shows it again.
     #[test]
     fn keys_edit_the_canvas_and_tabs_switch_views() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("ui.modelBuilder", Value::Null).unwrap();
         let a = app.mb.add(&Add::Input, pos2(0.0, 0.0));
         let b = app.mb.add(&Add::Tool("buffer"), pos2(220.0, 0.0));
@@ -1811,7 +1811,7 @@ mod tests {
     /// Closing with unsaved changes asks first; Discard closes, Cancel keeps the model open.
     #[test]
     fn closing_asks_about_unsaved_changes() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("ui.modelBuilder", Value::Null).unwrap();
         app.mb.add(&Add::Tool("buffer"), pos2(0.0, 0.0));
         app.run("ui.modelBuilder", json!({"close": true})).unwrap();
@@ -1824,7 +1824,7 @@ mod tests {
     /// Opening another project closes ModelBuilder and drops its canvas.
     #[test]
     fn another_project_drops_the_canvas() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("ui.modelBuilder", Value::Null).unwrap();
         app.mb.add(&Add::Tool("buffer"), pos2(0.0, 0.0));
         app.mb.saved_as = Some("Old".into());
@@ -1836,7 +1836,7 @@ mod tests {
     /// Old models (steps with `%n`) open on the canvas as graphs.
     #[test]
     fn step_models_open_as_graphs() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run(
             "model.new",
             json!({"name": "Old", "steps": [{"tool": "buffer", "params": {"input": "Cities", "distance": 5}}, {"tool": "dissolve", "params": {"input": "%1"}}]}),

@@ -80,7 +80,7 @@ impl Cell {
 
 impl Notebook {
     /// The language of a Jupyter notebook whose code cells aren't PowerGIS commands (`python`),
-    /// from its kernel, or `code` when it names none (PowerGIS writes `rustgis`); `None` for
+    /// from its kernel, or `code` when it names none (PowerGIS writes `powergis`); `None` for
     /// command notebooks.
     pub fn language(&self) -> Option<&str> {
         let Some(meta) = self.jupyter.as_deref()?.get("metadata") else { return Some("code") };
@@ -90,7 +90,7 @@ impl Notebook {
             .or_else(|| field("language_info", "name"))
             .or_else(|| field("kernelspec", "name").map(|n| if n.to_ascii_lowercase().starts_with("python") { "python" } else { n }))
             .unwrap_or("code");
-        (!lang.eq_ignore_ascii_case("rustgis")).then_some(lang)
+        (!lang.eq_ignore_ascii_case("powergis")).then_some(lang)
     }
 
     /// `language` as a label (`Python`).
@@ -203,7 +203,7 @@ pub fn commands() -> Vec<C> {
             let path = ps(p, "path").ok_or("path is required")?;
             let i = index(s, p)?;
             let bytes = notebook_file(s, i, path.to_ascii_lowercase().ends_with(".ipynb"))?;
-            rustgis_data::io::write_atomic(Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"path": path}))
         })
         .view()
@@ -509,7 +509,7 @@ fn jupyter_file(nb: &Notebook) -> Value {
     let minor = kept.and_then(|j| j.get("nbformat_minor")).and_then(Value::as_u64).unwrap_or(5);
     let mut metadata = match kept.and_then(|j| j.get("metadata")).filter(|m| m.is_object()) {
         Some(m) => m.clone(),
-        None => json!({"language_info": {"name": "rustgis"}}),
+        None => json!({"language_info": {"name": "powergis"}}),
     };
     // A notebook from elsewhere keeps its own title, or none.
     if (kept.is_none() || metadata.get("title").is_some())

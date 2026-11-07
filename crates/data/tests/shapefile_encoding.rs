@@ -1,6 +1,6 @@
 //! Shapefile text is decoded at the same public boundaries used by desktop and browser imports.
 
-use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value, io};
+use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value, io};
 
 /// A single point with one 32-byte character field. The bytes are supplied directly rather
 /// than encoded by the decoder under test; byte 29 is the DBF language-driver identifier.
@@ -12,7 +12,7 @@ fn named_parts(field: &[u8], text: &[u8], ldid: u8, cpg: Option<&[u8]>, rows: us
     assert!(field.len() <= 10 && text.len() <= 32);
     let mut ds = Dataset::new("places", GeometryType::Point, vec![Field::new("name", FieldType::Text)]);
     for i in 0..rows {
-        ds.push(Some(Geometry::Point(rustgis_data::Coord::new(1.0 + i as f64, 2.0))), vec![Value::Text("x".repeat(32))]);
+        ds.push(Some(Geometry::Point(powergis_data::Coord::new(1.0 + i as f64, 2.0))), vec![Value::Text("x".repeat(32))]);
     }
     io::shapefile_parts(&ds)
         .unwrap()
@@ -58,7 +58,7 @@ fn zipped_shapefile_honors_its_own_cpg_in_a_folder() {
         .map(|(name, bytes)| (format!("data/{}", name.to_ascii_uppercase()), bytes))
         .chain([("elsewhere/PLACES.CPG".into(), b"UTF-8".to_vec())])
         .collect();
-    let zip = rustgis_data::zip::write(&entries).unwrap();
+    let zip = powergis_data::zip::write(&entries).unwrap();
     let layers = io::read_zip("upload.zip", &zip).unwrap();
     assert_eq!(layers.len(), 1);
     assert_eq!(layers[0].0.value(0, 0), &Value::Text("Montréal – Québec".into()));
@@ -68,7 +68,7 @@ fn zipped_shapefile_honors_its_own_cpg_in_a_folder() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn streamed_shapefile_decodes_cpg_in_sampled_and_complete_reads() {
-    use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
     let dir = tempfile::tempdir().unwrap();
     for (name, bytes) in parts(b"Montr\xe9al \x96 Qu\xe9bec", 0xf0, Some(b"1252")) {
         std::fs::write(dir.path().join(name), bytes).unwrap();
@@ -88,7 +88,7 @@ fn streamed_shapefile_decodes_cpg_in_sampled_and_complete_reads() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn shapefile_uses_dbf_code_page_when_cpg_is_absent() {
-    use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
     // Esri documents both 0x03 and 0x57 as Windows-1252; C9 is Windows-1251.
     for (ldid, text, expected) in [
         (0x03, b"Montr\xe9al \x96 Qu\xe9bec".as_slice(), "Montréal – Québec"),
@@ -96,7 +96,7 @@ fn shapefile_uses_dbf_code_page_when_cpg_is_absent() {
         (0xc9, b"\xcc\xee\xf1\xea\xe2\xe0".as_slice(), "Москва"),
     ] {
         let files = parts(text, ldid, None);
-        let zip = rustgis_data::zip::write(&files).unwrap();
+        let zip = powergis_data::zip::write(&files).unwrap();
         assert_eq!(io::read_zip("places.zip", &zip).unwrap()[0].0.value(0, 0), &Value::Text(expected.into()), "LDID {ldid:02X}");
         let dir = tempfile::tempdir().unwrap();
         for (name, bytes) in files {
@@ -114,7 +114,7 @@ fn shapefile_uses_dbf_code_page_when_cpg_is_absent() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn language_drivers_dbase_lacks_decode_text_without_cpg_in_all_readers() {
-    use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
     for (ldid, text, expected) in [
         (0x59, b"\xc1guilas".as_slice(), "Águilas"),
         (0x58, b"\xc1guilas".as_slice(), "Águilas"),
@@ -127,7 +127,7 @@ fn language_drivers_dbase_lacks_decode_text_without_cpg_in_all_readers() {
         (0x96, b"\x8a\xe8\xe5\xe2".as_slice(), "Киев"),
     ] {
         let files = parts(text, ldid, None);
-        let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+        let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
         assert_eq!(layers[0].0.value(0, 0), &Value::Text(expected.into()), "LDID {ldid:02X}");
         assert!(layers[0].1.messages.is_empty(), "LDID {ldid:02X}: {:?}", layers[0].1.messages);
         let dir = tempfile::tempdir().unwrap();
@@ -147,7 +147,7 @@ fn language_drivers_dbase_lacks_decode_text_without_cpg_in_all_readers() {
 #[test]
 fn undecodable_dbf_code_page_is_named_in_the_utf8_fallback() {
     let files = parts("Montréal".as_bytes(), 0x6c, None);
-    let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+    let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
     assert_eq!(layers[0].0.value(0, 0), &Value::Text("Montréal".into()));
     let said = &layers[0].1.messages;
     assert!(said.iter().any(|m| m.contains("0x6C (code page 863, DOS French Canadian)") && m.contains("UTF-8")), "{said:?}");
@@ -156,7 +156,7 @@ fn undecodable_dbf_code_page_is_named_in_the_utf8_fallback() {
 #[test]
 fn unknown_dbf_code_page_reports_utf8_fallback() {
     let files = parts("Montréal".as_bytes(), 0xff, None);
-    let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+    let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
     assert_eq!(layers[0].0.value(0, 0), &Value::Text("Montréal".into()));
     assert!(layers[0].1.messages.iter().any(|m| m.contains("0xFF") && m.contains("UTF-8")), "{:?}", layers[0].1.messages);
 }
@@ -164,12 +164,12 @@ fn unknown_dbf_code_page_reports_utf8_fallback() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn unusable_cpg_reports_fallback_to_dbf_in_all_readers() {
-    use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
     let mut oversized = b"1252".to_vec();
     oversized.resize(2048, b' ');
     for cpg in [Vec::new(), b"not-an-encoding".to_vec(), b"-437".to_vec(), b"UTF-16LE".to_vec(), vec![0xff, 0xfe], oversized] {
         let files = parts(b"Montr\xe9al", 0x03, Some(&cpg));
-        let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+        let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
         assert_eq!(layers[0].0.value(0, 0), &Value::Text("Montréal".into()));
         assert!(layers[0].1.messages.iter().any(|m| m.contains(".cpg")), "{:?}", layers[0].1.messages);
         let dir = tempfile::tempdir().unwrap();
@@ -190,7 +190,7 @@ fn unusable_cpg_reports_fallback_to_dbf_in_all_readers() {
 fn utf8_shapefile_text_survives_missing_metadata_and_utf8_cpg() {
     for cpg in [None, Some(b"UTF-8".as_slice()), Some(b"65001".as_slice())] {
         let files = parts("München – 東京".as_bytes(), if cpg.is_some() { 0x03 } else { 0 }, cpg);
-        let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+        let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
         assert_eq!(layers[0].0.value(0, 0), &Value::Text("München – 東京".into()));
         assert!(layers[0].1.messages.is_empty(), "{:?}", layers[0].1.messages);
     }
@@ -199,7 +199,7 @@ fn utf8_shapefile_text_survives_missing_metadata_and_utf8_cpg() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn native_imports_discover_every_cpg_extension_case() {
-    use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
     for ext in ["cpg", "CPG", "Cpg", "cPg", "cpG", "CPg", "CpG", "cPG"] {
         let dir = tempfile::tempdir().unwrap();
         for (name, bytes) in parts(b"Montr\xe9al", 0xf0, Some(b"1252")) {
@@ -219,7 +219,7 @@ fn native_imports_discover_every_cpg_extension_case() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn unreadable_cpg_reports_fallback_without_preventing_native_imports() {
-    use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
     for (ldid, text, expected) in [(0x03, b"Montr\xe9al".as_slice(), "Montréal"), (0, "München".as_bytes(), "München")] {
         let dir = tempfile::tempdir().unwrap();
         for (name, bytes) in parts(text, ldid, None) {
@@ -248,12 +248,12 @@ fn unreadable_cpg_reports_fallback_without_preventing_native_imports() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn shapefile_decodes_legacy_field_names_in_all_readers() {
-    use rustgis_data::source::{FeatureSource, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, shp::ShpSource};
     let mut files = parts(b"Montr\xe9al", 0x03, None);
     let dbf = &mut files.iter_mut().find(|(n, _)| n.ends_with(".dbf")).unwrap().1;
     dbf[32..43].fill(0);
     dbf[32..36].copy_from_slice(b"caf\xe9");
-    let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+    let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
     assert_eq!(layers[0].0.fields[0].name, "café");
     let dir = tempfile::tempdir().unwrap();
     for (name, bytes) in files {
@@ -267,14 +267,14 @@ fn shapefile_decodes_legacy_field_names_in_all_readers() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn dos_cpg_decodes_attributes_and_field_names_in_all_readers() {
-    use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
     // The same E0 byte is Greek alpha in CP437 and capital O acute in CP850.
     for (cpg, expected) in [("437", "Café α"), ("CP437", "Café α"), ("850", "Café Ó"), ("IBM850", "Café Ó")] {
         let mut files = parts(b"Caf\x82 \xe0", 0xf0, Some(cpg.as_bytes()));
         let dbf = &mut files.iter_mut().find(|(n, _)| n.ends_with(".dbf")).unwrap().1;
         dbf[32..43].fill(0);
         dbf[32..36].copy_from_slice(b"caf\x82");
-        let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+        let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
         assert_eq!(layers[0].0.fields[0].name, "café", "CPG {cpg}");
         assert_eq!(layers[0].0.value(0, 0), &Value::Text(expected.into()), "CPG {cpg}");
         assert!(layers[0].1.messages.is_empty(), "{:?}", layers[0].1.messages);
@@ -304,10 +304,10 @@ fn dos_cpg_decodes_attributes_and_field_names_in_all_readers() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn dos_dbf_markers_decode_text_without_cpg_in_all_readers() {
-    use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
     for (ldid, expected) in [(0x01, "Café α"), (0x02, "Café Ó"), (0x09, "Café α"), (0x0a, "Café Ó")] {
         let files = parts(b"Caf\x82 \xe0", ldid, None);
-        let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+        let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
         assert_eq!(layers[0].0.value(0, 0), &Value::Text(expected.into()), "LDID {ldid:02X}");
         assert!(layers[0].1.messages.is_empty(), "{:?}", layers[0].1.messages);
         let dir = tempfile::tempdir().unwrap();
@@ -335,7 +335,7 @@ fn dos_support_preserves_other_encodings_and_lossy_utf8_fallback() {
         (None, 0, b"\xef\xbb\xbfCaf\xff".as_slice(), "\u{feff}Caf�"),
     ] {
         let files = parts(text, ldid, cpg);
-        let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+        let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
         assert_eq!(layers[0].0.value(0, 0), &Value::Text(expected.into()));
         assert!(layers[0].1.messages.is_empty(), "{:?}", layers[0].1.messages);
     }
@@ -344,14 +344,14 @@ fn dos_support_preserves_other_encodings_and_lossy_utf8_fallback() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn utf8_metadata_preserves_leading_bom_in_fields_and_values() {
-    use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+    use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
     for (cpg, ldid) in [(None, 0), (None, 0xf0), (Some(b"UTF-8".as_slice()), 0x03), (Some(b"65001".as_slice()), 0x03)] {
         // A BOM inside a fixed-width DBF field is content, not a file signature.
         let mut files = parts(b"\xef\xbb\xbfCaf\xff", ldid, cpg);
         let dbf = &mut files.iter_mut().find(|(n, _)| n.ends_with(".dbf")).unwrap().1;
         dbf[32..43].fill(0);
         dbf[32..39].copy_from_slice(b"\xef\xbb\xbfname");
-        let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+        let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
         assert_eq!(layers[0].0.fields[0].name, "\u{feff}name");
         assert_eq!(layers[0].0.value(0, 0), &Value::Text("\u{feff}Caf�".into()));
         assert!(layers[0].1.messages.is_empty(), "{:?}", layers[0].1.messages);
@@ -451,14 +451,14 @@ fn check_ldid_readers(ldid: u8, text: &[u8], expected: &str, cpg: Option<&[u8]>,
             assert_eq!(ds.value(row, 0), &Value::Text(expected.into()), "LDID {ldid:02X} row {row}");
         }
     };
-    let layers = io::read_zip("places.zip", &rustgis_data::zip::write(&files).unwrap()).unwrap();
+    let layers = io::read_zip("places.zip", &powergis_data::zip::write(&files).unwrap()).unwrap();
     assert_eq!(layers.len(), 1);
     check(&layers[0].0, 3);
     assert_eq!(layers[0].1.skipped, 0);
     assert_eq!(layers[0].1.messages, notes, "LDID {ldid:02X} ZIP notes");
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::{FeatureSource, Request, shp::ShpSource};
+        use powergis_data::source::{FeatureSource, Request, shp::ShpSource};
         let dir = tempfile::tempdir().unwrap();
         for (name, bytes) in files {
             std::fs::write(dir.path().join(name), bytes).unwrap();

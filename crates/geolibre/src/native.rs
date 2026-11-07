@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use rustgis_analysis::ToolResult;
+use powergis_analysis::ToolResult;
 
 use crate::{Job, finish, runner};
 
@@ -19,7 +19,7 @@ impl Scratch {
         let mut last = None;
         for _ in 0..16 {
             let n = N.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
-            let dir = std::env::temp_dir().join(format!("rustgis-gp-{}-{nanos:x}-{n}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!("powergis-gp-{}-{nanos:x}-{n}", std::process::id()));
             match std::fs::create_dir(&dir) {
                 Ok(()) => return Ok(Scratch(dir)),
                 Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => last = Some(e),

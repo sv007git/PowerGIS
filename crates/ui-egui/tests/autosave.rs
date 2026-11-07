@@ -6,7 +6,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::accesskit::Role;
 use egui_kittest::kittest::Queryable;
-use rustgis_ui_egui::{FolderStore, RecoveryStore, RustGisApp, Services};
+use powergis_ui_egui::{FolderStore, RecoveryStore, powergisApp, Services};
 use serde_json::json;
 
 /// This run's copy and the one an earlier run left, as the folder store names them.
@@ -20,7 +20,7 @@ struct TempDir(PathBuf);
 impl TempDir {
     /// A fresh, empty folder for test `name`, apart from other tests and runs.
     fn new(name: &str) -> TempDir {
-        let dir = std::env::temp_dir().join(format!("rustgis-autosave-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-autosave-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         TempDir(dir)
@@ -39,7 +39,7 @@ type Prefs = Arc<Mutex<std::collections::HashMap<String, String>>>;
 
 /// One launch of the desktop app: the sample, with the recovery folder `dir` (holding the run
 /// marker) and the preferences `prefs`.
-fn launch(dir: &Path, prefs: &Prefs) -> egui_kittest::Harness<'static, RustGisApp> {
+fn launch(dir: &Path, prefs: &Prefs) -> egui_kittest::Harness<'static, powergisApp> {
     let (load, save) = (prefs.clone(), prefs.clone());
     let services = Services {
         load_pref: Some(Box::new(move |k| load.lock().unwrap().get(k).cloned())),
@@ -49,10 +49,10 @@ fn launch(dir: &Path, prefs: &Prefs) -> egui_kittest::Harness<'static, RustGisAp
         recovery: Some(Box::new(FolderStore::open(&dir.join("recovery")).unwrap())),
         ..Default::default()
     };
-    let mut app = RustGisApp::with_sample().with_services(services);
+    let mut app = powergisApp::with_sample().with_services(services);
     app.start(&Default::default()).unwrap();
     egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -64,14 +64,14 @@ fn launch(dir: &Path, prefs: &Prefs) -> egui_kittest::Harness<'static, RustGisAp
 /// Runs `n` frames. A click is handled on the frame after it and the dialog it closes was
 /// drawn by then, so its result shows a frame later; a dialog that grew is centred again a frame
 /// after that.
-fn frames(h: &mut egui_kittest::Harness<'_, RustGisApp>, n: usize) {
+fn frames(h: &mut egui_kittest::Harness<'_, powergisApp>, n: usize) {
     for _ in 0..n {
         h.step();
     }
 }
 
 /// Runs a few frames, then waits until the store has done what they asked of it.
-fn settle(h: &mut egui_kittest::Harness<'_, RustGisApp>) {
+fn settle(h: &mut egui_kittest::Harness<'_, powergisApp>) {
     for _ in 0..3 {
         h.step();
     }
@@ -85,7 +85,7 @@ fn file(dir: &Path, name: &str) -> PathBuf {
 
 /// Quits as the user does, with unsaved work: the window's close is asked for, the save prompt
 /// answered Don't Save, and the app ends cleanly (`on_exit`).
-fn quit_without_saving(h: &mut egui_kittest::Harness<'_, RustGisApp>) {
+fn quit_without_saving(h: &mut egui_kittest::Harness<'_, powergisApp>) {
     h.input_mut().viewports.entry(egui::ViewportId::ROOT).or_default().events.push(egui::ViewportEvent::Close);
     frames(h, 3);
     h.get_by_role_and_label(Role::Button, "Don't Save").click();
@@ -95,7 +95,7 @@ fn quit_without_saving(h: &mut egui_kittest::Harness<'_, RustGisApp>) {
 }
 
 /// An edit to the project: a new layer.
-fn edit(h: &mut egui_kittest::Harness<'_, RustGisApp>, name: &str) {
+fn edit(h: &mut egui_kittest::Harness<'_, powergisApp>, name: &str) {
     h.state_mut().run("layer.template", json!({"template": "points", "name": name})).unwrap();
 }
 
@@ -287,7 +287,7 @@ fn the_interval_is_a_setting_and_off_keeps_no_copy() {
     let mut h2 = launch(&dir.0, &prefs);
     assert_eq!(h2.state_mut().run("ui.autosave", json!({})).unwrap()["minutes"], 5);
     // A shell without a recovery store (the browser) has no autosave to set.
-    let mut web = RustGisApp::with_sample();
+    let mut web = powergisApp::with_sample();
     assert_eq!(web.run("ui.autosave", json!({})).unwrap()["available"], false);
     assert!(web.run("ui.autosave", json!({"minutes": 5})).is_err());
     assert!(web.run("ui.recover", json!({})).is_err());
@@ -408,7 +408,7 @@ fn a_failed_copy_wakes_the_interface() {
     let woken = std::sync::Arc::new(AtomicBool::new(false));
     let flag = woken.clone();
     store.set_wake(Box::new(move || flag.store(true, Ordering::SeqCst)));
-    store.write(rustgis_engine::sample::world_project(), rustgis_ui_egui::Recovery::default());
+    store.write(powergis_engine::sample::world_project(), powergis_ui_egui::Recovery::default());
     store.flush();
     assert!(woken.load(Ordering::SeqCst), "woken after the failure");
     assert!(store.take_error().is_some());

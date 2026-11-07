@@ -2,10 +2,10 @@
 //! map in graphics layers.
 
 use base64::Engine;
-use rustgis_data::{Geometry, Value as Attr};
-use rustgis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
-use rustgis_map::layout::TextAlign;
-use rustgis_map::{Rgba, graphics};
+use powergis_data::{Geometry, Value as Attr};
+use powergis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
+use powergis_map::layout::TextAlign;
+use powergis_map::{Rgba, graphics};
 use serde_json::{Value, json};
 
 use super::{b, f, ps, uint};
@@ -226,8 +226,8 @@ impl TextStyle {
     }
 
     /// The fields to set and their values; a layer made before a field gains it here.
-    fn sets(&self, ds: &mut rustgis_data::Dataset) -> Vec<(&'static str, Attr)> {
-        use rustgis_data::FieldType;
+    fn sets(&self, ds: &mut powergis_data::Dataset) -> Vec<(&'static str, Attr)> {
+        use powergis_data::FieldType;
         let mut out = Vec::new();
         if let Some(v) = self.italic {
             ds.ensure_field("italic", FieldType::Boolean);
@@ -273,7 +273,7 @@ pub(crate) fn picture(p: &Value) -> Result<String, String> {
     if b64.len() > MAX_PICTURE / 3 * 4 + 4 {
         return Err("the picture is too large".into());
     }
-    if rustgis_render::picture_size(&b64).is_none() {
+    if powergis_render::picture_size(&b64).is_none() {
         return Err("the picture isn't a PNG or JPEG image".into());
     }
     Ok(b64)
@@ -310,7 +310,7 @@ fn add(s: &mut Session, p: &Value) -> CmdResult {
     let row = l.dataset.features.len() - 1;
     // By name, as a layer made before the field lacks it.
     if let Some(bold) = b(p, "bold") {
-        let fi = l.dataset.ensure_field("bold", rustgis_data::FieldType::Boolean);
+        let fi = l.dataset.ensure_field("bold", powergis_data::FieldType::Boolean);
         if let Some(cell) = l.dataset.features.get_mut(row).and_then(|ft| ft.attrs.get_mut(fi)) {
             *cell = Attr::Bool(bold);
         }
@@ -395,7 +395,7 @@ fn restyle(s: &mut Session, p: &Value, one: Option<(u32, usize)>) -> CmdResult {
         return Err("give a fill, outline, width, size, fontSize, bold, italic, align, letterSpacing or text".into());
     }
     let mut n = 0;
-    let targeted = |l: &rustgis_map::Layer| one.map_or(!l.selection.is_empty(), |(id, _)| l.id == id);
+    let targeted = |l: &powergis_map::Layer| one.map_or(!l.selection.is_empty(), |(id, _)| l.id == id);
     for l in s.map_mut().layers.iter_mut().filter(|l| l.graphics && targeted(l)) {
         let mut sets: Vec<(&str, Attr)> = Vec::new();
         if let Some(c) = &fill {
@@ -411,7 +411,7 @@ fn restyle(s: &mut Session, p: &Value, one: Option<(u32, usize)>) -> CmdResult {
         }
         // A layer made before the field gains it here.
         if let Some(v) = bold {
-            l.dataset.ensure_field("bold", rustgis_data::FieldType::Boolean);
+            l.dataset.ensure_field("bold", powergis_data::FieldType::Boolean);
             sets.push(("bold", Attr::Bool(v)));
         }
         sets.extend(style.sets(&mut l.dataset));

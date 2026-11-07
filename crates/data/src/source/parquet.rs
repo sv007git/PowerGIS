@@ -22,7 +22,7 @@ use parquet::file::metadata::ParquetMetaData;
 use parquet::file::reader::{FileReader, RowGroupReader, SerializedFileReader};
 use parquet::file::statistics::Statistics;
 use parquet::schema::types::ColumnDescPtr;
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use std::path::Path;
 use std::sync::Arc;
 

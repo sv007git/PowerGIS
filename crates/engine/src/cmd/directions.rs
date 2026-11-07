@@ -1,13 +1,13 @@
 //! Directions: a route between places, through a Valhalla routing server (Home › Navigate ›
 //! Directions in the app, which plans and replays routes in its Directions pane).
 
-use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as Attr};
-use rustgis_geom::{Coord, Extent};
-use rustgis_map::{Rgba, symbology::Renderer};
+use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as Attr};
+use powergis_geom::{Coord, Extent};
+use powergis_map::{Rgba, symbology::Renderer};
 use serde_json::{Value, json};
 
 use super::{b, ps};
-use crate::render::rustgis_tiles::routing::{self, Avoid, Mode, Route, Router};
+use crate::render::powergis_tiles::routing::{self, Avoid, Mode, Route, Router};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -52,11 +52,11 @@ fn look_up(_s: &Session, name: &str, wait: bool) -> Result<Coord, String> {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let g = crate::render::rustgis_tiles::geocode::Geocoder::new(None, None)?;
+        let g = crate::render::powergis_tiles::geocode::Geocoder::new(None, None)?;
         if wait {
             std::thread::sleep(std::time::Duration::from_millis(g.spacing_ms()));
         }
-        let found = crate::render::rustgis_tiles::geocode::search_blocking(&g, name, 1)?;
+        let found = crate::render::powergis_tiles::geocode::search_blocking(&g, name, 1)?;
         found.first().map(|p| Coord::new(p.lon, p.lat)).ok_or_else(|| format!("no place found for '{name}'"))
     }
 }

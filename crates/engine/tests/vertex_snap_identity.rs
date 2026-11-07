@@ -1,5 +1,5 @@
 //! Source-addressed snapping for ordinary in-memory feature layers.
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     cmd::design::{snap_except, snap_vertex_except},
     data::{Dataset, Feature, Geometry, GeometryType, VertexId},

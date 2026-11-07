@@ -1,13 +1,13 @@
 use super::*;
 use egui::accesskit::Role;
-use rustgis_engine::data::secrets::{MemorySecrets, SecretError, SecretStore};
-use rustgis_ui_egui::Services;
+use powergis_engine::data::secrets::{MemorySecrets, SecretError, SecretStore};
+use powergis_ui_egui::Services;
 use std::sync::Arc;
 
-fn with_store(store: Arc<dyn SecretStore>) -> egui_kittest::Harness<'static, RustGisApp> {
-    let app = RustGisApp::with_sample().with_services(Services { secrets: Some(store), ..Default::default() });
+fn with_store(store: Arc<dyn SecretStore>) -> egui_kittest::Harness<'static, powergisApp> {
+    let app = powergisApp::with_sample().with_services(Services { secrets: Some(store), ..Default::default() });
     egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -15,7 +15,7 @@ fn with_store(store: Arc<dyn SecretStore>) -> egui_kittest::Harness<'static, Rus
         app,
     )
 }
-fn settle(h: &mut egui_kittest::Harness<'_, RustGisApp>) {
+fn settle(h: &mut egui_kittest::Harness<'_, powergisApp>) {
     for _ in 0..4 {
         h.step();
     }
@@ -101,12 +101,12 @@ fn remembered_database_chooser_cancel_selection_and_project_scope() {
         Some(serde_json::from_value(json!({"postgis":{"database":ADDRESS,"table":"roads","family":"Lines"}})).unwrap());
     let text = serde_json::to_string(&project).unwrap();
     let mut h = with_store(store);
-    h.state_mut().session.connections = rustgis_engine::connections::Connections::from_json(&prefs);
+    h.state_mut().session.connections = powergis_engine::connections::Connections::from_json(&prefs);
     h.state_mut().run("project.openText", json!({"text":text})).unwrap();
     settle(&mut h);
     assert_eq!(h.state().dialogs.open, Some("chooseConnection"));
     assert!(
-        h.state().session.database_logins.selection("postgres", &rustgis_engine::connections::database_key(ADDRESS).unwrap().1).is_none()
+        h.state().session.database_logins.selection("postgres", &powergis_engine::connections::database_key(ADDRESS).unwrap().1).is_none()
     );
     h.get_by_role_and_label(Role::Button, "Cancel").click();
     settle(&mut h);
@@ -118,7 +118,7 @@ fn remembered_database_chooser_cancel_selection_and_project_scope() {
     settle(&mut h);
     h.get_by_role_and_label(Role::Button, "Use Connection").click();
     settle(&mut h);
-    let key = rustgis_engine::connections::database_key(ADDRESS).unwrap().1;
+    let key = powergis_engine::connections::database_key(ADDRESS).unwrap().1;
     assert_eq!(h.state().session.database_logins.selection("postgres", &key), Some("c2"));
     h.state_mut().run("project.new", json!({})).unwrap();
     settle(&mut h);
@@ -128,14 +128,14 @@ fn remembered_database_chooser_cancel_selection_and_project_scope() {
 
 #[test]
 fn remembered_database_refused_saved_login_opens_empty_unchecked_form() {
-    if std::env::var_os("RUSTGIS_UI_REFUSAL_CHILD").is_none() {
+    if std::env::var_os("powergis_UI_REFUSAL_CHILD").is_none() {
         let output = std::process::Command::new(std::env::current_exe().unwrap())
             .args([
                 "--exact",
                 "remembered_database::remembered_database_refused_saved_login_opens_empty_unchecked_form",
                 "--test-threads=1",
             ])
-            .env("RUSTGIS_UI_REFUSAL_CHILD", "1")
+            .env("powergis_UI_REFUSAL_CHILD", "1")
             .env_remove("PGPASSWORD")
             .env_remove("PGPASSFILE")
             .output()
@@ -197,7 +197,7 @@ fn remembered_database_refused_saved_login_opens_empty_unchecked_form() {
     project.map_mut().layers[0].source =
         Some(serde_json::from_value(json!({"postgis":{"database":address,"table":"roads","family":"Lines"}})).unwrap());
     let mut h = with_store(store);
-    h.state_mut().session.connections = rustgis_engine::connections::Connections::from_json(&prefs);
+    h.state_mut().session.connections = powergis_engine::connections::Connections::from_json(&prefs);
     h.state_mut().run("project.openText", json!({"text":serde_json::to_string(&project).unwrap()})).unwrap();
     worker.join().unwrap();
     settle(&mut h);
@@ -216,7 +216,7 @@ fn remembered_database_recording_history_recent_and_preferences_never_get_sentin
     let store = Arc::new(MemorySecrets::new());
     let prefs = Arc::new(Mutex::new(HashMap::<String, String>::new()));
     let (load, save) = (prefs.clone(), prefs.clone());
-    let mut app = RustGisApp::with_sample().with_services(Services {
+    let mut app = powergisApp::with_sample().with_services(Services {
         secrets: Some(store.clone()),
         load_pref: Some(Box::new(move |k| load.lock().unwrap().get(k).cloned())),
         save_pref: Some(Box::new(move |k, v| {

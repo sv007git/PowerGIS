@@ -70,4 +70,4 @@ the crate and application manifests, and
 [Cargo.lock](https://github.com/opengeos/PowerGIS/blob/main/Cargo.lock). Dependency licences and
 copyright notices are collected in
 [THIRD-PARTY-LICENSES.txt](https://github.com/opengeos/PowerGIS/blob/main/THIRD-PARTY-LICENSES.txt),
-with a [separate list for Python](https://github.com/opengeos/PowerGIS/blob/main/apps/rustgis-python/THIRD-PARTY-LICENSES.txt).
+with a [separate list for Python](https://github.com/opengeos/PowerGIS/blob/main/apps/powergis-python/THIRD-PARTY-LICENSES.txt).

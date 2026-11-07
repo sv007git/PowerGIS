@@ -1,6 +1,6 @@
 use std::collections::VecDeque;
 
-use rustgis_engine::{Project, Session};
+use powergis_engine::{Project, Session};
 use serde_json::{Value, json};
 
 use crate::agent::{Agent, Entry, INTERNAL_ERROR, MAX_RETRIES, MAX_STEPS, Step, run_blocking};
@@ -31,7 +31,7 @@ fn cfg(provider: &str) -> Config {
 
 #[test]
 fn saved_key_obeys_desktop_consent_address_and_environment() {
-    use rustgis_engine::data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
+    use powergis_engine::data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
     let store = MemorySecrets::new();
     store.save("assistant/anthropic", &Secret::new("stored-sentinel")).unwrap();
     let mut cfg = Config::from_env("anthropic");
@@ -65,7 +65,7 @@ fn command_line_provider_prefers_explicit_environment_and_keys_over_the_saved_ch
     // Nothing explicit or in the environment: the saved choice only when it is given (the opt-in).
     assert_eq!(choose(None, None, None, None), "ollama");
     assert_eq!(choose(None, None, None, Some(&desktop)), "gemini");
-    // The command line, then RUSTGIS_ASSISTANT_PROVIDER, then a provider with an environment key.
+    // The command line, then powergis_ASSISTANT_PROVIDER, then a provider with an environment key.
     assert_eq!(choose(Some("openai"), Some("custom"), Some("anthropic"), Some(&desktop)), "openai");
     assert_eq!(choose(None, Some("custom"), Some("anthropic"), Some(&desktop)), "custom");
     assert_eq!(choose(None, None, Some("anthropic"), Some(&desktop)), "anthropic");
@@ -192,7 +192,7 @@ fn file_access_needs_approval() {
     let mut s = sample();
     let mut a = Agent::new(cfg("openai"), &s);
     let Step::Send(_) = a.ask("export the map", &s) else { panic!("expected a request") };
-    let path = std::env::temp_dir().join("rustgis-assistant-never-written.png");
+    let path = std::env::temp_dir().join("powergis-assistant-never-written.png");
     let step =
         a.receive(a.generation(), ok(call("c1", "run_command", json!({"command": "share.exportMap", "params": {"path": path}}))), &mut s);
     assert_eq!(step, Step::Confirm);
@@ -223,7 +223,7 @@ fn connection_management_requires_fresh_approval_but_can_run_in_app() {
 
 #[test]
 fn connection_commands_require_fresh_approval_before_login_or_scripts() {
-    use rustgis_engine::render::rustgis_tiles::s3;
+    use powergis_engine::render::powergis_tiles::s3;
 
     for command in ["connection.browse", "connection.test", "connection.login"] {
         for scripted in [false, true] {
@@ -275,7 +275,7 @@ fn connection_commands_require_fresh_approval_before_login_or_scripts() {
 
 #[test]
 fn remembered_database_forget_requires_fresh_direct_and_script_approval() {
-    use rustgis_engine::data::secrets::{MemorySecrets, SecretStore};
+    use powergis_engine::data::secrets::{MemorySecrets, SecretStore};
     use std::sync::Arc;
     for scripted in [false, true] {
         let store = Arc::new(MemorySecrets::new());
@@ -539,7 +539,7 @@ fn read_features_reads_a_tools_output_table() {
     // Names are matched as written, by `layer` as by `table`: `stats ` and ` Stats` are tables of
     // their own beside `stats` and `Stats`, and a name with a space nothing has is neither.
     for (name, v) in [("stats ", 3), (" Stats", 4)] {
-        use rustgis_engine::data::{Dataset, Field, FieldType, GeometryType, Value as V};
+        use powergis_engine::data::{Dataset, Field, FieldType, GeometryType, Value as V};
         let mut ds = Dataset::new(name, GeometryType::None, vec![Field::new("v", FieldType::Integer)]);
         ds.push(None, vec![V::Int(v)]);
         s.project.add_table(ds);
@@ -849,7 +849,7 @@ fn empty_replies_are_reported() {
 
 #[test]
 fn ordering_mixed_columns_never_panics() {
-    use rustgis_engine::data::Value as V;
+    use powergis_engine::data::Value as V;
     let mut s = sample();
     let id = s.layer_id(&json!({"layer": "Cities"})).unwrap_or(0);
     // A column of mixed numbers, numeric text, words, NaN and nulls.
@@ -882,7 +882,7 @@ fn always_allow_is_per_command_and_never_for_reserved_actions() {
     let mut a = Agent::new(cfg("openai"), &s);
     let Step::Send(_) = a.ask("x", &s) else { panic!("expected a request") };
     let dir = std::env::temp_dir();
-    let export = |n: u32| json!({"command": "share.exportLayer", "params": {"layer": "Lakes", "path": dir.join(format!("rustgis-assistant-test-{n}.geojson"))}});
+    let export = |n: u32| json!({"command": "share.exportLayer", "params": {"layer": "Lakes", "path": dir.join(format!("powergis-assistant-test-{n}.geojson"))}});
     let reply = json!({"choices": [{"message": {"role": "assistant", "content": null, "tool_calls": [
         {"id": "c0", "type": "function", "function": {"name": "run_command", "arguments": export(1).to_string()}},
         {"id": "c1", "type": "function", "function": {"name": "run_command", "arguments": export(1).to_string()}},
@@ -903,7 +903,7 @@ fn always_allow_is_per_command_and_never_for_reserved_actions() {
     assert!(a.pending(&s).is_some_and(|p| p.0.starts_with("project.new") && !p.2));
     let _ = a.decide(false, false, &mut s);
     for n in [1, 2] {
-        let _ = std::fs::remove_file(dir.join(format!("rustgis-assistant-test-{n}.geojson")));
+        let _ = std::fs::remove_file(dir.join(format!("powergis-assistant-test-{n}.geojson")));
     }
 }
 
@@ -997,7 +997,7 @@ fn mcp_initializes_and_lists_tools() {
     let (server, mut s) = (mcp::Server::default(), sample());
     let r = rpc(&server, &mut s, "initialize", json!({"protocolVersion": "2025-03-26", "capabilities": {}, "clientInfo": {"name": "t"}}));
     assert_eq!(r["protocolVersion"], "2025-03-26");
-    assert_eq!(r["serverInfo"]["name"], "rustgis");
+    assert_eq!(r["serverInfo"]["name"], "powergis");
     assert!(r["capabilities"]["tools"].is_object());
     // A version we don't know gets our newest.
     let r = rpc(&server, &mut s, "initialize", json!({"protocolVersion": "1999-01-01"}));
@@ -1070,7 +1070,7 @@ fn mcp_snapshot_draws_offscreen_and_saves_with_access() {
     let meta: Value = serde_json::from_str(r["content"][1]["text"].as_str().unwrap()).unwrap();
     assert!(meta["note"].as_str().is_some_and(|n| n.contains("relay")), "{meta}");
 
-    let out = std::env::temp_dir().join(format!("rustgis-mcp-snapshot-{}.png", std::process::id()));
+    let out = std::env::temp_dir().join(format!("powergis-mcp-snapshot-{}.png", std::process::id()));
     let save = json!({"mode": "render", "save_path": out.display().to_string()});
     let r = snapshot(&mcp::Server::new(false), &mut s, save.clone());
     assert!(r["isError"] == true && r["content"][0]["text"].as_str().unwrap().contains("--yes"), "{r}");
@@ -1156,7 +1156,7 @@ fn mcp_run_stops_at_a_failing_line_and_keeps_nothing() {
 fn mcp_run_checks_every_line_before_running() {
     let (server, mut s) = (mcp::Server::new(false), sample());
     let layers = s.map().layers.len();
-    let out = std::env::temp_dir().join(format!("rustgis-run-{}.png", std::process::id()));
+    let out = std::env::temp_dir().join(format!("powergis-run-{}.png", std::process::id()));
     let script = format!("layer.addSample {{\"name\": \"countries\"}}\nshare.exportMap {}", json!({"path": out.display().to_string()}));
     let (err, text) = call_tool(&server, &mut s, "run", json!({"script": script}));
     assert!(err && text.contains("line 2") && text.contains("--yes"), "{text}");
@@ -1181,7 +1181,7 @@ fn mcp_protocol_errors() {
     assert_eq!(rpc(&server, &mut s, "nope/nothing", json!({}))["error"]["code"], -32601);
     assert_eq!(rpc(&server, &mut s, "tools/call", json!({"name": "no_such_tool"}))["error"]["code"], -32602);
     assert_eq!(rpc(&server, &mut s, "tools/call", json!({"name": "list_layers", "arguments": [1]}))["error"]["code"], -32602);
-    assert_eq!(rpc(&server, &mut s, "resources/read", json!({"uri": "rustgis://docs/nope.md"}))["error"]["code"], -32002);
+    assert_eq!(rpc(&server, &mut s, "resources/read", json!({"uri": "powergis://docs/nope.md"}))["error"]["code"], -32002);
     // Batches: one reply per request, none for notifications only.
     let batch = r#"[{"jsonrpc":"2.0","id":1,"method":"ping"},{"jsonrpc":"2.0","method":"notifications/initialized"},{"jsonrpc":"2.0","id":2,"method":"nope"}]"#;
     let r: Value = serde_json::from_str(&server.handle(&mut s, batch).unwrap()).unwrap();
@@ -1236,7 +1236,7 @@ fn mcp_runs_commands_and_shows_the_map() {
 
 #[test]
 fn mcp_limits_what_the_agent_may_do() {
-    let path = std::env::temp_dir().join(format!("rustgis-mcp-{}.png", std::process::id()));
+    let path = std::env::temp_dir().join(format!("powergis-mcp-{}.png", std::process::id()));
     let export = json!({"command": "share.exportMap", "params": {"path": path.to_string_lossy()}});
 
     let (server, mut s) = (mcp::Server::new(false), sample());
@@ -1299,7 +1299,7 @@ fn mcp_serves_the_docs() {
 
     let list = rpc(&server, &mut s, "resources/list", json!({}));
     assert_eq!(list["resources"].as_array().unwrap().len(), docs::PAGES.len());
-    let r = rpc(&server, &mut s, "resources/read", json!({"uri": "rustgis://docs/user-guide/maps.md"}));
+    let r = rpc(&server, &mut s, "resources/read", json!({"uri": "powergis://docs/user-guide/maps.md"}));
     assert!(r["contents"][0]["text"].as_str().unwrap().starts_with("# "));
 }
 
@@ -1324,9 +1324,9 @@ fn docs_pages_and_addresses() {
     }
     assert_eq!(found.len(), docs::PAGES.len());
 
-    assert_eq!(docs::page("index.md").unwrap().url(), "https://rustgis.app/");
-    assert_eq!(docs::page("user-guide").unwrap().url(), "https://rustgis.app/user-guide/");
-    assert_eq!(docs::page("https://rustgis.app/user-guide/maps/").unwrap().path, "user-guide/maps.md");
+    assert_eq!(docs::page("index.md").unwrap().url(), "https://powergis.app/");
+    assert_eq!(docs::page("user-guide").unwrap().url(), "https://powergis.app/user-guide/");
+    assert_eq!(docs::page("https://powergis.app/user-guide/maps/").unwrap().path, "user-guide/maps.md");
     assert_eq!(docs::slug("Chaining commands"), "chaining-commands");
     assert_eq!(docs::slug("What the agent may do"), "what-the-agent-may-do");
     // Headings in code blocks aren't sections.
@@ -1440,7 +1440,7 @@ fn docs_tools_are_the_assistants_too() {
     let call = |name: &str, args: Value| ToolCall { id: "d".into(), name: name.into(), args };
     let found = tools::run(&mut s, &call("search_docs", json!({"query": "basemap", "limit": 3}))).unwrap();
     assert!(found.contains("basemap") || found.contains("Basemap"), "{found}");
-    assert!(tools::run(&mut s, &call("read_doc", json!({"page": "cli.md"}))).unwrap().contains("rustgis-cli"));
+    assert!(tools::run(&mut s, &call("read_doc", json!({"page": "cli.md"}))).unwrap().contains("powergis-cli"));
     assert!(tools::run(&mut s, &call("read_doc", json!({"page": "nope.md"}))).is_err());
     // Every page is complete JSON, including escaped Markdown, and fits the shared byte budget.
     for p in crate::docs::PAGES {
@@ -2956,16 +2956,16 @@ fn skills_are_added_switched_removed_shared_and_shipped_in_plugins() {
     // A plugin's skills are `<plugin>:<name>` while it's enabled.
     let manifest = json!({"id": "unit-assist", "name": "Assist", "version": "1.0.0", "runtime": "skills", "skills": ["flood"]}).to_string();
     let pkg =
-        rustgis_engine::plugins::Package::from_zip(&zip_of(&[("plugin.json", &manifest), ("skills/flood/SKILL.md", &skill("flood"))]))
+        powergis_engine::plugins::Package::from_zip(&zip_of(&[("plugin.json", &manifest), ("skills/flood/SKILL.md", &skill("flood"))]))
             .unwrap();
-    rustgis_engine::plugins::load(pkg, "test").unwrap();
+    powergis_engine::plugins::load(pkg, "test").unwrap();
     let (listed, _) = skills::list(&places);
     let p = listed.iter().find(|l| l.skill.name == "unit-assist:flood").unwrap();
     assert!(p.on && p.skill.source == Source::Plugin("unit-assist".into()));
     assert!(skills::load(&listed.into_iter().map(|l| l.skill).collect::<Vec<_>>(), "unit-assist:flood").unwrap().contains("Do flood."));
-    rustgis_engine::plugins::set_enabled("unit-assist", false).unwrap();
+    powergis_engine::plugins::set_enabled("unit-assist", false).unwrap();
     assert_eq!(on("unit-assist:flood"), None);
-    rustgis_engine::plugins::unload("unit-assist");
+    powergis_engine::plugins::unload("unit-assist");
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -3191,7 +3191,7 @@ fn acp_agent_output_is_bounded() {
 #[test]
 fn acp_sessions_run_a_task_ask_permission_and_report() {
     use crate::acp::{Choice, Event, Session};
-    let mcp = vec!["/opt/rustgis/rustgis-cli".to_string(), "mcp".into(), "--attach".into(), "8767".into()];
+    let mcp = vec!["/opt/powergis/powergis-cli".to_string(), "mcp".into(), "--attach".into(), "8767".into()];
     let (mut s, init) = Session::new("Codex", "Map the rivers", "/work", mcp, false);
     let init: Value = serde_json::from_str(&init).unwrap();
     assert_eq!((init["method"].as_str(), init["params"]["protocolVersion"].as_u64()), (Some("initialize"), Some(1)));
@@ -3204,7 +3204,7 @@ fn acp_sessions_run_a_task_ask_permission_and_report() {
     assert_eq!(new["params"]["cwd"], "/work");
     assert_eq!(
         new["params"]["mcpServers"],
-        json!([{"name": "rustgis", "command": "/opt/rustgis/rustgis-cli", "args": ["mcp", "--attach", "8767"], "env": []}])
+        json!([{"name": "powergis", "command": "/opt/powergis/powergis-cli", "args": ["mcp", "--attach", "8767"], "env": []}])
     );
     assert!(s.cancel().is_none(), "nothing to cancel before the session exists");
     // session/new → session/prompt with the brief and the task.
@@ -3446,7 +3446,7 @@ fn skill_problems(s: &Session, skill: &crate::skills::Skill) -> Vec<String> {
         known.extend(d.schema["properties"].as_object().into_iter().flatten().map(|(k, _)| k.clone()));
     }
     known.extend(["load_skill", "delegate", "run_tool", "run_command"].map(String::from));
-    for t in rustgis_engine::analysis::tools() {
+    for t in powergis_engine::analysis::tools() {
         known.push(t.id.to_string());
         known.extend(t.params.iter().map(|p| p.name.to_string()));
     }
@@ -3746,7 +3746,7 @@ fn compaction_size_counts_serialized_json_without_copying_it() {
 }
 
 #[test]
-fn local_delegation_waits_for_rustgis_approval() {
+fn local_delegation_waits_for_powergis_approval() {
     let mut s = sample();
     let mut a = Agent::new(cfg("openai"), &s);
     let spec = crate::acp::AgentSpec::from_id("claude-code").unwrap();
@@ -4272,7 +4272,7 @@ fn list_layers_includes_web_tile_layers() {
 /// Callback completion and a forged UI project-download request disclose their file reach.
 #[test]
 fn geolibre_download_callbacks_require_import_approval() {
-    let s = Session::new(rustgis_engine::project::Project::default());
+    let s = Session::new(powergis_engine::project::Project::default());
     for (command, params) in
         [("layer.addDownload", json!({"id":1})), ("ui.addUrl", json!({"url":"https://example.org/map.geolibre","geolibreProject":true}))]
     {

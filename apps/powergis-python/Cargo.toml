@@ -1,0 +1,31 @@
+[package]
+name = "powergis-python"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+description = "Python bindings to the PowerGIS engine (the `powergis` package on PyPI)"
+
+[lints]
+workspace = true
+
+[lib]
+name = "_powergis"
+crate-type = ["cdylib"]
+# The module links against Python only when loaded by it; there is nothing to run under cargo test.
+test = false
+doctest = false
+
+[dependencies]
+powergis-engine = { workspace = true, features = ["geolibre"] }
+powergis-keychain = { workspace = true }
+serde_json = { workspace = true }
+pyo3 = { version = "0.30", features = ["abi3-py312", "generate-import-lib"] }
+
+[build-dependencies]
+pyo3-build-config = "0.30"
+
+[features]
+# Adds an injectable credential store only for deterministic Python tests.
+# Not enabled for distributed wheels.
+test-stores = []

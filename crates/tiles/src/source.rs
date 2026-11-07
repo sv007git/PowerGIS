@@ -301,7 +301,7 @@ pub fn resolve(spec: &Spec) -> Resolve {
 }
 
 /// A vector archive's source layers, as its metadata lists them (`vector_layers`) and
-/// [`source_layers::of_metadata`](rustgis_data::source_layers::of_metadata) keeps them: the same
+/// [`source_layers::of_metadata`](powergis_data::source_layers::of_metadata) keeps them: the same
 /// names its default look draws from. `None` for other layers, an archive that can't be read,
 /// and while a PMTiles header is on its way (asking for it starts reading it in the background;
 /// an MBTiles file's metadata is read here, the first time it is asked for).
@@ -328,9 +328,9 @@ fn fetch_json(url: &str) -> Result<Option<Value>, String> {
 /// The tile addresses for a template with `{s}` expanded over its subdomains, and TMS rows
 /// written as `{-y}`.
 fn templates(spec: &Spec) -> Vec<String> {
-    // (Not in a layer's fragment naming the map tile it is for, `#rustgis-warp=`: #769.)
-    let url = match spec.url.split_once(rustgis_data::ogc::warp::MARK) {
-        Some((base, layout)) if spec.tms => format!("{}{}{layout}", base.replace("{y}", "{-y}"), rustgis_data::ogc::warp::MARK),
+    // (Not in a layer's fragment naming the map tile it is for, `#powergis-warp=`: #769.)
+    let url = match spec.url.split_once(powergis_data::ogc::warp::MARK) {
+        Some((base, layout)) if spec.tms => format!("{}{}{layout}", base.replace("{y}", "{-y}"), powergis_data::ogc::warp::MARK),
         _ if spec.tms => spec.url.replace("{y}", "{-y}"),
         _ => spec.url.clone(),
     };
@@ -432,7 +432,7 @@ fn named_layers_style(spec: &Spec, source: Value, names: &[String]) -> Value {
     json!({"version": 8, "sources": {"vector": source}, "layers": layers})
 }
 
-/// The most of a layer's own style layers drawn: `rustgis_map::tiles::MAX_STYLE_LAYER_COUNT`
+/// The most of a layer's own style layers drawn: `powergis_map::tiles::MAX_STYLE_LAYER_COUNT`
 /// lets a layer keep as many (the engine's tests check the two agree).
 pub const MAX_OWN_STYLE_LAYERS: usize = 256;
 

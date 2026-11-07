@@ -5,7 +5,7 @@
 #   preview-site - the built site (open pull requests)
 #
 # docs-preview-publish.yml, started when this workflow finishes, holds the deploy key and publishes
-# the site to https://preview.rustgis.app/pr-<N>/, or removes a closed pull request's preview. It
+# the site to https://preview.powergis.app/pr-<N>/, or removes a closed pull request's preview. It
 # runs no pull request code. Splitting the two is what lets fork pull requests get a preview:
 # GitHub gives a fork's `pull_request` run no secrets. A fork's preview publishes on every push once
 # its author has a commit on main; a first-time contributor's is published only once a maintainer
@@ -47,7 +47,7 @@ jobs:
           .venv/bin/zensical build
           # The preview is not the production site.
           rm -f site/CNAME
-      # Production serves the app from web.rustgis.app (web-deploy.yml); previews include it
+      # Production serves the app from web.powergis.app (web-deploy.yml); previews include it
       # at /app/ so a pull request's web build can be tried before merging.
       - uses: dtolnay/rust-toolchain@stable
         with:
@@ -60,7 +60,7 @@ jobs:
           echo "f2b4680cd239693a646a2795e4633c625328d7b2a044fbe749fa3a2fe9e7036b  $RUNNER_TEMP/trunk.tar.gz" | sha256sum -c -
           mkdir -p "$RUNNER_TEMP/bin" && tar xzf "$RUNNER_TEMP/trunk.tar.gz" -C "$RUNNER_TEMP/bin" trunk
           export PATH="$RUNNER_TEMP/bin:$PATH"
-          cd apps/rustgis-web
+          cd apps/powergis-web
           trunk build --release --public-url ./
           # The service worker, as web-deploy.yml adds it, so the preview installs as an app too.
           cargo xtask web-pwa ../../dist/web

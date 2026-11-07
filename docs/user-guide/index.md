@@ -18,7 +18,7 @@ This guide walks through PowerGIS by task. Each page covers one part of the app:
 | [AI Assistant](assistant.md) | A chat pane that answers questions and acts on the map through commands |
 
 <figure markdown="span">
-  [![PowerGIS with the Home tab of the ribbon open over a world map in the Equal Earth projection, countries shaded by population](https://assets.rustgis.app/images/hero.webp)](https://assets.rustgis.app/images/hero.webp){ target="_blank" rel="noopener" title="Open the full-size image" }
+  [![PowerGIS with the Home tab of the ribbon open over a world map in the Equal Earth projection, countries shaded by population](https://assets.powergis.app/images/hero.webp)](https://assets.powergis.app/images/hero.webp){ target="_blank" rel="noopener" title="Open the full-size image" }
   <figcaption>PowerGIS with the World Atlas sample in the Equal Earth projection.</figcaption>
 </figure>
 

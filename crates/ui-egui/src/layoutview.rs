@@ -5,14 +5,14 @@
 //! to remove it. Dragged elements snap to guides, the page and each other (Alt places freely).
 
 use egui::{Align2, Color32, CornerRadius, CursorIcon, Pos2, Rect, Sense, Stroke, Ui, pos2, vec2};
-use rustgis_engine::map::layout::{
+use powergis_engine::map::layout::{
     Arrange, ArrowStyle, CoordFormat, ElementKind, Grid, GridKind, GridStyle, Layout, LineHead, MAX_COLORBAR_TICKS, MAX_FRAME_SCALE,
     MAX_GRID_WIDTH, MAX_SCALE_DIVISIONS, MAX_TICK_MM, MIN_FRAME_SCALE, Orientation, PT_PER_MM, ScaleBarStyle, ScaleUnits, TickSide,
     frame_camera, line_angle, line_length,
 };
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, regular, semibold};
 use crate::widgets::Dragged;
 
@@ -129,7 +129,7 @@ impl LayoutView {
 /// Forgets the selection and the text typed into its fields once another project has replaced
 /// the one they were for: its elements may have the same ids. Run after every command, after
 /// what agents and scripts sent, and before drafts are saved.
-pub(crate) fn follow_project(app: &mut RustGisApp) {
+pub(crate) fn follow_project(app: &mut powergisApp) {
     let opened = app.session.opened;
     if app.layout.project.is_some_and(|p| p != opened) {
         app.layout.selected = None;
@@ -150,7 +150,7 @@ const PAN_PREVIEW_SIDE: f64 = 8192.0;
 /// A map frame's map with [`PAN_OVERSCAN`] past each side, at the screen's resolution (or less,
 /// within [`PAN_PREVIEW_PIXELS`] and [`PAN_PREVIEW_SIDE`]), for a pan's preview. It doesn't wait
 /// for tiles still on their way, as it's drawn while the pointer moves.
-fn pan_preview(app: &mut RustGisApp, ctx: &egui::Context, layout: &Layout, id: u32, s: f32) -> Option<egui::TextureHandle> {
+fn pan_preview(app: &mut powergisApp, ctx: &egui::Context, layout: &Layout, id: u32, s: f32) -> Option<egui::TextureHandle> {
     let e = layout.element(id)?;
     let ElementKind::MapFrame { map, center, scale, bearing, pitch, .. } = &e.kind else { return None };
     // A tilted view's perspective follows the drawing's height, so a taller drawing wouldn't match
@@ -167,7 +167,7 @@ fn pan_preview(app: &mut RustGisApp, ctx: &egui::Context, layout: &Layout, id: u
     // thin frame could pass the first and not the second).
     let side = (ctx.input(|i| i.max_texture_side) as f64).min(PAN_PREVIEW_SIDE);
     let ppp = screen.min((PAN_PREVIEW_PIXELS / (w * h).max(1.0)).sqrt()).min(side / w.max(h).max(1.0)).max(0.01);
-    let pm = rustgis_engine::render::layout::frame_map_preview(m, cam, w, h, ppp)?;
+    let pm = powergis_engine::render::layout::frame_map_preview(m, cam, w, h, ppp)?;
     let img = egui::ColorImage::from_rgba_premultiplied([pm.width() as usize, pm.height() as usize], pm.data());
     Some(ctx.load_texture("layout_pan_preview", img, egui::TextureOptions::LINEAR))
 }
@@ -218,7 +218,7 @@ const HANDLE_PICK: f32 = 11.0;
 /// its inside still moves it; outside, it keeps a floor, so a thin element's handles can still be
 /// picked up. Navigating, a map frame under the pointer pans instead: no handle. A locked
 /// element has none.
-fn handle_at(app: &RustGisApp, layout: &Layout, page: Rect, s: f32, pos: Pos2) -> Option<(u32, usize)> {
+fn handle_at(app: &powergisApp, layout: &Layout, page: Rect, s: f32, pos: Pos2) -> Option<(u32, usize)> {
     if nav_frame(app, layout, page, s, pos).is_some() {
         return None;
     }
@@ -240,14 +240,14 @@ const ROTATE_GAP: f32 = 22.0;
 
 /// The selected line's rotation handle, unless it's locked: the line, where the handle is and the
 /// line's centre, on screen.
-fn rotate_handle(app: &RustGisApp, layout: &Layout, page: Rect, s: f32) -> Option<(u32, Pos2, Pos2)> {
+fn rotate_handle(app: &powergisApp, layout: &Layout, page: Rect, s: f32) -> Option<(u32, Pos2, Pos2)> {
     let e = app.layout.selected.and_then(|id| layout.element(id)).filter(|e| !e.locked && matches!(e.kind, ElementKind::Line { .. }))?;
     let r = Rect::from_min_max(to_screen(page, s, (e.x, e.y)), to_screen(page, s, (e.x + e.w, e.y + e.h)));
     Some((e.id, pos2(r.center().x, r.top() - ROTATE_GAP), r.center()))
 }
 
 /// The rotation handle at a screen point: the line, and its centre on screen.
-fn rotate_at(app: &RustGisApp, layout: &Layout, page: Rect, s: f32, pos: Pos2) -> Option<(u32, Pos2)> {
+fn rotate_at(app: &powergisApp, layout: &Layout, page: Rect, s: f32, pos: Pos2) -> Option<(u32, Pos2)> {
     let (id, h, c) = rotate_handle(app, layout, page, s)?;
     ((h - pos).length() <= HANDLE_PICK).then_some((id, c))
 }
@@ -437,7 +437,7 @@ fn ruler_at(lv: &LayoutView, area: Rect, p: Pos2) -> Option<bool> {
 /// removed.
 #[allow(clippy::too_many_arguments)]
 fn drop_guide(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     layout: &Layout,
     li: usize,
     page: Rect,
@@ -534,7 +534,7 @@ fn rulers(painter: &egui::Painter, area: Rect, page: Rect, s: f32, l: &Layout, p
 }
 
 /// The layout to show, copied from the project only when it has changed since the last copy.
-fn shown_layout(app: &mut RustGisApp, li: usize) -> Option<std::rc::Rc<Layout>> {
+fn shown_layout(app: &mut powergisApp, li: usize) -> Option<std::rc::Rc<Layout>> {
     let rev = app.session.revision;
     match &app.layout.shown {
         Some((i, r, l)) if *i == li && *r == rev => Some(l.clone()),
@@ -546,7 +546,7 @@ fn shown_layout(app: &mut RustGisApp, li: usize) -> Option<std::rc::Rc<Layout>> 
     }
 }
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui) {
     let Some(li) = app.session.active_layout else { return };
     let Some(layout) = shown_layout(app, li) else { return };
     let t = Tokens::get(ui.ctx());
@@ -586,13 +586,13 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
     let size = [(page.width() * ppp) as usize, (page.height() * ppp) as usize];
     let key = (app.session.revision, li, size, (dpi * 10.0) as i64, layout.width as i64, layout.height as i64);
     // Only once the pictures have: any other fetch landing (the map's tiles) bumps the generation.
-    let landed = app.layout.legends_wait.is_some_and(|g| g != rustgis_engine::render::rustgis_tiles::cache::generation())
-        && !rustgis_engine::render::layout::legends_pending(&layout, &app.session.project.maps);
+    let landed = app.layout.legends_wait.is_some_and(|g| g != powergis_engine::render::powergis_tiles::cache::generation())
+        && !powergis_engine::render::layout::legends_pending(&layout, &app.session.project.maps);
     if (app.layout.key != Some(key) || landed) && size[0] > 2 && size[1] > 2 {
         let info = page_info(app, li);
         // Before drawing: a fetch landing while it draws is a reason to draw again.
-        let generation = rustgis_engine::render::rustgis_tiles::cache::generation();
-        if let Some(pm) = rustgis_engine::render::layout::render(&layout, &mut app.session.project.maps, dpi, &info) {
+        let generation = powergis_engine::render::powergis_tiles::cache::generation();
+        if let Some(pm) = powergis_engine::render::layout::render(&layout, &mut app.session.project.maps, dpi, &info) {
             let img = egui::ColorImage::from_rgba_premultiplied([pm.width() as usize, pm.height() as usize], pm.data());
             match &mut app.layout.texture {
                 Some(tex) => tex.set(img, egui::TextureOptions::LINEAR),
@@ -601,7 +601,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
             app.layout.key = Some(key);
             // Natively the page waited for them already: drawn again, it would wait again.
             app.layout.legends_wait = (cfg!(target_arch = "wasm32")
-                && rustgis_engine::render::layout::legends_pending(&layout, &app.session.project.maps))
+                && powergis_engine::render::layout::legends_pending(&layout, &app.session.project.maps))
             .then_some(generation);
         }
     }
@@ -798,7 +798,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// The map series page count and the current page's name, worked out once per project change.
-fn series_label(app: &mut RustGisApp, li: usize) -> Option<(usize, String)> {
+fn series_label(app: &mut powergisApp, li: usize) -> Option<(usize, String)> {
     let rev = app.session.revision;
     if let Some((i, r, n, name)) = &app.layout.series
         && *i == li
@@ -807,20 +807,20 @@ fn series_label(app: &mut RustGisApp, li: usize) -> Option<(usize, String)> {
         return Some((*n, name.clone()));
     }
     let page = app.session.project.layouts.get(li).and_then(|l| l.series.as_ref()).map_or(0, |s| s.page);
-    let (n, name) = rustgis_engine::cmd::layout::series_info(&app.session, li, page)?;
+    let (n, name) = powergis_engine::cmd::layout::series_info(&app.session, li, page)?;
     app.layout.series = Some((li, rev, n, name.clone()));
     Some((n, name))
 }
 
 /// Page values for dynamic text in the view.
-pub fn page_info(app: &mut RustGisApp, li: usize) -> rustgis_engine::render::layout::PageInfo {
+pub fn page_info(app: &mut powergisApp, li: usize) -> powergis_engine::render::layout::PageInfo {
     let page = app.session.project.layouts.get(li).and_then(|l| l.series.as_ref()).map_or(0, |s| s.page);
     let (pages, page_name) = series_label(app, li).unwrap_or((1, String::new()));
-    rustgis_engine::render::layout::PageInfo { page: page + 1, pages, page_name }
+    powergis_engine::render::layout::PageInfo { page: page + 1, pages, page_name }
 }
 
 /// The map frame under a screen point, when map frames are being navigated.
-fn nav_frame(app: &RustGisApp, layout: &Layout, page: Rect, s: f32, p: Pos2) -> Option<u32> {
+fn nav_frame(app: &powergisApp, layout: &Layout, page: Rect, s: f32, p: Pos2) -> Option<u32> {
     let (x, y) = to_mm(page, s, p);
     layout.hit(x, y).filter(|id| {
         app.layout.navigate && layout.element(*id).is_some_and(|e| !e.locked && matches!(e.kind, ElementKind::MapFrame { .. }))
@@ -832,7 +832,7 @@ fn locked(layout: &Layout, id: u32) -> bool {
     layout.element(id).is_some_and(|e| e.locked)
 }
 
-fn interact(app: &mut RustGisApp, ui: &mut Ui, resp: &egui::Response, layout: &Layout, li: usize, page: Rect, s: f32) {
+fn interact(app: &mut powergisApp, ui: &mut Ui, resp: &egui::Response, layout: &Layout, li: usize, page: Rect, s: f32) {
     // A map frame's wheel zoom is applied once the wheel has stopped.
     let now = ui.input(|i| i.time);
     // A pan ending this frame is worked out from `layout` as it was: applying the zoom first
@@ -1073,7 +1073,7 @@ fn interact(app: &mut RustGisApp, ui: &mut Ui, resp: &egui::Response, layout: &L
 }
 
 /// Moves a map frame's map by a page offset (mm).
-fn pan_frame(app: &mut RustGisApp, layout: &Layout, li: usize, id: u32, dx: f64, dy: f64) {
+fn pan_frame(app: &mut powergisApp, layout: &Layout, li: usize, id: u32, dx: f64, dy: f64) {
     let Some(e) = layout.element(id) else { return };
     let ElementKind::MapFrame { map, center, scale, bearing, pitch, .. } = &e.kind else { return };
     let Some(m) = app.session.project.maps.iter().find(|m| m.name.eq_ignore_ascii_case(map)) else { return };
@@ -1088,7 +1088,7 @@ fn pan_frame(app: &mut RustGisApp, layout: &Layout, li: usize, id: u32, dx: f64,
 
 /// Zooms a map frame's map by `k` on its scale (below 1 zooms in), keeping the map under the
 /// page point `anchor` (mm) where it is.
-fn zoom_frame(app: &mut RustGisApp, layout: &Layout, li: usize, id: u32, k: f64, (ax, ay): (f64, f64)) {
+fn zoom_frame(app: &mut powergisApp, layout: &Layout, li: usize, id: u32, k: f64, (ax, ay): (f64, f64)) {
     let Some(e) = layout.element(id) else { return };
     let ElementKind::MapFrame { map, center, scale, bearing, pitch, .. } = &e.kind else { return };
     let Some(m) = app.session.project.maps.iter().find(|m| m.name.eq_ignore_ascii_case(map)) else { return };
@@ -1106,12 +1106,12 @@ fn zoom_frame(app: &mut RustGisApp, layout: &Layout, li: usize, id: u32, k: f64,
     }
     // The anchor's offset from the frame's centre, in points; times the resolution, map units.
     let (px, py) = ((ax - (e.x + e.w / 2.0)) * PT_PER_MM, -(ay - (e.y + e.h / 2.0)) * PT_PER_MM);
-    let target = rustgis_engine::geom::Coord::new(cam.center.x + px * cam.res, cam.center.y + py * cam.res);
+    let target = powergis_engine::geom::Coord::new(cam.center.x + px * cam.res, cam.center.y + py * cam.res);
     // Centre the frame so the anchor's map point stays put. The resolution for a scale depends on
     // the centre's latitude (Web Mercator stretches away from the equator), so solve for the
     // centre's y by Newton's method, then place x with the resolution there.
     let res_at =
-        |x: f64, y: f64| m.to_lonlat(rustgis_engine::geom::Coord::new(x, y)).map(|ll| frame_camera(m, ll, new_scale, 0.0, 0.0).res);
+        |x: f64, y: f64| m.to_lonlat(powergis_engine::geom::Coord::new(x, y)).map(|ll| frame_camera(m, ll, new_scale, 0.0, 0.0).res);
     let mut cx = cam.center.x;
     let mut cy = target.y - py * cam.res * new_scale / scale;
     for _ in 0..3 {
@@ -1131,12 +1131,12 @@ fn zoom_frame(app: &mut RustGisApp, layout: &Layout, li: usize, id: u32, k: f64,
         let Some(r) = res_at(cx, cy) else { return };
         cx = target.x - px * r;
     }
-    let Some(ll) = m.to_lonlat(rustgis_engine::geom::Coord::new(cx, cy)) else { return };
+    let Some(ll) = m.to_lonlat(powergis_engine::geom::Coord::new(cx, cy)) else { return };
     let _ = app.run("layout.update", json!({"layout": li, "element": id, "scale": new_scale, "center": [ll.x, ll.y]}));
 }
 
 /// Adds a polygon or lasso frame from the sketch.
-fn finish_frame(app: &mut RustGisApp, li: usize, shape: &str) {
+fn finish_frame(app: &mut powergisApp, li: usize, shape: &str) {
     let pts = std::mem::take(&mut app.layout.sketch);
     app.layout.tool = None;
     if pts.len() < 3 {
@@ -1154,7 +1154,7 @@ fn finish_frame(app: &mut RustGisApp, li: usize, shape: &str) {
 /// Saves the text typed into fields the Format pane didn't draw this frame: the selection or the
 /// layout changed, or the pane was closed or hidden, before the field could notice it lost focus.
 /// Runs once a frame, after the panes and the view.
-pub(crate) fn save_drafts(app: &mut RustGisApp) {
+pub(crate) fn save_drafts(app: &mut powergisApp) {
     follow_project(app);
     let shown = app.layout.drawn.take();
     let stale: Vec<_> = app.layout.typing.keys().filter(|(l, id, _)| Some((*l, *id)) != shown).copied().collect();
@@ -1176,7 +1176,7 @@ pub(crate) fn save_drafts(app: &mut RustGisApp) {
 /// A text field whose typing is kept in the view's state while it has focus. Returns the new text
 /// when the field loses focus with a change.
 fn text_field(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     ui: &mut Ui,
     key: (usize, u32, &'static str),
     current: &str,
@@ -1200,7 +1200,7 @@ fn text_field(
 }
 
 /// A map frame's grid options; `set` sends the changed ones (`false` removes the grid).
-fn grid_properties(app: &mut RustGisApp, ui: &mut Ui, grid: Option<&Grid>, id: u32, set: &dyn Fn(&mut RustGisApp, Value)) {
+fn grid_properties(app: &mut powergisApp, ui: &mut Ui, grid: Option<&Grid>, id: u32, set: &dyn Fn(&mut powergisApp, Value)) {
     let mut on = grid.is_some();
     if ui.checkbox(&mut on, tl!("Show grid")).changed() {
         set(app, json!(on));
@@ -1231,9 +1231,9 @@ fn grid_properties(app: &mut RustGisApp, ui: &mut Ui, grid: Option<&Grid>, id: u
         let mut step = g.step;
         let drag = Dragged::lend(ui, key("step"), &mut step);
         let (most, speed) = if measured {
-            (rustgis_engine::map::layout::MAX_MEASURED_STEP, 10.0)
+            (powergis_engine::map::layout::MAX_MEASURED_STEP, 10.0)
         } else {
-            (rustgis_engine::map::layout::MAX_GRATICULE_STEP, 0.05)
+            (powergis_engine::map::layout::MAX_GRATICULE_STEP, 0.05)
         };
         let r = ui
             .add(egui::DragValue::new(&mut step).range(0.0..=most).speed(speed).max_decimals(4).custom_formatter(|v, _| {
@@ -1374,7 +1374,7 @@ fn grid_properties(app: &mut RustGisApp, ui: &mut Ui, grid: Option<&Grid>, id: u
 
 /// A measured grid's coordinate system, typed (EPSG:25832, WKT or a PROJ string) and set when the
 /// field is left; empty is the map's when projected, else the UTM zone at the frame's centre.
-fn crs_row(app: &mut RustGisApp, ui: &mut Ui, g: &Grid, id: u32, set: &dyn Fn(&mut RustGisApp, Value)) {
+fn crs_row(app: &mut powergisApp, ui: &mut Ui, g: &Grid, id: u32, set: &dyn Fn(&mut powergisApp, Value)) {
     let input_label = ui.label(tl!("Coordinate system"));
     let key = egui::Id::unique(("grid_crs", id));
     let current = g.crs.clone().unwrap_or_default();
@@ -1396,7 +1396,7 @@ fn crs_row(app: &mut RustGisApp, ui: &mut Ui, g: &Grid, id: u32, set: &dyn Fn(&m
 
 /// The Format pane (#516): the selected layout element's properties, while its layout is on
 /// screen. On the map (no layout open) or under the Model Builder, it waits for a selection.
-pub fn format(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn format(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     let on_screen = app.session.active_layout.filter(|_| !app.mb.shown());
     let layout = on_screen.and_then(|li| Some((li, shown_layout(app, li)?)));
     let selected = layout.as_ref().and_then(|(li, l)| Some((*li, app.layout.selected.filter(|id| l.element(*id).is_some())?)));
@@ -1427,12 +1427,12 @@ pub fn format(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// The selected element's properties.
-fn properties(app: &mut RustGisApp, ui: &mut Ui, layout: &Layout, li: usize) {
+fn properties(app: &mut powergisApp, ui: &mut Ui, layout: &Layout, li: usize) {
     let Some(e) = app.layout.selected.and_then(|id| layout.element(id)).cloned() else { return };
     let id = e.id;
     // Each number kept across a drag until it is let go (#607): one key per layout, element and field.
     let drag_key = |field: &str| egui::Id::unique(("layout_drag", li, id, field));
-    let update = |app: &mut RustGisApp, p: Value| {
+    let update = |app: &mut powergisApp, p: Value| {
         let mut p = p;
         p["layout"] = json!(li);
         p["element"] = json!(id);
@@ -1751,7 +1751,7 @@ fn properties(app: &mut RustGisApp, ui: &mut Ui, layout: &Layout, li: usize) {
         let mut buf = app.layout.typing.remove(&key).unwrap_or_else(|| text.clone());
         let (mut sz, mut c, mut bb) = (*size, crate::theme::c32(*color), *bold);
         let (mut it, mut al, mut ls, mut fam, mut named) = (*italic, *align, *letter_spacing, *font, font_name.clone());
-        let tokens = [rustgis_engine::map::graphics::TOKENS, rustgis_engine::map::layout::PAGE_TOKENS];
+        let tokens = [powergis_engine::map::graphics::TOKENS, powergis_engine::map::layout::PAGE_TOKENS];
         let fields = crate::textform::Fields {
             text: &mut buf,
             size: &mut sz,
@@ -1875,7 +1875,7 @@ fn properties(app: &mut RustGisApp, ui: &mut Ui, layout: &Layout, li: usize) {
                 let r = ui
                     .add(
                         egui::DragValue::new(&mut w)
-                            .range(rustgis_engine::map::layout::MIN_INDICATOR_WIDTH..=rustgis_engine::map::layout::MAX_INDICATOR_WIDTH)
+                            .range(powergis_engine::map::layout::MIN_INDICATOR_WIDTH..=powergis_engine::map::layout::MAX_INDICATOR_WIDTH)
                             .speed(0.05)
                             .max_decimals(2)
                             .suffix(" pt"),
@@ -1908,7 +1908,7 @@ fn properties(app: &mut RustGisApp, ui: &mut Ui, layout: &Layout, li: usize) {
 /// Duplicate and Delete, under the properties: a locked element can be copied (the copy isn't
 /// locked) but not deleted, nor a frame with a locked surround. Then the drawing order: Bring to
 /// Front, Bring Forward, Send Backward, Send to Back.
-fn element_actions(app: &mut RustGisApp, ui: &mut Ui, layout: &Layout, li: usize, id: u32) {
+fn element_actions(app: &mut powergisApp, ui: &mut Ui, layout: &Layout, li: usize, id: u32) {
     ui.add_space(8.0);
     ui.horizontal(|ui| {
         if ui.button(tl!("Duplicate")).on_hover_text(tl!("Copy this element (Ctrl+D, ⌘D on a Mac)")).clicked()
@@ -1957,7 +1957,7 @@ pub(crate) fn locked_delete() -> &'static str {
 #[cfg(test)]
 mod tests {
     use super::{RULER, landing, page_rect, resized, rotate_handle, snap_to, to_screen, turned};
-    use crate::RustGisApp;
+    use crate::powergisApp;
     use egui::{Event, Key, Modifiers, PointerButton, Pos2, Rect, vec2};
     use serde_json::json;
     use std::{cell::Cell, rc::Rc};
@@ -1975,8 +1975,8 @@ mod tests {
     /// quarter turn clockwise, about its centre, keeping its length.
     #[test]
     fn an_arrow_turns_by_its_rotation_handle() {
-        use rustgis_engine::map::layout::{ElementKind, line_angle, line_length};
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::{ElementKind, line_angle, line_length};
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Turn", "template": "blank"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let id = app.run("layout.addElement", json!({"layout": li, "kind": "arrow", "angle": 0, "length": 60})).unwrap()["element"]
@@ -1987,7 +1987,7 @@ mod tests {
         let shown = area.clone();
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2030,8 +2030,8 @@ mod tests {
     /// is let go when the pan ends, which moves the frame's map as before.
     #[test]
     fn a_panned_frame_shows_map_beyond_its_edges() {
-        use rustgis_engine::map::layout::ElementKind;
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::ElementKind;
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Pan"})).unwrap();
         app.layout.navigate = true;
         let li = app.session.active_layout.unwrap();
@@ -2039,7 +2039,7 @@ mod tests {
         let shown = area.clone();
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2053,7 +2053,7 @@ mod tests {
         h.run_steps(3);
         let layout = h.state().session.project.layouts[li].clone();
         let id = layout.first_frame().unwrap();
-        let center = |l: &rustgis_engine::map::layout::Layout| match &l.element(id).unwrap().kind {
+        let center = |l: &powergis_engine::map::layout::Layout| match &l.element(id).unwrap().kind {
             ElementKind::MapFrame { center, .. } => *center,
             k => panic!("{k:?}"),
         };
@@ -2090,7 +2090,7 @@ mod tests {
     /// egui starts the drag the pointer is already off the handle; it used to move the element.
     #[test]
     fn a_fast_drag_from_a_corner_handle_resizes() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Resize"})).unwrap();
         app.layout.no_snap = true;
         let li = app.session.active_layout.unwrap();
@@ -2100,7 +2100,7 @@ mod tests {
         let shown = area.clone();
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2146,7 +2146,7 @@ mod tests {
     /// pointer moved off the handle (and off the element) before the release.
     #[test]
     fn a_click_started_on_a_handle_keeps_the_selection() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Click"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let title = app.session.project.layouts[li].elements.iter().find(|e| e.name == "Title").unwrap().clone();
@@ -2155,7 +2155,7 @@ mod tests {
         let shown = area.clone();
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2190,7 +2190,7 @@ mod tests {
     /// Dragging an element redraws the page with it where it was dropped (#325).
     #[test]
     fn dropped_element_is_drawn_where_it_lands() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Drag"})).unwrap();
         // The drop itself, not snapping (tested below).
         app.layout.no_snap = true;
@@ -2199,7 +2199,7 @@ mod tests {
         // Fonts take effect on the frame after they are installed.
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2249,8 +2249,8 @@ mod tests {
     /// Dragging the map in a turned frame moves it the way the pointer goes, as in the map view.
     #[test]
     fn panning_a_turned_frame_follows_the_pointer() {
-        use rustgis_engine::map::layout::ElementKind;
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::ElementKind;
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Turned"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let id = app.session.project.layouts[li].first_frame().unwrap();
@@ -2268,8 +2268,8 @@ mod tests {
     /// Zooming a map frame about a point keeps the map under that point where it was.
     #[test]
     fn zooming_a_frame_keeps_the_map_under_the_pointer() {
-        use rustgis_engine::map::layout::{ElementKind, PT_PER_MM, frame_camera};
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::{ElementKind, PT_PER_MM, frame_camera};
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Zoom"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let layout = app.session.project.layouts[li].clone();
@@ -2277,7 +2277,7 @@ mod tests {
         // A point a quarter of the way into the frame.
         let anchor = (frame.x + frame.w / 4.0, frame.y + frame.h / 4.0);
         // The map point (map units) at the anchor, the frame's scale, and map units per point.
-        let map_at = |app: &RustGisApp| {
+        let map_at = |app: &powergisApp| {
             let e = app.session.project.layouts[li].element(frame.id).unwrap().clone();
             let ElementKind::MapFrame { map, center, scale, .. } = &e.kind else { panic!("not a map frame") };
             let m = app.session.project.maps.iter().find(|m| m.name.eq_ignore_ascii_case(map)).unwrap();
@@ -2299,12 +2299,12 @@ mod tests {
     /// for a frame of another layout is dropped, never applied to the open layout.
     #[test]
     fn waiting_frame_zooms_are_applied_or_dropped_never_misapplied() {
-        use rustgis_engine::map::layout::ElementKind;
-        let scale_of = |app: &RustGisApp, li: usize, id: u32| match app.session.project.layouts[li].element(id).map(|e| &e.kind) {
+        use powergis_engine::map::layout::ElementKind;
+        let scale_of = |app: &powergisApp, li: usize, id: u32| match app.session.project.layouts[li].element(id).map(|e| &e.kind) {
             Some(ElementKind::MapFrame { scale, .. }) => *scale,
             k => panic!("not a map frame: {k:?}"),
         };
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Two"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let name = app.session.project.layouts[li].name.clone();
@@ -2319,7 +2319,7 @@ mod tests {
         let shown = area.clone();
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2356,14 +2356,14 @@ mod tests {
     /// tapped, is one step to undo; a locked element stays put.
     #[test]
     fn arrow_keys_nudge_the_selected_element_and_undo_as_one() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Nudge"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let title = app.session.project.layouts[li].elements.iter().find(|e| e.name == "Title").unwrap().clone();
         app.layout.selected = Some(title.id);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2377,7 +2377,7 @@ mod tests {
         );
         h.run_steps(3);
         let key = |key, modifiers, repeat| Event::Key { key, physical_key: None, pressed: true, repeat, modifiers };
-        let at = |h: &egui_kittest::Harness<'_, RustGisApp>| {
+        let at = |h: &egui_kittest::Harness<'_, powergisApp>| {
             let e = h.state().session.project.layouts[li].element(title.id).unwrap();
             (e.x - title.x, e.y - title.y)
         };
@@ -2410,19 +2410,19 @@ mod tests {
     #[test]
     fn the_arrange_buttons_move_an_element_up_and_down() {
         use egui_kittest::kittest::{NodeT, Queryable};
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Arrange"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let frame = app.session.project.layouts[li].first_frame().unwrap();
         let mut h = egui_kittest::Harness::builder().with_size(vec2(600.0, 200.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 let layout = app.session.project.layouts[li].clone();
                 super::element_actions(app, ui, &layout, li, frame);
             },
             app,
         );
         h.run_steps(2);
-        let at = |h: &egui_kittest::Harness<'_, RustGisApp>| h.state().session.project.layouts[li].draw_order(frame).unwrap();
+        let at = |h: &egui_kittest::Harness<'_, powergisApp>| h.state().session.project.layouts[li].draw_order(frame).unwrap();
         let n = at(&h).1;
         h.get_by_label("Bring to Front").click();
         h.run_steps(2);
@@ -2442,14 +2442,14 @@ mod tests {
     /// delete key, deletes it.
     #[test]
     fn keys_duplicate_and_delete_the_selected_element() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Keys"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let title = app.session.project.layouts[li].elements.iter().find(|e| e.name == "Title").unwrap().clone();
         app.layout.selected = Some(title.id);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2488,7 +2488,7 @@ mod tests {
     /// would be doesn't move or resize it, and Delete keeps it and says why (#536).
     #[test]
     fn a_locked_element_stays_put() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Locked"})).unwrap();
         app.layout.no_snap = true;
         let li = app.session.active_layout.unwrap();
@@ -2500,7 +2500,7 @@ mod tests {
         let shown = area.clone();
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2547,15 +2547,15 @@ mod tests {
     #[test]
     fn a_text_element_takes_italic_alignment_and_spacing() {
         use egui_kittest::kittest::{NodeT, Queryable};
-        use rustgis_engine::map::layout::{ElementKind, TextAlign};
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::{ElementKind, TextAlign};
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Type"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let title = app.session.project.layouts[li].elements.iter().find(|e| e.name == "Title").unwrap().id;
         app.layout.selected = Some(title);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2590,10 +2590,10 @@ mod tests {
         h.get_by_label("Serif").click();
         h.run_steps(3);
         let kind = &h.state().session.project.layouts[li].element(title).unwrap().kind;
-        assert!(matches!(kind, ElementKind::Text { font: rustgis_engine::map::layout::FontFamily::Serif, .. }), "{kind:?}");
+        assert!(matches!(kind, ElementKind::Text { font: powergis_engine::map::layout::FontFamily::Serif, .. }), "{kind:?}");
         // Said where no serif is installed, and only there.
         let said = h.query_by_label_contains("No serif font is installed").is_some();
-        assert_eq!(said, !rustgis_engine::render::fonts::serif_available());
+        assert_eq!(said, !powergis_engine::render::fonts::serif_available());
     }
 
     /// A number dragged in the Format pane and let go is applied (#607): X moves the element by
@@ -2602,14 +2602,14 @@ mod tests {
     fn dragging_x_in_the_format_pane_moves_the_element() {
         use egui::accesskit::Role;
         use egui_kittest::kittest::Queryable;
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Drag"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let title = app.session.project.layouts[li].elements.iter().find(|e| e.name == "Title").unwrap().clone();
         app.layout.selected = Some(title.id);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2647,8 +2647,8 @@ mod tests {
     fn dragging_the_angle_in_the_format_pane_turns_the_arrow() {
         use egui::accesskit::Role;
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::map::layout::{ElementKind, line_angle};
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::{ElementKind, line_angle};
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Turn", "template": "blank"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let id =
@@ -2656,7 +2656,7 @@ mod tests {
         app.layout.selected = Some(id);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2694,15 +2694,15 @@ mod tests {
     fn a_colour_drag_in_the_format_pane_is_one_undo_step() {
         use egui::accesskit::Role;
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::map::layout::ElementKind;
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::ElementKind;
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Colour"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let title = app.session.project.layouts[li].elements.iter().find(|e| e.name == "Title").unwrap().id;
         app.layout.selected = Some(title);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2713,7 +2713,7 @@ mod tests {
             app,
         );
         h.run_steps(3);
-        let color = |app: &RustGisApp| match &app.session.project.layouts[li].element(title).unwrap().kind {
+        let color = |app: &powergisApp| match &app.session.project.layouts[li].element(title).unwrap().kind {
             ElementKind::Text { color, .. } => *color,
             kind => panic!("{kind:?}"),
         };
@@ -2745,15 +2745,15 @@ mod tests {
     #[test]
     fn a_layout_text_offers_the_page_s_dynamic_text() {
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::map::layout::ElementKind;
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::ElementKind;
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Tokens"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let title = app.session.project.layouts[li].elements.iter().find(|e| e.name == "Title").unwrap().id;
         app.layout.selected = Some(title);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2764,7 +2764,7 @@ mod tests {
             app,
         );
         h.run_steps(3);
-        let text = |h: &egui_kittest::Harness<'_, RustGisApp>| match &h.state().session.project.layouts[li].element(title).unwrap().kind {
+        let text = |h: &egui_kittest::Harness<'_, powergisApp>| match &h.state().session.project.layouts[li].element(title).unwrap().kind {
             ElementKind::Text { text, .. } => text.clone(),
             _ => panic!("a text"),
         };
@@ -2782,7 +2782,7 @@ mod tests {
             ElementKind::Text { size, .. } => *size,
             _ => panic!("a text"),
         };
-        assert_eq!(size, *rustgis_engine::map::graphics::FONT_SIZE.end());
+        assert_eq!(size, *powergis_engine::map::graphics::FONT_SIZE.end());
     }
 
     /// An overview frame's properties show its extent indicator's colour and width (#213), and
@@ -2790,8 +2790,8 @@ mod tests {
     #[test]
     fn an_overview_frame_shows_its_extent_indicator() {
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::map::layout::ElementKind;
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::ElementKind;
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Overview"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let main = app.session.project.layouts[li].elements.iter().find(|e| matches!(e.kind, ElementKind::MapFrame { .. })).unwrap().id;
@@ -2800,7 +2800,7 @@ mod tests {
         app.layout.selected = Some(inset);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2826,8 +2826,8 @@ mod tests {
     fn a_legend_leaves_out_the_layers_unticked() {
         use egui::accesskit::Role;
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::map::layout::ElementKind;
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::ElementKind;
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Legend"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let legend = app.session.project.layouts[li].elements.iter().find(|e| matches!(e.kind, ElementKind::Legend { .. })).unwrap().id;
@@ -2838,7 +2838,7 @@ mod tests {
         app.layout.selected = Some(legend);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2853,7 +2853,7 @@ mod tests {
         h.get_by_role_and_label(Role::CheckBox, "Rivers").click();
         h.run_steps(2);
         let left_out =
-            |h: &egui_kittest::Harness<'_, RustGisApp>| match &h.state().session.project.layouts[li].element(legend).unwrap().kind {
+            |h: &egui_kittest::Harness<'_, powergisApp>| match &h.state().session.project.layouts[li].element(legend).unwrap().kind {
                 ElementKind::Legend { exclude, .. } => exclude.clone(),
                 _ => panic!("a legend"),
             };
@@ -2865,8 +2865,8 @@ mod tests {
     }
 
     /// The layout view with the Format pane beside it, as the app draws them: after following
-    /// what agents ran (`RustGisApp::logic`), and saving drafts at the end.
-    fn with_format(app: &mut RustGisApp, ui: &mut egui::Ui) {
+    /// what agents ran (`powergisApp::logic`), and saving drafts at the end.
+    fn with_format(app: &mut powergisApp, ui: &mut egui::Ui) {
         super::follow_project(app);
         let t = crate::theme::Tokens::get(ui.ctx());
         if app.ui.right == Some(crate::RightPane::Format) {
@@ -2882,8 +2882,8 @@ mod tests {
     fn a_measured_grid_is_set_in_the_format_pane() {
         use egui::accesskit::Role;
         use egui_kittest::kittest::Queryable;
-        use rustgis_engine::map::layout::ElementKind;
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::map::layout::ElementKind;
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Hike"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let frame = app.session.project.layouts[li].elements.iter().find(|e| e.kind.code() == "mapFrame").unwrap().id;
@@ -2892,7 +2892,7 @@ mod tests {
         app.layout.selected = Some(frame);
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 1400.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2903,7 +2903,7 @@ mod tests {
             app,
         );
         h.run_steps(3);
-        let grid = |h: &egui_kittest::Harness<'_, RustGisApp>| match &h.state().session.project.layouts[li].element(frame).unwrap().kind {
+        let grid = |h: &egui_kittest::Harness<'_, powergisApp>| match &h.state().session.project.layouts[li].element(frame).unwrap().kind {
             ElementKind::MapFrame { grid, .. } => grid.clone().unwrap(),
             _ => panic!("not a frame"),
         };
@@ -2932,14 +2932,14 @@ mod tests {
     fn a_selected_element_is_formatted_in_its_pane() {
         use crate::RightPane::{Bookmarks, Format};
         use egui_kittest::kittest::Queryable;
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Format"})).unwrap();
         let li = app.session.active_layout.unwrap();
         let ids: Vec<u32> = app.session.project.layouts[li].elements.iter().map(|e| e.id).collect();
         app.run("ui.pane.bookmarks", json!({})).unwrap();
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2973,7 +2973,7 @@ mod tests {
         assert_eq!(h.state().ui.right, Some(Format));
         // A name being typed when the pane closes is kept, the element still selected.
         use egui::accesskit::Role;
-        let name = |h: &egui_kittest::Harness<'_, RustGisApp>| h.state().session.project.layouts[li].element(ids[1]).unwrap().name.clone();
+        let name = |h: &egui_kittest::Harness<'_, powergisApp>| h.state().session.project.layouts[li].element(ids[1]).unwrap().name.clone();
         let before = name(&h);
         h.query_all_by_role(Role::TextInput).find(|n| n.value().as_deref() == Some(before.as_str())).unwrap().focus();
         h.run_steps(2);
@@ -2987,7 +2987,7 @@ mod tests {
         h.state_mut().run("ui.pane.format", json!({})).unwrap();
         h.run_steps(2);
         // The layout out of sight, under the Model Builder or for the map: nothing to edit.
-        let hint = |h: &egui_kittest::Harness<'_, RustGisApp>| h.query_by_label("Select an element to format it.").is_some();
+        let hint = |h: &egui_kittest::Harness<'_, powergisApp>| h.query_by_label("Select an element to format it.").is_some();
         (h.state_mut().mb.open, h.state_mut().mb.active) = (true, true);
         h.run_steps(2);
         assert!(hint(&h), "under the Model Builder");
@@ -3017,7 +3017,7 @@ mod tests {
         use egui::accesskit::Role;
         use egui_kittest::kittest::Queryable;
         for by_agent in [false, true] {
-            let mut app = RustGisApp::with_sample();
+            let mut app = powergisApp::with_sample();
             app.run("layout.new", json!({"name": "Drafts"})).unwrap();
             let li = app.session.active_layout.unwrap();
             let title = app.session.project.layouts[li].elements.iter().find(|e| e.name == "Title").unwrap().id;
@@ -3025,7 +3025,7 @@ mod tests {
             app.layout.selected = Some(title);
             let mut fonts = false;
             let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-                move |ui, app: &mut RustGisApp| {
+                move |ui, app: &mut powergisApp| {
                     if !fonts {
                         crate::theme::install_fonts(ui.ctx(), &[], None);
                         fonts = true;
@@ -3043,7 +3043,7 @@ mod tests {
             assert!(!h.state().layout.typing.is_empty(), "being typed");
             let open = json!({"text": text});
             if by_agent {
-                // As the relay runs an agent's command: on the session, past `RustGisApp::run`;
+                // As the relay runs an agent's command: on the session, past `powergisApp::run`;
                 // the copy's layout opened in the same go.
                 h.state_mut().session.run("project.openText", &open).unwrap();
                 h.state_mut().session.run("layout.activate", &json!({"layout": li})).unwrap();
@@ -3061,7 +3061,7 @@ mod tests {
     /// Ctrl+D never reaches the element of the same id there.
     #[test]
     fn opening_another_layout_clears_the_selection() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "First"})).unwrap();
         app.run("layout.new", json!({"name": "Second"})).unwrap();
         app.run("layout.activate", json!({"name": "First"})).unwrap();
@@ -3097,13 +3097,13 @@ mod tests {
     /// removes it.
     #[test]
     fn guides_come_out_of_the_rulers_and_go_back() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layout.new", json!({"name": "Guides", "template": "blank"})).unwrap();
         let area = Rc::new(Cell::new(Rect::NOTHING));
         let shown = area.clone();
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1000.0, 760.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -3118,7 +3118,7 @@ mod tests {
         let li = h.state().session.active_layout.unwrap();
         let layout = h.state().session.project.layouts[li].clone();
         let (page, s) = page_rect(&h.state().layout, area.get(), &layout);
-        let drag = |h: &mut egui_kittest::Harness<'_, RustGisApp>, from: Pos2, to: Pos2| {
+        let drag = |h: &mut egui_kittest::Harness<'_, powergisApp>, from: Pos2, to: Pos2| {
             let button =
                 |pos: Pos2, pressed| Event::PointerButton { pos, button: PointerButton::Primary, pressed, modifiers: Modifiers::NONE };
             h.event(Event::PointerMoved(from));

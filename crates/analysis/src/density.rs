@@ -6,8 +6,8 @@
 
 use std::f64::consts::PI;
 
-use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
-use rustgis_geom::{Coord, Extent};
+use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+use powergis_geom::{Coord, Extent};
 
 /// Supported 2D kernel functions.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -460,10 +460,10 @@ mod tests {
         let crs = Crs::from_epsg(32618).unwrap();
         let r = kernel_density(&[(pt, 1.0)], None, 50.0, 500.0, KernelType::Quartic, "utm_density", crs).unwrap();
 
-        let bytes = rustgis_data::raster::geotiff::write(&r, 0).unwrap();
+        let bytes = powergis_data::raster::geotiff::write(&r, 0).unwrap();
         assert!(!bytes.is_empty());
 
-        let reopened = rustgis_data::raster::geotiff::read(std::io::Cursor::new(&bytes), "utm_density").unwrap();
+        let reopened = powergis_data::raster::geotiff::read(std::io::Cursor::new(&bytes), "utm_density").unwrap();
         assert_eq!(reopened.width, r.width);
         assert_eq!(reopened.height, r.height);
         assert_eq!(reopened.crs, crs);

@@ -1,5 +1,5 @@
 use super::common::*;
-use rustgis_engine::{
+use powergis_engine::{
     Session,
     data::{Coord, Dataset, Geometry, GeometryType},
     map::RasterRenderer,
@@ -23,7 +23,7 @@ fn incompatible_vector_repairs_leave_the_layer_unchanged() {
     sample_file(&countries, "Countries");
     let mut points = Dataset::new("Bare points", GeometryType::Point, vec![]);
     points.push(Some(Geometry::Point(Coord::new(2.35, 48.85))), vec![]);
-    rustgis_engine::data::io::write_path(&points, &bare_points).unwrap();
+    powergis_engine::data::io::write_path(&points, &bare_points).unwrap();
 
     let mut s = session();
     let id = add_stream(&mut s, &cities, None);
@@ -124,7 +124,7 @@ fn renamed_tile_archive_is_kept_unavailable_until_repaired() {
 
 #[test]
 fn vector_tile_layers_refuse_a_raster_archive_without_changing_the_layer() {
-    use rustgis_engine::render::rustgis_tiles::pmtiles;
+    use powergis_engine::render::powergis_tiles::pmtiles;
 
     let f = Fixture::new("repair-vector-tiles-rejection");
     let vector = f.file("vector.pmtiles");
@@ -191,7 +191,7 @@ fn geopackage_repair_preserves_or_explicitly_selects_the_table() {
 
 #[test]
 fn colormap_repair_refuses_a_raster_without_a_palette_without_losing_style_or_data() {
-    use rustgis_engine::{data::raster::ColorHint, map::RasterLayer};
+    use powergis_engine::{data::raster::ColorHint, map::RasterLayer};
     use std::sync::Arc;
 
     let f = Fixture::new("repair-colormap-rejection");
@@ -204,7 +204,7 @@ fn colormap_repair_refuses_a_raster_without_a_palette_without_losing_style_or_da
     let id = s.active_layer.unwrap();
     // The GeoTIFF exporter writes band values, not palettes; supply the original decoded
     // palette in memory while keeping a real linked file for the repair command.
-    let mut pixels = rustgis_engine::data::raster::read_path(&original).unwrap();
+    let mut pixels = powergis_engine::data::raster::read_path(&original).unwrap();
     pixels.color = ColorHint::Palette(vec![[0, 0, 0, 255], [30, 120, 240, 255]]);
     let mut raster = RasterLayer::from_path(pixels, original.to_str().unwrap());
     assert!(matches!(raster.style.renderer, RasterRenderer::Colormap));
@@ -249,7 +249,7 @@ fn compatible_raster_repair_keeps_nondefault_display_settings() {
     raster.style.gamma = 1.8;
     raster.style.rotation = 29.0;
     raster.style.dra = true;
-    raster.style.resampling = rustgis_engine::map::Resampling::Bilinear;
+    raster.style.resampling = powergis_engine::map::Resampling::Bilinear;
     let style = serde_json::to_value(&raster.style).unwrap();
 
     s.run("layer.repairSource", &json!({"layer": id, "path": replacement})).unwrap();

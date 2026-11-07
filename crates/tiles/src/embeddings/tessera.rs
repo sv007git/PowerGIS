@@ -10,9 +10,9 @@
 
 use std::sync::Arc;
 
-use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, zarr};
-use rustgis_data::source::remote::{self, Remote};
-use rustgis_geom::Coord;
+use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, zarr};
+use powergis_data::source::remote::{self, Remote};
+use powergis_geom::Coord;
 use serde_json::Value as Json;
 
 use super::Tile;
@@ -191,11 +191,11 @@ pub fn tiles(bbox: [f64; 4], year: i32) -> (Vec<Tile>, bool) {
 
 /// Reads a plan's inner chunks of a shard (`bytes` decoded bytes each), `None` for a chunk the
 /// shard leaves out. Fails with [`remote::NEED`] until what it needs is fetched.
-fn read_chunks(file: &Remote, plan: &Plan, bytes: usize) -> rustgis_data::Result<Vec<Option<Vec<u8>>>> {
+fn read_chunks(file: &Remote, plan: &Plan, bytes: usize) -> powergis_data::Result<Vec<Option<Vec<u8>>>> {
     let (tail, _) = file.tail(INDEX_LEN).ok_or_else(remote::need)?;
     let index = tail.get(tail.len().saturating_sub(INDEX_LEN as usize)..).unwrap_or_default();
     if (index.len() as u64) < INDEX_LEN {
-        return Err(rustgis_data::DataError::Format("Tessera: a shard's index is cut".into()));
+        return Err(powergis_data::DataError::Format("Tessera: a shard's index is cut".into()));
     }
     let entry = |r: u64, c: u64| -> Option<(u64, u64)> {
         let at = usize::try_from((r * PER_SIDE + c) * 16).ok()?;
@@ -295,7 +295,7 @@ pub fn read(plan: Plan, bands: [usize; 3], done: Box<dyn FnOnce(Result<Raster, S
     remote::drive(
         emb_file,
         Arc::new(move || read_chunks(&f, &p, (INNER * INNER) as usize * BANDS)),
-        Box::new(move |emb: rustgis_data::Result<Chunks>| {
+        Box::new(move |emb: powergis_data::Result<Chunks>| {
             let emb = match emb {
                 Ok(e) => e,
                 Err(e) => return done(Err(e.to_string())),
@@ -305,7 +305,7 @@ pub fn read(plan: Plan, bands: [usize; 3], done: Box<dyn FnOnce(Result<Raster, S
             remote::drive(
                 scale_file,
                 Arc::new(move || read_chunks(&f, &p, (INNER * INNER) as usize * 4)),
-                Box::new(move |scales: rustgis_data::Result<Chunks>| {
+                Box::new(move |scales: powergis_data::Result<Chunks>| {
                     done(scales.map_err(|e| e.to_string()).and_then(|s| assemble(&plan, bands, &emb, &s)))
                 }),
             );

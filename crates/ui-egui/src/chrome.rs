@@ -7,7 +7,7 @@ use serde_json::{Value, json};
 use crate::mapview::Toast;
 use crate::theme::{Tokens, regular, semibold};
 use crate::widgets::{row_button, small, text_w, why_disabled};
-use crate::{RustGisApp, icons};
+use crate::{powergisApp, icons};
 
 /// The native title bar the header is drawn into (macOS: a transparent title bar over a
 /// full-size content view). The app reads it from the window system; `None` means the system
@@ -78,7 +78,7 @@ pub fn header_layout(titlebar: Option<TitlebarMetrics>) -> HeaderLayout {
     }
 }
 
-pub fn header(app: &mut RustGisApp, ui: &mut Ui) {
+pub fn header(app: &mut powergisApp, ui: &mut Ui) {
     let t = Tokens::get(ui.ctx());
     let layout = header_layout(app.ui.titlebar);
     egui::Panel::top("header")
@@ -222,7 +222,7 @@ pub fn header(app: &mut RustGisApp, ui: &mut Ui) {
         });
 }
 
-pub fn status_bar(app: &mut RustGisApp, ui: &mut Ui) {
+pub fn status_bar(app: &mut powergisApp, ui: &mut Ui) {
     let t = Tokens::get(ui.ctx());
     egui::Panel::bottom("status")
         .exact_size(26.0)
@@ -236,7 +236,7 @@ pub fn status_bar(app: &mut RustGisApp, ui: &mut Ui) {
                 // Scale: typed (1:12,345, 12345, 25k, …) and set with Enter, or picked from the
                 // list. Esc, or clicking away, leaves the map's scale as it was.
                 let scale = app.session.scale();
-                let shown = rustgis_engine::map::graphics::scale_ratio(scale);
+                let shown = powergis_engine::map::graphics::scale_ratio(scale);
                 let mut text = app.ui.scale_text.take().unwrap_or_else(|| shown.clone());
                 let mut edit = egui::TextEdit::singleline(&mut text).id_salt("status_scale").desired_width(96.0).show(ui);
                 // Clicking in selects the scale, so typing replaces it.
@@ -306,7 +306,7 @@ pub fn status_bar(app: &mut RustGisApp, ui: &mut Ui) {
                 let coord = app
                     .map
                     .pointer_lonlat
-                    .map(|c| if app.map.dms { rustgis_engine::geom::format_dms(c) } else { rustgis_engine::geom::format_lonlat(c) });
+                    .map(|c| if app.map.dms { powergis_engine::geom::format_dms(c) } else { powergis_engine::geom::format_lonlat(c) });
                 let resp = ui.add(
                     egui::Label::new(egui::RichText::new(coord.unwrap_or_else(|| "—".into())).monospace().size(11.5).color(t.text_dim))
                         .sense(Sense::click()),
@@ -315,8 +315,8 @@ pub fn status_bar(app: &mut RustGisApp, ui: &mut Ui) {
                     app.map.dms = !app.map.dms;
                 }
                 let projection = match &app.session.map().projection {
-                    rustgis_engine::map::Projection::Globe => tl!("WGS 84 / Globe").to_string(),
-                    rustgis_engine::map::Projection::WebMercator => tl!("WGS 84 / Web Mercator").to_string(),
+                    powergis_engine::map::Projection::Globe => tl!("WGS 84 / Globe").to_string(),
+                    powergis_engine::map::Projection::WebMercator => tl!("WGS 84 / Web Mercator").to_string(),
                     p => tl!(p.label().as_str()).to_string(),
                 };
                 let resp = ui.add(egui::Label::new(egui::RichText::new(projection).size(11.0).color(t.text_dim)).sense(Sense::click()));
@@ -485,7 +485,7 @@ fn parse_scale(text: &str) -> Option<f64> {
 }
 
 /// Global keyboard shortcuts.
-pub fn shortcuts(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn shortcuts(app: &mut powergisApp, ctx: &egui::Context) {
     // Behind a dialog (Save changes?, Recover unsaved work?, Command Search…) the keys are the
     // dialog's: Escape answers it rather than switching tools, and Ctrl+N can't start what it
     // asks about.
@@ -596,7 +596,7 @@ pub fn shortcuts(app: &mut RustGisApp, ctx: &egui::Context) {
         // With Edit Vertices, Delete removes the chosen vertex rather than the feature.
         if id == "edit.delete"
             && app.session.active_layout.is_none()
-            && app.session.tool == rustgis_engine::Tool::EditVertices
+            && app.session.tool == powergis_engine::Tool::EditVertices
             && crate::vertexedit::delete_chosen(app)
         {
             continue;
@@ -851,7 +851,7 @@ fn search_platform_disabled(id: &str, web: bool) -> Option<&'static str> {
 }
 
 /// Availability of the interactive entry point, not the parameterized engine operation.
-fn search_disabled(app: &RustGisApp, id: &str) -> Option<&'static str> {
+fn search_disabled(app: &powergisApp, id: &str) -> Option<&'static str> {
     if id.starts_with("gp:") || id.starts_with("panel:") || id.starts_with("pane:") {
         return None;
     }
@@ -862,18 +862,18 @@ fn search_disabled(app: &RustGisApp, id: &str) -> Option<&'static str> {
         return Some(reason);
     }
     why_disabled(app, id).or_else(|| {
-        (search_action(id).is_none() && app.session.registry.get(id).is_some_and(rustgis_engine::CommandSpec::needs_input))
+        (search_action(id).is_none() && app.session.registry.get(id).is_some_and(powergis_engine::CommandSpec::needs_input))
             .then_some("it needs input: open it from its pane or button, or run it from a script or the assistant")
     })
 }
 
 /// Whether the query matches a registry command's search row.
-fn command_matches(c: &rustgis_engine::CommandSpec, ql: &str) -> bool {
+fn command_matches(c: &powergis_engine::CommandSpec, ql: &str) -> bool {
     ql.is_empty() || c.label.to_lowercase().contains(ql) || c.id.to_lowercase().contains(ql) || c.location.to_lowercase().contains(ql)
 }
 
 /// The command palette: type to filter every command, Enter runs the first.
-pub fn command_search(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn command_search(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(mut q) = app.ui.command_search.take() else { return };
     let t = Tokens::get(ctx);
     let mut keep = true;
@@ -910,7 +910,7 @@ pub fn command_search(app: &mut RustGisApp, ctx: &egui::Context) {
         let mut hits: Vec<(String, String, String)> = Vec::new();
         // Geoprocessing tools first when the query names one (a few dozen at most: the GeoLibre
         // suite has a thousand).
-        for tool in rustgis_engine::analysis::tools() {
+        for tool in powergis_engine::analysis::tools() {
             if hits.len() >= 40 {
                 break;
             }
@@ -947,7 +947,7 @@ pub fn command_search(app: &mut RustGisApp, ctx: &egui::Context) {
             }
         }
         let lang = app.lang().code();
-        for c in rustgis_engine::plugins::commands() {
+        for c in powergis_engine::plugins::commands() {
             let m = &c.plugin.manifest;
             let label = m.translate(lang, &c.decl.label);
             if ql.is_empty()
@@ -959,7 +959,7 @@ pub fn command_search(app: &mut RustGisApp, ctx: &egui::Context) {
             }
         }
         // Plugins' panels (`panel:<plugin>`).
-        for p in rustgis_engine::plugins::list().into_iter().filter(|p| p.enabled) {
+        for p in powergis_engine::plugins::list().into_iter().filter(|p| p.enabled) {
             let m = &p.manifest;
             let Some(d) = &m.panel else { continue };
             let title = m.translate(lang, &d.title);
@@ -1079,7 +1079,7 @@ pub fn command_search(app: &mut RustGisApp, ctx: &egui::Context) {
 /// (and its map) stays open.
 pub(crate) fn project_links(ui: &mut egui::Ui) {
     ui.horizontal(|ui| {
-        ui.add(egui::Hyperlink::from_label_and_url(tl!("Website"), "https://rustgis.app").open_in_new_tab(true));
+        ui.add(egui::Hyperlink::from_label_and_url(tl!("Website"), "https://powergis.app").open_in_new_tab(true));
         ui.label("·");
         ui.add(egui::Hyperlink::from_label_and_url(tl!("GitHub"), "https://github.com/opengeos/PowerGIS").open_in_new_tab(true));
     });
@@ -1102,7 +1102,7 @@ pub(crate) fn licence_links(ui: &mut egui::Ui) {
     });
 }
 
-pub fn about(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn about(app: &mut powergisApp, ctx: &egui::Context) {
     if app.ui.about {
         let logo_tex = app.logo(ctx);
         let mut open = true;
@@ -1135,7 +1135,7 @@ pub fn about(app: &mut RustGisApp, ctx: &egui::Context) {
                 regular(10.5),
                 ui.visuals().weak_text_color(),
             );
-            let (fonts_from, _) = (rustgis_engine::render::fonts::ui_fonts().source.clone(), ());
+            let (fonts_from, _) = (powergis_engine::render::fonts::ui_fonts().source.clone(), ());
             ui.label(egui::RichText::new(crate::i18n::fmt("Interface font: {font}", &[("font", &fonts_from)])).small().weak());
             licence_links(ui);
         });
@@ -1194,7 +1194,7 @@ pub fn about(app: &mut RustGisApp, ctx: &egui::Context) {
 
 /// Toasts for recent notices (errors stay longer, and any stays while the pointer is on it, so
 /// its text can be selected and copied).
-pub fn notices(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn notices(app: &mut powergisApp, ctx: &egui::Context) {
     let t = Tokens::get(ctx);
     let now = ctx.input(|i| i.time);
     let total = app.session.notices.len();
@@ -1306,10 +1306,10 @@ mod tests {
     #[test]
     fn undo_in_a_text_field_undoes_its_text() {
         use egui_kittest::kittest::Queryable;
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("labels.style", serde_json::json!({"layer": "Cities", "size": 20})).unwrap();
         let mut h = egui_kittest::Harness::builder().with_size(vec2(500.0, 700.0)).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 shortcuts(app, &ctx);
                 crate::analysispane::script_pane(app, ui, &Tokens::light());
@@ -1336,13 +1336,13 @@ mod tests {
 
     #[test]
     fn first_person_preserves_default_controls_and_pauses_custom_single_keys() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.session.map_mut().view.first_person = true;
         app.run("tool.set", json!({"tool": "select"})).unwrap();
         app.ui.keymap.assign(crate::keymap::Chord::parse("T").unwrap(), "ui.theme", Value::Null);
         let before = app.ui.dark;
         let mut h = egui_kittest::Harness::builder().build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 shortcuts(app, ui.ctx());
             },
             app,
@@ -1366,13 +1366,13 @@ mod tests {
     #[test]
     fn typing_keeps_shift_and_alt_shortcuts_in_the_text_field() {
         use egui_kittest::kittest::Queryable;
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         for key in ["Shift+T", "Alt+T"] {
             app.ui.keymap.assign(crate::keymap::Chord::parse(key).unwrap(), "ui.theme", Value::Null);
         }
         let before = app.ui.dark;
         let mut h = egui_kittest::Harness::builder().build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 shortcuts(app, ui.ctx());
                 let label = ui.label("Script");
                 ui.text_edit_singleline(&mut app.workflow.script).labelled_by(label.id);
@@ -1440,10 +1440,10 @@ mod tests {
     fn every_new_connection_entry_opens_its_form() {
         for (kind, _) in crate::connectionui::KINDS {
             // The menu leaves database kinds out on the web, where `open_new` refuses them.
-            if cfg!(target_arch = "wasm32") && rustgis_engine::connections::DATABASE_KINDS.contains(&kind) {
+            if cfg!(target_arch = "wasm32") && powergis_engine::connections::DATABASE_KINDS.contains(&kind) {
                 continue;
             }
-            let mut app = RustGisApp::with_sample();
+            let mut app = powergisApp::with_sample();
             app.run("ui.connection", serde_json::json!({"kind": kind})).unwrap();
             assert_eq!(app.dialogs.open, Some("newConnection"), "{kind}");
             assert_eq!(app.ui.connection.kind, kind);

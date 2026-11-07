@@ -1,6 +1,6 @@
 use super::*;
 use crate::{Dataset, Field, FieldType, Geometry, Value, wkb};
-use rustgis_geom::{Coord, lonlat_to_merc};
+use powergis_geom::{Coord, lonlat_to_merc};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -52,7 +52,7 @@ fn in_box(e: &Extent) -> usize {
 }
 
 fn dir() -> PathBuf {
-    let d = std::env::temp_dir().join(format!("rustgis-source-tests-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("powergis-source-tests-{}", std::process::id()));
     std::fs::create_dir_all(&d).unwrap();
     d
 }
@@ -464,12 +464,12 @@ fn hostile_files_are_errors_not_panics() {
     assert!(open_path(Path::new("nope.shp"), None).is_err());
 }
 
-/// Reads every vector file in `RUSTGIS_SAMPLE_VECTORS` (the opengeos sample data, e.g.
-/// <https://source.coop/giswqs/opengeos>): `cargo test -p rustgis-data -- --ignored vector_samples --nocapture`.
+/// Reads every vector file in `powergis_SAMPLE_VECTORS` (the opengeos sample data, e.g.
+/// <https://source.coop/giswqs/opengeos>): `cargo test -p powergis-data -- --ignored vector_samples --nocapture`.
 #[test]
 #[ignore]
 fn vector_samples() {
-    let Ok(dir) = std::env::var("RUSTGIS_SAMPLE_VECTORS") else { return };
+    let Ok(dir) = std::env::var("powergis_SAMPLE_VECTORS") else { return };
     let mut paths: Vec<_> =
         std::fs::read_dir(dir).unwrap().filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| is_source_name(&p.to_string_lossy())).collect();
     paths.sort();
@@ -793,11 +793,11 @@ fn writes_points_lines_kmz_and_zipped_shapefiles() {
 }
 
 /// Compares the browser's GeoPackage reader with SQLite on every table of every `.gpkg` in
-/// `RUSTGIS_SAMPLE_VECTORS`: `cargo test -p rustgis-data --release -- --ignored gpkg_mem_matches --nocapture`.
+/// `powergis_SAMPLE_VECTORS`: `cargo test -p powergis-data --release -- --ignored gpkg_mem_matches --nocapture`.
 #[test]
 #[ignore]
 fn gpkg_mem_matches_sqlite() {
-    let Ok(dir) = std::env::var("RUSTGIS_SAMPLE_VECTORS") else { return };
+    let Ok(dir) = std::env::var("powergis_SAMPLE_VECTORS") else { return };
     let mut paths: Vec<_> = std::fs::read_dir(dir).unwrap().filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| ext(p) == "gpkg").collect();
     paths.sort();
     let (mut tables, mut differ) = (0, 0);
@@ -1120,12 +1120,12 @@ fn damaged_shapefiles_are_errors_or_skips_not_panics() {
     assert!(open_path(&p, None).is_err());
 }
 
-/// Reads every Shapefile under `RUSTGIS_SAMPLE_SHAPEFILES` both ways, in place and whole, and
-/// compares them: `cargo test --release -p rustgis-data -- --ignored shapefile_samples --nocapture`.
+/// Reads every Shapefile under `powergis_SAMPLE_SHAPEFILES` both ways, in place and whole, and
+/// compares them: `cargo test --release -p powergis-data -- --ignored shapefile_samples --nocapture`.
 #[test]
 #[ignore]
 fn shapefile_samples() {
-    let Ok(dir) = std::env::var("RUSTGIS_SAMPLE_SHAPEFILES") else { return };
+    let Ok(dir) = std::env::var("powergis_SAMPLE_SHAPEFILES") else { return };
     fn walk(d: &Path, out: &mut Vec<PathBuf>) {
         for e in std::fs::read_dir(d).into_iter().flatten().flatten() {
             let p = e.path();

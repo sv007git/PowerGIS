@@ -1,16 +1,16 @@
 # MCP Server
 
-`rustgis-cli mcp` runs PowerGIS as a [Model Context Protocol](https://modelcontextprotocol.io)
+`powergis-cli mcp` runs PowerGIS as a [Model Context Protocol](https://modelcontextprotocol.io)
 server, so an AI agent such as Claude Code, Claude Desktop, Cursor, VS Code or Codex can make
 maps with it. The agent opens data, runs PowerGIS commands and geoprocessing tools within the
 access policy below, reads attribute tables, looks at the map as an image and searches this
 documentation. PowerGIS needs no model API key in this mode: the MCP client supplies the model.
 
 ```sh
-rustgis-cli mcp --sample                # the World Atlas sample
-rustgis-cli mcp --data parcels.geojson  # your own data (--data more than once, or --project p.rgis)
-rustgis-cli mcp --yes                   # also allow file and network access
-rustgis-cli mcp --attach [--yes]        # the desktop app that is already open (its MCP Relay)
+powergis-cli mcp --sample                # the World Atlas sample
+powergis-cli mcp --data parcels.geojson  # your own data (--data more than once, or --project p.rgis)
+powergis-cli mcp --yes                   # also allow file and network access
+powergis-cli mcp --attach [--yes]        # the desktop app that is already open (its MCP Relay)
 ```
 
 The server talks over standard input and output, so you don't start it yourself: you tell your
@@ -27,13 +27,13 @@ start the server in a different working directory.
 Claude Code:
 
 ```sh
-claude mcp add rustgis -- rustgis-cli mcp --sample
+claude mcp add powergis -- powergis-cli mcp --sample
 ```
 
 Codex:
 
 ```sh
-codex mcp add rustgis -- rustgis-cli mcp --sample
+codex mcp add powergis -- powergis-cli mcp --sample
 ```
 
 Claude Desktop (`claude_desktop_config.json`), Cursor (`~/.cursor/mcp.json`) and other clients
@@ -42,8 +42,8 @@ that use an `mcpServers` object:
 ```json
 {
   "mcpServers": {
-    "rustgis": {
-      "command": "rustgis-cli",
+    "powergis": {
+      "command": "powergis-cli",
       "args": ["mcp", "--sample"]
     }
   }
@@ -55,16 +55,16 @@ VS Code (`.vscode/mcp.json`):
 ```json
 {
   "servers": {
-    "rustgis": {
+    "powergis": {
       "type": "stdio",
-      "command": "rustgis-cli",
+      "command": "powergis-cli",
       "args": ["mcp", "--sample"]
     }
   }
 }
 ```
 
-If the agent can't find `rustgis-cli`, give its full path (see [Installation](installation.md)).
+If the agent can't find `powergis-cli`, give its full path (see [Installation](installation.md)).
 Then ask, for example:
 
 - "Which 5 countries have the largest GDP? Show them on the map."
@@ -97,12 +97,12 @@ and undo-ownership refusals described below; it is not just file and network acc
 Agents the app starts itself keep their own grants' rules.
 
 ```sh
-rustgis-cli mcp --attach                 # the open app on 127.0.0.1:8767
-rustgis-cli mcp --attach 9000 --yes      # another port, with file and network access
-rustgis-cli mcp --attach --timeout 300   # wait up to 5 minutes for each call (5 to 600 seconds)
+powergis-cli mcp --attach                 # the open app on 127.0.0.1:8767
+powergis-cli mcp --attach 9000 --yes      # another port, with file and network access
+powergis-cli mcp --attach --timeout 300   # wait up to 5 minutes for each call (5 to 600 seconds)
 ```
 
-The port is 8767 unless the `RUSTGIS_MCP_PORT` environment variable names another, for the app
+The port is 8767 unless the `powergis_MCP_PORT` environment variable names another, for the app
 and for `--attach` alike (a second copy of PowerGIS, or a port another program holds). When the
 port is taken, the relay's error says so and names that variable; a value that isn't a port number
 is an error too, not a quiet fall back to 8767. While the relay runs, the app
@@ -116,8 +116,8 @@ it behind: check that its `pid` is still running before trusting it.
 ```json
 {
   "mcpServers": {
-    "rustgis-app": {
-      "command": "rustgis-cli",
+    "powergis-app": {
+      "command": "powergis-cli",
       "args": ["mcp", "--attach", "--yes"]
     }
   }
@@ -148,7 +148,7 @@ you select others; until then they use your current selection.
 
 Every tool call an attached agent makes is written to an audit log, one JSON line per call in a
 file per day (`2026-10-18.jsonl`) in the `mcp-audit` folder of the app-data folder
-(`~/.local/share/rustgis/mcp-audit` on Linux, `~/Library/Application Support/PowerGIS/mcp-audit` on
+(`~/.local/share/powergis/mcp-audit` on Linux, `~/Library/Application Support/PowerGIS/mcp-audit` on
 macOS, `%LOCALAPPDATA%\PowerGIS\mcp-audit` on Windows). Each line holds `ts`, `source` (`mcp` for the relay and MCP over HTTP, `file` for the file
 bridge),
 `tool`, `command` or `script` when there is one, `args`, `success`, `duration_s` and `error`.
@@ -162,8 +162,8 @@ password, a bearer…) is logged as withheld rather than risk keeping the creden
 
 While **Let your Agents Control PowerGIS** is on, the app also serves MCP over HTTP ("Streamable
 HTTP", stateless, JSON replies) on `http://127.0.0.1:8768/mcp`, beside the relay. The
-`RUSTGIS_MCP_HTTP_PORT` environment variable names another port. Clients that speak HTTP connect
-without `rustgis-cli`. Every request needs `Authorization: Bearer <token>`. The token is made once
+`powergis_MCP_HTTP_PORT` environment variable names another port. Clients that speak HTTP connect
+without `powergis-cli`. Every request needs `Authorization: Bearer <token>`. The token is made once
 and kept in `mcp-http.token` in the settings folder (readable by you only), so a client registered
 with it keeps working across launches; delete the file to make a new one. Requests that name
 another host, or that come from a web page (an `Origin` header), are refused before the token is
@@ -171,8 +171,8 @@ read. Calls go through the same queue, refusals and one-at-a-time rule as the re
 as agents attached with the relay's own token: they share that agent's access, active layer and
 name in the undo history, and the token lasts across launches where the relay's lasts one run.
 
-`rustgis-cli mcp-register --client claude` registers it with Claude Code (`claude mcp add
---transport http rustgis-live http://127.0.0.1:8768/mcp --header "Authorization: Bearer …"`), and
+`powergis-cli mcp-register --client claude` registers it with Claude Code (`claude mcp add
+--transport http powergis-live http://127.0.0.1:8768/mcp --header "Authorization: Bearer …"`), and
 the settings section shows that command. Without `--client` it prints the configuration for any
 HTTP client. `--name` and `--port` change the registration's name and port. Either way the token
 leaves its file: `claude mcp add` takes it as an argument (other users of the computer can see a
@@ -184,7 +184,7 @@ the file alone does not revoke the token already loaded by a running listener. O
 token file is protected by your user profile's permissions, not by a mode of its own.
 
 An agent the app starts itself gets a run-scoped token instead of the relay's own:
-`rustgis-cli mcp --attach PORT --token-file FILE`. Each such grant carries its own file and network
+`powergis-cli mcp --attach PORT --token-file FILE`. Each such grant carries its own file and network
 permission, and the app revokes it when it's done with the agent; that closes its connections and
 removes its file.
 
@@ -195,7 +195,7 @@ written to a file. It's on while **Let your Agents Control PowerGIS** is ticked,
 couldn't start: agents then stay on, and the status bar says only the file bridge is running.
 
 1. Write a script to `bridge-command.txt` in the relay's private folder
-   (`$XDG_RUNTIME_DIR/rustgis` on Linux, a `rustgis-mcp-<user>` folder in the temporary folder
+   (`$XDG_RUNTIME_DIR/powergis` on Linux, a `powergis-mcp-<user>` folder in the temporary folder
    elsewhere). The settings section shows the full path. The script is in the `script.run` format:
    one `command-id {json}` per line, `#` for comments.
 2. Once the file has stopped changing for half a second, PowerGIS runs it on the open project. (To be
@@ -225,11 +225,11 @@ named `file bridge` in your undo history. Without Full access, a script's `edit.
 - **Loopback only.** `Relay::bind` refuses any non-loopback address before a socket is opened; the
   app's `ui.mcpRelay` binds 127.0.0.1.
 - **Private token.** Each run draws 16 bytes from the operating system's random source,
-  written as 32 hex characters. The token file is `{port}.token` in `$XDG_RUNTIME_DIR/rustgis`
+  written as 32 hex characters. The token file is `{port}.token` in `$XDG_RUNTIME_DIR/powergis`
   when that is an absolute folder, otherwise in a per-user folder under the system temporary
   folder. The folder must be owned by the current user and not accessible to others. The file
   must be a regular file owned by the current user, without group or other access. A file
-  that is a symlink is refused. `rustgis-cli mcp --attach` reads it with `read_token(port)`.
+  that is a symlink is refused. `powergis-cli mcp --attach` reads it with `read_token(port)`.
   The token never appears on a command line. The file is removed when the relay stops.
 - **App-granted access.** `Relay::set_allow_access(true)` lets connections attached with the relay's
   own token use files and the network whether or not they asked; the desktop app sets it while
@@ -243,7 +243,7 @@ named `file bridge` in your undo history. Without Full access, a script's `edit.
   refused. A connection that attaches with it gets the grant's permission. Dropping the grant
   removes the file, forgets the token and closes its connections. Stopping the relay removes every
   grant's file.
-- **Attach first.** A connection's first non-empty line must be a `rustgis/attach` message
+- **Attach first.** A connection's first non-empty line must be a `powergis/attach` message
   carrying the token. It must arrive within 5 seconds, measured from connection, and be at most
   4096 bytes including its newline. The token is compared without early exit. A connection that fails
   this is closed. The `access` flag sets what that connection may do; the per-call refusal
@@ -341,7 +341,7 @@ MCP exposes these twelve tools: the nine shared [AI Assistant](user-guide/assist
 plus `view_map`, `snapshot` and `run`. The assistant-only `delegate` and `load_skill` tools are
 not exposed through MCP. Instead, enabled [skills](user-guide/assistant.md#skills) are offered
 as MCP prompts (`prompts/list` and `prompts/get`). Every built-in documentation page is also a
-resource (`rustgis://docs/cli.md`, `rustgis://docs/user-guide/maps.md`…) that a client can attach
+resource (`powergis://docs/cli.md`, `powergis://docs/user-guide/maps.md`…) that a client can attach
 to a conversation. Successful JSON tool results use the default
 [tool-output budget](user-guide/assistant.md#tool-output-limits): an estimated 10,000 tokens
 per result. Read large documentation results in sections or continue with `next_offset`.

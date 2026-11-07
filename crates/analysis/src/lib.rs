@@ -5,8 +5,8 @@
 //! done in Web Mercator metres, except buffers, which are geodesic: drawn in a projection centred
 //! on each feature (see [`geodesic`]) so a 100 km buffer is 100 km on the ground.
 //!
-//! Tools from external suites (the GeoLibre/Whitebox tools in `rustgis-geolibre`, and plugins
-//! in `rustgis-plugins`) join the built-in ones through [`register_external`]: they're listed by [`tools`], found by
+//! Tools from external suites (the GeoLibre/Whitebox tools in `powergis-geolibre`, and plugins
+//! in `powergis-plugins`) join the built-in ones through [`register_external`]: they're listed by [`tools`], found by
 //! [`tool`] and run by [`run`] like the rest.
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
@@ -41,7 +41,7 @@ pub use density::{
 pub use parameters::StatisticList;
 pub use tools::{TOOLS, find_field_case_insensitive, holds_coordinates, param_applies, simplify_geometry, zonal_bands};
 
-use rustgis_data::Dataset;
+use powergis_data::Dataset;
 use serde_json::Value;
 
 /// Parameter kinds, which the Tools pane turns into widgets.
@@ -136,7 +136,7 @@ pub enum OutputLayer {
 
 /// A raster layer handed to a tool: its file (on disk or embedded), or failing that the pixels.
 pub struct RasterInput<'a> {
-    pub raster: &'a rustgis_data::raster::Raster,
+    pub raster: &'a powergis_data::raster::Raster,
     /// The file it was read from, when it is on disk.
     pub path: Option<&'a str>,
     /// The file's name and bytes, when it is embedded in the project.
@@ -169,11 +169,11 @@ pub trait Inputs {
     }
     /// A longitude/latitude point on the active map's projection plane, in metres. `None` where
     /// the projection doesn't reach, or with no flat map ([`Inputs::projection_name`]).
-    fn project(&self, _c: rustgis_geom::Coord) -> Option<rustgis_geom::Coord> {
+    fn project(&self, _c: powergis_geom::Coord) -> Option<powergis_geom::Coord> {
         None
     }
     /// The longitude/latitude extent the map's view shows, when there is a view.
-    fn view_extent(&self) -> Option<rustgis_geom::Extent> {
+    fn view_extent(&self) -> Option<powergis_geom::Extent> {
         None
     }
 

@@ -9,10 +9,10 @@ use std::fmt::Write as _;
 use std::path::{Path, PathBuf};
 
 use base64::Engine;
-use rustgis_data::{Dataset, Geometry, GeometryType};
-use rustgis_geom::Coord;
-use rustgis_map::symbology::{MAX_LABEL_CLASSES, Renderer};
-use rustgis_map::{Layer, Map, Rgba};
+use powergis_data::{Dataset, Geometry, GeometryType};
+use powergis_geom::Coord;
+use powergis_map::symbology::{MAX_LABEL_CLASSES, Renderer};
+use powergis_map::{Layer, Map, Rgba};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -289,7 +289,7 @@ fn share(s: &mut Session, p: &Value, kind: &str) -> CmdResult {
     if let Some(other) = s.project.shared.iter().find(|i| i.path == path && i.kind != kind) {
         return Err(format!("{path} already holds the shared {} '{}'; choose another name or path", other.kind, other.name));
     }
-    rustgis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+    powergis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
     let t = now();
     let shared = &mut s.project.shared;
     let id = match shared.iter_mut().find(|i| i.path == path) {
@@ -460,7 +460,7 @@ fn styled_features(l: &Layer, budget: &mut usize) -> Vec<Value> {
             l.dataset.fields.iter().enumerate().map(|(i, f)| (f.name.clone(), json!(l.dataset.value(row, i).to_string()))).collect();
         out.push(json!({
             "type": "Feature",
-            "geometry": rustgis_data::io::geometry_to_geojson(g),
+            "geometry": powergis_data::io::geometry_to_geojson(g),
             "properties": props,
             "style": {"fill": css(sym.fill), "stroke": css(sym.stroke), "width": sym.stroke_width, "size": sym.size, "opacity": opacity},
         }));
@@ -483,20 +483,20 @@ fn web_map_html(m: &Map, title: &str) -> Result<String, String> {
                 continue;
             }
             let mut only = Map::new("raster");
-            only.basemap = rustgis_map::Basemap::Blank;
+            only.basemap = powergis_map::Basemap::Blank;
             only.graticule = false;
             only.layers = vec![l.clone()];
             let (a, b) = (
-                rustgis_geom::lonlat_to_merc(Coord::new(e.min_x, e.min_y.max(-85.0))),
-                rustgis_geom::lonlat_to_merc(Coord::new(e.max_x, e.max_y.min(85.0))),
+                powergis_geom::lonlat_to_merc(Coord::new(e.min_x, e.min_y.max(-85.0))),
+                powergis_geom::lonlat_to_merc(Coord::new(e.max_x, e.max_y.min(85.0))),
             );
             let (w, h) = ((b.x - a.x).abs(), (b.y - a.y).abs());
             let px = 1600.0f64;
             let (vw, vh) = if w >= h { (px, (px * h / w.max(1e-9)).max(1.0)) } else { ((px * w / h.max(1e-9)).max(1.0), px) };
             let camera =
-                rustgis_map::Camera { center: Coord::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0), res: w / vw, bearing: 0.0, pitch: 0.0 };
-            let view = rustgis_render::View { width: vw, height: vh, pixels_per_point: 1.0, camera, sky: false };
-            let png = rustgis_render::render_png(&mut only, &view)?;
+                powergis_map::Camera { center: Coord::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0), res: w / vw, bearing: 0.0, pitch: 0.0 };
+            let view = powergis_render::View { width: vw, height: vh, pixels_per_point: 1.0, camera, sky: false };
+            let png = powergis_render::render_png(&mut only, &view)?;
             pictures += png.len();
             if pictures > MAX_PAGE_PICTURES {
                 return Err("the map's rasters would make the page too large; hide some of them".into());
@@ -582,7 +582,7 @@ pub fn web_style(l: &Layer) -> Value {
     let gt = l.geometry_type();
     let prop = |field: &str| json!(["get", field]);
     // A colour (fill or stroke) for the layer's renderer, as a constant or an expression.
-    let color = |pick: fn(&rustgis_map::Symbol) -> Rgba| -> Value {
+    let color = |pick: fn(&powergis_map::Symbol) -> Rgba| -> Value {
         match &l.renderer {
             Renderer::Single(sym) => json!(pick(sym).hex()),
             Renderer::Unique { field, classes, other, .. } => {
@@ -680,12 +680,12 @@ pub fn web_style(l: &Layer) -> Value {
 /// distance per pixel, so the zoom depends on latitude: the layer's centre is used.
 fn zoom_range(l: &Layer) -> (Option<f32>, Option<f32>) {
     let e = l.extent();
-    let lat = if e.is_empty() { 0.0 } else { e.center().y.clamp(-rustgis_geom::MAX_LAT, rustgis_geom::MAX_LAT) };
+    let lat = if e.is_empty() { 0.0 } else { e.center().y.clamp(-powergis_geom::MAX_LAT, powergis_geom::MAX_LAT) };
     let cos = lat.to_radians().cos().max(1e-6);
     let zoom = |scale: Option<f64>| {
         scale
             .filter(|s| s.is_finite() && *s > 0.0)
-            .map(|s| crate::render::rustgis_tiles::template::style_zoom(s * rustgis_geom::PIXEL_M / cos))
+            .map(|s| crate::render::powergis_tiles::template::style_zoom(s * powergis_geom::PIXEL_M / cos))
     };
     (zoom(l.min_scale), zoom(l.max_scale))
 }
@@ -717,7 +717,7 @@ fn ogc_zip(title: &str, layers: &[&Dataset], extra: &[(String, Vec<u8>)]) -> Res
                 json!({"spatial": {"bbox": [[e.min_x, e.min_y, e.max_x, e.max_y]], "crs": "http://www.opengis.net/def/crs/OGC/1.3/CRS84"}});
         }
         entries.push((format!("collections/{id}.json"), serde_json::to_vec_pretty(&col).map_err(|e| e.to_string())?));
-        let mut fc = rustgis_data::io::to_geojson(ds);
+        let mut fc = powergis_data::io::to_geojson(ds);
         fc["numberReturned"] = json!(ds.features.len());
         entries.push((format!("collections/{id}/items.json"), serde_json::to_vec(&fc).map_err(|e| e.to_string())?));
         cols.push(col);
@@ -729,20 +729,20 @@ fn ogc_zip(title: &str, layers: &[&Dataset], extra: &[(String, Vec<u8>)]) -> Res
     entries.push(("conformance.json".into(), serde_json::to_vec_pretty(&conformance).map_err(|e| e.to_string())?));
     entries.push(("collections.json".into(), serde_json::to_vec_pretty(&json!({"collections": cols})).map_err(|e| e.to_string())?));
     entries.extend(extra.iter().cloned());
-    rustgis_data::zip::write(&entries)
+    powergis_data::zip::write(&entries)
 }
 
 /// A web layer: the layer as an OGC API Features collection, its style, and a viewer page.
 fn web_layer_zip(s: &Session, l: &Layer) -> Result<Vec<u8>, String> {
     let style = serde_json::to_vec_pretty(&web_style(l)).map_err(|e| e.to_string())?;
-    let geojson = serde_json::to_vec(&rustgis_data::io::to_geojson(&l.dataset)).map_err(|e| e.to_string())?;
+    let geojson = serde_json::to_vec(&powergis_data::io::to_geojson(&l.dataset)).map_err(|e| e.to_string())?;
     let mut m = s.map().clone();
     m.layers = vec![l.clone()];
     let e = l.extent();
     if !e.is_empty() {
         // Centred on the layer, at the scale that shows all of it in a typical window.
         let (a, b) =
-            (rustgis_geom::lonlat_to_merc(Coord::new(e.min_x, e.min_y)), rustgis_geom::lonlat_to_merc(Coord::new(e.max_x, e.max_y)));
+            (powergis_geom::lonlat_to_merc(Coord::new(e.min_x, e.min_y)), powergis_geom::lonlat_to_merc(Coord::new(e.max_x, e.max_y)));
         m.camera.center = Coord::new((a.x + b.x) / 2.0, (a.y + b.y) / 2.0);
         m.camera.res = ((b.x - a.x).abs() / 1000.0).max((b.y - a.y).abs() / 650.0).max(1.0) * 1.1;
         m.camera.clamp();
@@ -789,7 +789,7 @@ fn locator(l: &Layer, fields: Option<&[String]>) -> Result<Locator, String> {
         };
         for &fi in &fis {
             let t = match ds.value(row, fi) {
-                rustgis_data::Value::Null => continue,
+                powergis_data::Value::Null => continue,
                 v => v.to_string(),
             };
             if !t.trim().is_empty() {
@@ -863,10 +863,10 @@ fn find(s: &mut Session, p: &Value) -> CmdResult {
 /// from: its bearing and pitch, as far off as MapLibre's camera would be.
 fn gltf(m: &Map, view: (f64, f64)) -> Result<Vec<u8>, String> {
     let c = m.center_lonlat();
-    let origin = rustgis_geom::lonlat_to_merc(c);
+    let origin = powergis_geom::lonlat_to_merc(c);
     let k = c.y.to_radians().cos().abs().max(0.01);
     let xy = |p: Coord| {
-        let q = rustgis_geom::lonlat_to_merc(p);
+        let q = powergis_geom::lonlat_to_merc(p);
         (((q.x - origin.x) * k) as f32, (-(q.y - origin.y) * k) as f32)
     };
     let mut buffer: Vec<u8> = Vec::new();
@@ -930,7 +930,7 @@ fn gltf(m: &Map, view: (f64, f64)) -> Result<Vec<u8>, String> {
                         let open: Vec<Vec<(f64, f64)>> =
                             std::iter::once(outer.clone()).chain(open.iter().skip(1).filter(|r| r.len() >= 3).cloned()).collect();
                         let Some(outer) = open.first() else { continue };
-                        let Some(tris) = rustgis_geom::triangulate::triangulate(outer, open.get(1..).unwrap_or(&[])) else { continue };
+                        let Some(tris) = powergis_geom::triangulate::triangulate(outer, open.get(1..).unwrap_or(&[])) else { continue };
                         let (pos, idx) = tri.entry(key).or_default();
                         let flat: Vec<(f64, f64)> = open.iter().flatten().copied().collect();
                         let base = pos.len() as u32;
@@ -1066,11 +1066,11 @@ fn gltf(m: &Map, view: (f64, f64)) -> Result<Vec<u8>, String> {
 /// The glTF camera of a scene and the node placing it: looking at the map's centre (the scene's
 /// origin) from camera `at` (clamped), with MapLibre's field of view, at the distance that shows
 /// the map's scale across a view `view` points in size.
-fn viewpoint(m: &Map, at: &rustgis_map::Camera, view: (f64, f64)) -> (Value, Value) {
+fn viewpoint(m: &Map, at: &powergis_map::Camera, view: (f64, f64)) -> (Value, Value) {
     let size = |v: f64| if v.is_finite() { v.clamp(1.0, 1e6) } else { 1.0 };
     let (w, h) = (size(view.0), size(view.1));
     let ground = at.res * m.ground_per_unit(at.center);
-    let distance = h / 2.0 / rustgis_map::camera::TAN_HALF_FOV * ground;
+    let distance = h / 2.0 / powergis_map::camera::TAN_HALF_FOV * ground;
     let distance = if distance.is_finite() { distance.clamp(1.0, 1e9) } else { 1e6 };
     let (bearing, pitch) = (at.bearing.to_radians(), at.pitch.to_radians());
     // Backed off from the centre against the heading, and raised.
@@ -1082,7 +1082,7 @@ fn viewpoint(m: &Map, at: &rustgis_map::Camera, view: (f64, f64)) -> (Value, Val
     let (sx, cx, sy, cy) = (tip.sin(), tip.cos(), turn.sin(), turn.cos());
     let rotation = [cy * sx, cx * sy, -sx * sy, cy * cx];
     let camera = json!({"name": "View", "type": "perspective", "perspective": {
-        "yfov": 2.0 * rustgis_map::camera::TAN_HALF_FOV.atan(),
+        "yfov": 2.0 * powergis_map::camera::TAN_HALF_FOV.atan(),
         "aspectRatio": w / h,
         "znear": (distance / 1000.0).max(0.01),
     }});
@@ -1093,7 +1093,7 @@ fn viewpoint(m: &Map, at: &rustgis_map::Camera, view: (f64, f64)) -> (Value, Val
 /// A link chart: the features joined by the map's relationships, as a node-link diagram (a
 /// self-contained page with a force layout; drag nodes, hover for names).
 fn link_chart(s: &Session, rel: Option<&str>) -> Result<String, String> {
-    let rels: Vec<&rustgis_map::design::Relationship> = s
+    let rels: Vec<&powergis_map::design::Relationship> = s
         .project
         .maps
         .iter()
@@ -1133,9 +1133,9 @@ fn link_chart(s: &Session, rel: Option<&str>) -> Result<String, String> {
         let (Some(ok), Some(dk)) = (o.dataset.field_index(&r.origin_key), d.dataset.field_index(&r.destination_key)) else { continue };
         let mut by_key: HashMap<String, Vec<usize>> = HashMap::new();
         // Null or empty keys relate nothing.
-        let key_of = |ds: &rustgis_data::Dataset, row: usize, f: usize| -> Option<String> {
+        let key_of = |ds: &powergis_data::Dataset, row: usize, f: usize| -> Option<String> {
             let v = ds.value(row, f);
-            if matches!(v, rustgis_data::Value::Null) {
+            if matches!(v, powergis_data::Value::Null) {
                 return None;
             }
             Some(v.to_string()).filter(|k| !k.is_empty())

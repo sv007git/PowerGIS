@@ -159,7 +159,7 @@ pub fn find(id: &str) -> Result<Entry, String> {
         .ok_or_else(|| format!("no data cube '{}' in the catalog (cube.catalog lists them)", clip(id, 80)))
 }
 
-/// Where the list is kept up to date between releases (opengeos/rustgis-assets), so a cube is
+/// Where the list is kept up to date between releases (opengeos/powergis-assets), so a cube is
 /// added, or an address fixed, without a new version of the app.
 pub const HOSTED: &str = "https://assets.rustgis.app/data/data-cubes.json";
 
@@ -343,7 +343,7 @@ fn entry(v: &Value) -> Result<Entry, String> {
 fn date(v: Option<&Value>) -> Option<String> {
     let d = v?.as_str()?.trim();
     let shaped = d.len() == 10 && d.bytes().enumerate().all(|(i, b)| if i == 4 || i == 7 { b == b'-' } else { b.is_ascii_digit() });
-    (shaped && rustgis_data::time::parse_text(d).is_some_and(|ms| rustgis_data::time::format(ms, "YYYY-MM-DD") == d)).then(|| d.to_string())
+    (shaped && powergis_data::time::parse_text(d).is_some_and(|ms| powergis_data::time::format(ms, "YYYY-MM-DD") == d)).then(|| d.to_string())
 }
 
 /// A web address (https or http), as given.

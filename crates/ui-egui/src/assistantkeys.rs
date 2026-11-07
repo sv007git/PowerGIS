@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, mpsc};
 
-use rustgis_engine::data::secrets::{Secret, SecretError, SecretStore};
+use powergis_engine::data::secrets::{Secret, SecretError, SecretStore};
 
 /// What the settings can truthfully say about the selected provider's key.
 #[derive(Clone)]
@@ -72,7 +72,7 @@ impl Completed {
 
 /// Executes one operation without ever putting a secret in diagnostics.
 fn perform(job: Job) -> Completed {
-    let account = rustgis_assistant::provider::key_account(&job.provider);
+    let account = powergis_assistant::provider::key_account(&job.provider);
     let deleting = matches!(job.action, Action::Save(None));
     let reading = matches!(job.action, Action::Load) && job.legacy.is_none();
     let migrating = matches!(job.action, Action::Load) && job.legacy.is_some();
@@ -281,7 +281,7 @@ impl Keys {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_engine::data::secrets::MemorySecrets;
+    use powergis_engine::data::secrets::MemorySecrets;
     use std::time::{Duration, Instant};
 
     /// Waits for a bounded fake-store operation, collecting successful migration receipts.

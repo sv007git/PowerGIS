@@ -2,7 +2,7 @@
 //! colour vision simulation, scene drawing mode and depth priority, view clipping, display type,
 //! global and local views, navigation modes, the navigator and the camera.
 
-use rustgis_map::view::{ColorVision, Weather};
+use powergis_map::view::{ColorVision, Weather};
 use serde_json::{Value, json};
 
 use super::layer::with;
@@ -80,20 +80,20 @@ pub fn commands() -> Vec<C> {
             m.view.first_person = fp;
             // Planar navigation is on a flat map.
             if !fp && m.projection.is_globe() {
-                m.set_projection(rustgis_map::Projection::WebMercator);
+                m.set_projection(powergis_map::Projection::WebMercator);
             }
             Ok(json!({"mode": if fp { "firstPerson" } else { "planar" }}))
         })
         .params(r#"{"mode": "planar"|"firstPerson"}"#),
         C::new("map.viewMode", "View", "View › View", |s, p| {
             let next = match ps(p, "mode").ok_or("mode is required")? {
-                "global" => rustgis_map::Projection::Globe,
+                "global" => powergis_map::Projection::Globe,
                 "local" => {
-                    if !rustgis_map::projection::local_views_supported() {
+                    if !powergis_map::projection::local_views_supported() {
                         return Err("local views aren't available in the web app".to_string());
                     }
                     let c = s.map().center_lonlat();
-                    rustgis_map::Projection::from_code(&format!("local:{:.4},{:.4}", c.x, c.y))?
+                    powergis_map::Projection::from_code(&format!("local:{:.4},{:.4}", c.x, c.y))?
                 }
                 m => return Err(format!("unknown view '{m}'")),
             };
@@ -182,7 +182,7 @@ fn walk(s: &mut Session, p: &Value) -> CmdResult {
     let m = s.map_mut();
     let step = w.min(h) * 0.1;
     if m.projection.is_globe() {
-        rustgis_map::Globe::drag(&mut m.camera, -rt * step, fw * step, w, h);
+        powergis_map::Globe::drag(&mut m.camera, -rt * step, fw * step, w, h);
     } else {
         m.camera.pan_px(-rt * step, fw * step);
     }
@@ -196,7 +196,7 @@ fn walk(s: &mut Session, p: &Value) -> CmdResult {
 /// Sets the map's terrain: the relief a tilted view drapes the map over, from a DEM raster layer
 /// or elevation tiles, or turns it off. Parameters are checked before anything changes.
 fn terrain(s: &mut Session, p: &Value) -> CmdResult {
-    use rustgis_map::view::{MAX_EXAGGERATION, Terrain, TerrainEncoding, TerrainSource};
+    use powergis_map::view::{MAX_EXAGGERATION, Terrain, TerrainEncoding, TerrainSource};
     if p.get("off").and_then(Value::as_bool) == Some(true) {
         s.map_mut().view.terrain = None;
         return Ok(json!({"terrain": null}));

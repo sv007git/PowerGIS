@@ -11,7 +11,7 @@ allocations and hangs that hand-written hostile-input tests don't anticipate.
 | `geotiff` | `raster::geotiff::read` | GeoTIFF and the `tiff` crate |
 | `wkt` | `raster::wkt::read_wkt` | `.prj` files, GeoPackage spatial reference rows |
 | `wkb` | `wkb::decode` | GeoPackage, GeoParquet and PostGIS geometry |
-| `mvt` | `rustgis_tiles::mvt::decode` | vector tiles |
+| `mvt` | `powergis_tiles::mvt::decode` | vector tiles |
 | `project` | `Project::from_json` | `.rgis` projects |
 
 This crate is its own workspace, outside PowerGIS's: `cargo build`, `cargo xtask ci`, the wasm

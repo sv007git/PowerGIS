@@ -5,10 +5,10 @@
 use std::collections::HashMap;
 use std::path::Path;
 
-use rustgis_analysis::neural::{self, MAX_SAMPLES_PER_CLASS, Mlp};
-use rustgis_analysis::rasterops;
-use rustgis_data::{Geometry, GeometryType};
-use rustgis_geom::Coord;
+use powergis_analysis::neural::{self, MAX_SAMPLES_PER_CLASS, Mlp};
+use powergis_analysis::rasterops;
+use powergis_data::{Geometry, GeometryType};
+use powergis_geom::Coord;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -61,7 +61,7 @@ pub fn commands() -> Vec<C> {
         C::new("dl.package", "Deep Learning Package", "Publish › Package", |s, p| {
             let path = ps(p, "path").ok_or("path is required")?;
             let bytes = package(s, p)?;
-            rustgis_data::io::write_atomic(Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"path": path, "bytes": bytes.len()}))
         })
         .view()
@@ -70,7 +70,7 @@ pub fn commands() -> Vec<C> {
         C::new("dl.import", "Import Deep Learning Package", "Analyze › Image Classification", |s, p| {
             let bytes = read_bytes(p)?;
             // Only the model is inflated, whatever else the package holds.
-            let entries = rustgis_data::zip::read_matching(&bytes, |n| n == "model.json")?;
+            let entries = powergis_data::zip::read_matching(&bytes, |n| n == "model.json")?;
             let json = entries.first().map(|e| &e.1).ok_or("not a deep learning package (no model.json)")?;
             let mut m: DlModel = serde_json::from_slice(json).map_err(|e| format!("not a deep learning package: {e}"))?;
             m.model.validate()?;
@@ -173,7 +173,7 @@ fn train(s: &Session, p: &Value) -> Result<DlModel, String> {
         let Some(Geometry::Polygon(polys)) = &ft.geometry else { continue };
         // A polygon with no class value trains nothing.
         let v = l.dataset.value(row, fi);
-        if matches!(v, rustgis_data::Value::Null) || v.to_string().trim().is_empty() {
+        if matches!(v, powergis_data::Value::Null) || v.to_string().trim().is_empty() {
             continue;
         }
         let key = v.to_string();
@@ -267,12 +267,12 @@ pub fn package(s: &Session, p: &Value) -> Result<Vec<u8>, String> {
         "accuracy": m.accuracy,
     });
     let about = serde_json::to_vec_pretty(&about).map_err(|e| e.to_string())?;
-    rustgis_data::zip::write(&[("model.json".into(), model), ("package.json".into(), about)])
+    powergis_data::zip::write(&[("model.json".into(), model), ("package.json".into(), about)])
 }
 
 /// Web Mercator tile bounds (metres) of tile (z, x, y).
 fn tile_bounds(z: u32, x: u32, y: u32) -> (f64, f64, f64, f64) {
-    let world = 2.0 * std::f64::consts::PI * rustgis_geom::MERCATOR_R;
+    let world = 2.0 * std::f64::consts::PI * powergis_geom::MERCATOR_R;
     let size = world / f64::from(1u32 << z.min(30));
     let min_x = -world / 2.0 + f64::from(x) * size;
     let max_y = world / 2.0 - f64::from(y) * size;
@@ -283,7 +283,7 @@ fn tile_bounds(z: u32, x: u32, y: u32) -> (f64, f64, f64, f64) {
 fn hosted(s: &mut Session, p: &Value) -> CmdResult {
     let path = ps(p, "path").ok_or("path is required")?.to_string();
     let (bytes, mut info) = hosted_bytes(s, p)?;
-    rustgis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+    powergis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
     info["path"] = json!(path);
     Ok(info)
 }
@@ -296,7 +296,7 @@ pub fn hosted_bytes(s: &mut Session, p: &Value) -> Result<(Vec<u8>, Value), Stri
     // Tiled even when hidden on the map.
     layer.visible = true;
     // The raster's extent in longitude/latitude, from its corners and edges.
-    let mut e = rustgis_geom::Extent::EMPTY;
+    let mut e = powergis_geom::Extent::EMPTY;
     let tr = r.transformer();
     let steps = 16;
     for i in 0..=steps {
@@ -314,14 +314,14 @@ pub fn hosted_bytes(s: &mut Session, p: &Value) -> Result<(Vec<u8>, Value), Stri
     e.min_y = e.min_y.max(-85.0);
     e.max_y = e.max_y.min(85.0);
     // The zoom whose pixels best match the raster's, unless given.
-    let world = 2.0 * std::f64::consts::PI * rustgis_geom::MERCATOR_R;
-    let (a, b) = (rustgis_geom::lonlat_to_merc(Coord::new(e.min_x, e.min_y)), rustgis_geom::lonlat_to_merc(Coord::new(e.max_x, e.max_y)));
+    let world = 2.0 * std::f64::consts::PI * powergis_geom::MERCATOR_R;
+    let (a, b) = (powergis_geom::lonlat_to_merc(Coord::new(e.min_x, e.min_y)), powergis_geom::lonlat_to_merc(Coord::new(e.max_x, e.max_y)));
     let px = ((b.x - a.x) / f64::from(r.width.max(1))).max(1e-6);
     let native = (world / (f64::from(TILE) * px)).log2().round().clamp(0.0, 22.0) as u32;
     let max_z = f(p, "maxZoom").map_or(native, |z| z.clamp(0.0, 22.0) as u32);
     let min_z = f(p, "minZoom").map_or(max_z.saturating_sub(4), |z| z.clamp(0.0, 22.0) as u32).min(max_z);
     let tile_of = |z: u32, lon: f64, lat: f64| -> (u32, u32) {
-        let m = rustgis_geom::lonlat_to_merc(Coord::new(lon, lat));
+        let m = powergis_geom::lonlat_to_merc(Coord::new(lon, lat));
         let n = f64::from(1u32 << z);
         let x = ((m.x + world / 2.0) / world * n).floor().clamp(0.0, n - 1.0) as u32;
         let y = ((world / 2.0 - m.y) / world * n).floor().clamp(0.0, n - 1.0) as u32;
@@ -341,28 +341,28 @@ pub fn hosted_bytes(s: &mut Session, p: &Value) -> Result<(Vec<u8>, Value), Stri
         }
     }
     // A map holding only this raster, on a blank basemap, draws each tile.
-    let mut map = rustgis_map::Map::new("tiles");
-    map.basemap = rustgis_map::Basemap::Blank;
+    let mut map = powergis_map::Map::new("tiles");
+    map.basemap = powergis_map::Basemap::Blank;
     map.graticule = false;
     map.layers = vec![layer];
     let mut entries = Vec::new();
     let mut held = 0usize;
     for (z, x, y) in &jobs {
         let (min_x, min_y, max_x, max_y) = tile_bounds(*z, *x, *y);
-        let camera = rustgis_map::Camera {
+        let camera = powergis_map::Camera {
             center: Coord::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0),
             res: (max_x - min_x) / f64::from(TILE),
             bearing: 0.0,
             pitch: 0.0,
         };
-        let view = rustgis_render::View { width: f64::from(TILE), height: f64::from(TILE), pixels_per_point: 1.0, camera, sky: false };
-        let Some(mut img) = rustgis_render::render(&mut map, &view).map(|r| r.pixmap) else { continue };
+        let view = powergis_render::View { width: f64::from(TILE), height: f64::from(TILE), pixels_per_point: 1.0, camera, sky: false };
+        let Some(mut img) = powergis_render::render(&mut map, &view).map(|r| r.pixmap) else { continue };
         // Transparent where the raster has no data.
         let mut any = false;
         for (k, px) in img.pixels_mut().iter_mut().enumerate() {
             let (col, row) = ((k as u32 % TILE) as f64 + 0.5, (k as u32 / TILE) as f64 + 0.5);
             let m = Coord::new(min_x + col * (max_x - min_x) / f64::from(TILE), max_y - row * (max_y - min_y) / f64::from(TILE));
-            let ll = rustgis_geom::merc_to_lonlat(m);
+            let ll = powergis_geom::merc_to_lonlat(m);
             let covered = r.pixel_at(ll).is_some_and(|(c, rw)| (0..r.band_count()).any(|b| r.value(b, c, rw).is_some()));
             if covered {
                 any = true;
@@ -392,7 +392,7 @@ pub fn hosted_bytes(s: &mut Session, p: &Value) -> Result<(Vec<u8>, Value), Stri
     let n = entries.len();
     entries.push(("tiles.json".into(), serde_json::to_vec_pretty(&tilejson).map_err(|e| e.to_string())?));
     entries.push(("index.html".into(), viewer(&lname, min_z, max_z, c).into_bytes()));
-    let bytes = rustgis_data::zip::write(&entries)?;
+    let bytes = powergis_data::zip::write(&entries)?;
     Ok((bytes, json!({"tiles": n, "minZoom": min_z, "maxZoom": max_z})))
 }
 

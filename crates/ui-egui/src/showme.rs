@@ -7,10 +7,10 @@
 //! or one inside a menu), opens Command Search on its name, which says where it is.
 
 use egui::{CornerRadius, Rect, Stroke, Ui};
-use rustgis_engine::project::TaskStep;
+use powergis_engine::project::TaskStep;
 use serde_json::{Value, json};
 
-use crate::{RightPane, RustGisApp, ribbon};
+use crate::{RightPane, powergisApp, ribbon};
 
 /// How long the button stays outlined (seconds).
 const SHOWN_FOR: f64 = 4.0;
@@ -34,7 +34,7 @@ pub struct ShowMe {
 const DIALOGS: &[(&str, &str)] = &[("select.byAttributes", "selectByAttributes"), ("map.goToXY", "goToXY")];
 
 /// Starts showing where a step's command is; returns what to tell the user.
-pub fn start(app: &mut RustGisApp, st: &TaskStep) -> String {
+pub fn start(app: &mut powergisApp, st: &TaskStep) -> String {
     let id = st.command.as_str();
     if matches!(id, "layer.color" | "layer.outline" | "layer.lineStrokes" | "layer.fillLayers" | "layer.symbology" | "layer.transparency") {
         // Making the step's layer the active one is what shows its symbology. It runs on the
@@ -79,7 +79,7 @@ pub fn start(app: &mut RustGisApp, st: &TaskStep) -> String {
             .params
             .get("tool")
             .and_then(Value::as_str)
-            .and_then(rustgis_engine::analysis::tool)
+            .and_then(powergis_engine::analysis::tool)
             .map_or(label.clone(), |t| tl!(t.name).to_string()),
         _ => label.clone(),
     };
@@ -89,7 +89,7 @@ pub fn start(app: &mut RustGisApp, st: &TaskStep) -> String {
 }
 
 /// Outlines a ribbon button being shown: called for every button drawn, with what it runs.
-pub fn ring(ui: &Ui, app: &mut RustGisApp, r: Rect, id: &str, params: &Value) {
+pub fn ring(ui: &Ui, app: &mut powergisApp, r: Rect, id: &str, params: &Value) {
     let Some(sm) = app.ui.show_me.as_mut() else { return };
     if sm.id != id || sm.key.as_ref().is_some_and(|(k, v)| params.get(*k) != Some(v)) {
         return;
@@ -100,7 +100,7 @@ pub fn ring(ui: &Ui, app: &mut RustGisApp, r: Rect, id: &str, params: &Value) {
 }
 
 /// Each frame: falls back when the button isn't on the ribbon, and stops after a while.
-pub fn tick(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn tick(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(sm) = app.ui.show_me.as_mut() else { return };
     let now = ctx.input(|i| i.time);
     let started = *sm.started.get_or_insert(now);

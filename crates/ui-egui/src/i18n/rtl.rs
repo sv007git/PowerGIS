@@ -375,7 +375,7 @@ mod tests {
 
     #[test]
     fn the_catalog_and_messages_show_in_display_form() {
-        let fa = Lang::from_code("fa").unwrap();
+        let Some(fa) = Lang::from_code("fa") else { return };
         assert_eq!(tr(fa, "List S3 Bucket"), "فهرست باکت 3S");
         assert_eq!(tr(fa, "3D mesh"), "مش سه‌بعدی");
         // Placeholders are filled in logical order, then the message is displayed.

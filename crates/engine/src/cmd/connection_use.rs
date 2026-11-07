@@ -18,8 +18,8 @@ pub(super) fn tables(s: &mut Session, c: &Connection, typed: Option<&str>) -> Re
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::DataError;
-        use rustgis_data::source::duckdb::{self, Database};
+        use powergis_data::DataError;
+        use powergis_data::source::duckdb::{self, Database};
 
         let database = Database::parse(&c.address);
         let (kind, key) = match &database {
@@ -94,8 +94,8 @@ pub(super) fn tables(s: &mut Session, c: &Connection, typed: Option<&str>) -> Re
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn read_tables(database: &rustgis_data::source::duckdb::Database) -> rustgis_data::Result<Vec<Value>> {
-    use rustgis_data::source::{duckdb::Database, mysql, postgis, sqlserver};
+fn read_tables(database: &powergis_data::source::duckdb::Database) -> powergis_data::Result<Vec<Value>> {
+    use powergis_data::source::{duckdb::Database, mysql, postgis, sqlserver};
 
     // Keep DataError intact through both connect and table listing so only an authentication
     // refusal suppresses a saved credential. A transport or query error must not do that.
@@ -121,6 +121,6 @@ fn read_tables(database: &rustgis_data::source::duckdb::Database) -> rustgis_dat
                 .map(|t| json!({"label": t.label(), "schema": t.schema, "name": t.name, "column": t.column, "kind": t.kind}))
                 .collect())
         }
-        Database::File(_) => Err(rustgis_data::DataError::Format("not a database server".into())),
+        Database::File(_) => Err(powergis_data::DataError::Format("not a database server".into())),
     }
 }

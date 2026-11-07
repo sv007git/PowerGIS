@@ -4,9 +4,9 @@
 use egui::{Color32, Ui, vec2};
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, semibold};
-use rustgis_engine::map::report::Section;
+use powergis_engine::map::report::Section;
 
 /// State of the Report pane.
 #[derive(Default)]
@@ -16,7 +16,7 @@ pub struct ReportState {
     pub preview: Option<(String, egui::TextureHandle, usize)>,
     /// The built report and its pages, for the report and project revision they were built from:
     /// turning pages only redraws a page, it doesn't rebuild the report.
-    pub built: Option<((usize, u64), Result<(rustgis_engine::map::report::Doc, Vec<rustgis_engine::render::report::Page>), String>)>,
+    pub built: Option<((usize, u64), Result<(powergis_engine::map::report::Doc, Vec<powergis_engine::render::report::Page>), String>)>,
     pub stat_field: String,
     pub stat_kind: String,
     pub page_title: String,
@@ -34,7 +34,7 @@ fn heading(ui: &mut Ui, text: &str) {
     ui.add_space(2.0);
 }
 
-fn run(app: &mut RustGisApp, id: &str, p: Value) -> Option<Value> {
+fn run(app: &mut powergisApp, id: &str, p: Value) -> Option<Value> {
     match app.run(id, p) {
         Ok(v) => {
             app.reports.message = None;
@@ -47,7 +47,7 @@ fn run(app: &mut RustGisApp, id: &str, p: Value) -> Option<Value> {
     }
 }
 
-pub fn report(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn report(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     if let Some((m, err)) = &app.reports.message {
         let c = if *err { Color32::from_rgb(0xC0, 0x30, 0x30) } else { t.text_dim };
         ui.label(egui::RichText::new(m.as_str()).small().color(c));
@@ -59,7 +59,7 @@ pub fn report(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         }
         return;
     }
-    let Ok(i) = rustgis_engine::cmd::report::index(&app.session, &Value::Null) else { return };
+    let Ok(i) = powergis_engine::cmd::report::index(&app.session, &Value::Null) else { return };
     let names: Vec<String> = app.session.project.reports.iter().map(|r| r.name.clone()).collect();
     let current = names.get(i).cloned().unwrap_or_default();
     ui.horizontal(|ui| {
@@ -83,7 +83,7 @@ pub fn report(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     });
     let Some(r) = app.session.project.reports.get(i).cloned() else { return };
     // The same layer the engine reports on.
-    let fields: Vec<String> = rustgis_engine::cmd::report::layer_of(&app.session, i)
+    let fields: Vec<String> = powergis_engine::cmd::report::layer_of(&app.session, i)
         .map(|l| l.dataset.fields.iter().map(|f| f.name.clone()).collect())
         .unwrap_or_default();
     preview(app, ui, i, t);
@@ -305,7 +305,7 @@ pub fn report(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 
 /// A small preview of the current page, with page buttons. It's redrawn when the report or the
 /// page changes.
-fn preview(app: &mut RustGisApp, ui: &mut Ui, i: usize, t: &Tokens) {
+fn preview(app: &mut powergisApp, ui: &mut Ui, i: usize, t: &Tokens) {
     // Any change to the report, its data or the selection runs a command, which moves the
     // revision on.
     let key = format!("{i}#{}#{}", app.reports.page, app.session.revision);
@@ -314,7 +314,7 @@ fn preview(app: &mut RustGisApp, ui: &mut Ui, i: usize, t: &Tokens) {
         let built_for = (i, app.session.revision);
         if app.reports.built.as_ref().is_none_or(|b| b.0 != built_for) {
             let s = &app.session;
-            let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| rustgis_engine::cmd::report::pages(s, i)))
+            let built = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| powergis_engine::cmd::report::pages(s, i)))
                 .unwrap_or_else(|_| Err("the preview failed unexpectedly".into()));
             // A failure is kept too, so it isn't retried every frame until something changes.
             app.reports.built = Some((built_for, built));
@@ -330,7 +330,7 @@ fn preview(app: &mut RustGisApp, ui: &mut Ui, i: usize, t: &Tokens) {
         let (s, page) = (&mut app.session, app.reports.page);
         let drawn = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| -> Result<_, String> {
             let page = page.min(pages.len().saturating_sub(1));
-            let (pm, _, _) = rustgis_engine::render::report::draw_page(doc, pages, page, 60.0, &s.project.layouts, &mut s.project.maps)
+            let (pm, _, _) = powergis_engine::render::report::draw_page(doc, pages, page, 60.0, &s.project.layouts, &mut s.project.maps)
                 .ok_or("the page is too large to draw")?;
             Ok((pm, page, pages.len()))
         }))

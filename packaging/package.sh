@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Packages release builds of rustgis and rustgis-cli for one target into dist/.
+# Packages release builds of powergis and powergis-cli for one target into dist/.
 #
 #   packaging/package.sh <version> [rust-target]
 #
@@ -9,7 +9,7 @@
 # Windows (Git Bash): a portable .zip, an NSIS setup.exe (per user), a WiX .msi (all users) and
 # an .msix for the Microsoft Store. The installers need makensis and the wix .NET tool with the
 # WixToolset.UI.wixext extension (`wix extension add -g WixToolset.UI.wixext/<wix version>`).
-# Build first with `cargo build --release --locked -p rustgis -p rustgis-cli [--target T]`.
+# Build first with `cargo build --release --locked -p powergis -p powergis-cli [--target T]`.
 set -euo pipefail
 
 version="${1:?usage: package.sh <version> [rust-target]}"
@@ -37,9 +37,9 @@ esac
 exe=""
 [ "$os" = windows ] && exe=".exe"
 gui_exe="$bin/powergis$exe"
-[ -f "$gui_exe" ] || gui_exe="$bin/rustgis$exe"
+[ -f "$gui_exe" ] || gui_exe="$bin/powergis$exe"
 cli_exe="$bin/powergis-cli$exe"
-[ -f "$cli_exe" ] || cli_exe="$bin/rustgis-cli$exe"
+[ -f "$cli_exe" ] || cli_exe="$bin/powergis-cli$exe"
 [ -f "$gui_exe" ] || { echo "missing $bin/powergis$exe: build it first" >&2; exit 1; }
 [ -f "$cli_exe" ] || { echo "missing $bin/powergis-cli$exe: build it first" >&2; exit 1; }
 logo() { "$cli_exe" logo "$1" --size "$2"; }
@@ -53,31 +53,31 @@ case "$os" in
     # Portable tarball.
     d="$work/$name"
     mkdir -p "$d"
-    cp "$bin/rustgis" "$bin/rustgis-cli" "$root/LICENSE" "$notices" "$root/README.md" \
-      "$root/packaging/linux/rustgis.desktop" "$root/packaging/linux/rustgis-mime.xml" "$d/"
-    logo "$d/rustgis.png" 512
+    cp "$bin/powergis" "$bin/powergis-cli" "$root/LICENSE" "$notices" "$root/README.md" \
+      "$root/packaging/linux/powergis.desktop" "$root/packaging/linux/powergis-mime.xml" "$d/"
+    logo "$d/powergis.png" 512
     tar -C "$work" -czf "$dist/$name.tar.gz" "$name"
 
     # Debian package.
     case "$arch" in x86_64) debarch=amd64 ;; aarch64) debarch=arm64 ;; *) debarch="$arch" ;; esac
     p="$work/deb"
-    install -Dm755 "$bin/rustgis" "$p/usr/bin/rustgis"
-    install -Dm755 "$bin/rustgis-cli" "$p/usr/bin/rustgis-cli"
-    install -Dm644 "$root/packaging/linux/rustgis.desktop" "$p/usr/share/applications/rustgis.desktop"
-    install -Dm644 "$root/packaging/linux/rustgis-mime.xml" "$p/usr/share/mime/packages/rustgis.xml"
+    install -Dm755 "$bin/powergis" "$p/usr/bin/powergis"
+    install -Dm755 "$bin/powergis-cli" "$p/usr/bin/powergis-cli"
+    install -Dm644 "$root/packaging/linux/powergis.desktop" "$p/usr/share/applications/powergis.desktop"
+    install -Dm644 "$root/packaging/linux/powergis-mime.xml" "$p/usr/share/mime/packages/powergis.xml"
     for s in 32 64 128 256 512; do
       mkdir -p "$p/usr/share/icons/hicolor/${s}x${s}/apps"
-      logo "$p/usr/share/icons/hicolor/${s}x${s}/apps/rustgis.png" "$s"
+      logo "$p/usr/share/icons/hicolor/${s}x${s}/apps/powergis.png" "$s"
     done
-    install -Dm644 "$root/LICENSE" "$p/usr/share/doc/rustgis/copyright"
-    install -Dm644 "$notices" "$p/usr/share/doc/rustgis/THIRD-PARTY-LICENSES.txt"
+    install -Dm644 "$root/LICENSE" "$p/usr/share/doc/powergis/copyright"
+    install -Dm644 "$notices" "$p/usr/share/doc/powergis/THIRD-PARTY-LICENSES.txt"
     mkdir -p "$p/DEBIAN"
     # Libraries the binaries link against, worked out by dpkg-shlibdeps (it wants a
     # debian/control in the working directory). The windowing and GPU libraries are loaded at
     # run time, so they are listed by hand below.
     mkdir -p "$work/shlibs/debian"
-    printf 'Source: rustgis\n\nPackage: rustgis\nArchitecture: any\n' > "$work/shlibs/debian/control"
-    shlibs="$(cd "$work/shlibs" && dpkg-shlibdeps -O "$p/usr/bin/rustgis" "$p/usr/bin/rustgis-cli" | sed -n 's/^shlibs:Depends=//p')" || shlibs=""
+    printf 'Source: powergis\n\nPackage: powergis\nArchitecture: any\n' > "$work/shlibs/debian/control"
+    shlibs="$(cd "$work/shlibs" && dpkg-shlibdeps -O "$p/usr/bin/powergis" "$p/usr/bin/powergis-cli" | sed -n 's/^shlibs:Depends=//p')" || shlibs=""
     if [ -z "$shlibs" ]; then
       # Off Debian/Ubuntu there is no dpkg database to consult. In CI that is an error: the
       # published package must carry the real list.
@@ -91,21 +91,21 @@ case "$os" in
     # here: older bash keeps the backslash of ${version/-/\~} inside a here-document.
     pkgver="$(printf '%s' "$version" | tr - '~')"
     cat > "$p/DEBIAN/control" <<CONTROL
-Package: rustgis
+Package: powergis
 Version: $pkgver
 Section: science
 Priority: optional
 Architecture: $debarch
 Maintainer: Qiusheng Wu <giswqs@gmail.com>
-Homepage: https://rustgis.app
+Homepage: https://powergis.app
 Installed-Size: $(du -sk "$p/usr" | cut -f1)
 Depends: ${shlibs:-libc6, libgcc-s1}, libxkbcommon0, libwayland-client0 | libx11-6
 Recommends: libxkbcommon-x11-0, libxcursor1, libxi6, libxrandr2, libvulkan1 | libegl1
 Description: Fast, open-source GIS for mapping, analyzing and sharing geospatial data
  Maps and layers, symbology, labeling, selection, editing, geoprocessing and
- export. Includes rustgis-cli for scripting every command.
+ export. Includes powergis-cli for scripting every command.
 CONTROL
-    dpkg-deb --root-owner-group --build "$p" "$dist/rustgis_${version}_${debarch}.deb"
+    dpkg-deb --root-owner-group --build "$p" "$dist/powergis_${version}_${debarch}.deb"
 
     # RPM package (Fedora, RHEL, openSUSE) from the same tree. Library dependencies are found
     # by rpmbuild; the run-time loaded windowing and GPU libraries are listed by soname, which
@@ -113,15 +113,15 @@ CONTROL
     if command -v rpmbuild > /dev/null; then
       r="$work/rpm"
       mkdir -p "$r/SPECS"
-      cat > "$r/SPECS/rustgis.spec" <<SPEC
+      cat > "$r/SPECS/powergis.spec" <<SPEC
 %global debug_package %{nil}
 %global __os_install_post %{nil}
-Name: rustgis
+Name: powergis
 Version: $pkgver
 Release: 1
 Summary: Fast, open-source GIS for mapping, analyzing and sharing geospatial data
 License: Apache-2.0
-URL: https://rustgis.app
+URL: https://powergis.app
 Requires: libxkbcommon.so.0()(64bit)
 Requires: (libwayland-client.so.0()(64bit) or libX11.so.6()(64bit))
 Recommends: libxkbcommon-x11.so.0()(64bit)
@@ -132,25 +132,25 @@ Recommends: (libvulkan.so.1()(64bit) or libEGL.so.1()(64bit))
 
 %description
 Maps and layers, symbology, labeling, selection, editing, geoprocessing and
-export. Includes rustgis-cli for scripting every command.
+export. Includes powergis-cli for scripting every command.
 
 %install
 mkdir -p %{buildroot}
 cp -a "$p/usr" %{buildroot}/
 
 %files
-/usr/bin/rustgis
-/usr/bin/rustgis-cli
-/usr/share/applications/rustgis.desktop
-/usr/share/mime/packages/rustgis.xml
-/usr/share/icons/hicolor/*/apps/rustgis.png
-%license /usr/share/doc/rustgis/copyright
-%license /usr/share/doc/rustgis/THIRD-PARTY-LICENSES.txt
+/usr/bin/powergis
+/usr/bin/powergis-cli
+/usr/share/applications/powergis.desktop
+/usr/share/mime/packages/powergis.xml
+/usr/share/icons/hicolor/*/apps/powergis.png
+%license /usr/share/doc/powergis/copyright
+%license /usr/share/doc/powergis/THIRD-PARTY-LICENSES.txt
 SPEC
-      rpmbuild --quiet -bb --target "$arch" --define "_topdir $r" "$r/SPECS/rustgis.spec"
+      rpmbuild --quiet -bb --target "$arch" --define "_topdir $r" "$r/SPECS/powergis.spec"
       # The file is named after $version (0.2.0-rc.1), like the other assets: GitHub rewrites
       # the ~ of the package version in release asset names.
-      cp "$r"/RPMS/*/rustgis-*.rpm "$dist/rustgis-$version-1.$arch.rpm"
+      cp "$r"/RPMS/*/powergis-*.rpm "$dist/powergis-$version-1.$arch.rpm"
     elif [ -n "${CI:-}" ]; then
       echo "rpmbuild not found" >&2
       exit 1
@@ -184,9 +184,9 @@ SPEC
       a="$work/PowerGIS.AppDir"
       mkdir -p "$a"
       cp -a "$p/usr" "$a/"
-      cp "$root/packaging/linux/rustgis.desktop" "$a/"
-      logo "$a/rustgis.png" 256
-      ln -s usr/bin/rustgis "$a/AppRun"
+      cp "$root/packaging/linux/powergis.desktop" "$a/"
+      logo "$a/powergis.png" 256
+      ln -s usr/bin/powergis "$a/AppRun"
       # Update information for AppImageUpdate and friends: the newest GitHub release's .zsync,
       # which appimagetool makes with its bundled zsyncmake. zsyncmake writes into the current
       # folder, so run it from dist/.
@@ -201,16 +201,16 @@ SPEC
   macos)
     app="$work/PowerGIS.app"
     mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-    cp "$bin/rustgis" "$app/Contents/MacOS/rustgis"
+    cp "$bin/powergis" "$app/Contents/MacOS/powergis"
     # Bundle versions must be dot-separated numbers: drop a pre-release suffix (0.2.0-rc.1).
     sed "s/@VERSION@/${version%%-*}/g" "$root/packaging/macos/Info.plist" > "$app/Contents/Info.plist"
-    iconset="$work/rustgis.iconset"
+    iconset="$work/powergis.iconset"
     mkdir -p "$iconset"
     for s in 16 32 128 256 512; do
       logo "$iconset/icon_${s}x${s}.png" "$s"
       logo "$iconset/icon_${s}x${s}@2x.png" "$((s * 2))"
     done
-    iconutil -c icns "$iconset" -o "$app/Contents/Resources/rustgis.icns"
+    iconutil -c icns "$iconset" -o "$app/Contents/Resources/powergis.icns"
     cp "$root/LICENSE" "$notices" "$app/Contents/Resources/"
     # Signing: with MACOS_SIGN_IDENTITY (a Developer ID Application identity in the keychain)
     # the app and CLI get a hardened-runtime signature; without it, an ad-hoc one, which
@@ -266,17 +266,17 @@ SPEC
       fi
     fi
 
-    d="$work/rustgis-cli-$version-$os-$arch"
+    d="$work/powergis-cli-$version-$os-$arch"
     mkdir -p "$d"
-    cp "$bin/rustgis-cli" "$root/LICENSE" "$notices" "$d/"
-    sign "$d/rustgis-cli"
+    cp "$bin/powergis-cli" "$root/LICENSE" "$notices" "$d/"
+    sign "$d/powergis-cli"
     # A bare executable cannot be stapled: notarizing it registers the ticket that Gatekeeper
     # looks up online.
     if [ -n "$identity" ]; then
-      ditto -c -k "$d/rustgis-cli" "$work/rustgis-cli.zip"
-      notarize "$work/rustgis-cli.zip"
+      ditto -c -k "$d/powergis-cli" "$work/powergis-cli.zip"
+      notarize "$work/powergis-cli.zip"
     fi
-    tar -C "$work" -czf "$dist/rustgis-cli-$version-$os-$arch.tar.gz" "$(basename "$d")"
+    tar -C "$work" -czf "$dist/powergis-cli-$version-$os-$arch.tar.gz" "$(basename "$d")"
     ;;
 
   windows)
@@ -285,8 +285,8 @@ SPEC
     mkdir -p "$d"
     cp "$gui_exe" "$d/powergis.exe"
     cp "$cli_exe" "$d/powergis-cli.exe"
-    cp "$gui_exe" "$d/rustgis.exe"
-    cp "$cli_exe" "$d/rustgis-cli.exe"
+    cp "$gui_exe" "$d/powergis.exe"
+    cp "$cli_exe" "$d/powergis-cli.exe"
     cp "$root/LICENSE" "$notices" "$root/README.md" "$d/"
     sed "s/@VERSION@/$version/g" "$root/packaging/windows/README-portable.txt" > "$d/README.txt"
     (cd "$work" && 7z a -tzip -bso0 "$dist/$name-portable.zip" "$name")
@@ -299,10 +299,10 @@ SPEC
     mkdir -p "$s"
     cp "$gui_exe" "$s/powergis.exe"
     cp "$cli_exe" "$s/powergis-cli.exe"
-    cp "$gui_exe" "$s/rustgis.exe"
-    cp "$cli_exe" "$s/rustgis-cli.exe"
+    cp "$gui_exe" "$s/powergis.exe"
+    cp "$cli_exe" "$s/powergis-cli.exe"
     cp "$root/LICENSE" "$notices" "$root/packaging/windows/path.ps1" "$root/packaging/windows/install-powergis.ps1" "$s/"
-    "$cli_exe" logo "$s/rustgis.ico"
+    "$cli_exe" logo "$s/powergis.ico"
     "$cli_exe" logo "$s/sidebar.bmp" --size 128 --canvas 164x314
     "$cli_exe" logo "$s/banner.bmp" --size 44 --canvas 493x58 --at 440,7
     "$cli_exe" logo "$s/dialog.bmp" --size 120 --canvas 493x312 --at 22,96
@@ -320,8 +320,8 @@ SPEC
     if [ -n "$makensis" ]; then
       # VIProductVersion wants four numbers: drop a pre-release suffix (0.2.0-rc.1 -> 0.2.0.0).
       MSYS2_ARG_CONV_EXCL='*' "$makensis" -V2 -DVERSION="$version" -DVERSION4="${version%%-*}.0" \
-        -DSTAGE="$(w "$s")" -DICON="$(w "$s/rustgis.ico")" -DSIDEBAR="$(w "$s/sidebar.bmp")" \
-        -DOUTFILE="$(w "$dist/$name-setup.exe")" "$(w "$root/packaging/windows/rustgis.nsi")"
+        -DSTAGE="$(w "$s")" -DICON="$(w "$s/powergis.ico")" -DSIDEBAR="$(w "$s/sidebar.bmp")" \
+        -DOUTFILE="$(w "$dist/$name-setup.exe")" "$(w "$root/packaging/windows/powergis.nsi")"
     else
       missing makensis setup.exe
     fi
@@ -336,9 +336,9 @@ SPEC
       } > "$s/LICENSE.rtf"
       # MSI versions are three numbers: drop a pre-release suffix.
       MSYS2_ARG_CONV_EXCL='*' "$wix" build -arch "$instarch" -ext WixToolset.UI.wixext \
-        -d Version="${version%%-*}" -d Stage="$(w "$s")" -d Icon="$(w "$s/rustgis.ico")" \
+        -d Version="${version%%-*}" -d Stage="$(w "$s")" -d Icon="$(w "$s/powergis.ico")" \
         -d License="$(w "$s/LICENSE.rtf")" -d Banner="$(w "$s/banner.bmp")" -d Dialog="$(w "$s/dialog.bmp")" \
-        -o "$(w "$dist/$name.msi")" "$(w "$root/packaging/windows/rustgis.wxs")"
+        -o "$(w "$dist/$name.msi")" "$(w "$root/packaging/windows/powergis.wxs")"
       rm -f "$dist/$name.wixpdb"
     else
       missing wix .msi
@@ -349,7 +349,7 @@ SPEC
     # self-signed sideload build.
     m="$work/msix"
     mkdir -p "$m/Assets"
-    cp "$bin/rustgis.exe" "$bin/rustgis-cli.exe" "$root/LICENSE" "$notices" "$m/"
+    cp "$bin/powergis.exe" "$bin/powergis-cli.exe" "$root/LICENSE" "$notices" "$m/"
     logo "$m/Assets/Square44x44Logo.png" 44
     logo "$m/Assets/Square150x150Logo.png" 150
     logo "$m/Assets/StoreLogo.png" 50

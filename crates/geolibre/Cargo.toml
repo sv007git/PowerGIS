@@ -1,5 +1,5 @@
 [package]
-name = "rustgis-geolibre"
+name = "powergis-geolibre"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -9,9 +9,9 @@ description = "PowerGIS L3: the GeoLibre/Whitebox tool suite (1,000+ raster, vec
 workspace = true
 
 [dependencies]
-rustgis-geom = { workspace = true }
-rustgis-data = { workspace = true }
-rustgis-analysis = { workspace = true }
+powergis-geom = { workspace = true }
+powergis-data = { workspace = true }
+powergis-analysis = { workspace = true }
 serde_json = { workspace = true }
 log = { workspace = true }
 # One-click install of the runner: download the release archive over HTTPS (pure-Rust TLS),

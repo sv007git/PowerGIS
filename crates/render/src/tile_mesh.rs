@@ -1,4 +1,4 @@
-//! Vector tiles as meshes: a tile's shapes (see `rustgis_tiles::shapes`) tessellated once and
+//! Vector tiles as meshes: a tile's shapes (see `powergis_tiles::shapes`) tessellated once and
 //! drawn at every zoom of their level, as MapLibre draws its tiles, rather than drawn into a
 //! picture again for every zoom and resolution.
 //!
@@ -15,12 +15,12 @@ use lyon::tessellation::{
     BuffersBuilder, FillOptions, FillRule, FillTessellator, FillVertex, LineCap, LineJoin, StrokeOptions, StrokeTessellator, StrokeVertex,
     VertexBuffers,
 };
-use rustgis_tiles::cache::Payload;
-use rustgis_tiles::mvt::Tile;
-use rustgis_tiles::shapes::{DataTile, Paint, Run, shapes};
-use rustgis_tiles::source::Resolved;
-use rustgis_tiles::style;
-use rustgis_tiles::template::TileId;
+use powergis_tiles::cache::Payload;
+use powergis_tiles::mvt::Tile;
+use powergis_tiles::shapes::{DataTile, Paint, Run, shapes};
+use powergis_tiles::source::Resolved;
+use powergis_tiles::style;
+use powergis_tiles::template::TileId;
 
 use crate::gpu_scene::TileMeshVertex;
 
@@ -81,7 +81,7 @@ fn premul(c: [f32; 4]) -> [u8; 4] {
 
 /// A dash pattern as the vertex shader takes it: an odd count repeated once over (as in SVG,
 /// and as tiny-skia draws it), at most four lengths; `None` for a longer one (see
-/// `rustgis_tiles::shapes::MAX_DASHES`, past which styles are drawn otherwise).
+/// `powergis_tiles::shapes::MAX_DASHES`, past which styles are drawn otherwise).
 pub fn dash_pattern(d: Option<&[f32]>) -> Option<[f32; 4]> {
     let Some(d) = d.filter(|d| !d.is_empty()) else { return Some([0.0; 4]) };
     let mut v: Vec<f32> = d.to_vec();
@@ -379,7 +379,7 @@ pub fn meshes(
     // Whether the style's sprite is still on its way, asked before the store is locked (a
     // lookup in the sprites the tile cache keeps).
     let sprite_pending =
-        style.sprite.as_deref().is_some_and(|b| matches!(rustgis_tiles::sprite::load(b, false), rustgis_tiles::sprite::Load::Pending));
+        style.sprite.as_deref().is_some_and(|b| matches!(powergis_tiles::sprite::load(b, false), powergis_tiles::sprite::Load::Pending));
     let key = |t: &DataTile| Key { payload: Arc::as_ptr(&t.payload) as usize, style: Arc::as_ptr(style) as usize, level };
     let mut out: Vec<Option<Arc<TileMesh>>> = Vec::with_capacity(tiles.len());
     let mut missing = Vec::new();
@@ -535,10 +535,10 @@ fn evict(s: &mut Store, tick: u64) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_geom::Extent;
-    use rustgis_tiles::mvt::{Feature, GeomKind, Layer};
-    use rustgis_tiles::shapes::Shape;
-    use rustgis_tiles::style::{LineCap as Cap, LineJoin as Join};
+    use powergis_geom::Extent;
+    use powergis_tiles::mvt::{Feature, GeomKind, Layer};
+    use powergis_tiles::shapes::Shape;
+    use powergis_tiles::style::{LineCap as Cap, LineJoin as Join};
 
     fn tile() -> Tile {
         let f = |kind, geometry: Vec<Vec<[f32; 2]>>| Feature { id: None, kind, geometry, props: Vec::new() };
@@ -633,7 +633,7 @@ mod tests {
         let mut t = tile();
         t.layers[0].name = "parks".into();
         let payload = Arc::new(Payload::Vector(t));
-        use rustgis_tiles::style::{Source, Style, StyleLayer};
+        use powergis_tiles::style::{Source, Style, StyleLayer};
         let layer = serde_json::json!({"id": "p", "type": "fill", "source": "s", "source-layer": "parks", "paint": {"fill-color": "#f00"}});
         let style = Arc::new(Resolved {
             style: Style {

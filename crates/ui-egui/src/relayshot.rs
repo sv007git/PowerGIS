@@ -1,5 +1,5 @@
 //! Screen snapshots for the MCP relay: an attached agent's `snapshot` sees the map exactly as
-//! the user does. The relay holds the request ([`rustgis_assistant::relay::Relay::screen_request`]);
+//! the user does. The relay holds the request ([`powergis_assistant::relay::Relay::screen_request`]);
 //! this waits for the map to finish drawing (at most the request's wait), asks egui for a
 //! screenshot of the window, crops it to the map view and hands the PNG back.
 
@@ -7,7 +7,7 @@ use std::sync::{Arc, Mutex};
 
 use egui::{Color32, ColorImage, Rect};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 
 /// A screenshot not back this long after the wait is given up, and the map drawn offscreen.
 const SCREENSHOT_GRACE: f64 = 10.0;
@@ -62,24 +62,24 @@ pub struct Shot {
 }
 
 /// Whether the map view was drawn on the last frame, so a snapshot can capture it.
-pub fn map_shown(app: &RustGisApp, ctx: &egui::Context) -> bool {
+pub fn map_shown(app: &powergisApp, ctx: &egui::Context) -> bool {
     view_rect(app, ctx).is_some()
 }
 
 /// The map view's place on screen, if it was drawn on the last frame or this one.
-fn view_rect(app: &RustGisApp, ctx: &egui::Context) -> Option<Rect> {
+fn view_rect(app: &powergisApp, ctx: &egui::Context) -> Option<Rect> {
     let frame = ctx.cumulative_frame_nr();
     app.map.view_rect.filter(|(r, at)| frame.saturating_sub(*at) <= 1 && r.is_positive()).map(|(r, _)| r)
 }
 
 /// Whether the map has finished drawing: no tiles on the way and no tilted frame being drawn.
-fn settled(app: &RustGisApp) -> bool {
-    rustgis_engine::render::rustgis_tiles::cache::in_flight() == 0 && !app.map.drawing()
+fn settled(app: &powergisApp) -> bool {
+    powergis_engine::render::powergis_tiles::cache::in_flight() == 0 && !app.map.drawing()
 }
 
 /// Drives the relay's screen snapshot, if one is waiting: called every frame after the relay
 /// ran its messages.
-pub fn drive(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn drive(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(relay) = app.relay.clone() else {
         if app.relay_shot.take().is_some() {
             app.relay_arrived.wait_for(0);
@@ -97,7 +97,7 @@ pub fn drive(app: &mut RustGisApp, ctx: &egui::Context) {
     let now = ctx.input(|i| i.time);
     let shot = *app.relay_shot.get_or_insert(Shot { started: now, wait: request.wait.as_secs_f64(), asked: None, tag: 0 });
     let rect = view_rect(app, ctx);
-    let finish = |app: &mut RustGisApp, png: Result<Vec<u8>, String>, settled: bool| {
+    let finish = |app: &mut powergisApp, png: Result<Vec<u8>, String>, settled: bool| {
         app.relay_shot = None;
         app.relay_arrived.wait_for(0);
         app.map.hide_overlays = false;

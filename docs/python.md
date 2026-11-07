@@ -1,9 +1,9 @@
 # Python
 
-[![PyPI](https://img.shields.io/pypi/v/rustgis.svg)](https://pypi.org/project/rustgis/)
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb)
+[![PyPI](https://img.shields.io/pypi/v/powergis.svg)](https://pypi.org/project/powergis/)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/powergis-python/examples/getting-started.ipynb)
 
-The `rustgis` package runs the PowerGIS engine inside Python, headless. It opens data and
+The `powergis` package runs the PowerGIS engine inside Python, headless. It opens data and
 projects, runs engine commands and geoprocessing tools, styles layers, renders maps and saves
 projects that the desktop app opens as they are. There is no app to install and no server to run:
 the engine is a native module for Python 3.12 and later. Release wheels cover Windows x64 and
@@ -12,18 +12,18 @@ arm64, macOS Intel and Apple Silicon, and Linux x64 and arm64 (glibc 2.28 or lat
 has no wheel for it.
 
 ```sh
-pip install rustgis               # pip install "rustgis[geopandas]" for GeoDataFrames
+pip install powergis               # pip install "powergis[geopandas]" for GeoDataFrames
 ```
 
-A [getting-started notebook](https://github.com/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb) walks
-through what follows; [open it in Colab](https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb) to try it without installing anything.
+A [getting-started notebook](https://github.com/opengeos/PowerGIS/blob/main/apps/powergis-python/examples/getting-started.ipynb) walks
+through what follows; [open it in Colab](https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/powergis-python/examples/getting-started.ipynb) to try it without installing anything.
 
 ## A first session
 
 ```python
-import rustgis
+import powergis
 
-s = rustgis.Session(sample=True)                    # the World Atlas sample
+s = powergis.Session(sample=True)                    # the World Atlas sample
 s.layer_names()                                     # ['Cities', 'Rivers', 'Lakes', 'Countries']
 buffers = s.run_tool("buffer", input=s["Cities"], distance=100)
 s["Countries"].style("graduated", field="pop_est")
@@ -94,17 +94,17 @@ address accessible to the browser to show one there.
 
 ## The app in a notebook
 
-`rustgis.Map` shows the PowerGIS app (ribbon, panes, map) in the cell, kept in step with its
+`powergis.Map` shows the PowerGIS app (ribbon, panes, map) in the cell, kept in step with its
 session: what Python adds or styles appears in the app, and what you do in the app (an edit, a new
 layer, a pan) is back in the session for Python to read. It needs
 [anywidget](https://anywidget.dev), and works in JupyterLab, Notebook, VS Code and Colab.
 
 ```sh
-pip install "rustgis[jupyter]"
+pip install "powergis[jupyter]"
 ```
 
 ```python
-m = rustgis.Map(sample=True)                         # height="800px"; lang="de" sets the language
+m = powergis.Map(sample=True)                         # height="800px"; lang="de" sets the language
 m                                                   # the app, in the cell
 
 m.add_geojson("sites.geojson", name="Sites")        # appears in the app
@@ -128,11 +128,11 @@ in the app. Use a zip for a Shapefile. The whole project goes across after each 
 simultaneous changes do not merge: the later one wins. A change made in the app replaces Python's
 project, so `m.undo()` undoes only what Python did since.
 
-The app is the [web app](installation.md), loaded from https://web.rustgis.app, so the
-notebook needs to be online. `Map(url=...)` or the `RUSTGIS_WEB_URL` environment variable points
+The app is the [web app](installation.md), loaded from https://web.powergis.app, so the
+notebook needs to be online. `Map(url=...)` or the `powergis_WEB_URL` environment variable points
 it at another copy (a self-hosted one, such as one built with the
 [Dockerfile](installation.md#self-host-the-web-app-with-docker), or `trunk serve` in
-`apps/rustgis-web`). Settings you change in the widget last until the cell is run again: an
+`apps/powergis-web`). Settings you change in the widget last until the cell is run again: an
 embedded app keeps nothing in the browser.
 
 The project, with the data that travels with it, goes to that app through the browser
@@ -141,16 +141,16 @@ address your data stays on your machine. Point `url=` only at a copy of the app 
 
 ## The app in a Qt application
 
-`rustgis.qt.MapWidget` is the same app in a Qt widget, for a desktop tool or a script that opens a
+`powergis.qt.MapWidget` is the same app in a Qt widget, for a desktop tool or a script that opens a
 window: it shows the web app in Qt WebEngine and keeps it in step with its session, as `Map` does
 in a notebook. It needs PySide6 (or PyQt6 with PyQt6-WebEngine).
 
 ```sh
-pip install "rustgis[qt]"
+pip install "powergis[qt]"
 ```
 
 ```python
-from rustgis.qt import MapWidget                     # import it before the QApplication
+from powergis.qt import MapWidget                     # import it before the QApplication
 from PySide6.QtWidgets import QApplication
 
 app = QApplication([])
@@ -179,7 +179,7 @@ Engine actions are commands with an id and JSON parameters: the same ids the rib
 [command line](cli.md) and the [AI Assistant](user-guide/assistant.md) use.
 `Session.run(id, ...)` runs them, with parameters as keyword arguments, a positional dict, or
 both (keyword arguments win). It returns the decoded command result and raises
-`rustgis.PowerGISError` when the command fails. UI-only commands (`ui.*`) need
+`powergis.PowerGISError` when the command fails. UI-only commands (`ui.*`) need
 `Map.run_in_app`, as in the notebook example above.
 
 A command runs to its end before `run` returns, but not holding Python's interpreter lock (the
@@ -189,7 +189,7 @@ sessions, take turns because connection activations are shared by the process. W
 another native call also releases the GIL; unrelated Python threads remain free to run.
 Ctrl+C (`KeyboardInterrupt`) is raised only once the command has ended. So a trend over a data
 cube (`cube.trend`) keeps the Script pane's bounds here (2 billion pairs compared, a STAC search
-of 2,000 items); run a larger one, such as a trend over a state, with `rustgis-cli run` (see
+of 2,000 items); run a larger one, such as a trend over a state, with `powergis-cli run` (see
 [the command line](cli.md)).
 
 ```python
@@ -225,12 +225,12 @@ s.add_tiles("https://tile.openstreetmap.org/{z}/{x}/{y}.png", name="OpenStreetMa
 ```
 
 The GeoLibre and Whitebox tools run as they do in the app, through the `geolibre` program
-(see [Analysis](user-guide/analysis.md)). `rustgis.load_plugins()`, or
+(see [Analysis](user-guide/analysis.md)). `powergis.load_plugins()`, or
 `Session(plugins=True)`, loads the [plugins](plugins.md) installed for the desktop app.
 
 ### Saved connections and secrets
 
-`rustgis.Session(use_saved_secrets=True)` loads the desktop app's saved connection definitions
+`powergis.Session(use_saved_secrets=True)` loads the desktop app's saved connection definitions
 and lets `connection.login` and project sources use their remembered database passwords and S3
 keys, and files on NASA's Earthdata data servers the remembered Earthdata Login token (which,
 like a token given with `earthdata.login`, then serves every session of the process).
@@ -241,7 +241,7 @@ secrets. Changes to the connection definitions aren't saved back to the desktop 
 
 The default is `False`: nothing reads the keychain or desktop preferences, so scripts and CI
 remain opt-in. If the keychain is unavailable, locked or refuses access, the session emits one
-`WARNING` record through `logging.getLogger("rustgis")` on its first failed access. With no
+`WARNING` record through `logging.getLogger("powergis")` on its first failed access. With no
 logging configured, Python prints it to stderr. Unreadable or malformed desktop preferences
 produce a separate diagnostic during session construction; a missing preferences file is normal.
 
@@ -257,7 +257,7 @@ other PowerGIS calls in the process, even on other sessions; other Python thread
 ## Data in and out
 
 ```python
-s = rustgis.Session(sample=True, data=["parcels.gpkg"])
+s = powergis.Session(sample=True, data=["parcels.gpkg"])
 roads = s.add_data("roads.fgb", name="Roads")
 sites = s.add_geojson({
     "type": "FeatureCollection",
@@ -293,20 +293,20 @@ file; omit the path to keep the image in memory.
 
 ## From source
 
-The package lives in `apps/rustgis-python`, built with [maturin](https://www.maturin.rs).
+The package lives in `apps/powergis-python`, built with [maturin](https://www.maturin.rs).
 Install the [source-build prerequisites](installation.md#from-source) and use a Python 3.12+
 virtual environment. From the repository root:
 
 ```sh
-python -m pip install "./apps/rustgis-python[test]"
-python -m pytest apps/rustgis-python/tests
+python -m pip install "./apps/powergis-python[test]"
+python -m pytest apps/powergis-python/tests
 ```
 
 For an editable development install, activate the virtual environment, then:
 
 ```sh
 python -m pip install "maturin>=1.9.3,<2"
-cd apps/rustgis-python
+cd apps/powergis-python
 maturin develop --release
 ```
 
@@ -320,7 +320,7 @@ python -m pytest tests/test_saved_secrets.py
 Rebuild without `--features test-stores` afterward to restore the OS backend. CI builds one test
 wheel with the injected store and runs the suite once; distributed wheels keep default features.
 
-To require the Qt tests, install the `qt` extra too and set `RUSTGIS_TEST_QT=1`. They run
+To require the Qt tests, install the `qt` extra too and set `powergis_TEST_QT=1`. They run
 offscreen with one `QApplication` kept alive for the test session, and with WebEngine's GPU
 turned off (`--webEngineArgs --disable-gpu`): otherwise WebEngine sets up EGL on a thread of
 its own, where Mesa reads the environment, and a test or library adding an environment variable

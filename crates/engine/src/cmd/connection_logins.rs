@@ -5,14 +5,14 @@ use crate::connections::{Connection, LoginReason, LoginRequest, database_key, la
 
 pub(crate) fn clear_active() {
     #[cfg(not(target_arch = "wasm32"))]
-    rustgis_data::source::duckdb::forget_connection_passwords();
+    powergis_data::source::duckdb::forget_connection_passwords();
 }
 
 pub(crate) fn restore_active(s: &mut Session) {
     #[cfg(not(target_arch = "wasm32"))]
     for (key, id) in s.database_logins.activations() {
         if let Some(pw) = s.database_logins.known_password(&id) {
-            rustgis_data::source::duckdb::set_connection_password(&key, &id, Some(pw.expose()));
+            powergis_data::source::duckdb::set_connection_password(&key, &id, Some(pw.expose()));
         }
     }
     #[cfg(target_arch = "wasm32")]
@@ -72,7 +72,7 @@ fn resolve(s: &mut Session, only: Option<&[(&'static str, String)]>) {
         {
             continue;
         }
-        use rustgis_data::source::duckdb;
+        use powergis_data::source::duckdb;
         if duckdb::has_explicit_password(&key) {
             s.database_logins.clear_requests_for(kind, &key);
             continue;

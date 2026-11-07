@@ -1,9 +1,9 @@
 //! Source-addressed candidates for the one feature whose node is being moved.
 //! Rendered parts cannot supply identities: world-projection cuts can add parts and vertices.
 
-use rustgis_data::{Geometry, VertexId};
-use rustgis_geom::Coord;
-use rustgis_map::{design::Snapping, projection::Flat};
+use powergis_data::{Geometry, VertexId};
+use powergis_geom::Coord;
+use powergis_map::{design::Snapping, projection::Flat};
 
 /// The same projection, switches and map-coordinate pointer apply to every source path.
 #[derive(Clone, Copy)]

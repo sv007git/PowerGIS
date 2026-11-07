@@ -2,8 +2,8 @@
 
 ## Install with an agent
 
-Point your agent at the [PowerGIS skill](https://github.com/opengeos/PowerGIS/blob/main/skills/rustgis/SKILL.md)
-and ask it to install PowerGIS. The skill picks the platform, installs the app and `rustgis-cli`,
+Point your agent at the [PowerGIS skill](https://github.com/opengeos/PowerGIS/blob/main/skills/powergis/SKILL.md)
+and ask it to install PowerGIS. The skill picks the platform, installs the app and `powergis-cli`,
 checks the release checksum, and registers the MCP server. The same skill is how an agent manages
 the desktop app that is already open.
 
@@ -17,24 +17,24 @@ signs the app and keeps it up to date:
 ## Download
 
 Each [GitHub release](https://github.com/opengeos/PowerGIS/releases/latest) carries ready-to-run
-builds of the desktop app and `rustgis-cli`. The same files, grouped by platform, are mirrored at
-**[downloads.rustgis.app](https://downloads.rustgis.app)**:
+builds of the desktop app and `powergis-cli`. The same files, grouped by platform, are mirrored at
+**[downloads.powergis.app](https://downloads.powergis.app)**:
 
 | Platform | File |
 | --- | --- |
 | Windows x64 / arm64 (installer, no admin rights) | `PowerGIS-<version>-windows-x86_64-setup.exe` / `PowerGIS-<version>-windows-aarch64-setup.exe` |
 | Windows x64 / arm64 (installer for all users) | `PowerGIS-<version>-windows-x86_64.msi` / `PowerGIS-<version>-windows-aarch64.msi` |
-| Windows x64 / arm64 (no install) | `PowerGIS-<version>-windows-x86_64-portable.zip` / `PowerGIS-<version>-windows-aarch64-portable.zip` (unzip and run `rustgis.exe`) |
+| Windows x64 / arm64 (no install) | `PowerGIS-<version>-windows-x86_64-portable.zip` / `PowerGIS-<version>-windows-aarch64-portable.zip` (unzip and run `powergis.exe`) |
 | Windows x64 / arm64 (Microsoft Store package) | `PowerGIS-<version>-windows-x86_64.msix` / `PowerGIS-<version>-windows-aarch64.msix` |
 | macOS Apple Silicon | `PowerGIS-<version>-macos-aarch64.dmg` |
 | macOS Intel | `PowerGIS-<version>-macos-x86_64.dmg` |
-| Linux x64 / arm64 (Debian, Ubuntu) | `rustgis_<version>_amd64.deb` / `rustgis_<version>_arm64.deb` |
-| Linux x64 / arm64 (Fedora, RHEL, openSUSE) | `rustgis-<version>-1.x86_64.rpm` / `rustgis-<version>-1.aarch64.rpm` |
+| Linux x64 / arm64 (Debian, Ubuntu) | `powergis_<version>_amd64.deb` / `powergis_<version>_arm64.deb` |
+| Linux x64 / arm64 (Fedora, RHEL, openSUSE) | `powergis-<version>-1.x86_64.rpm` / `powergis-<version>-1.aarch64.rpm` |
 | Linux x64 / arm64 (any distribution, no install) | `PowerGIS-<version>-linux-x86_64.AppImage` / `PowerGIS-<version>-linux-aarch64.AppImage` |
 | Linux x64 / arm64 (other) | `PowerGIS-<version>-linux-x86_64.tar.gz` / `PowerGIS-<version>-linux-aarch64.tar.gz` |
 
-On macOS the command-line tool is a separate `rustgis-cli-<version>-macos-<arch>.tar.gz`;
-the other packages include it (the Windows installers and the MSIX add `rustgis-cli` to every
+On macOS the command-line tool is a separate `powergis-cli-<version>-macos-<arch>.tar.gz`;
+the other packages include it (the Windows installers and the MSIX add `powergis-cli` to every
 new terminal). `SHA256SUMS` lists the checksum of every file.
 
 The AppImages carry update information, so tools such as Gear Lever can update them to the
@@ -65,13 +65,13 @@ PowerGIS is also published to these package managers, which keep it up to date:
 | Platform | Command |
 | --- | --- |
 | Windows x64 ([winget](https://learn.microsoft.com/windows/package-manager/)) | `winget install OpenGeos.PowerGIS` (x64 only for now: on ARM64, use the ARM64 setup.exe or .msi above) |
-| macOS ([Homebrew](https://brew.sh)) | `brew install --cask opengeos/rustgis/rustgis` |
-| macOS and Linux, command-line tool only (Homebrew) | `brew install opengeos/rustgis/rustgis-cli` |
-| Arch Linux ([AUR](https://aur.archlinux.org/packages/rustgis-bin)) | `yay -S rustgis-bin` (or any AUR helper) |
-| Fedora ([COPR](https://copr.fedorainfracloud.org/coprs/giswqs/rustgis/)) | `sudo dnf copr enable giswqs/rustgis && sudo dnf install rustgis` |
+| macOS ([Homebrew](https://brew.sh)) | `brew install --cask opengeos/powergis/powergis` |
+| macOS and Linux, command-line tool only (Homebrew) | `brew install opengeos/powergis/powergis-cli` |
+| Arch Linux ([AUR](https://aur.archlinux.org/packages/powergis-bin)) | `yay -S powergis-bin` (or any AUR helper) |
+| Fedora ([COPR](https://copr.fedorainfracloud.org/coprs/giswqs/powergis/)) | `sudo dnf copr enable giswqs/powergis && sudo dnf install powergis` |
 
 winget installs for your account with the setup.exe; add `--scope machine` for the `.msi`. On
-Homebrew 5.1 and later, run `brew trust opengeos/rustgis` once before installing from the tap.
+Homebrew 5.1 and later, run `brew trust opengeos/powergis` once before installing from the tap.
 Each package is the same build as the release page, and a new release reaches the package
 managers shortly after it is published (winget after Microsoft's review).
 
@@ -84,17 +84,17 @@ the C code some dependencies bundle; see [Architecture](architecture.md#pure-rus
 ```sh
 git clone https://github.com/opengeos/PowerGIS.git
 cd PowerGIS
-cargo run --release -p rustgis            # the desktop app
-cargo build --release -p rustgis-cli      # the command-line tool
+cargo run --release -p powergis            # the desktop app
+cargo build --release -p powergis-cli      # the command-line tool
 ```
 
 The build downloads the Natural Earth sample data from
-[rustgis-assets](https://github.com/opengeos/rustgis-assets). To build offline, download
+[powergis-assets](https://github.com/opengeos/powergis-assets). To build offline, download
 `countries.geojson`, `countries_chn.geojson`, `cities.geojson`, `rivers.geojson` and
-`lakes.geojson` from `https://assets.rustgis.app/data/` once and point the build at them:
+`lakes.geojson` from `https://assets.powergis.app/data/` once and point the build at them:
 
 ```sh
-RUSTGIS_DATA_DIR=/path/to/data cargo build --release
+powergis_DATA_DIR=/path/to/data cargo build --release
 ```
 
 ## Platforms
@@ -104,12 +104,12 @@ RUSTGIS_DATA_DIR=/path/to/data cargo build --release
 | Linux (X11 and Wayland) | Supported |
 | macOS | Supported |
 | Windows | Supported |
-| Web browser | Supported: [web.rustgis.app](https://web.rustgis.app) (WebGPU or WebGL2), installable as an app on iOS, Android and desktops ([how](#install-the-web-app)) |
+| Web browser | Supported: [web.powergis.app](https://web.powergis.app) (WebGPU or WebGL2), installable as an app on iOS, Android and desktops ([how](#install-the-web-app)) |
 
 ## Web app
 
 PowerGIS also runs in the browser, compiled to WebAssembly: open
-**[web.rustgis.app](https://web.rustgis.app)**. It is the same app, with these differences:
+**[web.powergis.app](https://web.powergis.app)**. It is the same app, with these differences:
 
 - **Open** and **Add Data** use the browser's file picker, and you can drop files on the page.
   GeoJSON, CSV, GeoTIFF, ASCII grids, `.rgis` projects and the other formats in
@@ -122,7 +122,7 @@ PowerGIS also runs in the browser, compiled to WebAssembly: open
 - The interface uses the built-in font, because a web page can't read installed fonts. Choosing
   Chinese, Japanese, Korean or Persian downloads a font for that script.
 - Process plugins (including Python plugins), and the formats read through GDAL or DuckDB,
-  need the desktop app or `rustgis-cli`.
+  need the desktop app or `powergis-cli`.
 
 The web app opens the way **Settings › Start-up** says (remembered in the browser). The URL can
 override that for one visit: add `?blank` to start with an empty project,
@@ -168,17 +168,17 @@ opens a Sentinel-2 scene of Lake Geneva.
 `?embed` runs the app inside another page, as the [Python package's notebook widget](python.md)
 does: it starts blank, keeps its settings in memory rather than in the browser, and exchanges
 the project with the page that frames it through `postMessage` (the messages are described in
-`apps/rustgis-web/src/embed.rs`).
+`apps/powergis-web/src/embed.rs`).
 
 ### Install the web app
 
 The web app installs like an app on phones, tablets and computers, with its own icon and a window
 without the browser's toolbars, and starts without a network connection once it has been opened
-online. Nothing is downloaded from an app store, and it updates itself from web.rustgis.app.
+online. Nothing is downloaded from an app store, and it updates itself from web.powergis.app.
 
 | Platform | How |
 | --- | --- |
-| iPhone and iPad | Open web.rustgis.app in Safari, tap **Share**, then **Add to Home Screen** |
+| iPhone and iPad | Open web.powergis.app in Safari, tap **Share**, then **Add to Home Screen** |
 | Android | Open it in Chrome, tap the **⋮** menu, then **Install app** (or **Add to Home screen**) |
 | Windows, macOS, Linux, ChromeOS | In Chrome or Edge, click the install icon at the right of the address bar (or **⋮ › Cast, save and share › Install page as app**) |
 | Mac (Safari 17 or later) | **File › Add to Dock** |
@@ -199,7 +199,7 @@ distributions' clang can; on macOS, Apple's can't, so install `llvm` with Homebr
 `bin` first on your `PATH`. Then:
 
 ```sh
-cd apps/rustgis-web
+cd apps/powergis-web
 trunk serve          # http://127.0.0.1:8772
 trunk build --release   # output in dist/web
 cargo xtask web-pwa ../../dist/web   # add the service worker (offline start), as the deploy does
@@ -217,7 +217,7 @@ than opening `index.html` as a local file. For a local preview, run `python3 -m 
 from the extracted directory and open `http://localhost:8080/`.
 
 The archive uses relative URLs, so it can be hosted at the root or under a path such as
-`https://example.com/rustgis/` (with the trailing slash). Use HTTPS, or `localhost` for local
+`https://example.com/powergis/` (with the trailing slash). Use HTTPS, or `localhost` for local
 use, to install the app and start it offline. The ZIP includes the service worker and contains
 no analytics tag.
 
@@ -227,7 +227,7 @@ A ready-made image of the web app, served by nginx, is published to the GitHub C
 Registry for x86-64 and arm64, so you need only [Docker](https://docs.docker.com/get-docker/):
 
 ```sh
-docker run --rm -p 8080:8080 ghcr.io/opengeos/rustgis   # http://localhost:8080
+docker run --rm -p 8080:8080 ghcr.io/opengeos/powergis   # http://localhost:8080
 ```
 
 `latest` (also tagged `edge`) is the newest build of `main`; `0.5.0` or `0.5` is a given
@@ -237,49 +237,49 @@ To build the image yourself, the `Dockerfile` at the root of the repository buil
 the way the deploy does:
 
 ```sh
-docker build -t rustgis .
-docker run --rm -p 8080:8080 rustgis
+docker build -t powergis .
+docker run --rm -p 8080:8080 powergis
 ```
 
 The image holds only the built files and runs nginx as a non-root user on port 8080. Its pages
 check for a newer build on every load, so the app's new-version notice offers the next image you
-deploy. Unlike web.rustgis.app, it carries no analytics. Put it behind a reverse proxy that
+deploy. Unlike web.powergis.app, it carries no analytics. Put it behind a reverse proxy that
 serves HTTPS: browsers install the app and start its service worker only over HTTPS (or on
 `localhost`). The app's addresses are relative, so the proxy can also serve it under a path,
-such as `https://example.com/rustgis/`, passing requests on without the path. Signing in to
+such as `https://example.com/powergis/`, passing requests on without the path. Signing in to
 ArcGIS from your copy needs an OAuth app of your own whose redirect URLs list the copy's
-`oauth-callback.html`, as PowerGIS's own app accepts only web.rustgis.app's (see
+`oauth-callback.html`, as PowerGIS's own app accepts only web.powergis.app's (see
 [Secured ArcGIS services](user-guide/data-formats.md#secured-arcgis-services)).
 
 The image is for the platform of the machine that builds it. To build it for another, such as
 on an Apple silicon Mac for an x86-64 server, add `--platform linux/amd64` to `docker build`.
 With a builder that can build several platforms (one made by `docker buildx create --use`, or
 Docker Desktop's containerd image store),
-`docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/rustgis --push .`
+`docker buildx build --platform linux/amd64,linux/arm64 -t <registry>/powergis --push .`
 publishes one image for both. The app itself is WebAssembly, so it is compiled once, on the
 machine that builds it, whichever platforms the image is for.
 
 ### The command line in Docker
 
-`ghcr.io/opengeos/rustgis-cli` holds the [command line](cli.md), `rustgis-cli`, on a slim Debian,
+`ghcr.io/opengeos/powergis-cli` holds the [command line](cli.md), `powergis-cli`, on a slim Debian,
 for x86-64 and arm64, with the same tags. It runs in `/data`, so mount the folder to work on
 there:
 
 ```sh
-docker run --rm -v "$PWD:/data" ghcr.io/opengeos/rustgis-cli info cities.geojson
-docker run --rm -v "$PWD:/data" ghcr.io/opengeos/rustgis-cli render cities.geojson map.png --basemap ocean
+docker run --rm -v "$PWD:/data" ghcr.io/opengeos/powergis-cli info cities.geojson
+docker run --rm -v "$PWD:/data" ghcr.io/opengeos/powergis-cli render cities.geojson map.png --basemap ocean
 ```
 
 It runs as a user with ID 1000, the first user on most Linux systems, so the files it writes are
 yours; elsewhere, add `--user "$(id -u):$(id -g)" -e HOME=/tmp`. The optional GDAL, DuckDB and
 GeoLibre programs aren't in the image. To build it yourself:
-`docker build -f packaging/docker/cli.Dockerfile -t rustgis-cli .`
+`docker build -f packaging/docker/cli.Dockerfile -t powergis-cli .`
 
 ## Fonts
 
 PowerGIS uses an installed sans-serif when it finds one (Segoe UI, San Francisco, Arial, Inter,
 Noto Sans, Open Sans or DejaVu Sans) and falls back to a built-in face. Set
-`RUSTGIS_BUILTIN_FONTS=1` to always use the built-in face.
+`powergis_BUILTIN_FONTS=1` to always use the built-in face.
 
 ## Settings, data and cache folders
 
@@ -287,14 +287,14 @@ The desktop app and the command line keep their files in three folders:
 
 | Folder | Holds | Windows | macOS | Linux |
 | --- | --- | --- | --- | --- |
-| Settings | preferences (`prefs.json`), the crash log, AI Assistant sign-ins and skills | `%APPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_CONFIG_HOME/rustgis` (`~/.config/rustgis`) |
-| Data | installed plugins, the GeoLibre runner and recovery copies of unsaved work | `%LOCALAPPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_DATA_HOME/rustgis` (`~/.local/share/rustgis`) |
-| Cache | GDAL and DuckDB conversions | `%LOCALAPPDATA%\PowerGIS\cache` | `~/Library/Caches/PowerGIS` | `$XDG_CACHE_HOME/rustgis` (`~/.cache/rustgis`) |
+| Settings | preferences (`prefs.json`), the crash log, AI Assistant sign-ins and skills | `%APPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_CONFIG_HOME/powergis` (`~/.config/powergis`) |
+| Data | installed plugins, the GeoLibre runner and recovery copies of unsaved work | `%LOCALAPPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_DATA_HOME/powergis` (`~/.local/share/powergis`) |
+| Cache | GDAL and DuckDB conversions | `%LOCALAPPDATA%\PowerGIS\cache` | `~/Library/Caches/PowerGIS` | `$XDG_CACHE_HOME/powergis` (`~/.cache/powergis`) |
 
-Set `RUSTGIS_CONFIG_DIR`, `RUSTGIS_APP_DATA_DIR` or `RUSTGIS_CACHE_DIR` to use another folder
+Set `powergis_CONFIG_DIR`, `powergis_APP_DATA_DIR` or `powergis_CACHE_DIR` to use another folder
 instead, for a portable install on a USB drive, for example. The folder is used as is, and PowerGIS
 keeps the same files in it (`plugins/`, `geolibre/` and `recovery/` in the data folder, `gdal/` and `duckdb/`
-in the cache folder). `RUSTGIS_PLUGINS_DIR`, `RUSTGIS_GDAL_CACHE` and `RUSTGIS_DUCKDB_CACHE` name
+in the cache folder). `powergis_PLUGINS_DIR`, `powergis_GDAL_CACHE` and `powergis_DUCKDB_CACHE` name
 the plugins folder and the GDAL and DuckDB caches themselves, ahead of these.
 
 ## If PowerGIS closes unexpectedly
@@ -319,13 +319,13 @@ The desktop app draws its window with the graphics card through Direct3D 12 on W
 macOS and Vulkan on Linux, with OpenGL as a fallback. A graphics driver that crashes there closes
 the app before it can open a window or write `crash.log`. Choose another graphics interface with
 `--backend` (`dx12`, `vulkan`, `gl` or `metal`, or several separated by commas), from a terminal
-or in the target of a shortcut to `rustgis.exe`:
+or in the target of a shortcut to `powergis.exe`:
 
 ```sh
-rustgis --backend gl       # OpenGL
-rustgis --backend dx12     # Direct3D 12 (Windows)
-rustgis --backend vulkan   # Vulkan
-rustgis --backend metal    # Metal (macOS)
+powergis --backend gl       # OpenGL
+powergis --backend dx12     # Direct3D 12 (Windows)
+powergis --backend vulkan   # Vulkan
+powergis --backend metal    # Metal (macOS)
 ```
 
 The `WGPU_BACKEND` environment variable takes the same names, for every launch. On Windows,

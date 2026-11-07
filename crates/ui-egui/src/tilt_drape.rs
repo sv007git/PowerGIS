@@ -12,10 +12,10 @@
 
 use egui::epaint::Vertex;
 use egui::{Color32, Mesh, Painter, Rect, Shape, TextureFilter, TextureHandle, TextureOptions, pos2};
-use rustgis_engine::geom::{Coord, Extent};
-use rustgis_engine::map::camera::{Band, FAR};
-use rustgis_engine::map::{Camera, Map};
-use rustgis_engine::render::{self, ExtrudedShape, UprightMarker, View};
+use powergis_engine::geom::{Coord, Extent};
+use powergis_engine::map::camera::{Band, FAR};
+use powergis_engine::map::{Camera, Map};
+use powergis_engine::render::{self, ExtrudedShape, UprightMarker, View};
 
 use crate::globe_drape::DrapeKey;
 use crate::theme::c32;
@@ -170,7 +170,7 @@ impl TiltDrape {
         let (tx, rx) = std::sync::mpsc::channel();
         let ctx = ctx.clone();
         let work = std::panic::AssertUnwindSafe(work);
-        let spawned = std::thread::Builder::new().name("rustgis-tilt-drape".into()).spawn(move || {
+        let spawned = std::thread::Builder::new().name("powergis-tilt-drape".into()).spawn(move || {
             // Without an answer (a panic) `take` finds the channel closed. It is closed before the
             // frame is woken, so the woken frame finds the job over, not still running.
             if let Ok(done) = std::panic::catch_unwind(work) {
@@ -371,7 +371,7 @@ impl TiltDrape {
 
     /// The point markers standing upright on the drape, as one mesh in their order: each one's
     /// selection halo, fill and outline, sized and fogged by its distance as in the settled frame.
-    fn markers(&self, rect: Rect, cam: &Camera, fog: rustgis_engine::map::Rgba) -> Option<Mesh> {
+    fn markers(&self, rect: Rect, cam: &Camera, fog: powergis_engine::map::Rgba) -> Option<Mesh> {
         let d = self.drape.as_ref()?;
         let (w, h) = (rect.width() as f64, rect.height() as f64);
         let mut mesh = Mesh::default();
@@ -407,7 +407,7 @@ impl TiltDrape {
     /// near, each one's walls (facing the eye, lit by their facing and darker toward their foot,
     /// far first) then its roof; fading into `fog` with distance. Heights are each
     /// feature's own, in the camera's units at its place.
-    fn extrusions(&self, rect: Rect, cam: &Camera, fog: rustgis_engine::map::Rgba) -> Option<Mesh> {
+    fn extrusions(&self, rect: Rect, cam: &Camera, fog: powergis_engine::map::Rgba) -> Option<Mesh> {
         let d = self.drape.as_ref()?;
         let (w, h) = (rect.width() as f64, rect.height() as f64);
         let pos = |p: (f64, f64)| pos2(rect.min.x + p.0 as f32, rect.min.y + p.1 as f32);
@@ -642,7 +642,7 @@ fn covers(cam: &Camera, w: f64, h: f64, bands: &[(Band, TextureHandle)]) -> bool
 
 #[cfg(test)]
 mod tests {
-    use rustgis_engine::geom::lonlat_to_merc;
+    use powergis_engine::geom::lonlat_to_merc;
 
     use super::*;
 
@@ -652,13 +652,13 @@ mod tests {
         m
     }
 
-    fn fog() -> rustgis_engine::map::Rgba {
-        rustgis_engine::map::Rgba::rgb(200, 210, 220)
+    fn fog() -> powergis_engine::map::Rgba {
+        powergis_engine::map::Rgba::rgb(200, 210, 220)
     }
 
     #[test]
     fn extrusions_stand_up_on_the_drape() {
-        use rustgis_engine::data::{Dataset, Geometry, GeometryType};
+        use powergis_engine::data::{Dataset, Geometry, GeometryType};
         let ctx = egui::Context::default();
         let key = DrapeKey { rev: 0, sources: 0 };
         let mut m = tilted(55.0);
@@ -668,7 +668,7 @@ mod tests {
         ds.push(Some(Geometry::Polygon(vec![vec![ring]])), vec![]);
         let id = m.add_dataset(ds);
         if let Some(l) = m.layer_mut(id) {
-            l.extrusion = Some(rustgis_engine::map::effects::Extrusion {
+            l.extrusion = Some(powergis_engine::map::effects::Extrusion {
                 field: None,
                 height: 100_000.0,
                 factor: 1.0,
@@ -696,20 +696,20 @@ mod tests {
             l.dataset.push(Some(Geometry::Polygon(vec![vec![long]])), vec![]);
             l.touch_geometry();
         }
-        let behind = rustgis_engine::geom::lonlat_to_merc(Coord::new(10.0, 20.0));
+        let behind = powergis_engine::geom::lonlat_to_merc(Coord::new(10.0, 20.0));
         assert!(m.camera.try_to_screen(behind, 800.0, 600.0).is_none(), "the first point is behind the eye");
         let mut d2 = TiltDrape::default();
         assert!(d2.prepare(&ctx, &mut m, DrapeKey { rev: 1, sources: 0 }, 0, 800.0, 600.0, 1.0, 0.0));
         assert!(d2.extrusions(rect, &m.camera, fog()).is_some_and(|mesh| mesh.is_valid() && !mesh.indices.is_empty()));
         // Its roof stands above its foot on screen.
-        let foot = m.camera.to_screen(rustgis_engine::geom::lonlat_to_merc(Coord::new(10.0, 47.0)), 800.0, 600.0).1 as f32;
+        let foot = m.camera.to_screen(powergis_engine::geom::lonlat_to_merc(Coord::new(10.0, 47.0)), 800.0, 600.0).1 as f32;
         let top = mesh.vertices.iter().map(|v| v.pos.y).fold(f32::MAX, f32::min);
         assert!(top < foot - 20.0, "{top} vs {foot}");
     }
 
     #[test]
     fn point_markers_stand_upright_on_the_drape() {
-        use rustgis_engine::data::{Dataset, Geometry, GeometryType};
+        use powergis_engine::data::{Dataset, Geometry, GeometryType};
         let ctx = egui::Context::default();
         let mut m = tilted(70.0);
         let mut ds = Dataset::new("pts", GeometryType::Point, vec![]);
@@ -732,13 +732,13 @@ mod tests {
         assert!(w > 6.0 && (w - h).abs() < 0.5, "{w} × {h}");
         assert!(((lo.x + hi.x) / 2.0 - 400.0).abs() < 1.0 && ((lo.y + hi.y) / 2.0 - 300.0).abs() < 1.0);
         // Behind the camera, it isn't drawn.
-        m.camera.center = rustgis_engine::geom::lonlat_to_merc(Coord::new(10.0, 70.0));
+        m.camera.center = powergis_engine::geom::lonlat_to_merc(Coord::new(10.0, 70.0));
         assert!(d.markers(rect, &m.camera, fog()).is_none());
     }
 
     #[test]
     fn the_drape_stands_on_its_terrain() {
-        use rustgis_engine::data::raster::{ColorHint, Crs, GeoTransform, Raster};
+        use powergis_engine::data::raster::{ColorHint, Crs, GeoTransform, Raster};
         let ctx = egui::Context::default();
         // A 4000 m hill around (10°, 48°), where the view looks.
         let n = 32usize;
@@ -753,13 +753,13 @@ mod tests {
         let drape = |terrain: bool| {
             let mut m = tilted(60.0);
             m.camera.res = 300.0;
-            let id = m.add_raster("dem", rustgis_engine::map::RasterLayer::from_path(dem.clone(), "dem.tif"));
+            let id = m.add_raster("dem", powergis_engine::map::RasterLayer::from_path(dem.clone(), "dem.tif"));
             if let Some(l) = m.layer_mut(id) {
                 l.visible = false;
             }
             if terrain {
-                m.view.terrain = Some(rustgis_engine::map::view::Terrain {
-                    source: rustgis_engine::map::view::TerrainSource::Layer("dem".into()),
+                m.view.terrain = Some(powergis_engine::map::view::Terrain {
+                    source: powergis_engine::map::view::TerrainSource::Layer("dem".into()),
                     exaggeration: 3.0,
                 });
             }
@@ -850,13 +850,13 @@ mod tests {
     /// turning map's drape.
     #[test]
     fn a_turning_flat_map_keeps_the_markers_it_turns_to() {
-        use rustgis_engine::data::{Dataset, Geometry, GeometryType};
+        use powergis_engine::data::{Dataset, Geometry, GeometryType};
         let ctx = egui::Context::default();
         let key = DrapeKey { rev: 0, sources: 0 };
         let (w, h) = (1600.0, 400.0);
         let mut m = tilted(0.0);
         m.camera.bearing = 0.5;
-        let north = rustgis_engine::geom::merc_to_lonlat(Coord::new(m.camera.center.x, m.camera.center.y + 700.0 * m.camera.res));
+        let north = powergis_engine::geom::merc_to_lonlat(Coord::new(m.camera.center.x, m.camera.center.y + 700.0 * m.camera.res));
         let mut ds = Dataset::new("pts", GeometryType::Point, vec![]);
         ds.push(Some(Geometry::Point(north)), vec![]);
         let id = m.add_dataset(ds);

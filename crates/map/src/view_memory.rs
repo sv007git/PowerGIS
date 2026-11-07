@@ -1,7 +1,7 @@
 //! Memoized allocation accounting. Weak identities invalidate on copy-on-write mutation without
 //! retaining old windows or forcing a deep clone of their rows.
-use rustgis_data::{Feature, Features, Geometry, source::memory};
-use rustgis_geom::Extent;
+use powergis_data::{Feature, Features, Geometry, source::memory};
+use powergis_geom::Extent;
 use std::sync::{Arc, Mutex, Weak};
 
 type Levels = Vec<(i32, Option<Arc<Vec<Option<Geometry>>>>)>;
@@ -108,7 +108,7 @@ mod tests {
             assert_eq!(measured.get(rows.allocation_key(), || panic!("unchanged rows were walked again")), 123);
         }
         // There is no strong snapshot here: even an in-place edit must invalidate the memo.
-        rows[0].attrs.push(rustgis_data::Value::Text("changed".into()));
+        rows[0].attrs.push(powergis_data::Value::Text("changed".into()));
         assert!(!key.ptr_eq(&rows.allocation_key()));
         assert!(key.upgrade().is_none());
         let used = memory::features_bytes(&rows);
@@ -119,12 +119,12 @@ mod tests {
     }
     #[test]
     fn accounting_tracks_attributes_geometry_lod_snapshots_and_eviction() {
-        let mut ds = rustgis_data::Dataset::new(
+        let mut ds = powergis_data::Dataset::new(
             "memory",
-            rustgis_data::GeometryType::Polyline,
-            vec![rustgis_data::Field::new("text", rustgis_data::FieldType::Text)],
+            powergis_data::GeometryType::Polyline,
+            vec![powergis_data::Field::new("text", powergis_data::FieldType::Text)],
         );
-        ds.push(Some(Geometry::Line(vec![vec![rustgis_geom::Coord::new(0.0, 0.0); 100]])), vec![rustgis_data::Value::Text("x".into())]);
+        ds.push(Some(Geometry::Line(vec![vec![powergis_geom::Coord::new(0.0, 0.0); 100]])), vec![powergis_data::Value::Text("x".into())]);
         let mut layer = crate::Layer::new(1, ds);
         let exact = |l: &crate::Layer| {
             memory::features_bytes(&l.dataset.features)
@@ -136,19 +136,19 @@ mod tests {
         let original = layer.view_cache_bytes();
         assert_eq!(original, exact(&layer));
         let old = layer.clone();
-        layer.dataset.features[0].attrs[0] = rustgis_data::Value::Text("x".repeat(4096));
+        layer.dataset.features[0].attrs[0] = powergis_data::Value::Text("x".repeat(4096));
         let edited = layer.view_cache_bytes();
         assert!(edited > original);
         assert_eq!(edited, exact(&layer));
         assert_eq!(old.view_cache_bytes(), original);
         assert_eq!(layer.view_cache_bytes(), edited);
         // Public row mutation is detected without requiring a geometry revision bump.
-        layer.dataset.features[0].geometry = Some(Geometry::Line(vec![vec![rustgis_geom::Coord::new(0.0, 0.0); 500]]));
+        layer.dataset.features[0].geometry = Some(Geometry::Line(vec![vec![powergis_geom::Coord::new(0.0, 0.0); 500]]));
         assert_eq!(layer.view_cache_bytes(), exact(&layer));
         Arc::make_mut(&mut layer.projected).reserve(100);
         Arc::make_mut(&mut layer.projected_extents).reserve(100);
         assert_eq!(layer.view_cache_bytes(), exact(&layer));
-        let copy = Arc::new(vec![Some(Geometry::Line(vec![vec![rustgis_geom::Coord::new(0.0, 0.0); 30]]))]);
+        let copy = Arc::new(vec![Some(Geometry::Line(vec![vec![powergis_geom::Coord::new(0.0, 0.0); 30]]))]);
         Arc::make_mut(&mut layer.thinned).push((5, Some(copy)));
         assert_eq!(layer.view_cache_bytes(), exact(&layer));
         Arc::make_mut(&mut layer.thinned).insert(0, (6, None));

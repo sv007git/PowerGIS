@@ -13,9 +13,9 @@
 use std::collections::HashMap;
 
 use egui::{RichText, Sense, Ui, vec2};
-use rustgis_engine::map::tiles::TileLayer;
+use powergis_engine::map::tiles::TileLayer;
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::Tokens;
 
 /// A legend picture: on its way, shown, or why it couldn't be fetched (and when).
@@ -63,9 +63,9 @@ enum Shown {
 
 /// Shows the legend for the map's scale of `tile`, the tile layer at `index`, under its row: the
 /// first of its legends there that can be shown.
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, index: usize, tile: &TileLayer, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, index: usize, tile: &TileLayer, t: &Tokens) {
     let scale = app.session.map().scale();
-    let urls: Vec<String> = rustgis_engine::data::ogc::legends_at(&tile.legends, scale).map(|l| l.url.clone()).collect();
+    let urls: Vec<String> = powergis_engine::data::ogc::legends_at(&tile.legends, scale).map(|l| l.url.clone()).collect();
     if urls.is_empty() {
         note(ui, tl!("No legend at this scale."), None, t);
         return;
@@ -91,11 +91,11 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui, index: usize, tile: &TileLayer, t
 
 /// The legend picture at `url` for the tile layer at `layer`: fetched when first asked for (again
 /// a while after it couldn't be), and once landed decoded and made a texture.
-fn pic(app: &mut RustGisApp, ctx: &egui::Context, url: &str, layer: &str) -> Shown {
+fn pic(app: &mut powergisApp, ctx: &egui::Context, url: &str, layer: &str) -> Shown {
     // The address comes from the service's capabilities or a project (hostile input): it must not
     // reach into the local network from a service on the web. Checked for each layer, as another
     // with the same legend may be allowed what this one isn't.
-    if let Err(e) = rustgis_engine::render::rustgis_tiles::address::check(url, Some(layer)) {
+    if let Err(e) = powergis_engine::render::powergis_tiles::address::check(url, Some(layer)) {
         return Shown::Failed(e);
     }
     let pass = ctx.cumulative_pass_nr();
@@ -174,9 +174,9 @@ mod tests {
 
     use super::*;
 
-    fn harness(app: RustGisApp) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn harness(app: powergisApp) -> egui_kittest::Harness<'static, powergisApp> {
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1400.0, 1000.0)).with_max_steps(64).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
@@ -192,7 +192,7 @@ mod tests {
     /// command.
     #[test]
     fn a_tile_layers_legend_opens_under_it() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         for c in ["Cities", "Countries"] {
             app.session.run("layer.expand", &json!({"layer": c, "on": false})).unwrap();
         }

@@ -121,7 +121,7 @@ pub fn check(url: &str, from: Option<&str>) -> Result<(), String> {
     // An `s3://` address is judged by the web address it is fetched from.
     // An address read anonymously is judged as the address it marks.
     if let (inner, true) = crate::s3::split_anonymous(url) {
-        if rustgis_data::s3_address::is_wrapper(inner) {
+        if powergis_data::s3_address::is_wrapper(inner) {
             return Err("not a saved S3 address".into());
         }
         return if crate::s3::is_s3(inner) { check(&crate::s3::https_url(url)?, from) } else { check(inner, from) };

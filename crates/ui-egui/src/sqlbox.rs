@@ -4,7 +4,7 @@
 //! Assistant changing it show here.
 
 use egui::{RichText, Ui};
-use rustgis_engine::data::Dataset;
+use powergis_engine::data::Dataset;
 
 use crate::theme::Tokens;
 
@@ -101,7 +101,7 @@ fn editor(
         .hint_text(tl!("e.g. pop_max > 1000000"))
         .desired_rows(3)
         // No longer than a clause can be, so a paste isn't read again each frame only to be refused.
-        .char_limit(rustgis_engine::data::query::MAX_LEN)
+        .char_limit(powergis_engine::data::query::MAX_LEN)
         .desired_width(f32::INFINITY)
         .font(egui::TextStyle::Monospace);
     let r = ui.add(edit);
@@ -112,7 +112,7 @@ fn editor(
     chips(ui, &mut d.text, ds);
     let text = d.text.trim().to_string();
     // Only parsing runs each frame; counting waits for Check.
-    let reads = if text.is_empty() { Ok(()) } else { rustgis_engine::data::query::parse(&text, ds).map(|_| ()) };
+    let reads = if text.is_empty() { Ok(()) } else { powergis_engine::data::query::parse(&text, ds).map(|_| ()) };
     let changed = text != stored.unwrap_or_default();
     let mut apply = None;
     ui.horizontal(|ui| {
@@ -201,7 +201,7 @@ fn chips(ui: &mut Ui, text: &mut String, ds: &Dataset) {
 /// A field as a clause names it: as it is when it reads as a plain name, else in double quotes.
 fn field_ref(name: &str) -> String {
     let plain = name.chars().next().is_some_and(|c| c.is_alphabetic() || c == '_') && name.chars().all(|c| c.is_alphanumeric() || c == '_');
-    // The words the clause language reads itself (`rustgis_data::query`), values included.
+    // The words the clause language reads itself (`powergis_data::query`), values included.
     let keyword = ["AND", "OR", "NOT", "LIKE", "IN", "IS", "NULL", "TRUE", "FALSE"].iter().any(|k| k.eq_ignore_ascii_case(name));
     if plain && !keyword { name.to_string() } else { format!("\"{}\"", name.replace('"', "\"\"")) }
 }

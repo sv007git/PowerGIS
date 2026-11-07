@@ -40,8 +40,8 @@ pub use symbology::{
 };
 pub use tiles::{TileKind, TileLayer};
 
-use rustgis_data::{Dataset, Geometry, GeometryType};
-use rustgis_geom::{Coord, Extent};
+use powergis_data::{Dataset, Geometry, GeometryType};
+use powergis_geom::{Coord, Extent};
 use serde::{Deserialize, Serialize};
 
 /// The backdrop drawn under every layer. Each is drawn from the built-in world outline.
@@ -493,7 +493,7 @@ impl Layer {
     }
 
     /// Replaces a streamed layer's features, keeping the selection (by feature id).
-    fn install(&mut self, features: Vec<rustgis_data::Feature>) {
+    fn install(&mut self, features: Vec<powergis_data::Feature>) {
         let mut ids: std::collections::HashSet<u64> =
             self.selection.iter().filter_map(|r| self.dataset.features.get(*r)).map(|f| f.id).collect();
         if let Some(src) = &mut self.source {
@@ -505,7 +505,7 @@ impl Layer {
         let mut padded = false;
         for f in &mut self.dataset.features {
             if f.attrs.len() != fields {
-                f.attrs.resize(fields, rustgis_data::Value::Null);
+                f.attrs.resize(fields, powergis_data::Value::Null);
                 padded = true;
             }
         }
@@ -526,7 +526,7 @@ impl Layer {
             self.projected_for = cache.key;
             self.projected_rev = self.geometry_rev;
             let feature_bytes =
-                if padded { rustgis_data::source::memory::features_bytes(&self.dataset.features) } else { cache.feature_bytes };
+                if padded { powergis_data::source::memory::features_bytes(&self.dataset.features) } else { cache.feature_bytes };
             self.view_memory.seed(&self.dataset.features, &self.projected, feature_bytes, cache.projected_bytes);
         }
     }
@@ -558,7 +558,7 @@ impl Layer {
     /// A streamed layer's source, to export whole a chunk at a time, with a dataset of no
     /// features naming them as [`Layer::load_all`] would. `None` for a layer not
     /// read in place, or whose source can't be read so (one by its web address).
-    pub fn chunk_export(&self) -> Result<Option<(std::sync::Arc<dyn rustgis_data::source::FeatureSource>, Dataset)>, String> {
+    pub fn chunk_export(&self) -> Result<Option<(std::sync::Arc<dyn powergis_data::source::FeatureSource>, Dataset)>, String> {
         let Some(copy) = self.open_source()? else { return Ok(None) };
         let Some(src) = copy.visit_source() else { return Ok(None) };
         let info = src.info();
@@ -957,9 +957,9 @@ impl Layer {
             }
         }
         for f in self.display_filters.iter().filter(|f| f.applies(scale)) {
-            if let Ok(e) = rustgis_data::query::parse(&f.where_, &self.dataset) {
+            if let Ok(e) = powergis_data::query::parse(&f.where_, &self.dataset) {
                 for (r, keep) in rows.iter_mut().enumerate() {
-                    *keep = *keep && rustgis_data::query::eval(&e, &self.dataset, r);
+                    *keep = *keep && powergis_data::query::eval(&e, &self.dataset, r);
                 }
             }
         }
@@ -987,8 +987,8 @@ impl Layer {
     pub fn visible_rows(&self) -> Vec<bool> {
         let n = self.dataset.features.len();
         match self.definition_query.as_deref().filter(|q| !q.trim().is_empty()) {
-            Some(q) => match rustgis_data::query::parse(q, &self.dataset) {
-                Ok(e) => (0..n).map(|r| rustgis_data::query::eval(&e, &self.dataset, r)).collect(),
+            Some(q) => match powergis_data::query::parse(q, &self.dataset) {
+                Ok(e) => (0..n).map(|r| powergis_data::query::eval(&e, &self.dataset, r)).collect(),
                 Err(_) => vec![true; n],
             },
             None => vec![true; n],
@@ -1207,7 +1207,7 @@ pub struct Map {
     /// The time slider, when it is on: bound layers show only what falls in its window.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time: Option<time::TimeSlider>,
-    /// The celestial body the map is on (a [`rustgis_geom::Body`] id): its size sets the ground
+    /// The celestial body the map is on (a [`powergis_geom::Body`] id): its size sets the ground
     /// distances, areas and scale (#223).
     #[serde(default = "earth", skip_serializing_if = "is_earth")]
     pub body: String,
@@ -1216,13 +1216,13 @@ pub struct Map {
 }
 
 fn earth() -> String {
-    rustgis_geom::body::EARTH.id.to_string()
+    powergis_geom::body::EARTH.id.to_string()
 }
 
 /// Only the Earth's own id is left out of a saved map: an id this build doesn't know (a newer
 /// version's body) is kept, though the map is drawn on the Earth meanwhile.
 fn is_earth(id: &str) -> bool {
-    id == rustgis_geom::body::EARTH.id
+    id == powergis_geom::body::EARTH.id
 }
 
 /// Which layers a click in the map identifies.
@@ -1303,17 +1303,7 @@ impl Map {
             service_groups: Vec::new(),
             groups: Vec::new(),
             basemap: Basemap::Paper,
-            tiles: vec![{
-                let mut t = tiles::TileLayer::new(
-                    "Google Maps",
-                    tiles::TileKind::Raster,
-                    "http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}",
-                );
-                t.id = "google-maps".to_string();
-                t.attribution = "Google Maps © Google".to_string();
-                t.max_zoom = 20;
-                t
-            }],
+            tiles: Vec::new(),
             camera: Camera::world(),
             bookmarks: Vec::new(),
             graticule: true,
@@ -1415,7 +1405,7 @@ impl Map {
             // Only web addresses take dates (a file's template is dropped when it is repaired).
             if let Some(template) = t.time_url.as_ref().filter(|u| tiles::is_web(u)) {
                 // Off: the first date the slider showed, or the template's start of time.
-                t.url = rustgis_data::time::fill_template(template, current.unwrap_or(t.time_at));
+                t.url = powergis_data::time::fill_template(template, current.unwrap_or(t.time_at));
                 t.time_at = current.unwrap_or(t.time_at);
             }
         }
@@ -2438,8 +2428,8 @@ impl Map {
     }
 
     /// The celestial body the map is on (the Earth for an unknown id).
-    pub fn body(&self) -> &'static rustgis_geom::Body {
-        rustgis_geom::Body::get(&self.body)
+    pub fn body(&self) -> &'static powergis_geom::Body {
+        powergis_geom::Body::get(&self.body)
     }
 
     /// The built-in basemap's (background, land, land outline, graticule) colours. The world
@@ -2462,7 +2452,7 @@ impl Map {
 
     /// Map scale denominator at the centre of view.
     pub fn scale(&self) -> f64 {
-        self.ground_res() / rustgis_geom::PIXEL_M
+        self.ground_res() / powergis_geom::PIXEL_M
     }
 
     /// Sets the resolution from a scale denominator.
@@ -2471,7 +2461,7 @@ impl Map {
             return;
         }
         let per = self.ground_per_unit(self.camera.center).max(1e-9);
-        self.camera.res = scale * rustgis_geom::PIXEL_M / per;
+        self.camera.res = scale * powergis_geom::PIXEL_M / per;
         self.camera.clamp();
     }
 
@@ -2632,8 +2622,8 @@ fn de_reference_scale<'de, D: serde::Deserializer<'de>>(d: D) -> Result<Option<f
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Field, FieldType, Value};
-    use rustgis_geom::lonlat_to_merc;
+    use powergis_data::{Field, FieldType, Value};
+    use powergis_geom::lonlat_to_merc;
 
     fn points() -> Dataset {
         let mut d = Dataset::new("pts", GeometryType::Point, vec![Field::new("n", FieldType::Integer)]);
@@ -2645,8 +2635,8 @@ mod tests {
     #[test]
     fn a_marker_rotation_is_kept_and_a_crafted_one_reads_as_none() {
         let mut l =
-            Layer::new(1, Dataset::new("p", GeometryType::Point, vec![rustgis_data::Field::new("a", rustgis_data::FieldType::Double)]));
-        l.dataset.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![rustgis_data::Value::Float(450.0)]);
+            Layer::new(1, Dataset::new("p", GeometryType::Point, vec![powergis_data::Field::new("a", powergis_data::FieldType::Double)]));
+        l.dataset.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![powergis_data::Value::Float(450.0)]);
         // None isn't written: an older PowerGIS reads the layer as before.
         assert!(serde_json::to_value(&l).unwrap().get("marker_rotation").is_none());
         l.marker_rotation = Some(symbology::MarkerRotation { field: "a".into(), counterclockwise: true });
@@ -2891,7 +2881,7 @@ mod tests {
         let expected_extent = flat.project(original[0].geometry.as_ref().unwrap()).extent();
         assert_eq!(extents, &[expected_extent]);
         let before = l.view_cache_bytes();
-        assert!(before > rustgis_data::source::memory::features_bytes(&original));
+        assert!(before > powergis_data::source::memory::features_bytes(&original));
         let mut copy = l.clone();
         assert!(copy.prepare_display(&flat, 12_000.0, false));
         assert_eq!(copy.display_cache().unwrap().0.as_ptr(), l.display_cache().unwrap().0.as_ptr());
@@ -2909,7 +2899,7 @@ mod tests {
         assert!(l.prepare_display(&flat, 24_000.0, false));
         l.clear_cache();
         assert!(l.display_cache().is_none());
-        assert_eq!(l.view_cache_bytes(), rustgis_data::source::memory::features_bytes(&original));
+        assert_eq!(l.view_cache_bytes(), powergis_data::source::memory::features_bytes(&original));
         assert!(lod::display(&original, 0, 12, 1, false).is_none());
         assert!(!long_line(100).prepare_display(&flat, 12_000.0, false));
         assert_eq!(l.dataset.features, original);

@@ -2,7 +2,7 @@
 site_name = "PowerGIS"
 site_description = "A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data, on the desktop and in the browser"
 site_author = "opengeos"
-site_url = "https://rustgis.app"
+site_url = "https://powergis.app"
 repo_url = "https://github.com/opengeos/PowerGIS"
 repo_name = "opengeos/PowerGIS"
 copyright = "Copyright &copy; 2026 Qiusheng Wu"
@@ -12,7 +12,7 @@ nav = [
   { "Home" = "index.md" },
   { "Installation" = "installation.md" },
   { "Getting Started" = "getting-started.md" },
-  { "Web App" = "https://web.rustgis.app" },
+  { "Web App" = "https://web.powergis.app" },
   { "User Guide" = [
     "user-guide/index.md",
     "user-guide/data.md",
@@ -50,8 +50,8 @@ nav = [
 ]
 
 [project.theme]
-logo = "https://assets.rustgis.app/images/logo.svg"
-favicon = "https://assets.rustgis.app/images/favicon.png"
+logo = "https://assets.powergis.app/images/logo.svg"
+favicon = "https://assets.powergis.app/images/favicon.png"
 features = [
   "content.code.copy",
   "navigation.indexes",

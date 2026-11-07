@@ -3,12 +3,12 @@
 
 use egui::{Sense, Stroke, Ui, vec2};
 use egui_extras::{Column, TableBuilder};
-use rustgis_engine::data::{Dataset, Value as V};
+use powergis_engine::data::{Dataset, Value as V};
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, semibold};
 use crate::widgets::small;
-use crate::{RustGisApp, icons};
+use crate::{powergisApp, icons};
 
 #[derive(Default)]
 pub struct TableState {
@@ -49,7 +49,7 @@ impl CellEdit {
     }
 }
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui) {
     let layer_id = app.session.table_layer;
     // An edit is the layer's it was opened on: the table closed (however) or showing another
     // layer, it is dropped rather than written later to whatever row has its place.
@@ -327,8 +327,8 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
 /// Whether `text` reads as a value of a `ty` field (`Value::parse`'s reading): blank is null;
 /// a number that doesn't parse (or isn't finite, or for a whole number is out of range), or a
 /// word that isn't yes or no, isn't.
-fn fits(text: &str, ty: rustgis_engine::data::FieldType) -> bool {
-    use rustgis_engine::data::FieldType as T;
+fn fits(text: &str, ty: powergis_engine::data::FieldType) -> bool {
+    use powergis_engine::data::FieldType as T;
     let t = text.trim();
     t.is_empty()
         || t.eq_ignore_ascii_case("<null>")
@@ -353,7 +353,7 @@ mod tests {
     /// took the focus back every frame, so Enter never ended it and nothing was kept (#1182).
     #[test]
     fn a_value_typed_into_a_cell_is_kept_on_enter() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let id = app.session.map().layers.first().map(|l| l.id).unwrap();
         app.session.table_layer = Some(id);
         app.run("tool.set", json!({"tool": "select"})).unwrap();
@@ -361,11 +361,11 @@ mod tests {
         let col = (0..ds.fields.len()).find(|&c| matches!(ds.value(0, c), V::Text(_))).expect("a text field");
         let num = (0..ds.fields.len()).find(|&c| matches!(ds.value(0, c), V::Int(_) | V::Float(_))).expect("a number field");
         let fid: Vec<u64> = ds.features.iter().map(|f| f.id).collect();
-        let value = |app: &RustGisApp, row: usize| app.session.map().layer(id).unwrap().dataset.value(row, col).to_string();
+        let value = |app: &powergisApp, row: usize| app.session.map().layer(id).unwrap().dataset.value(row, col).to_string();
         let (first, second) = (value(&app, 0), value(&app, 1));
         let number = app.session.map().layer(id).unwrap().dataset.value(0, num).to_string();
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1400.0, 1000.0)).with_max_steps(64).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
@@ -427,7 +427,7 @@ mod tests {
 
     #[test]
     fn typed_text_fits_its_field() {
-        use rustgis_engine::data::FieldType as T;
+        use powergis_engine::data::FieldType as T;
         for (text, ty, ok) in [
             ("12", T::Integer, true),
             ("1.5", T::Double, true),

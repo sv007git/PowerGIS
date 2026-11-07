@@ -14,13 +14,13 @@ use std::path::PathBuf;
 
 /// The environment variable that names the settings folder.
 pub const CONFIG_ENV: &str = "POWERGIS_CONFIG_DIR";
-pub const LEGACY_CONFIG_ENV: &str = "RUSTGIS_CONFIG_DIR";
+pub const LEGACY_CONFIG_ENV: &str = "powergis_CONFIG_DIR";
 /// The environment variable that names the app-data folder.
 pub const APP_DATA_ENV: &str = "POWERGIS_APP_DATA_DIR";
-pub const LEGACY_APP_DATA_ENV: &str = "RUSTGIS_APP_DATA_DIR";
+pub const LEGACY_APP_DATA_ENV: &str = "powergis_APP_DATA_DIR";
 /// The environment variable that names the cache folder.
 pub const CACHE_ENV: &str = "POWERGIS_CACHE_DIR";
-pub const LEGACY_CACHE_ENV: &str = "RUSTGIS_CACHE_DIR";
+pub const LEGACY_CACHE_ENV: &str = "powergis_CACHE_DIR";
 
 /// One of the app's folders.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -139,9 +139,9 @@ mod tests {
         );
 
         let linux = with(&[("HOME", "/home/a")]);
-        assert_eq!(all(Os::Other, &linux), paths(["/home/a/.config/rustgis", "/home/a/.local/share/rustgis", "/home/a/.cache/rustgis"]));
+        assert_eq!(all(Os::Other, &linux), paths(["/home/a/.config/powergis", "/home/a/.local/share/powergis", "/home/a/.cache/powergis"]));
         let xdg = with(&[("HOME", "/home/a"), ("XDG_CONFIG_HOME", "/x/c"), ("XDG_DATA_HOME", "/x/d"), ("XDG_CACHE_HOME", "/x/k")]);
-        assert_eq!(all(Os::Other, &xdg), paths(["/x/c/rustgis", "/x/d/rustgis", "/x/k/rustgis"]));
+        assert_eq!(all(Os::Other, &xdg), paths(["/x/c/powergis", "/x/d/powergis", "/x/k/powergis"]));
 
         assert_eq!(all(Os::Other, &with(&[])), [None, None, None]);
         assert_eq!(all(Os::Mac, &with(&[("HOME", "")])), [None, None, None]);
@@ -162,6 +162,6 @@ mod tests {
         }
         // An empty override is no override.
         let env = with(&[("HOME", "/home/a"), (CONFIG_ENV, "")]);
-        assert_eq!(resolve(Kind::Config, Os::Other, &env), Some(PathBuf::from("/home/a/.config/rustgis")));
+        assert_eq!(resolve(Kind::Config, Os::Other, &env), Some(PathBuf::from("/home/a/.config/powergis")));
     }
 }

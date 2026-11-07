@@ -22,7 +22,7 @@ pub mod zarr;
 use std::path::Path;
 
 pub use crs::{Crs, Transformer};
-use rustgis_geom::{Coord, Extent};
+use powergis_geom::{Coord, Extent};
 use serde::{Deserialize, Serialize};
 
 use crate::{DataError, Result};
@@ -905,7 +905,7 @@ pub(crate) mod tests {
 
     #[test]
     fn gdal_sidecars_name_bands_and_set_nodata() {
-        let dir = std::env::temp_dir().join(format!("rustgis-pam-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-pam-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let gt = GeoTransform { origin_x: 10.0, origin_y: 50.0, pixel_width: 0.5, pixel_height: -0.5 };
         let r = Raster::new("dem", 2, 2, vec![vec![0.0, 5.0, 7.0, 9.0]], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
@@ -930,7 +930,7 @@ pub(crate) mod tests {
 
     #[test]
     fn gdal_sidecars_name_classes() {
-        let dir = std::env::temp_dir().join(format!("rustgis-pam-classes-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-pam-classes-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let gt = GeoTransform { origin_x: 10.0, origin_y: 50.0, pixel_width: 0.5, pixel_height: -0.5 };
         let r = Raster::new("slope", 2, 2, vec![vec![1.0, 2.0, 3.0, 1.0]], gt, Crs::LonLat, None, ColorHint::Gray, "UInt8").unwrap();
@@ -1202,13 +1202,13 @@ mod scan_tests {
     }
 }
 
-/// Reads every raster in `$RUSTGIS_SAMPLE_RASTERS` (sample files from
-/// <https://source.coop/giswqs/opengeos>): `cargo test -p rustgis-data -- --ignored samples`.
+/// Reads every raster in `$powergis_SAMPLE_RASTERS` (sample files from
+/// <https://source.coop/giswqs/opengeos>): `cargo test -p powergis-data -- --ignored samples`.
 #[cfg(test)]
 #[test]
 #[ignore]
 fn samples() {
-    let Ok(dir) = std::env::var("RUSTGIS_SAMPLE_RASTERS") else { return };
+    let Ok(dir) = std::env::var("powergis_SAMPLE_RASTERS") else { return };
     let mut paths: Vec<_> =
         std::fs::read_dir(dir).unwrap().filter_map(|e| e.ok()).map(|e| e.path()).filter(|p| is_raster_name(&p.to_string_lossy())).collect();
     paths.sort();

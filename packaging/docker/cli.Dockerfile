@@ -1,10 +1,10 @@
 # syntax=docker/dockerfile:1
 #
-# The PowerGIS command line (rustgis-cli), built from this checkout, on a slim Debian (see
+# The PowerGIS command line (powergis-cli), built from this checkout, on a slim Debian (see
 # docs/installation.md › The command line in Docker). Build it from the repository root:
 #
-#   docker build -f packaging/docker/cli.Dockerfile -t rustgis-cli .
-#   docker run --rm -v "$PWD:/data" rustgis-cli info data.geojson
+#   docker build -f packaging/docker/cli.Dockerfile -t powergis-cli .
+#   docker run --rm -v "$PWD:/data" powergis-cli info data.geojson
 #
 # Unlike the web app's image, this is native code, so it is built on the platform the image is
 # for. .github/workflows/docker.yml builds each platform on a runner of its own.
@@ -24,8 +24,8 @@ COPY . .
 # only what changed. The binary is copied out of them.
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
-    cargo build --release --locked -p rustgis-cli \
-    && cp target/release/rustgis-cli /usr/local/bin/rustgis-cli
+    cargo build --release --locked -p powergis-cli \
+    && cp target/release/powergis-cli /usr/local/bin/powergis-cli
 
 # The Debian release the rust image is built on, so the binary finds the C library it was linked
 # against.
@@ -35,21 +35,21 @@ FROM debian:13.7-slim@sha256:62bd423aeee912639ca8ee681c2b762cb3e25137e0a92b20be4
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates \
     && rm -rf /var/lib/apt/lists/* \
-    && useradd --create-home --uid 1000 rustgis \
-    && install -d -o rustgis -g rustgis /data
+    && useradd --create-home --uid 1000 powergis \
+    && install -d -o powergis -g powergis /data
 
 LABEL org.opencontainers.image.title="PowerGIS command line" \
       org.opencontainers.image.description="The PowerGIS command line: run commands and geoprocessing, render maps, inspect data" \
-      org.opencontainers.image.url="https://rustgis.app" \
+      org.opencontainers.image.url="https://powergis.app" \
       org.opencontainers.image.source="https://github.com/opengeos/PowerGIS" \
       org.opencontainers.image.licenses="Apache-2.0"
 
-COPY --from=build /usr/local/bin/rustgis-cli /usr/local/bin/rustgis-cli
+COPY --from=build /usr/local/bin/powergis-cli /usr/local/bin/powergis-cli
 # The licence and the notices of the dependencies compiled into it, where the .deb puts them.
-COPY LICENSE THIRD-PARTY-LICENSES.txt /usr/share/doc/rustgis/
+COPY LICENSE THIRD-PARTY-LICENSES.txt /usr/share/doc/powergis/
 
-# Non-root; its settings, plugins and caches go to /home/rustgis. Mount the data to work on at
+# Non-root; its settings, plugins and caches go to /home/powergis. Mount the data to work on at
 # /data, the working directory, so relative paths resolve there.
-USER rustgis
+USER powergis
 WORKDIR /data
-ENTRYPOINT ["rustgis-cli"]
+ENTRYPOINT ["powergis-cli"]

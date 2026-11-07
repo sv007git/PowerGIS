@@ -16,7 +16,7 @@ use std::cell::OnceCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-use rustgis_data::{Dataset, FieldType, Value};
+use powergis_data::{Dataset, FieldType, Value};
 use serde_json::Value as Json;
 
 /// A statistic of a field's values within a group.
@@ -579,7 +579,7 @@ fn percentile(s: &[f64], k: f64) -> Option<f64> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Field, GeometryType};
+    use powergis_data::{Field, GeometryType};
 
     /// Numbers as a group's values.
     fn nums(v: &[f64]) -> Values {

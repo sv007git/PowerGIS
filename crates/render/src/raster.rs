@@ -6,11 +6,11 @@
 //! and well under a pixel off for projected ones. Values are then sampled (nearest or bilinear),
 //! optionally re-stretched from the pixels in view (DRA), and coloured.
 
-use rustgis_data::raster::{BandStats, ColorHint, Raster};
-use rustgis_geom::{Coord, Extent, extent_to_merc};
-use rustgis_map::Globe;
-use rustgis_map::projection::Flat;
-use rustgis_map::raster::{Colorizer, RasterMask, RasterRenderer, RasterStyle, Resampling, hillshade};
+use powergis_data::raster::{BandStats, ColorHint, Raster};
+use powergis_geom::{Coord, Extent, extent_to_merc};
+use powergis_map::Globe;
+use powergis_map::projection::Flat;
+use powergis_map::raster::{Colorizer, RasterMask, RasterRenderer, RasterStyle, Resampling, hillshade};
 use tiny_skia::{FilterQuality, Pixmap, PixmapPaint, Transform};
 
 use crate::View;
@@ -457,10 +457,10 @@ fn each_chunk<T: Send>(threads: usize, items: impl Iterator<Item = T>, f: impl F
 
 #[cfg(test)]
 mod tests {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform};
-    use rustgis_geom::lonlat_to_merc;
-    use rustgis_map::Camera;
-    use rustgis_map::raster::RasterStyle;
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform};
+    use powergis_geom::lonlat_to_merc;
+    use powergis_map::Camera;
+    use powergis_map::raster::RasterStyle;
 
     use super::*;
 
@@ -632,8 +632,8 @@ mod tests {
             let mut s = style.clone();
             s.renderer = match kind {
                 "rgb" => RasterRenderer::Rgb { red: 0, green: 0, blue: 0 },
-                "classify" => rustgis_map::raster::classify(&r, 0, 5, Default::default(), Default::default()),
-                "unique" => rustgis_map::raster::unique_values(&r, 0, Default::default()),
+                "classify" => powergis_map::raster::classify(&r, 0, 5, Default::default(), Default::default()),
+                "unique" => powergis_map::raster::unique_values(&r, 0, Default::default()),
                 _ => RasterRenderer::ShadedRelief { band: 0, ramp: None, azimuth: 315.0, altitude: 45.0, z_factor: 1.0 },
             };
             s.dra = true;
@@ -702,7 +702,7 @@ mod tests {
             let data: Vec<f32> = (0..36 * 18).map(|i| ((x0 / 10.0) as i32 + i % 36).rem_euclid(36) as f32).collect();
             let r = Raster::new("world", 36, 18, vec![data], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
             let style = RasterStyle::default_for(&r);
-            let flat = Flat::Custom(std::sync::Arc::new(rustgis_map::projection::Projector::new("robinson +lon_0=150").unwrap()));
+            let flat = Flat::Custom(std::sync::Arc::new(powergis_map::projection::Projector::new("robinson +lon_0=150").unwrap()));
             let camera = Camera { center: Coord::new(0.0, 0.0), res: 100_000.0, bearing: 0.0, pitch: 0.0 };
             let view = View { width: 400.0, height: 200.0, pixels_per_point: 1.0, camera, sky: false };
             let mut pm = Pixmap::new(400, 200).unwrap();

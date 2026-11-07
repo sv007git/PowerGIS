@@ -1,14 +1,14 @@
 //! Drive the real Define Projection dialog and its async import handoff.
 use egui_kittest::kittest::Queryable;
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{Coord, Dataset, Geometry, GeometryType},
 };
-use rustgis_ui_egui::{RustGisApp, Services};
+use powergis_ui_egui::{powergisApp, Services};
 use serde_json::json;
 
 /// Two layers let a selection change expose accidental retargeting while a dialog is open.
-fn harness() -> egui_kittest::Harness<'static, RustGisApp> {
+fn harness() -> egui_kittest::Harness<'static, powergisApp> {
     let mut s = Session::new(Project::default());
     for name in ["Parcels", "Other"] {
         let mut ds = Dataset::new(name, GeometryType::Point, vec![]);
@@ -16,9 +16,9 @@ fn harness() -> egui_kittest::Harness<'static, RustGisApp> {
         s.map_mut().add_dataset(ds);
     }
     s.run("layer.select", &json!({"layer": "Parcels"})).unwrap();
-    let app = RustGisApp::new(s);
+    let app = powergisApp::new(s);
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -35,7 +35,7 @@ fn harness() -> egui_kittest::Harness<'static, RustGisApp> {
 
 /// Types through the labelled text widget after the dialog has settled, including replacing
 /// its previous CRS. No form state is injected around the submission path.
-fn enter_crs(h: &mut egui_kittest::Harness<'_, RustGisApp>, crs: &str) {
+fn enter_crs(h: &mut egui_kittest::Harness<'_, powergisApp>, crs: &str) {
     h.get_by_role_and_label(egui::accesskit::Role::TextInput, "Source coordinate system").focus();
     h.step();
     h.event(egui::Event::Key { key: egui::Key::A, physical_key: None, pressed: true, repeat: false, modifiers: egui::Modifiers::COMMAND });
@@ -51,7 +51,7 @@ fn dialog_applies_to_captured_layer_and_undo_restores_native_coordinates() {
     h.get_by_role_and_label(egui::accesskit::Role::Button, "Apply").click();
     h.step();
     assert!(h.state().dialogs.open.is_none());
-    let point = |app: &RustGisApp, name: &str| {
+    let point = |app: &powergisApp, name: &str| {
         app.session.map().layer_by_name(name).unwrap().dataset.features[0].geometry.as_ref().unwrap().label_point().unwrap()
     };
     assert!((point(h.state(), "Parcels").x - 2.335).abs() < 1e-6);
@@ -76,9 +76,9 @@ fn import_dialog_passes_crs_to_browser_upload_before_wrong_prj_is_read() {
     h.step();
     assert_eq!(*opened.lock().unwrap(), ["shapefile"], "dialog error: {:?}", h.state().dialogs.error);
     let ds = h.state().session.map().layer_by_name("Parcels").unwrap().dataset.clone();
-    let parts = rustgis_engine::data::io::shapefile_parts_in(&ds, rustgis_engine::data::raster::Crs::LonLat).unwrap().0;
+    let parts = powergis_engine::data::io::shapefile_parts_in(&ds, powergis_engine::data::raster::Crs::LonLat).unwrap().0;
     let entries = parts.into_iter().map(|(ext, bytes)| (format!("parcels.{ext}"), bytes)).collect::<Vec<_>>();
-    let bytes = rustgis_engine::data::zip::write(&entries).unwrap();
+    let bytes = powergis_engine::data::zip::write(&entries).unwrap();
     // A drop or another picker is unmarked and must not inherit this import's CRS.
     let ordinary = h.state_mut().open_picked("ordinary.zip", &bytes).unwrap();
     let ordinary_id = ordinary["layer"].as_u64().unwrap() as u32;
@@ -86,12 +86,12 @@ fn import_dialog_passes_crs_to_browser_upload_before_wrong_prj_is_read() {
         h.state().session.map().layer(ordinary_id).unwrap().dataset.features[0].geometry.as_ref().unwrap().label_point().unwrap().x,
         451_219.33
     );
-    let result = h.state_mut().open_picked(&format!("{}parcels.zip", rustgis_ui_egui::SHAPEFILE_PICK), &bytes).unwrap();
+    let result = h.state_mut().open_picked(&format!("{}parcels.zip", powergis_ui_egui::SHAPEFILE_PICK), &bytes).unwrap();
     let id = result["layer"].as_u64().unwrap() as u32;
     let point = h.state().session.map().layer(id).unwrap().dataset.features[0].geometry.as_ref().unwrap().label_point().unwrap();
     assert!((point.x - 2.335).abs() < 1e-6, "{point:?}");
     // The browser can return several grouped Shapefiles from one pick.
-    let second = h.state_mut().open_picked(&format!("{}another.zip", rustgis_ui_egui::SHAPEFILE_PICK), &bytes).unwrap();
+    let second = h.state_mut().open_picked(&format!("{}another.zip", powergis_ui_egui::SHAPEFILE_PICK), &bytes).unwrap();
     let second_id = second["layer"].as_u64().unwrap() as u32;
     assert_eq!(h.state().session.map().layer(second_id).unwrap().dataset.crs, h.state().session.map().layer(id).unwrap().dataset.crs);
 }
@@ -148,7 +148,7 @@ fn shapefile_picker_validation_errors_are_visible_after_inbox_processing() {
         let before = h.state().session.map().layers.len();
         h.state_mut().session.notices.clear();
         h.state_mut().ui.pending_shapefile = pending;
-        h.state_mut().services.inbox = Some(Arc::new(Mutex::new(vec![(format!("{}{name}", rustgis_ui_egui::SHAPEFILE_PICK), vec![])])));
+        h.state_mut().services.inbox = Some(Arc::new(Mutex::new(vec![(format!("{}{name}", powergis_ui_egui::SHAPEFILE_PICK), vec![])])));
         h.step();
         assert!(h.state().session.notices.iter().any(|n| n.error && n.text.contains(message)), "{:?}", h.state().session.notices);
         assert_eq!(h.state().session.map().layers.len(), before);
@@ -161,13 +161,13 @@ fn downloaded_shapefile_keeps_the_requested_source_crs() {
     let mut h = harness();
     h.state_mut().dialogs.open = None;
     let ds = h.state().session.map().layer_by_name("Parcels").unwrap().dataset.clone();
-    let entries = rustgis_engine::data::io::shapefile_parts_in(&ds, rustgis_engine::data::raster::Crs::LonLat)
+    let entries = powergis_engine::data::io::shapefile_parts_in(&ds, powergis_engine::data::raster::Crs::LonLat)
         .unwrap()
         .0
         .into_iter()
         .map(|(ext, bytes)| (format!("parcels.{ext}"), bytes))
         .collect::<Vec<_>>();
-    let bytes = rustgis_engine::data::zip::write(&entries).unwrap();
+    let bytes = powergis_engine::data::zip::write(&entries).unwrap();
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     let address = listener.local_addr().unwrap();
     std::thread::spawn(move || {
@@ -195,5 +195,5 @@ fn downloaded_shapefile_keeps_the_requested_source_crs() {
     let layer = h.state().session.map().layer_by_name("Downloaded").unwrap();
     let point = layer.dataset.features[0].geometry.as_ref().unwrap().label_point().unwrap();
     assert!((point.x - 2.335).abs() < 1e-6 && (point.y - 48.855).abs() < 1e-6, "{point:?}");
-    assert_eq!(layer.dataset.crs, Some(rustgis_engine::data::raster::Crs::parse("EPSG:32631").unwrap()));
+    assert_eq!(layer.dataset.crs, Some(powergis_engine::data::raster::Crs::parse("EPSG:32631").unwrap()));
 }

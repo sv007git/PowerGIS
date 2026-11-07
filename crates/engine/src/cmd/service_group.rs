@@ -1,8 +1,8 @@
 //! Atomic import and refresh of a service's feature collections. Both native callers and the
 //! asynchronous GUI use the same discovery, response validation and layer update code.
 
-use rustgis_data::{Dataset, ogc::Offer};
-use rustgis_map::{ServiceChild, ServiceGroup};
+use powergis_data::{Dataset, ogc::Offer};
+use powergis_map::{ServiceChild, ServiceGroup};
 use serde_json::{Value, json};
 
 use super::{C, CmdResult, MAX_GROUP_BYTES, Session, capabilities, ps, service_json};
@@ -171,7 +171,7 @@ fn read(s: &mut Session, p: &Value) -> Result<(Value, Vec<(ServiceChild, Dataset
         let bounds = super::bounds_of(layer.get("bbox")).ok().flatten();
         let bytes = super::features_answer(s, name, bytes, bounds);
         let text = std::str::from_utf8(&bytes).map_err(|e| format!("{name}: {e}"))?;
-        let (mut dataset, report) = rustgis_data::io::read_geojson(text, name).map_err(|e| format!("{name}: {e}"))?;
+        let (mut dataset, report) = powergis_data::io::read_geojson(text, name).map_err(|e| format!("{name}: {e}"))?;
         if dataset.features.is_empty() && !feature_collection(text) {
             return Err(format!("{name}: the service's answer is not a GeoJSON FeatureCollection with a features array"));
         }
@@ -208,7 +208,7 @@ fn import(s: &mut Session, p: &Value) -> CmdResult {
         return Err("the service has no feature collections".into());
     }
     let mut children = Vec::new();
-    let mut extent = rustgis_geom::Extent::EMPTY;
+    let mut extent = powergis_geom::Extent::EMPTY;
     for (mut child, dataset) in reads {
         child.layer = crate::cmd::layer::add_dataset(s, dataset);
         if let Some(layer) = s.map().layer(child.layer) {
@@ -267,7 +267,7 @@ fn refresh(s: &mut Session, p: &Value) -> CmdResult {
     for ((mut child, mut dataset), existing) in reads.into_iter().zip(matches) {
         let existing = existing.and_then(|id| s.map_mut().layer_mut(id));
         if let Some(layer) = existing {
-            if dataset.geometry_type == rustgis_data::GeometryType::None {
+            if dataset.geometry_type == powergis_data::GeometryType::None {
                 dataset.geometry_type = layer.geometry_type();
             }
             let changed_type = layer.geometry_type() != dataset.geometry_type;
@@ -275,24 +275,24 @@ fn refresh(s: &mut Session, p: &Value) -> CmdResult {
             layer.dataset = dataset;
             layer.selection.clear();
             let invalid_renderer = match &layer.renderer {
-                rustgis_map::Renderer::Single(_) => false,
-                rustgis_map::Renderer::Unique { field, .. } => layer.dataset.field_index(field).is_none(),
-                rustgis_map::Renderer::Graduated { field, .. } | rustgis_map::Renderer::Proportional { field, .. } => {
+                powergis_map::Renderer::Single(_) => false,
+                powergis_map::Renderer::Unique { field, .. } => layer.dataset.field_index(field).is_none(),
+                powergis_map::Renderer::Graduated { field, .. } | powergis_map::Renderer::Proportional { field, .. } => {
                     layer.dataset.field_index(field).and_then(|i| layer.dataset.fields.get(i)).is_none_or(|f| !f.ty.is_numeric())
                 }
             };
             if changed_type || invalid_renderer {
-                layer.renderer = rustgis_map::Renderer::Single(rustgis_map::Symbol::default_for(layer.geometry_type(), layer.id));
+                layer.renderer = powergis_map::Renderer::Single(powergis_map::Symbol::default_for(layer.geometry_type(), layer.id));
             }
             if layer.dataset.field_index(&layer.labels.default.field).is_none() {
                 layer.labels.enabled = false;
                 layer.labels.default.field.clear();
             }
             layer.labels.repoint_missing_fields(&layer.dataset);
-            if layer.definition_query.as_deref().is_some_and(|q| rustgis_data::query::parse(q, &layer.dataset).is_err()) {
+            if layer.definition_query.as_deref().is_some_and(|q| powergis_data::query::parse(q, &layer.dataset).is_err()) {
                 layer.definition_query = None;
             }
-            layer.display_filters.retain(|f| rustgis_data::query::parse(&f.where_, &layer.dataset).is_ok());
+            layer.display_filters.retain(|f| powergis_data::query::parse(&f.where_, &layer.dataset).is_ok());
             layer.touch_geometry();
             child.layer = layer.id;
             // Locked labels name the old features by id, and the new ones are numbered afresh.

@@ -157,7 +157,7 @@ Open questions rather than plans; discuss before building.
   conflict detection and discard/reload ([#1041](https://github.com/opengeos/PowerGIS/issues/1041)).
 - Projects that survive a move: local data paths relative to the project and undoable Repair
   Data Source for layers and tile archives ([#879](https://github.com/opengeos/PowerGIS/issues/879)).
-- Layered workspace, command registry with undo, project files (`.rgis`), `rustgis-cli`, the
+- Layered workspace, command registry with undo, project files (`.rgis`), `powergis-cli`, the
   web app (WebAssembly, installable with offline start, opened with a project or data by its
   web address, self-hostable with the `Dockerfile`), 18 interface languages; a ribbon laid out in
   the order of the work (Home, Data, Style, Edit, Analyze, View, Publish), start-up preferences,
@@ -232,19 +232,19 @@ Open questions rather than plans; discuss before building.
   scenes, locators), offline areas with sync, deep learning pixel classification, hosted
   imagery tiles.
 - The AI Assistant (Anthropic, OpenAI, ChatGPT sign-in, Gemini, OpenRouter, Ollama,
-  OpenAI-compatible) in the app, the web app and `rustgis-cli ask`; an MCP server
-  (`rustgis-cli mcp`) for AI agents such as Claude Code, Cursor and VS Code, with the
+  OpenAI-compatible) in the app, the web app and `powergis-cli ask`; an MCP server
+  (`powergis-cli mcp`) for AI agents such as Claude Code, Cursor and VS Code, with the
   documentation built in.
 - The AI Assistant's skills, subagents and ACP clients; MCP over HTTP, an audited loopback
   relay and a file bridge, which let external AI clients drive the app. Database passwords, S3
   keys, AI provider keys and the Earthdata Login token optionally remembered in the desktop OS
   keychain, where the ChatGPT sign-in keeps its tokens.
-- Sandboxed WebAssembly plugins with a registry at plugins.rustgis.app; process plugins that
+- Sandboxed WebAssembly plugins with a registry at plugins.powergis.app; process plugins that
   run as programs (with Python environments PowerGIS makes), in the background with progress and
   Cancel; panels with tree widgets, and compact ribbon columns and nested menus.
-- The `rustgis` Python package on PyPI: the engine in-process, `rustgis.Map` in Jupyter and
-  `rustgis.qt.MapWidget` in Qt applications.
+- The `powergis` Python package on PyPI: the engine in-process, `powergis.Map` in Jupyter and
+  `powergis.qt.MapWidget` in Qt applications.
 - Desktop packages: Windows installers (setup.exe, .msi), a portable zip and a Store MSIX; a
   signed and notarized macOS DMG; Linux .deb, .rpm, AppImage and tarballs; Homebrew, the AUR,
-  Fedora COPR and winget; a download mirror at downloads.rustgis.app; native Windows on ARM64
+  Fedora COPR and winget; a download mirror at downloads.powergis.app; native Windows on ARM64
   builds; web app and command line images on ghcr.io and a static web app archive.

@@ -226,7 +226,7 @@ storymaps.md_
   Presentations.
 - [ ] **Embed API**: a `postMessage` protocol, an npm client, viewer-only and map-only modes, deep
   links. Partial: the web app embeddable with `?embed`, exchanging the project through
-  `postMessage` (`apps/rustgis-web/src/embed.rs`); no npm client.
+  `postMessage` (`apps/powergis-web/src/embed.rs`); no npm client.
 - [ ] **Import QGIS (`.qgs/.qgz`) and ArcGIS Pro (`.aprx/.mapx`) projects**. Partial: supported
   QGIS projects open as maps (`project.importQgis`). Missing: ArcGIS Pro (_Exploratory_).
 - [ ] **Autosave, project history, crash recovery, snapshot compare**. Partial: undo, per-layer
@@ -241,17 +241,17 @@ storymaps.md_
 _GeoLibre: docs/python.md, docs/r.md, docs/notebook.md, docs/mcp.md, docs/plugin-api.md,
 docs/agent-skill.md_
 
-- [x] **Python package / Jupyter widget**: the `rustgis` package on PyPI runs the engine
-  in-process, and `rustgis.Map` is a two-way Jupyter widget (anywidget). No leafmap-style API.
+- [x] **Python package / Jupyter widget**: the `powergis` package on PyPI runs the engine
+  in-process, and `powergis.Map` is a two-way Jupyter widget (anywidget). No leafmap-style API.
 - [ ] **In-app Python console**. Partial: the "Python Window" runs command scripts, not Python
   (_Exploratory_).
 - [ ] **Live notebook kernel**: JupyterLite on the web, JupyterLab on the desktop, driving the live
   map. Partial: built-in command notebooks with `.ipynb` in and out.
 - [ ] **R package**: RStudio, Quarto, Shiny, `sf`. Missing (_Exploratory_).
 - [x] **MCP: drive the running desktop app**: the loopback relay lets external AI clients drive the
-  app; `rustgis-cli mcp` ([#75](https://github.com/opengeos/PowerGIS/issues/75)) runs on its own project.
+  app; `powergis-cli mcp` ([#75](https://github.com/opengeos/PowerGIS/issues/75)) runs on its own project.
 - [ ] **MCP Apps interactive map preview**. Partial: `view_map` returns a static PNG.
-- [x] **A shipped agent skill (SKILL.md)**: [skills/rustgis](skills/rustgis/SKILL.md) installs and
+- [x] **A shipped agent skill (SKILL.md)**: [skills/powergis](skills/powergis/SKILL.md) installs and
   manages the app; the assistant has built-in skills too.
 - [ ] **Plugin API breadth**: side and floating panels, menus, custom layers, map-click tools,
   assistant tools. Partial: commands, tools, a ribbon tab, assistant skills, process plugins.
@@ -274,7 +274,7 @@ deployment-capabilities.md, ui-profiles.md_
 - [ ] **PWA and offline basemap tile pre-caching**. Partial: the web app is installable with
   offline start; offline data areas with sync. Tile pre-caching unverified.
 - [ ] **Docker self-hosting image with runtime config**. Partial: a Dockerfile for the web app and
-  published images (ghcr.io/opengeos/rustgis, and rustgis-cli for the command line); runtime config
+  published images (ghcr.io/opengeos/powergis, and powergis-cli for the command line); runtime config
   (settings from the container's environment) is missing.
 - [ ] **Deployment capabilities, policies and UI profiles**: restrict edit, add, run and export per
   deployment. Missing.
@@ -314,7 +314,7 @@ _GeoLibre: docs/features.md › Platforms and interface; docs/i18n.md_
 - Layouts: map frames, grids, extent indicators, map series and publication sheets to PDF
 - Sandboxed WASM plugins with permissions and a hash-pinned registry, the same file on desktop,
   CLI and web
-- AI Assistant with local models and per-command approval; `rustgis-cli ask`; an MCP server with
+- AI Assistant with local models and per-command approval; `powergis-cli ask`; an MCP server with
   built-in docs
 - Imagery: mosaics, mensuration, pixel editor, a trainable classifier, hosted imagery tiles
 - Offline areas with two-way sync of edited features

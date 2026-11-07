@@ -228,7 +228,7 @@ fn a_style_file_reads_in_either_settings_format() {
         assert!(report.notes.is_empty(), "{:?}", report.notes);
     }
     // Applied to a layer: its parts only.
-    let mut layer = crate::Layer::new(1, rustgis_data::Dataset::new("r", rustgis_data::GeometryType::Polyline, vec![]));
+    let mut layer = crate::Layer::new(1, powergis_data::Dataset::new("r", powergis_data::GeometryType::Polyline, vec![]));
     layer.transparency = 40.0;
     let s = read_style(&qml(r#"<prop k="line_color" v="1,2,3,255"/>"#), "r", &mut Report::default()).unwrap();
     s.apply(&mut layer);
@@ -680,7 +680,7 @@ fn files_of_qgis_1_and_2_read_by_their_old_names() {
 }
 
 #[test]
-fn what_rustgis_has_no_place_for_is_noted() {
+fn what_powergis_has_no_place_for_is_noted() {
     let effect = r#"<effect enabled="1" type="effectStack"><effect type="drawSource"><Option type="Map"><Option name="enabled" value="1"/></Option></effect>
         <effect type="dropShadow"><Option type="Map"><Option name="enabled" value="1"/></Option></effect></effect>"#;
     let plain = r#"<effect enabled="1" type="effectStack"><effect type="drawSource"><Option type="Map"><Option name="enabled" value="1"/></Option></effect>
@@ -747,7 +747,7 @@ fn raster_qml(renderer: &str, pipe: &str) -> String {
 }
 
 #[test]
-fn raster_renderers_read_as_rustgis_raster_styles() {
+fn raster_renderers_read_as_powergis_raster_styles() {
     use crate::raster::{RasterRenderer, Resampling, Stretch};
     let read = |renderer: &str, pipe: &str| {
         let mut report = Report::default();
@@ -877,7 +877,7 @@ fn every_corpus_file_reads() {
     for path in &projects {
         let bytes = std::fs::read(path).unwrap();
         let text = if path.extension().is_some_and(|e| e == "qgz") {
-            let entries = rustgis_data::zip::read_matching_within(&bytes, |n| n.ends_with(".qgs"), 64 << 20).unwrap();
+            let entries = powergis_data::zip::read_matching_within(&bytes, |n| n.ends_with(".qgs"), 64 << 20).unwrap();
             String::from_utf8(entries.into_iter().next().unwrap().1).unwrap()
         } else {
             String::from_utf8(bytes).unwrap()
@@ -1031,7 +1031,7 @@ fn marker_symbols_of_several_layers_carry_over_as_marks_turned_by_their_field() 
     assert_eq!(s.marker_rotation, Some(Some(crate::symbology::MarkerRotation { field: "WINKEL".into(), counterclockwise: true })));
     assert!(!report.notes.iter().any(|n| n.text.contains("data-defined")), "{:?}", report.notes);
     // Applied to a point layer, its markers turn.
-    let mut layer = crate::Layer::new(1, rustgis_data::Dataset::new("signs", rustgis_data::GeometryType::Point, vec![]));
+    let mut layer = crate::Layer::new(1, powergis_data::Dataset::new("signs", powergis_data::GeometryType::Point, vec![]));
     s.apply(&mut layer);
     assert_eq!(layer.marker_rotation.as_ref().map(|r| r.field.as_str()), Some("WINKEL"));
     assert_eq!(layer.line_strokes.len(), 2);
@@ -1223,12 +1223,12 @@ fn data_defined_symbol_settings_carry_over_as_expressions() {
     assert_eq!(s.marker_rotation.clone().flatten().map(|r| r.field), Some("angle".into()));
     assert!(!report.notes.iter().any(|n| n.text.contains("data-defined")), "{:?}", report.notes);
     // Applied to a point layer with those fields, each reads and draws per feature.
-    let fields = ["value", "angle"].map(|f| rustgis_data::Field::new(f, rustgis_data::FieldType::Double));
-    let mut ds = rustgis_data::Dataset::new("points", rustgis_data::GeometryType::Point, fields.to_vec());
-    ds.fields.push(rustgis_data::Field::new("kind", rustgis_data::FieldType::Text));
+    let fields = ["value", "angle"].map(|f| powergis_data::Field::new(f, powergis_data::FieldType::Double));
+    let mut ds = powergis_data::Dataset::new("points", powergis_data::GeometryType::Point, fields.to_vec());
+    ds.fields.push(powergis_data::Field::new("kind", powergis_data::FieldType::Text));
     ds.push(
-        Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(0.0, 0.0))),
-        vec![rustgis_data::Value::Float(2.0), rustgis_data::Value::Float(0.0), rustgis_data::Value::Text("a".into())],
+        Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(0.0, 0.0))),
+        vec![powergis_data::Value::Float(2.0), powergis_data::Value::Float(0.0), powergis_data::Value::Text("a".into())],
     );
     let mut layer = crate::Layer::new(1, ds);
     s.apply(&mut layer);

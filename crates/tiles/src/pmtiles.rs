@@ -59,7 +59,7 @@ pub struct Info {
     pub bounds: [f64; 4],
     /// The JSON metadata (vector layers, attribution…), `Null` when there is none.
     pub metadata: Value,
-    /// Its vector layers' names, as [`source_layers::of_metadata`](rustgis_data::source_layers::of_metadata) keeps them.
+    /// Its vector layers' names, as [`source_layers::of_metadata`](powergis_data::source_layers::of_metadata) keeps them.
     vector_layers: Vec<String>,
     root: Arc<Vec<Entry>>,
     leaf_offset: u64,
@@ -72,14 +72,14 @@ pub struct Info {
 
 impl Info {
     /// The names of the metadata's vector layers, as
-    /// [`source_layers::of_metadata`](rustgis_data::source_layers::of_metadata) keeps them.
+    /// [`source_layers::of_metadata`](powergis_data::source_layers::of_metadata) keeps them.
     pub fn vector_layers(&self) -> &[String] {
         &self.vector_layers
     }
 
     /// Takes the archive's metadata, and the vector layers' names from it.
     fn set_metadata(&mut self, metadata: Value) {
-        self.vector_layers = rustgis_data::source_layers::of_metadata(&metadata);
+        self.vector_layers = powergis_data::source_layers::of_metadata(&metadata);
         self.metadata = metadata;
     }
 
@@ -168,10 +168,10 @@ pub fn is_tile(url: &str) -> bool {
 }
 
 /// Whether an archive address is a file on this computer rather than a web address.
-/// (As `rustgis_map::tiles::is_local_archive` decides it, which a layer's address went through.)
+/// (As `powergis_map::tiles::is_local_archive` decides it, which a layer's address went through.)
 /// An address read through a saved S3 connection is never a file, well formed or not.
 pub fn is_local(archive: &str) -> bool {
-    if rustgis_data::s3_address::is_wrapper(archive) {
+    if powergis_data::s3_address::is_wrapper(archive) {
         return false;
     }
     let lower = archive.get(..8).unwrap_or(archive).to_ascii_lowercase();
@@ -941,7 +941,7 @@ pub(crate) mod tests {
 
     #[test]
     fn written_archives_read_back() {
-        let dir = std::env::temp_dir().join(format!("rustgis-pmtiles-write-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-pmtiles-write-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let new = |tile_type| NewArchive {
             tile_type,
@@ -989,7 +989,7 @@ pub(crate) mod tests {
 
     #[test]
     fn reads_tiles_from_root_and_leaf_directories() {
-        let dir = std::env::temp_dir().join(format!("rustgis-pmtiles-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-pmtiles-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let tiles = vec![(0u8, 0u32, 0u32, b"zero".to_vec()), (1, 1, 0, b"one-one-zero".to_vec()), (2, 3, 3, b"two".to_vec())];
         // Uncompressed, gzip, Brotli and Zstandard archives.
@@ -1027,7 +1027,7 @@ pub(crate) mod tests {
 
     #[test]
     fn a_raster_archive_resolves_and_decodes_and_truncations_fail_cleanly() {
-        let dir = std::env::temp_dir().join(format!("rustgis-pmtiles-raster-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-pmtiles-raster-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let mut png = Vec::new();
         image::RgbaImage::from_pixel(256, 256, image::Rgba([200, 30, 30, 255]))

@@ -1,10 +1,10 @@
 //! Home › Add › Basemap: web tile layers (XYZ/TMS/WMS raster tiles, vector tiles and
 //! MapLibre styles) over the basemap.
 
-use rustgis_map::effects::Blend;
-use rustgis_map::planets;
-use rustgis_map::tiles::{MAX_TILE_LAYERS, TileKind, TileLayer};
-use rustgis_render::rustgis_tiles::cog::{self, Look};
+use powergis_map::effects::Blend;
+use powergis_map::planets;
+use powergis_map::tiles::{MAX_TILE_LAYERS, TileKind, TileLayer};
+use powergis_render::powergis_tiles::cog::{self, Look};
 use serde_json::{Value, json};
 
 use super::{b, f, ps};
@@ -99,7 +99,7 @@ pub fn commands() -> Vec<C> {
 
 /// The bodies a map can be on, with their sizes and basemaps, and the one it is on.
 fn bodies(s: &Session) -> Value {
-    let list: Vec<Value> = rustgis_geom::BODIES
+    let list: Vec<Value> = powergis_geom::BODIES
         .iter()
         .map(|b| {
             let maps: Vec<Value> = planets::basemaps_of(b.id).map(|m| json!({"id": m.id, "name": m.name})).collect();
@@ -118,14 +118,14 @@ fn body(s: &mut Session, p: &Value) -> CmdResult {
         None => None,
     };
     let body = match ps(p, "name") {
-        Some(n) => rustgis_geom::Body::find(n).ok_or_else(|| {
-            let ids: Vec<&str> = rustgis_geom::BODIES.iter().map(|b| b.id).collect();
+        Some(n) => powergis_geom::Body::find(n).ok_or_else(|| {
+            let ids: Vec<&str> = powergis_geom::BODIES.iter().map(|b| b.id).collect();
             format!("unknown body '{n}' ({})", ids.join(", "))
         })?,
-        None => rustgis_geom::Body::get(basemap.ok_or("name or basemap is required")?.body),
+        None => powergis_geom::Body::get(basemap.ok_or("name or basemap is required")?.body),
     };
     if let Some(m) = basemap.filter(|m| m.body != body.id) {
-        return Err(format!("'{}' is a basemap of {}, not {}", m.id, rustgis_geom::Body::get(m.body).name, body.name));
+        return Err(format!("'{}' is a basemap of {}, not {}", m.id, powergis_geom::Body::get(m.body).name, body.name));
     }
     let basemap = if keep {
         None
@@ -173,13 +173,13 @@ pub(crate) fn list(s: &Session, redact: bool) -> Value {
                     let legends: Vec<_> = t
                         .legends
                         .iter()
-                        .map(|l| rustgis_data::ogc::Legend { url: if redact { crate::sources::redact(&l.url) } else { l.url.clone() }, ..l.clone() })
+                        .map(|l| powergis_data::ogc::Legend { url: if redact { crate::sources::redact(&l.url) } else { l.url.clone() }, ..l.clone() })
                         .collect();
                     o["legends"] = json!(legends);
                     o["expanded"] = json!(t.expanded);
                 }
                 // A vector archive's source layers (once its header is in), and those switched off.
-                if let Some(names) = rustgis_render::tile_source_layers(t) {
+                if let Some(names) = powergis_render::tile_source_layers(t) {
                     o["sourceLayers"] = json!(names);
                     o["expanded"] = json!(t.expanded);
                 }
@@ -207,7 +207,7 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     };
     // A dated address (`{date:YYYY-MM-DD}`) follows the time slider, which the layer's span
     // (`start`, `end`) turns on when it is off.
-    let dated = rustgis_data::time::is_template(url);
+    let dated = powergis_data::time::is_template(url);
     if dated && !matches!(kind, TileKind::Raster | TileKind::Vector | TileKind::Cog) {
         return Err(format!("{url}: dated addresses work for raster, vector and GeoTIFF tile layers, not {}", kind.code()));
     }
@@ -215,11 +215,11 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     let mut t = TileLayer::new(
         ps(p, "name").unwrap_or_default(),
         kind,
-        if dated { rustgis_data::time::fill_template(url, at) } else { url.to_string() },
+        if dated { powergis_data::time::fill_template(url, at) } else { url.to_string() },
     );
     if let Some(bounds) = p.get("bounds").filter(|v| !v.is_null()) {
         let bounds = serde::Deserialize::deserialize(bounds).map_err(|_| "bounds must be [west, south, east, north]")?;
-        if !rustgis_map::tiles::valid_bounds(&bounds) {
+        if !powergis_map::tiles::valid_bounds(&bounds) {
             return Err("bounds must be a finite, ordered geographic rectangle".into());
         }
         t.bounds = Some(bounds);
@@ -256,8 +256,8 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     }
     // The tiles' own look: MapLibre style layers, as a JSON array or its text.
     match p.get("styleLayers") {
-        Some(Value::String(text)) => t.style_layers = rustgis_map::tiles::checked_style_layers(text)?,
-        Some(v @ Value::Array(_)) => t.style_layers = rustgis_map::tiles::checked_style_layers(&v.to_string())?,
+        Some(Value::String(text)) => t.style_layers = powergis_map::tiles::checked_style_layers(text)?,
+        Some(v @ Value::Array(_)) => t.style_layers = powergis_map::tiles::checked_style_layers(&v.to_string())?,
         Some(Value::Null) | None => {}
         Some(_) => return Err("styleLayers is a JSON array of MapLibre style layers".into()),
     }
@@ -322,9 +322,9 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     // file slower than a second to answer (a network mount) is framed when it does, as a web
     // address is, and one that can't be read says so when the layer draws.
     #[cfg(not(target_arch = "wasm32"))]
-    if archive && rustgis_render::rustgis_tiles::pmtiles::is_local(&url) {
+    if archive && powergis_render::powergis_tiles::pmtiles::is_local(&url) {
         // Its error, if any, is the layer's to report when it draws.
-        let _ = rustgis_render::rustgis_tiles::pmtiles::info_blocking(&url, std::time::Duration::from_secs(1));
+        let _ = powergis_render::powergis_tiles::pmtiles::info_blocking(&url, std::time::Duration::from_secs(1));
     }
     // A style goes to the view it gives, an archive to its bounds, once read (see
     // follow_style_view); a catalog's archive leaves the map where it is.
@@ -337,8 +337,8 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
 
 /// What a tile layer covers, from service metadata or an archive/GeoTIFF header.
 /// `None` while a header is still being read.
-fn extent_of(t: &TileLayer) -> Result<Option<rustgis_geom::Extent>, String> {
-    use rustgis_render::rustgis_tiles::pmtiles;
+fn extent_of(t: &TileLayer) -> Result<Option<powergis_geom::Extent>, String> {
+    use powergis_render::powergis_tiles::pmtiles;
     let bounds = match (t.bounds, t.kind) {
         (Some(bounds), _) => Some(bounds),
         (None, TileKind::PmTiles) => pmtiles::info(&t.url)?.map(|i| i.bounds),
@@ -347,7 +347,7 @@ fn extent_of(t: &TileLayer) -> Result<Option<rustgis_geom::Extent>, String> {
     };
     let Some([w, so, e, n]) = bounds else { return Ok(None) };
     let ok = [w, so, e, n].iter().all(|v| v.is_finite()) && w < e && so < n;
-    let e = rustgis_geom::Extent::new(w.max(-180.0), so.max(-85.06), e.min(180.0), n.min(85.06));
+    let e = powergis_geom::Extent::new(w.max(-180.0), so.max(-85.06), e.min(180.0), n.min(85.06));
     if !ok || e.is_empty() {
         return Err(format!("{}: no usable geographic bounds are known", t.name));
     }
@@ -355,7 +355,7 @@ fn extent_of(t: &TileLayer) -> Result<Option<rustgis_geom::Extent>, String> {
 }
 
 /// Whether an extent is (nearly) the whole world: a world archive added leaves the map where it is.
-fn whole_world(e: &rustgis_geom::Extent) -> bool {
+fn whole_world(e: &powergis_geom::Extent) -> bool {
     e.width() >= 350.0 && e.height() >= 160.0
 }
 
@@ -366,7 +366,7 @@ fn zoom_to(s: &mut Session, p: &Value) -> CmdResult {
 }
 
 /// Zooms to the same bounds from the Layers pane or a search hit.
-pub(super) fn zoom_to_index(s: &mut Session, i: usize) -> Result<rustgis_geom::Extent, String> {
+pub(super) fn zoom_to_index(s: &mut Session, i: usize) -> Result<powergis_geom::Extent, String> {
     let t = s.map().tiles.get(i).ok_or("no tile layer at that index")?;
     let e = extent_of(t)?.ok_or_else(|| format!("{}: still being read; try again in a moment", t.name))?;
     s.zoom_to(&e);
@@ -396,7 +396,7 @@ fn dated_start(s: &mut Session, p: &Value) -> Result<f64, String> {
     }
     // Steps by what the address changes by: a day for `{date:YYYY-MM-DD}`, a year for `{YYYY}`.
     if !given.contains_key("unit")
-        && let Some(u) = ps(p, "url").and_then(rustgis_data::time::template_unit)
+        && let Some(u) = ps(p, "url").and_then(powergis_data::time::template_unit)
     {
         given.insert("unit".into(), json!(u.code()));
     }
@@ -429,10 +429,10 @@ pub(crate) fn follow_style_view(s: &mut Session, wait: web_time::Duration) -> bo
     let start = web_time::Instant::now();
     let mut passes = 0;
     let view = loop {
-        match rustgis_render::style_view(&t) {
+        match powergis_render::style_view(&t) {
             Ok(Some(v)) => break v,
             Ok(None) if passes < STYLE_WAITS && start.elapsed() < wait => {
-                rustgis_render::rustgis_tiles::cache::wait(wait.saturating_sub(start.elapsed()));
+                powergis_render::powergis_tiles::cache::wait(wait.saturating_sub(start.elapsed()));
                 passes += 1;
             }
             Ok(None) => return false,
@@ -447,7 +447,7 @@ pub(crate) fn follow_style_view(s: &mut Session, wait: web_time::Duration) -> bo
     if view.is_empty() {
         return false;
     }
-    let center = view.center.map(|[lon, lat]| rustgis_geom::Coord::new(lon, lat));
+    let center = view.center.map(|[lon, lat]| powergis_geom::Coord::new(lon, lat));
     match super::navigate::go_to_view(s, center, view.zoom, view.bearing, view.pitch) {
         Ok(()) => true,
         Err(e) => {
@@ -466,7 +466,7 @@ fn follow_archive(s: &mut Session, t: &TileLayer, wait: web_time::Duration) -> b
         match extent_of(t) {
             Ok(Some(e)) => break e,
             Ok(None) if passes < STYLE_WAITS && start.elapsed() < wait => {
-                rustgis_render::rustgis_tiles::cache::wait(wait.saturating_sub(start.elapsed()));
+                powergis_render::powergis_tiles::cache::wait(wait.saturating_sub(start.elapsed()));
                 passes += 1;
             }
             Ok(None) => return false,
@@ -578,8 +578,8 @@ fn cog_look(p: &Value) -> Result<Option<Box<dyn Fn(Look) -> Look>>, String> {
 /// A legend given to `map.addTiles` or `map.setTiles`: an address, or a list of addresses and
 /// `{url, minScale?, maxScale?}` (the scales each is for). Each must be a web address; a scale
 /// that isn't a positive number is none.
-fn legends(v: &Value) -> Result<Vec<rustgis_data::ogc::Legend>, String> {
-    use rustgis_data::ogc::{Legend, MAX_LEGENDS};
+fn legends(v: &Value) -> Result<Vec<powergis_data::ogc::Legend>, String> {
+    use powergis_data::ogc::{Legend, MAX_LEGENDS};
     let bad = || "legend must be a web address, or a list of addresses and {url, minScale?, maxScale?}".to_string();
     let one = |v: &Value| -> Result<Legend, String> {
         let legend = match v {
@@ -592,9 +592,9 @@ fn legends(v: &Value) -> Result<Vec<rustgis_data::ogc::Legend>, String> {
             _ => return Err(bad()),
         };
         // Kept as a tile layer keeps it, or refused: an address the layer wouldn't keep.
-        rustgis_map::tiles::checked_legends([legend.clone()]).pop().ok_or_else(|| {
+        powergis_map::tiles::checked_legends([legend.clone()]).pop().ok_or_else(|| {
             let url: String = legend.url.chars().take(200).collect();
-            format!("{url}: a legend is a web address (http or https) of at most {} bytes", rustgis_map::tiles::MAX_LEGEND_URL)
+            format!("{url}: a legend is a web address (http or https) of at most {} bytes", powergis_map::tiles::MAX_LEGEND_URL)
         })
     };
     let list = match v {
@@ -607,7 +607,7 @@ fn legends(v: &Value) -> Result<Vec<rustgis_data::ogc::Legend>, String> {
 
 /// The `hiddenLayers` a command gives, if any: a list of names (null for none).
 fn hidden_layers(p: &Value) -> Result<Option<Vec<String>>, String> {
-    use rustgis_map::tiles::{MAX_SOURCE_LAYERS, checked_source_layers};
+    use powergis_map::tiles::{MAX_SOURCE_LAYERS, checked_source_layers};
     let bad = || "hiddenLayers is a list of source layer names".to_string();
     match p.get("hiddenLayers") {
         None => Ok(None),
@@ -734,7 +734,7 @@ mod tests {
         assert!(s.run("map.addTiles", &style).is_ok());
         let names: Vec<&str> = s.map().tiles.iter().map(|t| t.name.as_str()).collect();
         assert_eq!(names, ["Labels", "Liberty", "OSM"]);
-        assert_eq!(s.map().tiles[1].kind, rustgis_map::TileKind::Style);
+        assert_eq!(s.map().tiles[1].kind, powergis_map::TileKind::Style);
         // Replacing keeps the overlays.
         assert!(s.run("map.addTiles", &json!({"url": "https://y.example.com/{z}/{x}/{y}.jpg", "replace": true})).is_ok());
         let names: Vec<&str> = s.map().tiles.iter().map(|t| t.name.as_str()).collect();
@@ -764,7 +764,7 @@ mod tests {
 
     #[test]
     fn stacks_basemaps_and_blends_them() {
-        use rustgis_map::effects::Blend;
+        use powergis_map::effects::Blend;
         let mut s = Session::new(Project::default());
         let relief = json!({"url": "https://relief.example.com/{z}/{x}/{y}.png", "name": "Relief", "replace": true});
         assert!(s.run("map.addTiles", &relief).is_ok());

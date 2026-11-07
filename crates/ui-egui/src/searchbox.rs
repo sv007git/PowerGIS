@@ -4,13 +4,13 @@
 //! is marked on the map until the box is cleared.
 
 use egui::{Align2, Color32, CornerRadius, Rect, Sense, Stroke, Ui, pos2, vec2};
-use rustgis_engine::cmd::search::{self, Hit, Results};
-use rustgis_engine::geom::Coord;
-use rustgis_engine::render::rustgis_tiles::geocode::{Geocoder, Place};
+use powergis_engine::cmd::search::{self, Hit, Results};
+use powergis_engine::geom::Coord;
+use powergis_engine::render::powergis_tiles::geocode::{Geocoder, Place};
 use serde_json::json;
 
 use crate::theme::{Tokens, regular, semibold};
-use crate::{RustGisApp, icons};
+use crate::{powergisApp, icons};
 
 type Answer = crate::Slot<Result<Vec<u8>, String>>;
 
@@ -64,7 +64,7 @@ fn take(slot: &Answer) -> Option<Result<Vec<u8>, String>> {
 }
 
 /// Lands a places search.
-fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let st = &mut app.ui.search;
     let Some((g, slot)) = &st.pending else { return };
     match take(slot) {
@@ -109,14 +109,14 @@ fn is_coordinate(st: &State) -> bool {
 }
 
 /// The box, at the bottom of the left pane (`ui` is the pane).
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     poll(app, ui.ctx());
     egui::Panel::bottom("search_box")
         .frame(egui::Frame::NONE.fill(t.pane).inner_margin(egui::Margin::symmetric(8, 7)))
         .show(ui, |ui| boxed(app, ui, t));
 }
 
-fn boxed(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn boxed(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     let now = ui.input(|i| i.time);
     let width = ui.available_width();
     let (frame_r, _) = ui.allocate_exact_size(vec2(width, 28.0), Sense::hover());
@@ -234,7 +234,7 @@ fn boxed(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// The list over the map above the box; the row clicked, if any.
-fn list_area(app: &mut RustGisApp, ui: &Ui, frame_r: Rect, list: &[Row], t: &Tokens) -> Option<Row> {
+fn list_area(app: &mut powergisApp, ui: &Ui, frame_r: Rect, list: &[Row], t: &Tokens) -> Option<Row> {
     let st = &app.ui.search;
     let searching = st.pending.is_some();
     let failed = if let Places::Failed(e) = &st.places { Some(e.clone()) } else { None };
@@ -393,7 +393,7 @@ fn row_button(ui: &mut Ui, active: bool, icon: &str, label: &str, detail: Option
     resp
 }
 
-fn pick(app: &mut RustGisApp, row: Row) {
+fn pick(app: &mut powergisApp, row: Row) {
     let st = &mut app.ui.search;
     match row {
         Row::SearchPlaces => {
@@ -402,7 +402,7 @@ fn pick(app: &mut RustGisApp, row: Row) {
                     let slot: Answer = crate::Slot::default();
                     let land = slot.clone();
                     let url = g.url(&st.searched, PLACES);
-                    rustgis_engine::render::rustgis_tiles::cache::download(
+                    powergis_engine::render::powergis_tiles::cache::download(
                         &url,
                         Box::new(move |r| *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r)),
                     );
@@ -418,7 +418,7 @@ fn pick(app: &mut RustGisApp, row: Row) {
         Row::Place(i) => {
             let Places::Found(places) = &st.places else { return };
             let Some(p) = places.get(i).cloned() else { return };
-            rustgis_engine::cmd::geocode::go_to_place(&mut app.session, &p);
+            powergis_engine::cmd::geocode::go_to_place(&mut app.session, &p);
             // The pin is named by the first parts of an address (the place, its town).
             let short = p.name.split(", ").take(2).collect::<Vec<_>>().join(", ");
             settle(app, p.name.clone(), Some((Coord::new(p.lon, p.lat), short)));
@@ -426,7 +426,7 @@ fn pick(app: &mut RustGisApp, row: Row) {
         Row::Hit(i) => {
             let Some(hit) = st.results.hits.get(i).cloned() else { return };
             let result = if let Hit::Tile { index, identity, .. } = &hit {
-                let Some(at) = rustgis_engine::cmd::tiles::index_of_identity(&app.session, identity, *index) else {
+                let Some(at) = powergis_engine::cmd::tiles::index_of_identity(&app.session, identity, *index) else {
                     app.session.notify(tl!("Tile layer has changed; search again"), true);
                     return;
                 };
@@ -455,7 +455,7 @@ fn pick(app: &mut RustGisApp, row: Row) {
 }
 
 /// After a pick: the box shows what was picked, the list closes and the map redraws.
-fn settle(app: &mut RustGisApp, text: String, marker: Option<(Coord, String)>) {
+fn settle(app: &mut powergisApp, text: String, marker: Option<(Coord, String)>) {
     let st = &mut app.ui.search;
     st.query = text.clone();
     st.searched = text;

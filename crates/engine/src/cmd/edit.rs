@@ -1,6 +1,6 @@
 //! Edit tab: create and delete features, edit attributes and fields.
 
-use rustgis_data::{FieldType, Geometry, GeometryType, Value};
+use powergis_data::{FieldType, Geometry, GeometryType, Value};
 use serde_json::{Value as Json, json};
 
 use super::{need_layer, ps};
@@ -32,7 +32,7 @@ pub fn commands() -> Vec<C> {
 
 pub(crate) fn add_feature(s: &mut Session, p: &Json) -> CmdResult {
     let id = s.layer_id(p)?;
-    let g = p.get("geometry").and_then(rustgis_data::io::geometry_from_geojson).ok_or("geometry must be a GeoJSON geometry")?;
+    let g = p.get("geometry").and_then(powergis_data::io::geometry_from_geojson).ok_or("geometry must be a GeoJSON geometry")?;
     let l = s.map_mut().layer_mut(id).ok_or("no layer")?;
     let want = l.geometry_type();
     let ok = want == g.kind() || want == GeometryType::None;
@@ -174,7 +174,7 @@ fn delete_field(s: &mut Session, p: &Json) -> CmdResult {
     }
     // Nothing may keep referring to the deleted field.
     if l.renderer.field().is_some_and(|f| f.eq_ignore_ascii_case(&removed)) {
-        l.renderer = rustgis_map::Renderer::Single(l.renderer.base_symbol());
+        l.renderer = powergis_map::Renderer::Single(l.renderer.base_symbol());
     }
     // The layer's labels turn off if the Default class was on it, which starts again from the
     // layer's first name-like field (keeping its name, clause and visibility). Another class on it
@@ -185,7 +185,7 @@ fn delete_field(s: &mut Session, p: &Json) -> CmdResult {
     }
     l.labels.repoint_missing_fields(&l.dataset);
     if let Some(q) = &l.definition_query
-        && rustgis_data::query::parse(q, &l.dataset).is_err()
+        && powergis_data::query::parse(q, &l.dataset).is_err()
     {
         l.definition_query = None;
     }
@@ -206,8 +206,8 @@ fn delete_field(s: &mut Session, p: &Json) -> CmdResult {
     d.rules.retain(|r| {
         !r.field.eq_ignore_ascii_case(&removed)
             && match r.kind {
-                rustgis_map::design::RuleKind::Calculation => Calculation::parse(&r.expression, ds).is_ok(),
-                rustgis_map::design::RuleKind::Constraint => rustgis_data::query::parse(&r.expression, ds).is_ok(),
+                powergis_map::design::RuleKind::Calculation => Calculation::parse(&r.expression, ds).is_ok(),
+                powergis_map::design::RuleKind::Constraint => powergis_data::query::parse(&r.expression, ds).is_ok(),
             }
     });
     Ok(json!({"rulesRemoved": before - d.rules.len()}))
@@ -241,20 +241,20 @@ fn calculate_field(s: &mut Session, p: &Json) -> CmdResult {
 }
 
 /// Whether Calculate Field reads `expr` (the error is the expression language's).
-pub fn check_calculation(expr: &str, ds: &rustgis_data::Dataset) -> Result<(), String> {
+pub fn check_calculation(expr: &str, ds: &powergis_data::Dataset) -> Result<(), String> {
     Calculation::parse(expr, ds).map(|_| ())
 }
 
 /// A Calculate Field expression: the expression language, or, for text it doesn't read, the
 /// earlier calculator's `a op b` (whose bare field names may hold spaces: `Pop Est * 2`).
 pub(crate) enum Calculation {
-    Expr(rustgis_data::query::Expr),
+    Expr(powergis_data::query::Expr),
     Calc(Calc),
 }
 
 impl Calculation {
     /// Parses `expr`; when neither reads it, the error is the expression language's.
-    pub(crate) fn parse(expr: &str, ds: &rustgis_data::Dataset) -> Result<Calculation, String> {
+    pub(crate) fn parse(expr: &str, ds: &powergis_data::Dataset) -> Result<Calculation, String> {
         // A field named like a literal was read as the field (`null + 1`), so what the earlier
         // calculator reads with such a field keeps its meaning (quoted text needn't).
         let named_like_a_literal: Vec<usize> = ["true", "false", "null"].iter().filter_map(|k| ds.field_index(k)).collect();
@@ -264,15 +264,15 @@ impl Calculation {
         {
             return Ok(Calculation::Calc(c));
         }
-        match rustgis_data::query::parse(expr, ds) {
+        match powergis_data::query::parse(expr, ds) {
             Ok(e) => Ok(Calculation::Expr(e)),
             Err(err) => Calc::parse(expr, ds).map(Calculation::Calc).map_err(|_| err),
         }
     }
 
-    pub(crate) fn eval(&self, ds: &rustgis_data::Dataset, r: usize) -> Value {
+    pub(crate) fn eval(&self, ds: &powergis_data::Dataset, r: usize) -> Value {
         match self {
-            Calculation::Expr(e) => rustgis_data::query::value(e, ds, r, &rustgis_data::query::Env::default()),
+            Calculation::Expr(e) => powergis_data::query::value(e, ds, r, &powergis_data::query::Env::default()),
             Calculation::Calc(c) => c.eval(ds, r),
         }
     }
@@ -292,7 +292,7 @@ pub(crate) struct Calc {
 }
 
 impl Calc {
-    pub(crate) fn parse(expr: &str, ds: &rustgis_data::Dataset) -> Result<Calc, String> {
+    pub(crate) fn parse(expr: &str, ds: &powergis_data::Dataset) -> Result<Calc, String> {
         let (lhs, op, rhs) = split_op(expr.trim());
         let term = |t: &str| -> Result<Term, String> {
             let t = t.trim();
@@ -311,7 +311,7 @@ impl Calc {
         Ok(Calc { a: term(lhs)?, op, b: rhs.map(term).transpose()? })
     }
 
-    pub(crate) fn eval(&self, ds: &rustgis_data::Dataset, r: usize) -> Value {
+    pub(crate) fn eval(&self, ds: &powergis_data::Dataset, r: usize) -> Value {
         let get = |t: &Term| -> Value {
             match t {
                 Term::Num(n) => Value::Float(*n),
@@ -358,7 +358,7 @@ fn split_op(e: &str) -> (&str, Option<char>, Option<&str>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Dataset, Field};
+    use powergis_data::{Dataset, Field};
 
     /// Every form the earlier calculator read gives the same stored values through the
     /// expression language, whatever the field's type (but for the two forms whose quotes now

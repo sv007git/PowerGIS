@@ -1,10 +1,10 @@
 //! QGIS projects and layer styles: `project.importQgis` opens a `.qgs` (or `.qgz`) as a new map,
 //! with its layers, their order, visibility and styles, its coordinate system and its view;
 //! `style.importQgis` gives a layer a `.qml` style. Both say what they couldn't carry over
-//! (`rustgis_map::qgis::Report`).
+//! (`powergis_map::qgis::Report`).
 
-use rustgis_geom::{Coord, Extent};
-use rustgis_map::qgis::{self, NoteKind, Report, Source};
+use powergis_geom::{Coord, Extent};
+use powergis_map::qgis::{self, NoteKind, Report, Source};
 use serde_json::{Value, json};
 
 use super::{need_layer, ps};
@@ -38,7 +38,7 @@ fn qgis_text(p: &Value) -> Result<String, String> {
         _ => return Err("path, text or data is required".into()),
     };
     if bytes.starts_with(b"PK") {
-        let entries = rustgis_data::zip::read_matching_within(&bytes, |n| n.to_ascii_lowercase().ends_with(".qgs"), MAX_XML)?;
+        let entries = powergis_data::zip::read_matching_within(&bytes, |n| n.to_ascii_lowercase().ends_with(".qgs"), MAX_XML)?;
         let (_, qgs) = entries.into_iter().next().ok_or("the .qgz holds no .qgs project")?;
         return String::from_utf8(qgs).map_err(|_| "the .qgz's project isn't text".to_string());
     }
@@ -82,7 +82,7 @@ fn import_project(s: &mut Session, p: &Value) -> CmdResult {
     s.run_part("map.new", &json!({"name": name}))?;
     // QGIS draws a project on its canvas alone: no basemap, no graticule.
     let m = s.map_mut();
-    m.basemap = rustgis_map::Basemap::Blank;
+    m.basemap = powergis_map::Basemap::Blank;
     m.graticule = false;
     let degrees = project.crs.as_deref().and_then(Geographic::of);
     if let Some(crs) = &project.crs {
@@ -218,7 +218,7 @@ fn add_layer(s: &mut Session, layer: &qgis::ProjectLayer, has_dir: bool, report:
     layer.style.apply(l);
     // What reads only against the layer's fields: its definition query, and what the style names.
     if let Some(q) = &layer.definition_query {
-        match rustgis_data::query::parse(q, &l.dataset) {
+        match powergis_data::query::parse(q, &l.dataset) {
             Ok(_) => l.definition_query = Some(q.clone()),
             Err(e) => report.skipped(name, format!("its filter `{q}` ({e})")),
         }
@@ -230,10 +230,10 @@ fn add_layer(s: &mut Session, layer: &qgis::ProjectLayer, has_dir: bool, report:
 /// Checks what a style names against the layer's fields: its label classes' clauses and fields
 /// (a class that can't label is switched off) and the field a Unique Values or Graduated Colors
 /// renderer classes by.
-fn check_fields(l: &mut rustgis_map::Layer, name: &str, report: &mut Report) {
+fn check_fields(l: &mut powergis_map::Layer, name: &str, report: &mut Report) {
     for c in std::iter::once(&mut l.labels.default).chain(l.labels.classes.iter_mut()) {
         if let Some(w) = c.where_.clone()
-            && let Err(e) = rustgis_data::query::parse(&w, &l.dataset)
+            && let Err(e) = powergis_data::query::parse(&w, &l.dataset)
         {
             report.skipped(name, format!("the label class \"{}\", whose clause `{w}` doesn't fit the layer ({e})", c.name));
             c.visible = false;
@@ -245,7 +245,7 @@ fn check_fields(l: &mut rustgis_map::Layer, name: &str, report: &mut Report) {
         }
     }
     let field = match &l.renderer {
-        rustgis_map::Renderer::Unique { field, .. } | rustgis_map::Renderer::Graduated { field, .. } => Some(field.clone()),
+        powergis_map::Renderer::Unique { field, .. } | powergis_map::Renderer::Graduated { field, .. } => Some(field.clone()),
         _ => None,
     };
     if let Some(f) = field.filter(|f| l.dataset.field_index(f).is_none()) {
@@ -262,7 +262,7 @@ fn check_fields(l: &mut rustgis_map::Layer, name: &str, report: &mut Report) {
         ("angle", &mut by.angle),
     ] {
         if let Some(text) = slot.as_deref()
-            && let Err(e) = rustgis_data::query::parse(text, &l.dataset)
+            && let Err(e) = powergis_data::query::parse(text, &l.dataset)
         {
             report.skipped(name, format!("its data-defined symbol {what} `{text}` ({e})"));
             *slot = None;
@@ -316,7 +316,7 @@ pub(crate) fn web_settings(s: &mut Session, added: &Value, before: Option<u32>, 
             if transparency.is_some() {
                 report.approximated(name, "its transparency: added opaque");
             }
-            if st.blend.is_some_and(|b| b != rustgis_map::effects::Blend::default()) {
+            if st.blend.is_some_and(|b| b != powergis_map::effects::Blend::default()) {
                 report.approximated(name, "its blending mode: added as normal");
             }
         }
@@ -372,7 +372,7 @@ impl Geographic {
             crs
         } else {
             let code = crs.strip_prefix("EPSG:")?.trim().parse::<u16>().ok()?;
-            rustgis_data::raster::crs::epsg_proj4(code)?
+            powergis_data::raster::crs::epsg_proj4(code)?
         };
         let has = |p: &str| def.split_whitespace().any(|t| t == p);
         ["+proj=longlat", "+proj=latlong", "+proj=lonlat", "+proj=latlon"].iter().any(|p| has(p)).then(|| Geographic {

@@ -26,7 +26,7 @@
 //!
 //! The three Earth sinusoidal systems (Sphere and World Sinusoidal, 53008 and 54008, and Africa
 //! Sinusoidal, 102011) were added afterwards (opengeos/PowerGIS#563): PowerGIS computes the
-//! sinusoidal projection itself (`rustgis_geom::Sinusoidal`), checked against PROJ in its tests.
+//! sinusoidal projection itself (`powergis_geom::Sinusoidal`), checked against PROJ in its tests.
 //!
 //! Datum shifts follow `epsg_gap.rs`: where the definition has none and the first grid-free
 //! operation to WGS 84 that PROJ lists is a single non-zero Helmert step, it is written as

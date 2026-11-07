@@ -1,5 +1,5 @@
 use super::*;
-use rustgis_data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
+use powergis_data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
 use std::sync::Arc;
 
 fn session(store: Option<Arc<dyn SecretStore>>) -> Session {

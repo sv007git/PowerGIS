@@ -148,7 +148,7 @@ impl Line {
     /// `None`), reads along it, left to right: reversed when that stretch runs leftward, so the
     /// text is never upside down; with where its centre is along the path returned (from its other
     /// end when reversed). A vertical stretch reads downward, as street labels turned with the map
-    /// do ([`rustgis_tiles::symbols::upright`]), whichever way the line was drawn. `None` when the
+    /// do ([`powergis_tiles::symbols::upright`]), whichever way the line was drawn. `None` when the
     /// line, with `overrun` past each end, is shorter than the text, or the text there runs past an
     /// end by more than that.
     fn upright(&self, len: f32, overrun: f32, at: Option<f32>) -> Option<(&Path, f32)> {
@@ -164,7 +164,7 @@ impl Line {
         let (a, b) = (self.fwd.at(d - len / 2.0)?, self.fwd.at(d + len / 2.0)?);
         let a_to_b = angle(a, b);
         // Turned half round to stand upright: read from the other end.
-        let flipped = (rustgis_tiles::symbols::upright(a_to_b) - a_to_b).abs() > 1.0;
+        let flipped = (powergis_tiles::symbols::upright(a_to_b) - a_to_b).abs() > 1.0;
         if flipped { Some((&self.rev, total - d)) } else { Some((&self.fwd, d)) }
     }
 

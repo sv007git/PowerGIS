@@ -14,9 +14,9 @@ use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 
 use geo::{Area, BooleanOps, Euclidean, HausdorffDistance, Length, MultiLineString, MultiPolygon};
-use rustgis_analysis::convert::{to_multiline, to_multipolygon};
-use rustgis_analysis::{Inputs, Output};
-use rustgis_data::{Dataset, Geometry, Value};
+use powergis_analysis::convert::{to_multiline, to_multipolygon};
+use powergis_analysis::{Inputs, Output};
+use powergis_data::{Dataset, Geometry, Value};
 use serde_json::Value as Json;
 
 /// Polygons may differ by this fraction of their area (0.1 ppm: 160 m² of a 40 km square).
@@ -36,7 +36,7 @@ fn dir() -> PathBuf {
 /// Reads a GeoJSON file as a layer named `name`, the name the cases' parameters refer to it by.
 fn read_layer(path: &Path, name: &str) -> Dataset {
     let text = std::fs::read_to_string(path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
-    rustgis_data::io::read_geojson(&text, name).unwrap_or_else(|e| panic!("{}: {e}", path.display())).0
+    powergis_data::io::read_geojson(&text, name).unwrap_or_else(|e| panic!("{}: {e}", path.display())).0
 }
 
 /// The reference layers by name, none with a selection: every tool works on all their features.
@@ -160,7 +160,7 @@ fn layer_of(output: Output) -> Option<Dataset> {
 fn check(case: &Json, layers: &Layers) -> Vec<String> {
     let tool = case["tool"].as_str().unwrap_or_default();
     let expect = &case["expect"];
-    let result = match rustgis_analysis::run(tool, layers, &case["params"]) {
+    let result = match powergis_analysis::run(tool, layers, &case["params"]) {
         Ok(r) => r,
         Err(e) => return vec![format!("the tool failed: {e}")],
     };

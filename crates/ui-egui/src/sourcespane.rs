@@ -3,12 +3,12 @@
 //! Sources and connections are kept with the app's preferences, never with secrets.
 
 use egui::{RichText, Sense, Ui, vec2};
-use rustgis_engine::connections::{Connection, DATABASE_KINDS};
-use rustgis_engine::sources::{Source, library};
+use powergis_engine::connections::{Connection, DATABASE_KINDS};
+use powergis_engine::sources::{Source, library};
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, semibold};
-use crate::{RustGisApp, icons};
+use crate::{powergisApp, icons};
 
 /// The preference the sources are kept under.
 pub const PREF: &str = "data_sources";
@@ -18,12 +18,12 @@ pub const PREF: &str = "data_sources";
 pub struct State {
     loaded: bool,
     /// The sources as last shown, and their generation.
-    shown: Option<(u64, std::sync::Arc<rustgis_engine::sources::Sources>)>,
+    shown: Option<(u64, std::sync::Arc<powergis_engine::sources::Sources>)>,
     connections: Option<(u64, std::sync::Arc<Vec<Connection>>)>,
 }
 
 /// The sources to show this frame: the last snapshot unless they changed since.
-fn snapshot(app: &mut RustGisApp) -> std::sync::Arc<rustgis_engine::sources::Sources> {
+fn snapshot(app: &mut powergisApp) -> std::sync::Arc<powergis_engine::sources::Sources> {
     let generation = app.session.sources.generation;
     match &app.ui.sources.shown {
         Some((g, s)) if *g == generation => s.clone(),
@@ -35,7 +35,7 @@ fn snapshot(app: &mut RustGisApp) -> std::sync::Arc<rustgis_engine::sources::Sou
     }
 }
 
-pub(crate) fn connections_snapshot(app: &mut RustGisApp) -> std::sync::Arc<Vec<Connection>> {
+pub(crate) fn connections_snapshot(app: &mut powergisApp) -> std::sync::Arc<Vec<Connection>> {
     let generation = app.session.connections.generation;
     match &app.ui.sources.connections {
         Some((g, list)) if *g == generation => list.clone(),
@@ -48,7 +48,7 @@ pub(crate) fn connections_snapshot(app: &mut RustGisApp) -> std::sync::Arc<Vec<C
 }
 
 /// Reads the sources kept with the preferences, once.
-pub fn load(app: &mut RustGisApp) {
+pub fn load(app: &mut powergisApp) {
     if app.ui.sources.loaded {
         return;
     }
@@ -56,13 +56,13 @@ pub fn load(app: &mut RustGisApp) {
     if let Some(text) = app.services.load_pref.as_ref().and_then(|load| load(PREF)) {
         // What this session already has (added, saved or made favourite before the first read)
         // stays; the stored lists are added after it.
-        app.session.sources.merge(rustgis_engine::sources::Sources::from_json(&text));
+        app.session.sources.merge(powergis_engine::sources::Sources::from_json(&text));
     }
     app.ui.sources_saved = app.session.sources.generation;
 }
 
 /// Keeps the sources with the preferences when they changed.
-pub fn save(app: &mut RustGisApp) {
+pub fn save(app: &mut powergisApp) {
     if !app.ui.sources.loaded {
         load(app);
     }
@@ -76,17 +76,17 @@ pub fn save(app: &mut RustGisApp) {
 }
 
 /// Loads connections before commands can run, importing legacy saved endpoints only once.
-pub fn load_connections(app: &mut RustGisApp) {
-    use rustgis_engine::{connections::Connections, sources::Sources};
+pub fn load_connections(app: &mut powergisApp) {
+    use powergis_engine::{connections::Connections, sources::Sources};
     let Some(load) = &app.services.load_pref else { return };
-    app.session.connections = if let Some(text) = load(rustgis_engine::connections::PREF) {
+    app.session.connections = if let Some(text) = load(powergis_engine::connections::PREF) {
         Connections::from_json(&text)
     } else {
         let imported =
             Connections::import(&Sources::from_json(&load(PREF).unwrap_or_default()), &load(crate::s3ui::SAVED).unwrap_or_default());
         // Even an empty import is saved, so removing everything cannot re-import old entries.
         if let Some(save) = &app.services.save_pref {
-            save(rustgis_engine::connections::PREF, &imported.to_json());
+            save(powergis_engine::connections::PREF, &imported.to_json());
         }
         imported
     };
@@ -94,13 +94,13 @@ pub fn load_connections(app: &mut RustGisApp) {
 }
 
 /// Keeps command and assistant changes with the app's preferences, never the project.
-pub fn save_connections(app: &mut RustGisApp) {
+pub fn save_connections(app: &mut powergisApp) {
     if app.session.connections.generation == app.ui.connections_saved {
         return;
     }
     app.ui.connections_saved = app.session.connections.generation;
     if let Some(save) = &app.services.save_pref {
-        save(rustgis_engine::connections::PREF, &app.session.connections.to_json());
+        save(powergis_engine::connections::PREF, &app.session.connections.to_json());
     }
 }
 
@@ -125,7 +125,7 @@ fn text<'a>(v: &'a Value, k: &str) -> Option<&'a str> {
 
 /// Adds a source, or opens the dialog that browses it (a service's layers, a database's tables,
 /// a STAC API's collections), connected.
-pub fn open(app: &mut RustGisApp, s: &Source) -> Result<(), String> {
+pub fn open(app: &mut powergisApp, s: &Source) -> Result<(), String> {
     let x = &s.extra;
     match s.kind.as_str() {
         "file" => {
@@ -188,7 +188,7 @@ pub fn open(app: &mut RustGisApp, s: &Source) -> Result<(), String> {
 }
 
 /// One source's row: its icon and name (a click adds or opens it), and a menu.
-fn row(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, s: &Source, list: Option<&str>) {
+fn row(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, s: &Source, list: Option<&str>) {
     ui.horizontal(|ui| {
         let (r, _) = ui.allocate_exact_size(vec2(16.0, 16.0), Sense::hover());
         icons::paint(ui.painter(), r, icon_of(&s.kind), t.icon, t.accent);
@@ -233,7 +233,7 @@ fn empty(ui: &mut Ui, what: &str) {
     ui.label(RichText::new(what).small().weak());
 }
 
-fn connections(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, list: &[Connection]) {
+fn connections(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, list: &[Connection]) {
     crate::connectiontree::prune(app);
     // A project's S3 sources waiting for the saved connection that reads them.
     if !app.session.s3_pending.is_empty()
@@ -285,7 +285,7 @@ fn connections(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, list: &[Connection
     }
 }
 
-fn connection_row(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connection) {
+fn connection_row(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, c: &Connection) {
     let unavailable = DATABASE_KINDS.contains(&c.kind.as_str()) && cfg!(target_arch = "wasm32");
     if unavailable {
         ui.horizontal(|ui| {
@@ -306,7 +306,7 @@ fn connection_row(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connection)
 }
 
 /// A connection's icon, name, kind and menu. True when the name was clicked.
-fn connection_header(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connection, unavailable: bool) -> bool {
+fn connection_header(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, c: &Connection, unavailable: bool) -> bool {
     let icon = if DATABASE_KINDS.contains(&c.kind.as_str()) {
         "table"
     } else {
@@ -408,7 +408,7 @@ fn connection_header(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connecti
     !unavailable && response.clicked()
 }
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     load(app);
     egui::ScrollArea::vertical().auto_shrink([false, false]).show(ui, |ui| {
         egui::Frame::NONE.inner_margin(egui::Margin::symmetric(10, 8)).show(ui, |ui| {

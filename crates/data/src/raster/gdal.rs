@@ -30,7 +30,7 @@ pub fn is_gdal_raster_name(name: &str) -> bool {
 }
 
 fn program(name: &str) -> Option<PathBuf> {
-    external::program("RUSTGIS_GDAL_BIN", name)
+    external::program("powergis_GDAL_BIN", name)
 }
 
 /// Whether GDAL's raster programs are installed.
@@ -61,7 +61,7 @@ pub fn convert_jpeg2000(bytes: Vec<u8>, crs: Option<&str>, max: u64) -> Result<C
         return Err(DataError::Format("not a JPEG 2000 file (its contents don't start as one)".into()));
     };
     let mut workspace = tempfile::Builder::new();
-    workspace.prefix("rustgis-gdal-");
+    workspace.prefix("powergis-gdal-");
     #[cfg(unix)]
     workspace.permissions(std::os::unix::fs::PermissionsExt::from_mode(0o700));
     let dir = workspace.tempdir()?;
@@ -92,7 +92,7 @@ pub fn convert_jpeg2000(bytes: Vec<u8>, crs: Option<&str>, max: u64) -> Result<C
 
 fn missing() -> DataError {
     DataError::Unsupported(
-        "this raster format needs GDAL: install it (gdal_translate and gdalinfo on the PATH, or RUSTGIS_GDAL_BIN naming their folder) and add the file again"
+        "this raster format needs GDAL: install it (gdal_translate and gdalinfo on the PATH, or powergis_GDAL_BIN naming their folder) and add the file again"
             .into(),
     )
 }
@@ -206,7 +206,7 @@ pub struct Converted {
 /// none is given), to a GeoTIFF in the cache, reusing an earlier conversion of the same file.
 /// `crs` gives the coordinate system of a file that doesn't say.
 pub fn convert(src: &Path, layer: Option<&str>, crs: Option<&str>) -> Result<Converted> {
-    let dir = external::cache_dir("RUSTGIS_GDAL_CACHE", "gdal")
+    let dir = external::cache_dir("powergis_GDAL_CACHE", "gdal")
         .ok_or_else(|| DataError::Format("no cache folder for GDAL conversions".into()))?;
     convert_in(&dir, src, layer, crs, None)
 }
@@ -464,7 +464,7 @@ mod tests {
         assert_eq!(subdataset_file("NETCDF:/d/air.nc:air"), Some("/d/air.nc"));
         assert_ne!(subdataset_file("NETCDF:\"/d/air.nc.evil\":air"), Some("/d/air.nc"), "a longer name isn't the file");
         // The same file however it is spelled; another isn't.
-        let dir = std::env::temp_dir().join(format!("rustgis-same-file-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-same-file-{}", std::process::id()));
         std::fs::create_dir_all(dir.join("sub")).unwrap();
         let f = dir.join("a.nc");
         std::fs::write(&f, b"x").unwrap();
@@ -483,7 +483,7 @@ mod tests {
         if program("gdalinfo").is_none() {
             return;
         }
-        let dir = std::env::temp_dir().join(format!("rustgis-gdal-raster-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-gdal-raster-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         // An ERDAS Imagine file made from an ASCII grid.

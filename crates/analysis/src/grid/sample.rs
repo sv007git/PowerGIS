@@ -3,11 +3,12 @@
 //! Models the Juru and Goromonzi 132kV/33kV/11kV/0.4kV distribution network with
 //! substations, feeders, transformers, poles, smart meters, customers, and crews.
 
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 use super::model::{
-    Crew, CrewStatus, CustomerCategory, CustomerProfile, GridAssetStatus, GridAssetType, GridEdge, GridEdgeType,
-    GridNode, MeterStatus, SmartMeter,
+    Crew, CrewAssignment, CrewStatus, CustomerCategory, CustomerProfile, FaultPriority, FaultRecord,
+    FaultType, GridAssetStatus, GridAssetType, GridEdge, GridEdgeType, GridNode, MeterStatus, MeterTelemetry,
+    SmartMeter,
 };
 use super::topology::ElectricalNetwork;
 
@@ -494,27 +495,96 @@ pub fn create_sample_network() -> ElectricalNetwork {
         coord: Coord::new(base_lng + 0.0122, base_lat - 0.0122),
     });
 
-    // 9. Response Crews
+    // 9. Active Faults
+    net.add_fault(FaultRecord {
+        fault_number: "FLT-0001".to_string(),
+        asset_id: "T-104".to_string(),
+        asset_type: GridAssetType::Transformer,
+        asset_name: "Main Transformer T-104 (Juru Center)".to_string(),
+        fault_type: FaultType::TransformerFailure,
+        status: "ACTIVE".to_string(),
+        priority: FaultPriority::Critical,
+        priority_score: 96.5,
+        priority_explanation: "Major distribution transformer failure at high-density town center; 10 residential meters and critical clinic offline.".to_string(),
+        total_affected_meters: 10,
+        residential_affected: 10,
+        commercial_affected: 0,
+        industrial_affected: 0,
+        agricultural_affected: 0,
+        government_affected: 0,
+        other_affected: 0,
+        critical_customers_affected: 1,
+        estimated_revenue_loss_per_day: 30.80,
+        coord: Coord::new(base_lng + 0.025, base_lat + 0.005),
+        created_at_ms: 1762500000000,
+        restored_at_ms: None,
+    });
+
+    net.add_fault(FaultRecord {
+        fault_number: "FLT-0002".to_string(),
+        asset_id: "JURU-01".to_string(),
+        asset_type: GridAssetType::Feeder,
+        asset_name: "33kV Feeder JURU-01 (Industrial Feeder)".to_string(),
+        fault_type: FaultType::VegetationInterference,
+        status: "ACTIVE".to_string(),
+        priority: FaultPriority::High,
+        priority_score: 88.0,
+        priority_explanation: "Overhead 33kV line trip from vegetation contact; Juru Grain Mills industrial processing plant affected ($238/day loss).".to_string(),
+        total_affected_meters: 1,
+        residential_affected: 0,
+        commercial_affected: 0,
+        industrial_affected: 1,
+        agricultural_affected: 0,
+        government_affected: 0,
+        other_affected: 0,
+        critical_customers_affected: 0,
+        estimated_revenue_loss_per_day: 238.00,
+        coord: Coord::new(base_lng - 0.025, base_lat + 0.025),
+        created_at_ms: 1762503600000,
+        restored_at_ms: None,
+    });
+
+    // Update faulted assets in nodes
+    if let Some(t104) = net.nodes.get_mut("T-104") {
+        t104.status = GridAssetStatus::Faulted;
+    }
+    if let Some(juru01) = net.nodes.get_mut("JURU-01") {
+        juru01.status = GridAssetStatus::Faulted;
+    }
+
+    // Set meters affected by FLT-0001 (under T-104) to Outage
+    for i in 1..=10 {
+        let meter_id = format!("MTR-RES-{:02}", i);
+        if let Some(m) = net.meters.get_mut(&meter_id) {
+            m.status = MeterStatus::Outage;
+        }
+    }
+    // Set meter affected by FLT-0002 to Outage
+    if let Some(m) = net.meters.get_mut("MTR-IND-01") {
+        m.status = MeterStatus::Outage;
+    }
+
+    // 10. Response Crews (with real dispatch status)
     net.add_crew(Crew {
         crew_code: "CREW-ALPHA".to_string(),
         crew_name: "Rapid Response Alpha".to_string(),
         lead_name: "Eng. Farai Ndlovu".to_string(),
-        status: CrewStatus::Available,
+        status: CrewStatus::OnSite,
         contact_phone: "+263 77 123 4567".to_string(),
         skills: vec!["HIGH_VOLTAGE".to_string(), "TRANSFORMER_SPECIALIST".to_string(), "PROTECTION_RELAYS".to_string()],
-        current_fault_number: None,
-        coord: Coord::new(base_lng + 0.025, base_lat + 0.005),
+        current_fault_number: Some("FLT-0001".to_string()),
+        coord: Coord::new(base_lng + 0.0252, base_lat + 0.0051),
     });
 
     net.add_crew(Crew {
         crew_code: "CREW-BRAVO".to_string(),
         crew_name: "Feeder & Overhead Line Bravo".to_string(),
         lead_name: "Technician T. Sibanda".to_string(),
-        status: CrewStatus::Available,
+        status: CrewStatus::EnRoute,
         contact_phone: "+263 77 234 5678".to_string(),
         skills: vec!["LINE_SPLICING".to_string(), "TREE_CLEARANCE".to_string(), "POLE_RIGGING".to_string()],
-        current_fault_number: None,
-        coord: Coord::new(base_lng + 0.015, base_lat + 0.015),
+        current_fault_number: Some("FLT-0002".to_string()),
+        coord: Coord::new(base_lng - 0.010, base_lat + 0.015),
     });
 
     net.add_crew(Crew {
@@ -527,6 +597,45 @@ pub fn create_sample_network() -> ElectricalNetwork {
         current_fault_number: None,
         coord: Coord::new(base_lng + 0.038, base_lat + 0.018),
     });
+
+    // 11. Dispatch & Crew Assignment Tracking
+    net.add_assignment(CrewAssignment {
+        crew_code: "CREW-ALPHA".to_string(),
+        fault_number: "FLT-0001".to_string(),
+        distance_km: 1.2,
+        estimated_travel_minutes: 8.0,
+        estimated_restoration_minutes: 45.0,
+        status: "ON_SITE".to_string(),
+        assigned_at_ms: 1762500600000,
+    });
+
+    net.add_assignment(CrewAssignment {
+        crew_code: "CREW-BRAVO".to_string(),
+        fault_number: "FLT-0002".to_string(),
+        distance_km: 4.8,
+        estimated_travel_minutes: 18.0,
+        estimated_restoration_minutes: 90.0,
+        status: "EN_ROUTE".to_string(),
+        assigned_at_ms: 1762504200000,
+    });
+
+    // 12. Smart Meter Telemetry Data
+    let meter_statuses: Vec<(String, MeterStatus)> = net.meters.iter().map(|(id, m)| (id.clone(), m.status)).collect();
+    for (meter_id, status) in meter_statuses {
+        let (v, i, p, pf) = match status {
+            MeterStatus::Outage => (0.0, 0.0, 0.0, 0.0),
+            _ => (230.8, 14.5, 3.3, 0.98),
+        };
+        net.add_telemetry(MeterTelemetry {
+            meter_number: meter_id,
+            voltage_v: v,
+            current_a: i,
+            active_power_kw: p,
+            energy_kwh: 14250.0,
+            power_factor: pf,
+            timestamp_ms: 1762505000000,
+        });
+    }
 
     net.rebuild_indices();
     net

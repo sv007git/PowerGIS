@@ -7,10 +7,10 @@ use std::collections::HashMap;
 #[cfg(not(target_arch = "wasm32"))]
 use std::path::Path;
 
-use rustgis_data::raster::{self, Crs, zarr};
-use rustgis_map::raster::RasterLayer;
+use powergis_data::raster::{self, Crs, zarr};
+use powergis_map::raster::RasterLayer;
 #[cfg(not(target_arch = "wasm32"))]
-use rustgis_map::raster::ZarrTime;
+use powergis_map::raster::ZarrTime;
 use serde_json::Value;
 
 use super::{b, ps};
@@ -76,7 +76,7 @@ pub fn layer_name(root: &str, sel: &zarr::Selection, labels: &[String]) -> Strin
 /// that doesn't exist when listing isn't allowed. Decided by the HTTP status, never by digits
 /// found in the message.
 pub fn is_absent(error: &str) -> bool {
-    matches!(crate::render::rustgis_tiles::cache::http_status(error), Some(404 | 403))
+    matches!(crate::render::powergis_tiles::cache::http_status(error), Some(404 | 403))
 }
 
 /// Fetches files of a store by web address, several at a time; a missing one (see [`is_absent`])
@@ -101,7 +101,7 @@ fn fetch(root: &str, keys: &[String]) -> Result<(HashMap<String, Vec<u8>>, usize
                     if failure.lock().is_ok_and(|f| f.is_some()) {
                         break;
                     }
-                    match crate::render::rustgis_tiles::cache::download_blocking(&format!("{root}/{k}")) {
+                    match crate::render::powergis_tiles::cache::download_blocking(&format!("{root}/{k}")) {
                         Ok(b) => {
                             let len = b.len() as u64;
                             if total.fetch_add(len, std::sync::atomic::Ordering::Relaxed).saturating_add(len) > zarr::MAX_READ {
@@ -115,7 +115,7 @@ fn fetch(root: &str, keys: &[String]) -> Result<(HashMap<String, Vec<u8>>, usize
                             }
                         }
                         Err(e) if is_absent(&e) => {
-                            if crate::render::rustgis_tiles::cache::http_status(&e) == Some(403) {
+                            if crate::render::powergis_tiles::cache::http_status(&e) == Some(403) {
                                 forbidden.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
                             }
                         }
@@ -449,8 +449,8 @@ pub(crate) fn kept_slice(key: &str) -> Option<std::sync::Arc<raster::Raster>> {
 /// Step `i` of a following layer's variable, read from its store (no slice kept).
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn read_slice(zt: &ZarrTime, i: usize) -> Result<Option<raster::Raster>, String> {
-    if rustgis_map::paths::is_project_relative(&zt.store) {
-        return Err(rustgis_map::paths::unknown_folder(&zt.store));
+    if powergis_map::paths::is_project_relative(&zt.store) {
+        return Err(powergis_map::paths::unknown_folder(&zt.store));
     }
     let sel = zt.selection(i);
     let crs = zt.crs.as_deref().map(str::trim).filter(|c| !c.is_empty());
@@ -471,7 +471,7 @@ pub(crate) fn read_slice(zt: &ZarrTime, i: usize) -> Result<Option<raster::Raste
     // apart by its error kind, not its message.
     match read {
         Ok(r) => Ok(Some(r)),
-        Err(rustgis_data::DataError::NoChunks(_)) => Ok(None),
+        Err(powergis_data::DataError::NoChunks(_)) => Ok(None),
         Err(e) => Err(e.to_string()),
     }
 }
@@ -486,7 +486,7 @@ pub(crate) fn relink_following(s: &Session, rl: &RasterLayer, full: &str) -> Res
     }
     let mut zt = ZarrTime { store: full.into(), shown: None, ..zt.clone() };
     zt.repair();
-    let window = s.map().time.as_ref().map(rustgis_map::time::TimeSlider::window);
+    let window = s.map().time.as_ref().map(powergis_map::time::TimeSlider::window);
     let want = zt.step_for(window);
     let i = want.unwrap_or(0);
     let r = read_step(&zt, i, slice_key(&zt, i))?;
@@ -509,7 +509,7 @@ pub(crate) fn follow_time(s: &mut Session) {
         let mut errors = Vec::new();
         let mut ahead: Vec<(ZarrTime, usize)> = Vec::new();
         for m in &mut s.project.maps {
-            let window = m.time.as_ref().map(rustgis_map::time::TimeSlider::window);
+            let window = m.time.as_ref().map(powergis_map::time::TimeSlider::window);
             for l in &mut m.layers {
                 let name = l.name.clone();
                 let Some(rl) = l.raster.as_mut() else { continue };
@@ -617,14 +617,14 @@ fn add_following(s: &mut Session, p: &Value) -> CmdResult {
         let date = |k: &str| -> Result<Option<f64>, String> {
             match p.get(k).filter(|v| !v.is_null()) {
                 None => Ok(None),
-                Some(v) => rustgis_data::time::parse_input(v)
+                Some(v) => powergis_data::time::parse_input(v)
                     .map(Some)
                     .ok_or_else(|| format!("{k} is a date (2015-06-01, a year, or milliseconds since 1970)")),
             }
         };
         let (start, end) = (date("start")?, date("end")?);
         let inside = |d: &f64| start.is_none_or(|a| *d >= a) && end.is_none_or(|z| *d <= z);
-        let (cut, dates_len) = (start.is_none() && end.is_none() && dates.len() > rustgis_map::raster::MAX_ZARR_STEPS, dates.len());
+        let (cut, dates_len) = (start.is_none() && end.is_none() && dates.len() > powergis_map::raster::MAX_ZARR_STEPS, dates.len());
         let (first, picked): (usize, Vec<f64>) = if cut {
             // An axis longer than the slider takes, with no period given (the Zarr dialog gives
             // none): from the step picked on it, as many steps as the slider takes.
@@ -632,17 +632,17 @@ fn add_following(s: &mut Session, p: &Value) -> CmdResult {
             if at >= dates.len() {
                 return Err(format!("the step picked on {dim} is past its {} steps", dates.len()));
             }
-            (at, dates[at..].iter().copied().take(rustgis_map::raster::MAX_ZARR_STEPS).collect())
+            (at, dates[at..].iter().copied().take(powergis_map::raster::MAX_ZARR_STEPS).collect())
         } else {
             let first = dates.iter().position(inside).ok_or("no step of the variable falls between start and end")?;
             (first, dates[first..].iter().copied().take_while(inside).collect())
         };
-        if picked.len() > rustgis_map::raster::MAX_ZARR_STEPS {
+        if picked.len() > powergis_map::raster::MAX_ZARR_STEPS {
             return Err(format!(
                 "{} has {} steps there; the time slider takes {} at most: give start and end",
                 sel.variable,
                 picked.len(),
-                rustgis_map::raster::MAX_ZARR_STEPS
+                powergis_map::raster::MAX_ZARR_STEPS
             ));
         }
         let mut zt = ZarrTime {
@@ -664,7 +664,7 @@ fn add_following(s: &mut Session, p: &Value) -> CmdResult {
             let dates: Vec<Value> = zt.dates.iter().map(|d| serde_json::json!(d)).collect();
             super::time::set(s, &serde_json::json!({"dates": dates}))?;
         }
-        let window = s.map().time.as_ref().map(rustgis_map::time::TimeSlider::window);
+        let window = s.map().time.as_ref().map(powergis_map::time::TimeSlider::window);
         let want = zt.step_for(window);
         // The first slice the layer shows sets its style; with no step in the window, the first step's.
         let r = match want {
@@ -678,12 +678,12 @@ fn add_following(s: &mut Session, p: &Value) -> CmdResult {
         layer.data = want.map(|_| r.clone());
         // One stretch for every step: the first slice's range, fixed.
         let band = layer.style.renderer.bands().first().copied().unwrap_or(0);
-        if !matches!(layer.style.stretch, rustgis_map::raster::Stretch::Custom { .. })
+        if !matches!(layer.style.stretch, powergis_map::raster::Stretch::Custom { .. })
             && let Some(stats) = r.bands.get(band).map(|b| &b.stats)
         {
-            let n = rustgis_map::raster::Normalizer::new(layer.style.stretch, stats, &r.data_type);
+            let n = powergis_map::raster::Normalizer::new(layer.style.stretch, stats, &r.data_type);
             if n.lo.is_finite() && n.hi.is_finite() && n.lo < n.hi {
-                layer.style.stretch = rustgis_map::raster::Stretch::custom(n.lo, n.hi);
+                layer.style.stretch = powergis_map::raster::Stretch::custom(n.lo, n.hi);
             }
         }
         zt.shown = want;
@@ -692,7 +692,7 @@ fn add_following(s: &mut Session, p: &Value) -> CmdResult {
             .unwrap_or_else(|| layer_name(&root, &zarr::Selection { variable: zt.variable.clone(), index: zt.index.clone() }, &[]));
         // A long axis taken in part (no period given): said, with the period taken.
         let part = cut.then(|| {
-            let day = |d: Option<&f64>| d.map_or_else(String::new, |d| rustgis_data::time::format(*d, "YYYY-MM-DD HH:mm"));
+            let day = |d: Option<&f64>| d.map_or_else(String::new, |d| powergis_data::time::format(*d, "YYYY-MM-DD HH:mm"));
             format!(
                 "{} has {dates_len} steps: the layer takes {} of them, {} to {}; give start and end for another period",
                 zt.variable,
@@ -836,7 +836,7 @@ fn series(s: &mut Session, p: &Value) -> CmdResult {
         let date = |k: &str| -> Result<Option<f64>, String> {
             match p.get(k).filter(|v| !v.is_null()) {
                 None => Ok(None),
-                Some(v) => rustgis_data::time::parse_input(v)
+                Some(v) => powergis_data::time::parse_input(v)
                     .map(Some)
                     .ok_or_else(|| format!("{k} is a date (2015-06-01, a year, or milliseconds since 1970)")),
             }
@@ -870,7 +870,7 @@ fn series(s: &mut Session, p: &Value) -> CmdResult {
             };
             let m = crs
                 .transformer()?
-                .from_lonlat(rustgis_geom::Coord::new(lon, lat))
+                .from_lonlat(powergis_geom::Coord::new(lon, lat))
                 .ok_or("the point can't be placed in the store's coordinate system")?;
             (m.x, m.y)
         };
@@ -880,7 +880,7 @@ fn series(s: &mut Session, p: &Value) -> CmdResult {
         let chunks = store_files(&src.root, &plan.keys)?;
         let values = zarr::assemble_series(&store, &plan, &chunks).map_err(|e| e.to_string())?;
         let picked = &dates[from..from + count];
-        let labels: Vec<String> = picked.iter().map(|d| rustgis_data::time::format(*d, "YYYY-MM-DD HH:mm")).collect();
+        let labels: Vec<String> = picked.iter().map(|d| powergis_data::time::format(*d, "YYYY-MM-DD HH:mm")).collect();
         let values: Vec<Value> = values.iter().map(|v| if v.is_finite() { serde_json::json!(v) } else { Value::Null }).collect();
         let units = store.array(&var).and_then(|a| a.attrs.get("units")).and_then(Value::as_str).map(str::to_string);
         Ok(serde_json::json!({
@@ -1013,14 +1013,14 @@ pub fn reduce_start(s: &Session, p: &Value) -> Result<ReduceRun, String> {
     let steps = super::cube::steps(&zt.dates, period, p)?;
     let months = super::cube::months(p)?;
     let (var, dates) = (zt.variable.clone(), &zt.dates);
-    if steps.len() > rustgis_map::raster::MAX_ZARR_STEPS {
+    if steps.len() > powergis_map::raster::MAX_ZARR_STEPS {
         return Err(format!(
             "{} steps; a summary reads {} at most: take a shorter period",
             steps.len(),
-            rustgis_map::raster::MAX_ZARR_STEPS
+            powergis_map::raster::MAX_ZARR_STEPS
         ));
     }
-    let day = |i: usize| rustgis_data::time::format(dates.get(i).copied().unwrap_or(f64::NAN), "YYYY-MM-DD");
+    let day = |i: usize| powergis_data::time::format(dates.get(i).copied().unwrap_or(f64::NAN), "YYYY-MM-DD");
     let (a, z) = (steps.first().copied().unwrap_or(0), steps.last().copied().unwrap_or(0));
     let mut label = format!("{var} {} {}–{}", stat.code(), day(a), day(z));
     if !months.is_empty() {

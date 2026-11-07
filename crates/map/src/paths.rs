@@ -131,7 +131,7 @@ mod tests {
         for p in [
             "https://host/x",
             "s3://b/x",
-            "rustgis-s3::x",
+            "powergis-s3::x",
             "upload:x",
             "postgres:host=x",
             "md:db",

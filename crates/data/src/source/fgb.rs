@@ -13,7 +13,7 @@ use crate::raster::Crs;
 use crate::{DataError, Feature, Field, FieldType, GeometryType, Result, Value, wkb};
 use flatgeobuf::geozero::{ColumnValue, CoordDimensions, PropertyProcessor, ToWkb};
 use flatgeobuf::{ColumnType, FallibleStreamingIterator, FeatureProperties, FgbReader};
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use std::io::{BufReader, Cursor, Read, Seek};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

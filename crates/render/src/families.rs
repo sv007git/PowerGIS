@@ -2,7 +2,7 @@
 //! QGIS's text formats name theirs). The system's font folders are indexed once, from each
 //! file's `name` and `OS/2` tables, read piecemeal so indexing never loads a whole file; a face
 //! is read when it is first drawn, and kept. Nothing is installed or bundled: a family a machine
-//! lacks is drawn in the label font. In the browser, and with `RUSTGIS_BUILTIN_FONTS` set (so
+//! lacks is drawn in the label font. In the browser, and with `powergis_BUILTIN_FONTS` set (so
 //! tests draw alike on every machine), there are none.
 
 use std::collections::{HashMap, HashSet};
@@ -67,7 +67,7 @@ static WARMING: AtomicBool = AtomicBool::new(false);
 /// The installed families, indexed once, by name (in any case). The first call walks the font
 /// folders; the UI starts that early with [`warm_up`] and reads [`installed_now`].
 pub fn installed() -> &'static [Family] {
-    FAMILIES.get_or_init(|| if std::env::var_os("RUSTGIS_BUILTIN_FONTS").is_some() { Vec::new() } else { index(&font_dirs()) })
+    FAMILIES.get_or_init(|| if std::env::var_os("powergis_BUILTIN_FONTS").is_some() { Vec::new() } else { index(&font_dirs()) })
 }
 
 /// The installed families if they are indexed, without waiting: `None` while [`warm_up`]'s

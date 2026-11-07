@@ -36,7 +36,7 @@ They differ in how they are built and who they suit:
 - **PowerGIS** is written entirely in Rust and draws its own interface on the GPU (egui). It is
   one native program with no browser engine or JavaScript runtime inside, a ribbon laid
   out in the order of the work, and an engine whose commands run the
-  same way from the ribbon, `rustgis-cli`, Python, notebooks, models and the AI Assistant.
+  same way from the ribbon, `powergis-cli`, Python, notebooks, models and the AI Assistant.
 
 They complement each other rather than compete: GeoLibre is web and mobile first, PowerGIS
 desktop first and built for automation and AI agents. If you want the widest data access and the
@@ -101,7 +101,7 @@ machine; remote features, such as web data and AI providers, send requests over 
 
 | | **PowerGIS** | **GeoLibre** | **QGIS** | **ArcGIS Pro** | **ArcGIS Online** |
 |---|---|---|---|---|---|
-| **Scripting** | Engine commands run headlessly through `rustgis-cli` and the `rustgis` Python package; Script pane; UI-only pane/dialog commands stay in the app | Python console, `geolibre` Python package | PyQGIS, `qgis_process` | `arcpy` | ArcGIS API for Python / JavaScript |
+| **Scripting** | Engine commands run headlessly through `powergis-cli` and the `powergis` Python package; Script pane; UI-only pane/dialog commands stay in the app | Python console, `geolibre` Python package | PyQGIS, `qgis_process` | `arcpy` | ArcGIS API for Python / JavaScript |
 | **Notebooks** | Built-in notebooks of text and command cells; Jupyter `.ipynb` in and out | The whole app as a Jupyter widget | Bindings, not the UI | Notebooks drive `arcpy` | Hosted notebooks |
 | **Plugins** | Permission-controlled WebAssembly plugins on desktop, CLI and web; unsandboxed process/Python plugins on desktop and CLI; a registry, custom ribbon tabs and panels, assistant skills | TypeScript plugin API, a registry | **Largest**: thousands of Python plugins | .NET add-ins, Python toolboxes | App templates |
 | **AI assistant** | Acts through engine commands, with undo for project edits; Anthropic, OpenAI, Gemini, OpenRouter, Ollama or any OpenAI-compatible model; bring your own key or sign in with ChatGPT; also on the command line; MCP for external agents | Natural-language assistant with undoable operations; bring your own key | Via plugins | Copilot features | AI assistants |
@@ -149,7 +149,7 @@ Stated plainly, so the tables above are worth trusting:
 - **Specialized analysis.** Built-in spatial joins, overlays (intersect, identity, union,
   symmetrical difference, update) and shortest paths on line networks are available, but full
   network datasets and advanced spatial statistics depend on the external suite or another GIS.
-- **Python.** The [`rustgis` package](../python.md) runs commands headlessly, but there is no
+- **Python.** The [`powergis` package](../python.md) runs commands headlessly, but there is no
   Python console inside the app. Python process plugins are supported on desktop and CLI, without a sandbox.
 - **Maturity.** PowerGIS is young. Many features are first versions; see the
   [roadmap](https://github.com/opengeos/PowerGIS/blob/main/ROADMAP.md).

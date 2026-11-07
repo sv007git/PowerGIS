@@ -1,5 +1,5 @@
 //! Opt-in storage of a saved S3 connection's access key in the desktop credential store
-//! ([`rustgis_data::secrets`], supplied through [`crate::connections::DatabaseLogins`]).
+//! ([`powergis_data::secrets`], supplied through [`crate::connections::DatabaseLogins`]).
 //!
 //! One opaque secret per saved connection, at the account `connection/<id>`: the JSON
 //! `{"endpoint": <canonical endpoint, or null for AWS>, "accessKeyId": …, "secretAccessKey": …}`.
@@ -12,11 +12,11 @@
 
 use std::sync::Arc;
 
-use rustgis_data::secrets::{Secret, SecretStore};
+use powergis_data::secrets::{Secret, SecretStore};
 use serde::{Deserialize, Serialize};
 
 use crate::connections::{Connection, account};
-use crate::render::rustgis_tiles::s3;
+use crate::render::powergis_tiles::s3;
 
 /// A stored value that can't be used (damaged, for another endpoint, or not S3 keys).
 pub const UNUSABLE: &str = "Saved S3 keys could not be used. Enter the keys again.";

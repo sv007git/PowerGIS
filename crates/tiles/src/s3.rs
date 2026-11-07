@@ -186,7 +186,7 @@ pub fn new_binding() -> Result<String, String> {
 /// granted to this binding are kept for a login of the same connection at the same endpoint, and
 /// forgotten otherwise.
 pub fn connect_saved(c: Connection, binding: &str, id: &str) -> Result<(), String> {
-    if binding.is_empty() || binding == rustgis_data::s3_address::LEGACY || !rustgis_data::s3_address::valid_binding(binding) {
+    if binding.is_empty() || binding == powergis_data::s3_address::LEGACY || !powergis_data::s3_address::valid_binding(binding) {
         return Err("not a saved S3 connection token".into());
     }
     if id.is_empty() || id.len() > 64 {
@@ -322,7 +322,7 @@ pub fn bound_url(binding: &str, url: &str) -> Result<String, String> {
         let saved = reg.saved.iter().find(|s| !binding.is_empty() && s.binding == binding).ok_or(UNRESOLVED)?;
         reg.connections.iter().find(|c| c.name == saved.name).ok_or(UNRESOLVED)?.endpoint.clone()
     };
-    rustgis_data::s3_address::bind(binding, endpoint.as_deref().unwrap_or(""), url).map_err(str::to_string)
+    powergis_data::s3_address::bind(binding, endpoint.as_deref().unwrap_or(""), url).map_err(str::to_string)
 }
 
 /// An endpoint as connections keep it: a web address's scheme and authority, no path.
@@ -387,7 +387,7 @@ pub fn for_bucket(bucket: &str) -> Option<Connection> {
 
 /// Starts an address read anonymously whatever the connections: nothing signed, and an `s3://`
 /// address read from AWS (the S3 dialog's "AWS, anonymous").
-pub const ANONYMOUS: &str = "rustgis-anonymous:";
+pub const ANONYMOUS: &str = "powergis-anonymous:";
 
 /// An address read anonymously ([`ANONYMOUS`]).
 pub fn anonymous(url: &str) -> String {
@@ -420,7 +420,7 @@ pub fn object_url(bucket: &str, key: &str, conn: Option<&Connection>) -> String 
 /// The web address an `s3://` address is fetched from. An address read through a saved
 /// connection is the one that connection fetches it at.
 pub fn https_url(url: &str) -> Result<String, String> {
-    if rustgis_data::s3_address::is_wrapper(url) {
+    if powergis_data::s3_address::is_wrapper(url) {
         return bound_target(url).map(|t| t.0);
     }
     let (url, anonymous) = split_anonymous(url);
@@ -497,7 +497,7 @@ pub fn canonical(address: &str) -> Result<Option<String>, String> {
 /// address's own endpoint decides how an `s3://` address maps to the web. `None` for an address
 /// that isn't one read through a saved connection.
 pub fn bound_destination(address: &str) -> Result<Option<String>, String> {
-    let Some(b) = rustgis_data::s3_address::parse(address).map_err(str::to_string)? else { return Ok(None) };
+    let Some(b) = powergis_data::s3_address::parse(address).map_err(str::to_string)? else { return Ok(None) };
     if !is_s3(b.url) {
         return Ok(Some(b.url.to_string()));
     }
@@ -517,7 +517,7 @@ pub fn bound_destination(address: &str) -> Result<Option<String>, String> {
 /// endpoint is that connection's, and only for an address of a bucket the connection serves (its
 /// own, or one explicitly granted to this binding), or of its account's bucket list.
 fn bound_target(address: &str) -> Result<(String, Connection), String> {
-    let b = rustgis_data::s3_address::parse(address).map_err(str::to_string)?.ok_or(UNRESOLVED)?;
+    let b = powergis_data::s3_address::parse(address).map_err(str::to_string)?.ok_or(UNRESOLVED)?;
     if b.binding.is_empty() {
         return Err(UNRESOLVED.into());
     }
@@ -587,7 +587,7 @@ pub struct Prepared {
 /// An address read through a saved connection is signed by that connection alone
 /// ([`bound_target`]), and never read without it. Other addresses pass unchanged.
 pub fn prepare(url: &str) -> Result<Prepared, String> {
-    if rustgis_data::s3_address::is_wrapper(url) {
+    if powergis_data::s3_address::is_wrapper(url) {
         let (target, c) = bound_target(url)?;
         let Some(cr) = c.credentials.as_ref() else {
             return Ok(Prepared { url: target, headers: Vec::new(), signed: false });
@@ -601,7 +601,7 @@ pub fn prepare(url: &str) -> Result<Prepared, String> {
         return Ok(Prepared { url, headers, signed: true });
     }
     let (url, anonymous) = split_anonymous(url);
-    if anonymous && rustgis_data::s3_address::is_wrapper(url) {
+    if anonymous && powergis_data::s3_address::is_wrapper(url) {
         return Err("not a saved S3 address".into());
     }
     let (url, signer) = if is_s3(url) {
@@ -974,7 +974,7 @@ fn error_of(doc: &roxmltree::Document) -> Option<String> {
 fn parse_xml(bytes: &[u8]) -> Result<roxmltree::Document<'_>, String> {
     let text = std::str::from_utf8(bytes).map_err(|_| "the answer isn't UTF-8 text".to_string())?;
     // Through the data crate's depth check: a listing is hostile input like any document.
-    rustgis_data::xml::parse(text, roxmltree::ParsingOptions::default()).map_err(|_| "the answer isn't an S3 listing".to_string())
+    powergis_data::xml::parse(text, roxmltree::ParsingOptions::default()).map_err(|_| "the answer isn't an S3 listing".to_string())
 }
 
 /// A ListObjectsV2 answer.
@@ -1390,17 +1390,17 @@ mod tests {
         let (a, b) = (new_binding().unwrap(), new_binding().unwrap());
         assert_ne!(a, b);
         assert!(a.len() == 16 && a.bytes().all(|c| c.is_ascii_hexdigit() && !c.is_ascii_uppercase()));
-        let legacy = rustgis_data::s3_address::LEGACY;
+        let legacy = powergis_data::s3_address::LEGACY;
         assert!(connect_saved(saved_login("sv-pending", "NEVERINSTALLED", None, &["sv-bucket"]), legacy, "c1").is_err());
         assert!(connection("sv-pending").is_none(), "a pending marker can never install credentials");
-        let pending = rustgis_data::s3_address::bind(legacy, "", "s3://sv-bucket/k.fgb").unwrap();
+        let pending = powergis_data::s3_address::bind(legacy, "", "s3://sv-bucket/k.fgb").unwrap();
         assert_eq!(prepare(&pending).unwrap_err(), UNRESOLVED);
         // The second saved connection is registered first: insertion order decides nothing.
         connect_saved(saved_login("sv-b", "SAVEDKEYB", Some(ep), &["sv-bucket"]), &b, "c1").unwrap();
         connect_saved(saved_login("sv-a", "SAVEDKEYA", Some(ep), &["sv-bucket"]), &a, "c1").unwrap();
         let url = "http://127.0.0.1:9701/sv-bucket/k.fgb";
-        let wa = rustgis_data::s3_address::bind(&a, ep, url).unwrap();
-        let wb = rustgis_data::s3_address::bind(&b, ep, url).unwrap();
+        let wa = powergis_data::s3_address::bind(&a, ep, url).unwrap();
+        let wb = powergis_data::s3_address::bind(&b, ep, url).unwrap();
         let (pa, pb) = (prepare(&wa).unwrap(), prepare(&wb).unwrap());
         assert_eq!((key_of(&pa), key_of(&pb)), ("SAVEDKEYA".to_string(), "SAVEDKEYB".to_string()));
         assert!(pa.signed && pa.url == url);
@@ -1412,15 +1412,15 @@ mod tests {
         }
         assert_eq!(for_bucket("sv-bucket"), None);
         // The account's bucket list, through the exact connection's own endpoint.
-        let root = rustgis_data::s3_address::bind(&b, ep, "http://127.0.0.1:9701/").unwrap();
+        let root = powergis_data::s3_address::bind(&b, ep, "http://127.0.0.1:9701/").unwrap();
         assert_eq!(key_of(&prepare(&root).unwrap()), "SAVEDKEYB");
         // s3:// addresses are fetched at the connection's endpoint.
-        let s3 = rustgis_data::s3_address::bind(&a, ep, "s3://sv-bucket/dir/k.fgb").unwrap();
+        let s3 = powergis_data::s3_address::bind(&a, ep, "s3://sv-bucket/dir/k.fgb").unwrap();
         let p = prepare(&s3).unwrap();
         assert_eq!((p.url.as_str(), key_of(&p).as_str()), ("http://127.0.0.1:9701/sv-bucket/dir/k.fgb", "SAVEDKEYA"));
         assert_eq!(https_url(&s3).unwrap(), p.url);
         // Nothing falls back to another signer.
-        let bind = rustgis_data::s3_address::bind;
+        let bind = powergis_data::s3_address::bind;
         let other_endpoint = bind(&a, "http://127.0.0.1:9702", "http://127.0.0.1:9702/sv-bucket/k").unwrap();
         let mismatched = bind(&a, "http://127.0.0.1:9702", url).unwrap();
         let ungranted = bind(&a, ep, "http://127.0.0.1:9701/sv-other/k").unwrap();
@@ -1433,7 +1433,7 @@ mod tests {
         for unresolved in [bind("", ep, url).unwrap(), bind("00000000deadbeef", ep, url).unwrap()] {
             assert_eq!(prepare(&unresolved).unwrap_err(), UNRESOLVED);
         }
-        for malformed in [format!("rustgis-s3:{a}:99:{ep}:{url}"), format!("rustgis-s3:{a}:21:{ep}:{wa}"), anonymous(&wa)] {
+        for malformed in [format!("powergis-s3:{a}:99:{ep}:{url}"), format!("powergis-s3:{a}:21:{ep}:{wa}"), anonymous(&wa)] {
             assert!(prepare(&malformed).is_err(), "{malformed}");
         }
         // An explicit grant is one binding's: the other still can't read that bucket.
@@ -1450,10 +1450,10 @@ mod tests {
         assert!(crate::address::check(&bind("", "https://s3.example.org", "s3://sv-bucket/k").unwrap(), None).is_ok());
         assert!(crate::address::check(&bind("", "http://169.254.169.254", "http://169.254.169.254/k").unwrap(), None).is_err());
         assert!(crate::address::check(&anonymous(&wa), None).is_err());
-        assert!(crate::address::check("rustgis-s3:junk", None).is_err());
+        assert!(crate::address::check("powergis-s3:junk", None).is_err());
         // The server a wrapped address is throttled under is its own, in a tile template too.
-        assert_eq!(rustgis_data::s3_address::reached(&wa), url);
-        assert_eq!(rustgis_data::s3_address::reached(&format!("pmtiles:{{z}}/{{x}}/{{y}}@{wa}")), url);
+        assert_eq!(powergis_data::s3_address::reached(&wa), url);
+        assert_eq!(powergis_data::s3_address::reached(&format!("pmtiles:{{z}}/{{x}}/{{y}}@{wa}")), url);
         // Replaced by an ordinary connection of the same name: the binding finds nothing.
         connect(saved_login("sv-a", "PLAINKEY", Some(ep), &["sv-bucket"])).unwrap();
         assert_eq!(prepare(&wa).unwrap_err(), UNRESOLVED);
@@ -1471,7 +1471,7 @@ mod tests {
         let a = new_binding().unwrap();
         connect_saved(saved_login("sv-grant", "GRANTKEY1", Some(ep), &[]), &a, "c7").unwrap();
         grant_saved(&a, "sv-browsed").unwrap();
-        let url = rustgis_data::s3_address::bind(&a, ep, "http://127.0.0.1:9711/sv-browsed/k").unwrap();
+        let url = powergis_data::s3_address::bind(&a, ep, "http://127.0.0.1:9711/sv-browsed/k").unwrap();
         assert!(prepare(&url).unwrap().signed);
         assert_eq!(binding_of("sv-grant").as_deref(), Some(a.as_str()));
         assert_eq!(saved_connection(&a).map(|(c, id)| (c.name, id)), Some(("sv-grant".to_string(), "c7".to_string())));
@@ -1483,7 +1483,7 @@ mod tests {
         assert!(connection("sv-grant").is_none() && binding_of("sv-grant").is_none());
         // At another endpoint: nothing granted before carries over.
         connect_saved(saved_login("sv-grant-2", "GRANTKEY4", Some("http://127.0.0.1:9712"), &[]), &a, "c7").unwrap();
-        let moved = rustgis_data::s3_address::bind(&a, "http://127.0.0.1:9712", "http://127.0.0.1:9712/sv-browsed/k").unwrap();
+        let moved = powergis_data::s3_address::bind(&a, "http://127.0.0.1:9712", "http://127.0.0.1:9712/sv-browsed/k").unwrap();
         assert_eq!(prepare(&moved).unwrap_err(), MISMATCH);
         // A binding is a token, not a name: junk and the id are refused.
         assert!(connect_saved(saved_login("sv-grant-3", "K", Some(ep), &[]), "c7", "c7").is_err());

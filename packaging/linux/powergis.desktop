@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=PowerGIS
+GenericName=Geographic Information System
+Comment=Make maps and analyse spatial data
+Exec=powergis %F
+Icon=powergis
+Terminal=false
+Categories=Science;Geography;Education;
+MimeType=application/x-powergis-project;application/geo+json;
+StartupWMClass=org.powergis.PowerGIS
+Keywords=GIS;map;geospatial;GeoJSON;shapefile;

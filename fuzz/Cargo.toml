@@ -2,7 +2,7 @@
 # workspace: `cargo build`, `cargo xtask ci`, the wasm build and `cargo deny` never see it. It needs
 # nightly Rust and cargo-fuzz, which only the fuzz workflow installs.
 [package]
-name = "rustgis-fuzz"
+name = "powergis-fuzz"
 version = "0.0.0"
 edition = "2024"
 license = "Apache-2.0"
@@ -17,9 +17,9 @@ members = ["."]
 
 [dependencies]
 libfuzzer-sys = "0.4"
-rustgis-data = { path = "../crates/data" }
-rustgis-engine = { path = "../crates/engine" }
-rustgis-tiles = { path = "../crates/tiles" }
+powergis-data = { path = "../crates/data" }
+powergis-engine = { path = "../crates/engine" }
+powergis-tiles = { path = "../crates/tiles" }
 serde_json = "1"
 
 [profile.release]

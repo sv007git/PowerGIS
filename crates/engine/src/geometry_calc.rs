@@ -1,8 +1,8 @@
 //! The attribute table's geometry calculator: stores each feature's area, perimeter, length or
 //! X/Y coordinate, calculated from its WGS84 geometry, in a field.
 use crate::{CmdResult, Session};
-use rustgis_data::{FieldType, Geometry, GeometryType, Value, raster::Crs};
-use rustgis_geom::{geodesic_length_m, geodesic_ring_area_m2, spherical_centre};
+use powergis_data::{FieldType, Geometry, GeometryType, Value, raster::Crs};
+use powergis_geom::{geodesic_length_m, geodesic_ring_area_m2, spherical_centre};
 use serde_json::{Value as Json, json};
 
 /// The properties a layer of `kind` can calculate, as `(key, label)` pairs.
@@ -106,13 +106,13 @@ pub fn run(s: &mut Session, p: &Json) -> CmdResult {
     }
     let divisor = match unit {
         "km" => 1e3,
-        "ft" => rustgis_geom::METRES_PER_FOOT,
-        "mi" => rustgis_geom::METRES_PER_MILE,
+        "ft" => powergis_geom::METRES_PER_FOOT,
+        "mi" => powergis_geom::METRES_PER_MILE,
         "km2" => 1e6,
-        "ft2" => rustgis_geom::SQUARE_METRES_PER_SQUARE_FOOT,
-        "mi2" => rustgis_geom::SQUARE_METRES_PER_SQUARE_MILE,
+        "ft2" => powergis_geom::SQUARE_METRES_PER_SQUARE_FOOT,
+        "mi2" => powergis_geom::SQUARE_METRES_PER_SQUARE_MILE,
         "ha" => 1e4,
-        "ac" => rustgis_geom::SQUARE_METRES_PER_ACRE,
+        "ac" => powergis_geom::SQUARE_METRES_PER_ACRE,
         _ => 1.0,
     };
     let mut values = Vec::with_capacity(rows.len());

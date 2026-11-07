@@ -1,9 +1,9 @@
 //! Asynchronous Zarr slices for imported projects, independent of the Add Zarr dialog.
 //! Uses the same metadata, planning and assembly functions as the dialog, keeping each import's
 //! state separate so simultaneous stores and a user-operated picker cannot overwrite each other.
-use crate::{RustGisApp, Slot};
-use rustgis_engine::data::raster::{geotiff, zarr};
-use rustgis_engine::render::rustgis_tiles::cache;
+use crate::{powergisApp, Slot};
+use powergis_engine::data::raster::{geotiff, zarr};
+use powergis_engine::render::powergis_tiles::cache;
 use serde_json::{Value, json};
 use std::collections::HashMap;
 
@@ -29,7 +29,7 @@ pub struct Read {
 }
 
 /// Starts an import read; the engine has already reserved its layer and drawing position.
-pub fn start(app: &mut RustGisApp, p: &Value) -> Result<(), String> {
+pub fn start(app: &mut powergisApp, p: &Value) -> Result<(), String> {
     if app.ui.geolibre_zarr.len() >= 16 {
         return Err(tl!("16 imported Zarr stores are already queued").into());
     }
@@ -64,7 +64,7 @@ impl Read {
                 false
             }
             Some(Err(e)) => {
-                if !rustgis_engine::cmd::zarr::is_absent(&e) {
+                if !powergis_engine::cmd::zarr::is_absent(&e) {
                     error = Some(e);
                 } else if cache::http_status(&e) == Some(403) {
                     self.forbidden += 1;
@@ -127,8 +127,8 @@ impl Read {
         let docs = std::mem::take(&mut self.got).into_iter().collect::<Vec<_>>();
         let result = (|| {
             let store = zarr::parse_store(&docs).map_err(|e| e.to_string())?;
-            let mut sel = rustgis_engine::cmd::zarr::selection(&self.params);
-            rustgis_engine::cmd::zarr::pick_variable(&store, &mut sel)?;
+            let mut sel = powergis_engine::cmd::zarr::selection(&self.params);
+            powergis_engine::cmd::zarr::pick_variable(&store, &mut sel)?;
             let plan = zarr::plan(&store, &sel).map_err(|e| e.to_string())?;
             self.queue = plan.keys.clone();
             self.phase = Some((store, plan));
@@ -139,7 +139,7 @@ impl Read {
 }
 
 /// Finishes through the same target-layer replacement as other imported URL data.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let mut done = Vec::new();
     // Serial reads bound aggregate buffers and assembly to one store. Queued jobs hold
     // parameters only; they cannot start downloads until earlier stores complete.
@@ -157,7 +157,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
             }
             Err(e) => {
                 app.session.download_failed(id);
-                rustgis_engine::cmd::geolibre::discard_pending(&mut app.session, &params);
+                powergis_engine::cmd::geolibre::discard_pending(&mut app.session, &params);
                 app.session.notify(crate::i18n::fmt("{url}: {e}", &[("url", &url), ("e", &e)]), true);
             }
         }
@@ -271,9 +271,9 @@ mod tests {
         for (key, values) in [("value/0.0", vec![1.0f64, 2.0, 3.0, 4.0]), ("lat/0", vec![0.5, 1.5]), ("lon/0", vec![0.5, 1.5])] {
             got.insert(key.into(), values.iter().flat_map(|v| v.to_le_bytes()).collect());
         }
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let target = app.session.project.active_map;
-        let mut ds = rustgis_engine::data::Dataset::new("Grid", rustgis_engine::data::GeometryType::Point, Vec::new());
+        let mut ds = powergis_engine::data::Dataset::new("Grid", powergis_engine::data::GeometryType::Point, Vec::new());
         ds.source = Some("geolibre-pending:zarr-test".into());
         let layer = app.session.map_mut().add_dataset(ds);
         // A user edit differs from the saved opacity (0.4), which would produce 60.0.
@@ -308,7 +308,7 @@ mod tests {
 
     #[test]
     fn geolibre_zarr_start_failure_removes_reservation_through_app_frame() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         // Keep sixteen reads pending without issuing network requests.
         for i in 0..16 {
             app.ui.geolibre_zarr.push(Read {
@@ -326,10 +326,10 @@ mod tests {
         }
         let target = app.session.project.active_map;
         let token = "geolibre-pending:overflow-test";
-        let mut ds = rustgis_engine::data::Dataset::new("Overflow", rustgis_engine::data::GeometryType::Point, Vec::new());
+        let mut ds = powergis_engine::data::Dataset::new("Overflow", powergis_engine::data::GeometryType::Point, Vec::new());
         ds.source = Some(token.into());
         let id = app.session.map_mut().add_dataset(ds);
-        let mut group = rustgis_engine::map::LayerGroup::new("Folder");
+        let mut group = powergis_engine::map::LayerGroup::new("Folder");
         group.children.push(id);
         app.session.map_mut().add_group(group);
         app.session
@@ -351,7 +351,7 @@ mod tests {
     /// A full active reader must not let queued stores issue downloads or retain chunk buffers.
     #[test]
     fn geolibre_zarr_waiting_store_does_not_multiply_the_active_byte_budget() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.ui.geolibre_zarr.push(Read {
             id: 0,
             params: json!({}),

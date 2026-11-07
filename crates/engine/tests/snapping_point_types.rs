@@ -1,5 +1,5 @@
 //! Point targets obey the same switches without changing feature exclusion or snap ordering.
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     cmd::design::{snap_at, snap_except},
     data::{Dataset, Feature, Geometry},

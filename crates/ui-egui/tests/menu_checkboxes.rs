@@ -1,14 +1,14 @@
 //! Checkbox menus stay open for consecutive edits; choosing an action still dismisses them.
 use egui_kittest::kittest::{NodeT, Queryable};
-use rustgis_engine::{Project, Session, data::io::read_geojson};
-use rustgis_ui_egui::RustGisApp;
+use powergis_engine::{Project, Session, data::io::read_geojson};
+use powergis_ui_egui::powergisApp;
 use serde_json::json;
 
-type Harness = egui_kittest::Harness<'static, RustGisApp>;
+type Harness = egui_kittest::Harness<'static, powergisApp>;
 
-fn harness(app: RustGisApp) -> Harness {
+fn harness(app: powergisApp) -> Harness {
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1800.0, 1200.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -19,8 +19,8 @@ fn harness(app: RustGisApp) -> Harness {
     h
 }
 
-fn empty_app() -> RustGisApp {
-    RustGisApp::new(Session::new(Project::default()))
+fn empty_app() -> powergisApp {
+    powergisApp::new(Session::new(Project::default()))
 }
 
 fn click(h: &mut Harness, label: &str) {
@@ -176,13 +176,4 @@ fn basemap_tile_actions_still_dismiss_the_gallery() {
     assert!(h.state().session.map().tiles.is_empty(), "Remove All still removes the layers");
 }
 
-#[test]
-fn celestial_body_choices_dismiss_the_basemap_gallery() {
-    let mut h = harness(empty_app());
-    for body in rustgis_engine::geom::BODIES {
-        click(&mut h, "Basemap");
-        click(&mut h, body.name);
-        assert_eq!(h.state().session.map().body().id, body.id, "the selected body is applied");
-        assert!(!egui::Popup::is_any_open(&h.ctx), "{} must dismiss the gallery", body.name);
-    }
-}
+

@@ -4,7 +4,7 @@
 //! Conforms to PowerGIS zero-panic architecture: bounded allocations, typed error handling,
 //! preservation of target ordering, schema preservation, and deterministic collision handling.
 
-use rustgis_data::{Dataset, Field, Value};
+use powergis_data::{Dataset, Field, Value};
 use std::collections::HashMap;
 use std::fmt::Write;
 
@@ -276,7 +276,7 @@ pub fn join_field(target: &Dataset, source: &Dataset, opts: &JoinFieldOptions<'_
             }
         }
 
-        out_features.push(rustgis_data::Feature { id: t_feat.id, geometry: t_feat.geometry.clone(), attrs: new_attrs });
+        out_features.push(powergis_data::Feature { id: t_feat.id, geometry: t_feat.geometry.clone(), attrs: new_attrs });
     }
 
     out.features = out_features.into();
@@ -295,7 +295,7 @@ pub fn join_field(target: &Dataset, source: &Dataset, opts: &JoinFieldOptions<'_
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Coord, FieldType, Geometry, GeometryType};
+    use powergis_data::{Coord, FieldType, Geometry, GeometryType};
 
     fn make_table(name: &str, fields: Vec<(&str, FieldType)>, rows: Vec<Vec<Value>>) -> Dataset {
         let schema_fields: Vec<Field> = fields.into_iter().map(|(n, t)| Field::new(n, t)).collect();
@@ -616,7 +616,7 @@ mod tests {
         let schema_fields =
             vec![Field::new("id", FieldType::Integer), Field::new("desc", FieldType::Text), Field::new("category", FieldType::Text)];
         let mut target = Dataset::new("target", GeometryType::None, schema_fields);
-        target.features.push(rustgis_data::Feature {
+        target.features.push(powergis_data::Feature {
             id: 1,
             geometry: None,
             attrs: vec![Value::Int(42)], // Missing desc and category in row attrs
@@ -692,7 +692,7 @@ mod tests {
     #[test]
     fn test_reject_oversized_target_row() {
         let mut target = Dataset::new("target", GeometryType::None, vec![Field::new("id", FieldType::Integer)]);
-        target.features.push(rustgis_data::Feature {
+        target.features.push(powergis_data::Feature {
             id: 10,
             geometry: None,
             attrs: vec![Value::Int(1), Value::Text("unexpected extra value".into())],

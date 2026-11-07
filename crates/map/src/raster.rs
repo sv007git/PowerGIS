@@ -8,7 +8,7 @@
 
 use std::sync::{Arc, Mutex, Weak};
 
-use rustgis_data::raster::{BandStats, ColorHint, Raster};
+use powergis_data::raster::{BandStats, ColorHint, Raster};
 use serde::{Deserialize, Serialize};
 
 use crate::color::{Ramp, Rgba};
@@ -81,7 +81,7 @@ impl RasterLayer {
             return Err("the raster's data is kept in the project: there's no file to repair".into());
         }
         let sub = subdataset.or(self.subdataset.as_deref());
-        let r = rustgis_data::raster::read_path_with(std::path::Path::new(path), sub, self.crs.as_deref())
+        let r = powergis_data::raster::read_path_with(std::path::Path::new(path), sub, self.crs.as_deref())
             .and_then(|r| placed(r, self.placement))
             .map_err(|e| format!("{path}: {e}"))?;
         let need = self.style.renderer.bands().into_iter().max().map_or(1, |b| b.saturating_add(1));
@@ -164,24 +164,24 @@ impl RasterLayer {
             && let Some(path) = self
                 .path
                 .as_deref()
-                .filter(|p| rustgis_data::s3_address::is_wrapper(p) || p.get(..5).is_some_and(|s| s.eq_ignore_ascii_case("s3://")))
+                .filter(|p| powergis_data::s3_address::is_wrapper(p) || p.get(..5).is_some_and(|s| s.eq_ignore_ascii_case("s3://")))
         {
-            let name = rustgis_data::s3_address::inner(path).split(['?', '#']).next().unwrap_or("raster.tif").to_string();
+            let name = powergis_data::s3_address::inner(path).split(['?', '#']).next().unwrap_or("raster.tif").to_string();
             let placement = self.placement;
             let slot = Arc::new(Mutex::new(None));
             let land = slot.clone();
             self.data = None;
             self.opening = Some(slot);
-            rustgis_data::source::remote::fetch_whole(
+            powergis_data::source::remote::fetch_whole(
                 path,
                 Box::new(move |result| {
                     let result = result
                         .map_err(|e| match e {
-                            rustgis_data::source::remote::Failed::Other(message) => message,
+                            powergis_data::source::remote::Failed::Other(message) => message,
                             _ => "The raster could not be downloaded.".to_string(),
                         })
                         .and_then(|bytes| {
-                            rustgis_data::raster::read_bytes(&name, &bytes)
+                            powergis_data::raster::read_bytes(&name, &bytes)
                                 .and_then(|r| placed(r, placement))
                                 .map(Arc::new)
                                 .map_err(|e| e.to_string())
@@ -193,9 +193,9 @@ impl RasterLayer {
             return Ok(());
         }
         let r = if let Some(bytes) = &self.embedded {
-            rustgis_data::raster::read_bytes(self.file_name.as_deref().unwrap_or("raster.tif"), bytes)
+            powergis_data::raster::read_bytes(self.file_name.as_deref().unwrap_or("raster.tif"), bytes)
         } else if let Some(p) = &self.path {
-            rustgis_data::raster::read_path_with(std::path::Path::new(p), self.subdataset.as_deref(), self.crs.as_deref())
+            powergis_data::raster::read_path_with(std::path::Path::new(p), self.subdataset.as_deref(), self.crs.as_deref())
         } else {
             return Err("the raster has no source".into());
         };
@@ -257,7 +257,7 @@ impl RasterLayer {
 }
 
 /// Reapplies a scan's placement to pixels read again, without copying their bands.
-fn placed(mut raster: Raster, placement: Option<[f64; 4]>) -> rustgis_data::Result<Raster> {
+fn placed(mut raster: Raster, placement: Option<[f64; 4]>) -> powergis_data::Result<Raster> {
     if let Some(bbox) = placement {
         if raster.georeferenced {
             raster = raster.into_scan()?;
@@ -1081,7 +1081,7 @@ impl RasterLayer {
 
 #[cfg(test)]
 mod tests {
-    use rustgis_data::raster::{Crs, GeoTransform};
+    use powergis_data::raster::{Crs, GeoTransform};
 
     use super::*;
 
@@ -1318,7 +1318,7 @@ mod tests {
     #[test]
     fn project_json_round_trip_embeds_uploads() {
         let r = dem();
-        let bytes = rustgis_data::raster::geotiff::write(&r, 0).unwrap();
+        let bytes = powergis_data::raster::geotiff::write(&r, 0).unwrap();
         let rl = RasterLayer::from_bytes(r, "dem.tif", bytes);
         let json = serde_json::to_string(&rl).unwrap();
         let mut back: RasterLayer = serde_json::from_str(&json).unwrap();

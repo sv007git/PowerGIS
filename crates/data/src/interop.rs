@@ -2,7 +2,7 @@
 
 use std::fmt::Write as _;
 
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 use crate::{Dataset, Geometry};
 

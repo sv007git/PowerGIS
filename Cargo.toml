@@ -1,7 +1,7 @@
 [workspace]
 resolver = "3"
 members = ["crates/*", "apps/*", "xtask"]
-default-members = ["crates/*", "apps/rustgis", "apps/rustgis-cli", "xtask"]
+default-members = ["crates/*", "apps/powergis", "apps/powergis-cli", "xtask"]
 
 [workspace.package]
 version = "0.5.0"
@@ -12,18 +12,18 @@ repository = "https://github.com/opengeos/PowerGIS"
 
 [workspace.dependencies]
 # internal
-rustgis-geom = { path = "crates/geom" }
-rustgis-data = { path = "crates/data" }
-rustgis-map = { path = "crates/map" }
-rustgis-analysis = { path = "crates/analysis" }
-rustgis-render = { path = "crates/render" }
-rustgis-engine = { path = "crates/engine" }
-rustgis-ui-egui = { path = "crates/ui-egui" }
-rustgis-geolibre = { path = "crates/geolibre" }
-rustgis-plugins = { path = "crates/plugins" }
-rustgis-tiles = { path = "crates/tiles" }
-rustgis-assistant = { path = "crates/assistant" }
-rustgis-keychain = { path = "crates/keychain" }
+powergis-geom = { path = "crates/geom" }
+powergis-data = { path = "crates/data" }
+powergis-map = { path = "crates/map" }
+powergis-analysis = { path = "crates/analysis" }
+powergis-render = { path = "crates/render" }
+powergis-engine = { path = "crates/engine" }
+powergis-ui-egui = { path = "crates/ui-egui" }
+powergis-geolibre = { path = "crates/geolibre" }
+powergis-plugins = { path = "crates/plugins" }
+powergis-tiles = { path = "crates/tiles" }
+powergis-assistant = { path = "crates/assistant" }
+powergis-keychain = { path = "crates/keychain" }
 
 # foundation
 thiserror = "2"
@@ -56,7 +56,7 @@ ab_glyph = "0.2"
 # accents).
 unicode-segmentation = "1.13"
 # Rasters: GeoTIFF decoding/encoding, and coordinate systems by EPSG code (pure Rust, except the
-# Zstandard decoder `rustgis-data` turns on, C that clang compiles for the browser build too).
+# Zstandard decoder `powergis-data` turns on, C that clang compiles for the browser build too).
 tiff = "0.11"
 # LZW chunks the tiff crate fails on (issue #350), decoded with the version it uses.
 weezl = "0.2"
@@ -131,7 +131,7 @@ opt-level = 3
 lto = "thin"
 codegen-units = 16
 
-# The web app's build (Trunk, `data-cargo-profile` in apps/rustgis-web/index.html): whole-program
+# The web app's build (Trunk, `data-cargo-profile` in apps/powergis-web/index.html): whole-program
 # LTO in one codegen unit makes the WebAssembly about a sixth smaller, a quicker download for
 # the web app. Slower to build, so native releases keep thin LTO.
 [profile.web]

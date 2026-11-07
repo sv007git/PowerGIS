@@ -2,14 +2,14 @@
 //! web probes, and explicit saved-connection choices for project sources.
 
 use egui::vec2;
-use rustgis_engine::connections::{Connection, DATABASE_KINDS, LoginReason, LoginRequest, database_key, database_label};
-use rustgis_engine::render::rustgis_tiles::{cache, s3};
-use rustgis_engine::s3_connections::STALE;
-use rustgis_engine::s3_keys as keys;
-use rustgis_engine::sources::Source;
+use powergis_engine::connections::{Connection, DATABASE_KINDS, LoginReason, LoginRequest, database_key, database_label};
+use powergis_engine::render::powergis_tiles::{cache, s3};
+use powergis_engine::s3_connections::STALE;
+use powergis_engine::s3_keys as keys;
+use powergis_engine::sources::Source;
 use serde_json::{Value, json};
 
-use crate::{RustGisApp, Slot, i18n};
+use crate::{powergisApp, Slot, i18n};
 
 #[derive(Default)]
 pub struct State {
@@ -107,7 +107,7 @@ pub(crate) fn remember_checkbox(ui: &mut egui::Ui, remember: &mut bool, blocked:
 
 /// Forgets the keys saved on this computer for the S3 connection `id`; its login in this session
 /// keeps working. A failure leaves everything as it was.
-pub(crate) fn forget_keys(app: &mut RustGisApp, id: &str) -> Result<(), String> {
+pub(crate) fn forget_keys(app: &mut powergisApp, id: &str) -> Result<(), String> {
     app.run("connection.forgetSavedKeys", json!({"id": id})).map(|_| ()).map_err(|e| translated(&e))
 }
 
@@ -135,7 +135,7 @@ pub(crate) const SERVICE_KINDS: &[&str] = &["service", "wms", "wmts", "wfs", "wc
 pub(crate) fn picked<'a>(list: &'a [Connection], id: Option<&str>, address: &str) -> Option<&'a Connection> {
     let id = id?;
     let c = list.iter().find(|c| c.id == id)?;
-    (c.address == rustgis_engine::sources::redact(address.trim())).then_some(c)
+    (c.address == powergis_engine::sources::redact(address.trim())).then_some(c)
 }
 
 /// Draws a saved-connection row when these kinds exist; returns only a newly picked connection.
@@ -178,7 +178,7 @@ pub(crate) fn picker_combo(
 }
 
 /// Keeps an endpoint, never its secrets, as a new connection even at an existing address.
-pub(crate) fn keep(app: &mut RustGisApp, p: Value) -> Result<String, String> {
+pub(crate) fn keep(app: &mut powergisApp, p: Value) -> Result<String, String> {
     let v = app.run("connection.new", p)?;
     let id = v["id"].as_str().map(str::to_owned).ok_or_else(|| "connection.new returned no id".to_string())?;
     stripped_notice(app, &v);
@@ -193,7 +193,7 @@ pub(crate) fn keep_button(ui: &mut egui::Ui) -> bool {
         .clicked()
 }
 
-fn stripped_notice(app: &mut RustGisApp, v: &Value) {
+fn stripped_notice(app: &mut powergisApp, v: &Value) {
     if v["stripped"] == true {
         app.session.notify(tl!("A password or token in the address was left out of the saved connection definition.").to_string(), false);
     }
@@ -203,7 +203,7 @@ pub(crate) fn label(kind: &str) -> &'static str {
     KINDS.iter().find(|(k, _)| *k == kind).map(|(_, l)| *l).unwrap_or("Connection")
 }
 
-pub fn open_new(app: &mut RustGisApp, kind: &str) -> Result<(), String> {
+pub fn open_new(app: &mut powergisApp, kind: &str) -> Result<(), String> {
     if !KINDS.iter().any(|(k, _)| *k == kind) {
         return Err(format!("unknown kind '{kind}'"));
     }
@@ -216,7 +216,7 @@ pub fn open_new(app: &mut RustGisApp, kind: &str) -> Result<(), String> {
     Ok(())
 }
 
-pub fn open_edit(app: &mut RustGisApp, id: &str) -> Result<(), String> {
+pub fn open_edit(app: &mut powergisApp, id: &str) -> Result<(), String> {
     let c = app.session.connections.find(id).cloned().ok_or_else(|| format!("no connection '{id}'"))?;
     app.ui.connection = State {
         region: c.options.get("region").cloned().unwrap_or_default(),
@@ -235,7 +235,7 @@ pub fn open_edit(app: &mut RustGisApp, id: &str) -> Result<(), String> {
 }
 
 /// Opens the connection's form to log in (Log In…): Save then logs in. True when it opened.
-pub fn log_in(app: &mut RustGisApp, id: &str) -> bool {
+pub fn log_in(app: &mut powergisApp, id: &str) -> bool {
     match app.run("ui.connection", json!({"id": id})) {
         Ok(_) => {
             app.ui.connection.login = true;
@@ -289,7 +289,7 @@ fn secrets(st: &State, p: &mut Value) {
     }
 }
 
-pub fn start_test(app: &mut RustGisApp) {
+pub fn start_test(app: &mut powergisApp) {
     app.dialogs.error = None;
     app.dialogs.info = None;
     app.ui.connection.test = None;
@@ -323,7 +323,7 @@ pub fn start_test(app: &mut RustGisApp) {
 }
 
 /// A request remains authorized only for its original project and exact saved definitions.
-fn candidates(app: &RustGisApp, request: &LoginRequest) -> Vec<Connection> {
+fn candidates(app: &powergisApp, request: &LoginRequest) -> Vec<Connection> {
     if request.opened != app.session.opened {
         return Vec::new();
     }
@@ -338,7 +338,7 @@ fn candidates(app: &RustGisApp, request: &LoginRequest) -> Vec<Connection> {
         .collect()
 }
 
-fn password_request(app: &RustGisApp, id: &str) -> Option<LoginRequest> {
+fn password_request(app: &powergisApp, id: &str) -> Option<LoginRequest> {
     app.session
         .database_logins
         .requests(app.session.opened)
@@ -346,7 +346,7 @@ fn password_request(app: &RustGisApp, id: &str) -> Option<LoginRequest> {
         .cloned()
 }
 
-fn password_prompt(app: &mut RustGisApp, id: &str, request: Option<LoginRequest>, error: Option<String>) {
+fn password_prompt(app: &mut powergisApp, id: &str, request: Option<LoginRequest>, error: Option<String>) {
     match open_edit(app, id) {
         Ok(()) => {
             app.ui.connection.request = request;
@@ -357,7 +357,7 @@ fn password_prompt(app: &mut RustGisApp, id: &str, request: Option<LoginRequest>
     }
 }
 
-pub(crate) fn choose(app: &mut RustGisApp, request: LoginRequest) {
+pub(crate) fn choose(app: &mut powergisApp, request: LoginRequest) {
     if candidates(app, &request).is_empty() {
         return;
     }
@@ -365,7 +365,7 @@ pub(crate) fn choose(app: &mut RustGisApp, request: LoginRequest) {
     app.dialogs = crate::dialogs::Dialogs { open: Some("chooseConnection"), ..Default::default() };
 }
 
-pub(crate) fn chooser(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+pub(crate) fn chooser(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     let Some(request) = app.ui.connection.request.clone() else { return true };
     let list = candidates(app, &request);
     if list.is_empty() {
@@ -403,7 +403,7 @@ pub(crate) fn chooser(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     .inner
 }
 
-fn poll_requests(app: &mut RustGisApp) {
+fn poll_requests(app: &mut powergisApp) {
     if let Some(request) = &app.ui.connection.request
         && matches!(app.dialogs.open, Some("chooseConnection" | "editConnection"))
         && (request.opened != app.session.opened || candidates(app, request).is_empty())
@@ -440,7 +440,7 @@ fn poll_requests(app: &mut RustGisApp) {
     }
 }
 
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     poll_requests(app);
     if !matches!(app.dialogs.open, Some("newConnection" | "editConnection")) {
         app.ui.connection.test = None;
@@ -518,7 +518,7 @@ fn clear_secrets(st: &mut State) {
 /// opened to log in (an S3 connection with keys then reads those saved on this computer). Only
 /// the login is asked to remember keys. A login that worked with a warning keeps the dialog open
 /// to say so.
-fn save(app: &mut RustGisApp) -> Result<(), String> {
+fn save(app: &mut powergisApp) -> Result<(), String> {
     let store = app.session.database_logins.has_store();
     let st = &app.ui.connection;
     let keys_mode = st.kind == "s3" && st.credentials == "keys";
@@ -602,7 +602,7 @@ fn save(app: &mut RustGisApp) -> Result<(), String> {
     Ok(())
 }
 
-pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+pub fn dialog(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     let intro = if DATABASE_KINDS.contains(&app.ui.connection.kind.as_str()) {
         tl!(
             "A named endpoint you can reuse. Passwords last for this session unless you choose to remember them in this computer's password store."
@@ -803,7 +803,7 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     close && app.ui.connection.warned.is_none()
 }
 
-pub fn open_connection(app: &mut RustGisApp, c: &Connection) -> Result<(), String> {
+pub fn open_connection(app: &mut powergisApp, c: &Connection) -> Result<(), String> {
     let (kind, extra) = match c.kind.as_str() {
         "postgres" | "mysql" | "sqlserver" => {
             if cfg!(target_arch = "wasm32") {
@@ -825,7 +825,7 @@ pub fn open_connection(app: &mut RustGisApp, c: &Connection) -> Result<(), Strin
             {
                 // Picking an ID without credentials must not inherit another ID's activation.
                 // An unowned, explicitly typed address password remains highest priority.
-                rustgis_engine::data::source::duckdb::set_connection_password(&key, &c.id, None);
+                powergis_engine::data::source::duckdb::set_connection_password(&key, &c.id, None);
                 app.session.database_logins.drop_activation(&key);
             }
             ("database", Value::Null)
@@ -880,7 +880,7 @@ pub fn open_connection(app: &mut RustGisApp, c: &Connection) -> Result<(), Strin
 
 /// After a login from the form: the project's S3 sources that waited for that connection (the
 /// chooser asked for its login) are given to it now.
-fn resolve_waiting(app: &mut RustGisApp, id: &str) {
+fn resolve_waiting(app: &mut powergisApp, id: &str) {
     let Some((source, waiting)) = app.ui.connection.resolving.take() else { return };
     if waiting == id
         && let Err(e) = choose_s3(app, &source, id)
@@ -891,7 +891,7 @@ fn resolve_waiting(app: &mut RustGisApp, id: &str) {
 
 /// The user's choice of the saved connection `id` for the project's S3 sources waiting under
 /// `source`: the engine logs it in if needed and opens them; nothing is read or signed here.
-fn choose_s3(app: &mut RustGisApp, source: &str, id: &str) -> Result<(), String> {
+fn choose_s3(app: &mut powergisApp, source: &str, id: &str) -> Result<(), String> {
     let v = app.run("connection.resolveS3", json!({"source": source, "id": id}))?;
     let name = app.session.connections.find(id).map(|c| c.name.clone()).unwrap_or_else(|| id.to_string());
     let opened = v["reopened"].as_u64().unwrap_or(0).to_string();
@@ -910,7 +910,7 @@ fn choose_s3(app: &mut RustGisApp, source: &str, id: &str) -> Result<(), String>
 
 /// Opens the chooser of the saved S3 connections that read the project's waiting S3 sources
 /// (`ui.s3Connections`), with nothing picked.
-pub fn open_chooser(app: &mut RustGisApp) -> Result<(), String> {
+pub fn open_chooser(app: &mut powergisApp) -> Result<(), String> {
     if app.session.s3_pending.is_empty() {
         return Err(tl!("No project sources are waiting for an S3 connection.").into());
     }
@@ -925,7 +925,7 @@ pub fn open_chooser(app: &mut RustGisApp) -> Result<(), String> {
 /// Once a frame: a project replacing the open one drops what was picked for the old one (and a
 /// source waiting for a login), and the chooser opens by itself once for a project with S3
 /// sources waiting for a choice (not again after Cancel).
-pub fn follow_project(app: &mut RustGisApp) {
+pub fn follow_project(app: &mut powergisApp) {
     let opened = app.session.opened;
     if app.ui.s3_chooser.project != Some(opened) {
         app.ui.s3_chooser = Chooser { project: Some(opened), auto: true, ..Default::default() };
@@ -953,7 +953,7 @@ fn endpoint_label(endpoint: Option<&str>) -> String {
 
 /// The chooser (dialog `s3Connections`): each bucket the project's waiting sources read, and the
 /// saved connections that could read it. True when it should close.
-pub fn s3_chooser(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+pub fn s3_chooser(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     let pending = app.session.s3_pending.clone();
     app.ui.s3_chooser.picked.retain(|source, _| pending.iter().any(|p| &p.source == source));
     ui.label(
@@ -1004,7 +1004,7 @@ pub fn s3_chooser(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 /// Gives each resource picked to its connection. One whose keys must be typed opens that
 /// connection's Log In, and the choice is made again once it has logged in. True when nothing
 /// waits any more.
-fn open_chosen(app: &mut RustGisApp) -> bool {
+fn open_chosen(app: &mut powergisApp) -> bool {
     app.ui.s3_chooser.error = None;
     let picks: Vec<(String, String)> = app.ui.s3_chooser.picked.iter().map(|(s, id)| (s.clone(), id.clone())).collect();
     for (source, id) in picks {
@@ -1055,7 +1055,7 @@ mod tests {
         assert!(remember_blocked(true, "token").is_some());
     }
 
-    fn new_s3_form(app: &mut RustGisApp, name: &str) {
+    fn new_s3_form(app: &mut powergisApp, name: &str) {
         app.run("ui.connection", json!({"kind": "s3"})).unwrap();
         let st = &mut app.ui.connection;
         assert!(!st.remember, "Remember starts off");
@@ -1067,8 +1067,8 @@ mod tests {
 
     #[test]
     fn remember_without_a_database_password_changes_nothing() {
-        let mut app = RustGisApp::with_sample();
-        app.session.database_logins.set_store(Some(std::sync::Arc::new(rustgis_engine::data::secrets::MemorySecrets::new())));
+        let mut app = powergisApp::with_sample();
+        app.session.database_logins.set_store(Some(std::sync::Arc::new(powergis_engine::data::secrets::MemorySecrets::new())));
         app.run("ui.connection", json!({"kind": "postgres"})).unwrap();
         app.ui.connection.remember = true;
         assert!(save(&mut app).is_err());
@@ -1077,8 +1077,8 @@ mod tests {
 
     #[test]
     fn remember_without_a_typed_pair_changes_nothing() {
-        let mut app = RustGisApp::with_sample();
-        app.session.database_logins.set_store(Some(std::sync::Arc::new(rustgis_engine::data::secrets::MemorySecrets::new())));
+        let mut app = powergisApp::with_sample();
+        app.session.database_logins.set_store(Some(std::sync::Arc::new(powergis_engine::data::secrets::MemorySecrets::new())));
         new_s3_form(&mut app, "remember-ui-partial-test");
         app.ui.connection.secret_key.clear();
         assert!(save(&mut app).is_err());

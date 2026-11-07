@@ -19,7 +19,7 @@ use std::borrow::Cow;
 use std::collections::{BTreeMap, HashMap};
 use std::f64::consts::TAU;
 
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 use crate::raster::Crs;
 use crate::{DataError, Dataset, Field, FieldType, Geometry, GeometryType, ReadReport, Result, Value};
@@ -1798,12 +1798,12 @@ mod tests {
         }
     }
 
-    /// Every drawing in `RUSTGIS_DXF_DIR`: features per layer and their extent (compared by hand
+    /// Every drawing in `powergis_DXF_DIR`: features per layer and their extent (compared by hand
     /// against GDAL's reading of the same files).
     #[test]
     #[ignore]
     fn dxf_samples() {
-        let Ok(dir) = std::env::var("RUSTGIS_DXF_DIR") else { return };
+        let Ok(dir) = std::env::var("powergis_DXF_DIR") else { return };
         let mut paths: Vec<_> = std::fs::read_dir(dir).unwrap().filter_map(|e| e.ok()).map(|e| e.path()).collect();
         paths.sort();
         for p in paths.iter().filter(|p| p.extension().is_some_and(|e| e.eq_ignore_ascii_case("dxf"))) {
@@ -1813,7 +1813,7 @@ mod tests {
             match read(&name, &bytes, &Options::default()) {
                 Ok(layers) => {
                     let n: usize = layers.iter().map(|(d, _)| d.features.len()).sum();
-                    let e = layers.iter().fold(rustgis_geom::Extent::EMPTY, |e, (d, _)| e.union(&d.extent()));
+                    let e = layers.iter().fold(powergis_geom::Extent::EMPTY, |e, (d, _)| e.union(&d.extent()));
                     let kinds: Vec<String> =
                         layers.iter().map(|(d, _)| format!("{}:{}", d.geometry_type.label(), d.features.len())).collect();
                     println!(

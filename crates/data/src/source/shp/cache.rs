@@ -12,7 +12,7 @@ const CANDIDATES: usize = 256;
 pub const INDEX_DEFAULT_BYTES: u64 = 2048 * MIB;
 
 pub fn index_budget() -> u64 {
-    std::env::var("RUSTGIS_SHP_CACHE_MIB").ok().and_then(|s| s.parse::<u64>().ok()).unwrap_or(INDEX_DEFAULT_BYTES / MIB).clamp(64, 65536)
+    std::env::var("powergis_SHP_CACHE_MIB").ok().and_then(|s| s.parse::<u64>().ok()).unwrap_or(INDEX_DEFAULT_BYTES / MIB).clamp(64, 65536)
         * MIB
 }
 pub fn index_dir() -> PathBuf {
@@ -20,7 +20,7 @@ pub fn index_dir() -> PathBuf {
     if let Some(root) = TEST_INDEX_DIR.with(|root| root.borrow().clone()) {
         return root;
     }
-    crate::source::external::cache_dir("RUSTGIS_SHP_CACHE", "shp-index").unwrap_or_else(index_fallback_dir)
+    crate::source::external::cache_dir("powergis_SHP_CACHE", "shp-index").unwrap_or_else(index_fallback_dir)
 }
 
 // Test-local routing avoids process-wide environment mutation and interference with
@@ -43,9 +43,9 @@ pub(crate) fn with_index_dir<T>(root: PathBuf, run: impl FnOnce() -> T) -> T {
 /// Separate Unix users even when the system temporary directory is shared.
 pub fn index_fallback_dir() -> PathBuf {
     #[cfg(unix)]
-    let name = format!("rustgis-shp-index-{}", rustix::process::geteuid().as_raw());
+    let name = format!("powergis-shp-index-{}", rustix::process::geteuid().as_raw());
     #[cfg(not(unix))]
-    let name = "rustgis-shp-index";
+    let name = "powergis-shp-index";
     std::env::temp_dir().join(name)
 }
 
@@ -158,7 +158,7 @@ fn directory_file(root: &Path) -> io::Result<Directory> {
     }
     builder.create(root)?;
     let root = validate_directory(root)?;
-    let file = open_lock(&root.join(".rustgis-cache-v1.lock"))?;
+    let file = open_lock(&root.join(".powergis-cache-v1.lock"))?;
     Ok(Directory { root, file })
 }
 fn directory_lock(root: &Path) -> io::Result<Directory> {
@@ -298,7 +298,7 @@ fn retry_maintenance(root: &Path, budget: u64) {
         let jobs: Jobs = Arc::new((Mutex::new(BTreeMap::new()), Condvar::new()));
         let worker = jobs.clone();
         std::thread::Builder::new()
-            .name("rustgis-cache-retry".into())
+            .name("powergis-cache-retry".into())
             .spawn(move || {
                 loop {
                     let job = {

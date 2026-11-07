@@ -2,7 +2,7 @@
 //! limited to a scale range together. Groups nest (#836): a group in another goes with it, and
 //! every group above a layer applies to it.
 
-use rustgis_map::{LayerGroup, MAX_GROUP_DEPTH, MAX_GROUPS, Map, Outline};
+use powergis_map::{LayerGroup, MAX_GROUP_DEPTH, MAX_GROUPS, Map, Outline};
 use serde_json::{Value, json};
 
 use super::{f, ps, uint};

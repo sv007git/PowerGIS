@@ -5,7 +5,7 @@ use std::path::PathBuf;
 
 /// A new, empty folder for one test's files.
 fn folder(name: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("rustgis-export-tests-{}-{name}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("powergis-export-tests-{}-{name}", std::process::id()));
     let _ = std::fs::remove_dir_all(&d);
     std::fs::create_dir_all(&d).unwrap();
     d
@@ -79,7 +79,7 @@ impl FeatureSource for Runs {
     fn visits_chunks(&self) -> bool {
         self.chunks
     }
-    fn visit_chunks(&self, _: Option<rustgis_geom::Extent>, _: usize, visit: &mut dyn FnMut(Vec<Feature>) -> Result<()>) -> Result<Batch> {
+    fn visit_chunks(&self, _: Option<powergis_geom::Extent>, _: usize, visit: &mut dyn FnMut(Vec<Feature>) -> Result<()>) -> Result<Batch> {
         let pass = self.passes.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         for (n, run) in self.features.chunks(self.per).enumerate() {
             if self.fail_after == Some(n) && self.fail_pass.is_none_or(|p| p == pass) {

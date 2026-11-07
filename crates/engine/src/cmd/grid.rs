@@ -1,12 +1,12 @@
 //! Analyze › Grid Intelligence: electrical distribution grid fault detection,
 //! impact analysis, risk prediction, power flow, and crew dispatch (GridSense).
 
-use rustgis_analysis::grid::{
-    FaultType, MeterTelemetry, UserRole, all_grid_datasets, assess_asset_risk, assign_crew, calculate_hotspots,
-    calculate_impact, create_sample_network, ingest_telemetry_batch, restore_fault, simulate_power_flow,
-    trigger_fault,
+use powergis_analysis::grid::{
+    CrewStatus, FaultType, MeterStatus, MeterTelemetry, UserRole, all_grid_datasets, assess_asset_risk, assign_crew,
+    calculate_hotspots, calculate_impact, create_sample_network, ingest_telemetry_batch, restore_fault,
+    simulate_power_flow, trigger_fault,
 };
-use rustgis_map::Layer;
+use powergis_map::{Layer, LayerGroup};
 use serde_json::{Value, json};
 
 use super::{f, ps, uint};
@@ -74,26 +74,55 @@ fn sample(s: &mut Session, _p: &Value) -> CmdResult {
     }))
 }
 
+const GRID_LAYER_NAMES: &[&str] = &[
+    "Grid Substations",
+    "Grid Feeders",
+    "Power Lines & Segments",
+    "Distribution Transformers",
+    "Distribution Poles",
+    "Smart Meters",
+    "Grid Faults",
+    "Response Crews",
+];
+
 /// Generates all 8 grid vector datasets and adds them as live layers to the active map.
+/// Replaces any existing grid layers so they populate only once without duplication,
+/// and organizes them under a dedicated "Grid Intelligence" LayerGroup.
 fn create_layers(s: &mut Session, p: &Value) -> CmdResult {
     let role = parse_role(p);
     let net = s.grid_mut().clone();
 
     let datasets = all_grid_datasets(&net, role);
+    let mut layer_ids = Vec::new();
     let mut added_layer_ids = Vec::new();
 
     let map = s.map_mut();
+
+    // 1. Clean up existing grid layers and group so layers never duplicate
+    map.layers.retain(|l| !GRID_LAYER_NAMES.contains(&l.name.as_str()));
+    map.groups.retain(|g| g.name != "Grid Intelligence");
+
+    // 2. Add fresh grid layers
     for ds in datasets {
         let name = ds.name.clone();
         let layer_id = map.add_layer(Layer::new(0, ds));
+        layer_ids.push(layer_id);
         added_layer_ids.push(json!({
             "id": layer_id,
             "name": name,
         }));
     }
 
+    // 3. Group grid layers together in the Layers pane
+    let mut grid_group = LayerGroup::new("Grid Intelligence");
+    grid_group.children = layer_ids;
+    grid_group.expanded = true;
+    let group_id = map.add_group(grid_group);
+
     Ok(json!({
         "layersAdded": added_layer_ids.len(),
+        "groupId": group_id,
+        "groupName": "Grid Intelligence",
         "layers": added_layer_ids,
         "role": format!("{:?}", role),
     }))

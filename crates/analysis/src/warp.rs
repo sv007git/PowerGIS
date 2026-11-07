@@ -13,8 +13,8 @@
 
 use std::collections::HashMap;
 
-use rustgis_data::raster::{ColorHint, Crs, GeoTransform, MAX_SAMPLES, Raster, Transformer};
-use rustgis_geom::Coord;
+use powergis_data::raster::{ColorHint, Crs, GeoTransform, MAX_SAMPLES, Raster, Transformer};
+use powergis_geom::Coord;
 
 use crate::georef::Fit;
 

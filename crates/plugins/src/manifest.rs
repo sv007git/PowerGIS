@@ -323,7 +323,7 @@ pub struct Manifest {
     pub abi: u32,
     /// The oldest PowerGIS that can run it.
     #[serde(default)]
-    pub min_rustgis_version: String,
+    pub min_powergis_version: String,
     #[serde(default)]
     pub permissions: Vec<Permission>,
     #[serde(default)]
@@ -406,7 +406,7 @@ pub fn version_cmp(a: &str, b: &str) -> std::cmp::Ordering {
 }
 
 /// PowerGIS's own version.
-pub const RUSTGIS_VERSION: &str = env!("CARGO_PKG_VERSION");
+pub const POWERGIS_VERSION: &str = env!("CARGO_PKG_VERSION");
 
 fn check_text(what: &str, s: &str, required: bool) -> Result<(), String> {
     if required && s.trim().is_empty() {
@@ -520,12 +520,12 @@ impl Manifest {
         if self.abi != ABI {
             return Err(format!("{} was built for plugin ABI {}; this PowerGIS runs ABI {ABI}", self.name, self.abi));
         }
-        if !self.min_rustgis_version.is_empty() {
-            if version_parts(&self.min_rustgis_version).is_none() {
-                return Err("plugin.json: minRustgisVersion is not a version number".into());
+        if !self.min_powergis_version.is_empty() {
+            if version_parts(&self.min_powergis_version).is_none() {
+                return Err("plugin.json: minpowergisVersion is not a version number".into());
             }
-            if version_cmp(RUSTGIS_VERSION, &self.min_rustgis_version).is_lt() {
-                return Err(format!("{} needs PowerGIS {} or newer (this is {RUSTGIS_VERSION})", self.name, self.min_rustgis_version));
+            if version_cmp(POWERGIS_VERSION, &self.min_powergis_version).is_lt() {
+                return Err(format!("{} needs PowerGIS {} or newer (this is {POWERGIS_VERSION})", self.name, self.min_powergis_version));
             }
         }
         if self.commands.len() > MAX_COMMANDS || self.tools.len() > MAX_TOOLS {

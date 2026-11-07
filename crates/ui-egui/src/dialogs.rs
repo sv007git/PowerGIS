@@ -2,10 +2,10 @@
 //! native file pickers.
 
 use egui::{Align2, vec2};
-use rustgis_engine::Session;
+use powergis_engine::Session;
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, semibold};
 
 #[derive(Default)]
@@ -151,7 +151,7 @@ impl Dialogs {
                 self.a = format!("{:.4}", c.x);
                 self.b = format!("{:.4}", c.y);
             }
-            "bookmark" => self.text = rustgis_engine::cmd::navigate::new_bookmark_name(s.map()),
+            "bookmark" => self.text = powergis_engine::cmd::navigate::new_bookmark_name(s.map()),
             "camera" => {
                 let c = s.map().center_lonlat();
                 self.a = format!("{:.5}", c.x);
@@ -167,11 +167,11 @@ impl Dialogs {
             "exportLayer" => self.mode = "geojson",
             // The active layer when it is from PostGIS, else the first that is.
             "pgSave" | "pgDiscard" => {
-                let pg = |l: &&rustgis_engine::map::Layer| l.postgis.is_some();
+                let pg = |l: &&powergis_engine::map::Layer| l.postgis.is_some();
                 self.layer = active.filter(pg).or_else(|| s.map().layers.iter().find(pg)).map(|l| l.name.clone()).unwrap_or_default();
             }
             "gpkgSave" | "gpkgDiscard" => {
-                let gpkg = |l: &&rustgis_engine::map::Layer| l.gpkg.is_some();
+                let gpkg = |l: &&powergis_engine::map::Layer| l.gpkg.is_some();
                 let layer = active.filter(gpkg).or_else(|| s.map().layers.iter().find(gpkg));
                 self.gpkg_layer = layer.map(|l| l.id);
                 self.gpkg_instance = layer.map(|l| l.instance_id());
@@ -222,7 +222,7 @@ fn is_gpkg_target_error(error: &str) -> bool {
 }
 
 /// Draws the active dialog and leaves it open on validation failure or a newly opened dialog.
-pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn show(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(which) = app.dialogs.open else { return };
     if which == "calculateGeometry" {
         crate::geometrycalc::show(app, ctx);
@@ -474,12 +474,12 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
                 let input_label = ui.label(format!("{} =", app.dialogs.a));
                 let edit = egui::TextEdit::singleline(&mut app.dialogs.text)
                     .hint_text(tl!("e.g.  pop_est / 1000000   or   upper(name) || ' ' || round(area, 1)"))
-                    .char_limit(rustgis_engine::data::query::MAX_LEN)
+                    .char_limit(powergis_engine::data::query::MAX_LEN)
                     .font(egui::TextStyle::Monospace)
                     .desired_width(f32::INFINITY);
                 ui.add(edit).labelled_by(input_label.id);
                 let text = app.dialogs.text.trim();
-                let reads = app.session.active_layer.and_then(|id| app.session.map().layer(id)).filter(|_| !text.is_empty()).map(|l| rustgis_engine::cmd::edit::check_calculation(text, &l.dataset));
+                let reads = app.session.active_layer.and_then(|id| app.session.map().layer(id)).filter(|_| !text.is_empty()).map(|l| powergis_engine::cmd::edit::check_calculation(text, &l.dataset));
                 if let Some(Err(e)) = reads {
                     let t = Tokens::get(ui.ctx());
                     ui.label(egui::RichText::new(crate::i18n::fmt("Invalid: {error}", &[("error", &e)])).small().color(t.red));
@@ -549,7 +549,7 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
 
 /// Save Project As in the browser, which has no save dialog: the file name to download the
 /// project as. The browser decides where downloads go.
-fn save_project(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn save_project(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     ui.label(tl!("File name"));
     let mut edit = egui::TextEdit::singleline(&mut app.dialogs.text).desired_width(f32::INFINITY).show(ui);
     // Opened: the name is selected, so typing replaces it.
@@ -582,7 +582,7 @@ pub const EXPORT_FORMATS: &[(&str, &str)] = &[
 
 /// Export Features: the active layer, in a format picked here (a file's type isn't changed by
 /// the filter chosen in a save dialog, and the web app has no save dialog).
-fn export_layer(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn export_layer(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     let web = app.services.download.is_some();
     egui::Grid::new("export_layer").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
         ui.label(tl!("Layer"));
@@ -615,7 +615,7 @@ fn export_layer(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 const SEPARATORS: [(&str, &str); 5] = [("auto", "Automatic"), (",", "Comma"), (";", "Semicolon"), ("\t", "Tab"), ("|", "Pipe")];
 
 /// Opens Add Delimited Text for a file picked: its columns, with the ones found by name picked.
-pub fn open_csv(app: &mut RustGisApp, name: &str, source: CsvSource) -> Result<Value, String> {
+pub fn open_csv(app: &mut powergisApp, name: &str, source: CsvSource) -> Result<Value, String> {
     app.run("ui.dialog", json!({"name": "addCsv"}))?;
     let file = CsvFile { name: name.to_string(), source };
     app.dialogs.mode = "auto";
@@ -629,8 +629,8 @@ pub fn open_csv(app: &mut RustGisApp, name: &str, source: CsvSource) -> Result<V
 fn csv_columns(file: &CsvFile, separator: &str) -> Result<Value, String> {
     let p = if separator == "auto" { json!({}) } else { json!({"delimiter": separator}) };
     match &file.source {
-        CsvSource::Path(path) => rustgis_engine::cmd::layer::columns_in_file(path, &p),
-        CsvSource::Bytes(bytes) => rustgis_engine::cmd::layer::columns_of(&file.name, bytes, &p),
+        CsvSource::Path(path) => powergis_engine::cmd::layer::columns_in_file(path, &p),
+        CsvSource::Bytes(bytes) => powergis_engine::cmd::layer::columns_of(&file.name, bytes, &p),
     }
 }
 
@@ -669,7 +669,7 @@ fn keep_picked(d: &mut Dialogs, [x, y, wkt]: [String; 3]) {
 
 /// Add Delimited Text, for the file picked: which of its columns hold the coordinates (or WKT
 /// geometry), their coordinate system and the separator.
-fn add_csv(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn add_csv(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     let Some(name) = app.dialogs.csv.as_ref().map(|f| f.name.clone()) else {
         // Opened without a file (`ui.dialog`): the file first.
         ui.label(tl!("Choose a delimited text file or a spreadsheet, then pick its columns."));
@@ -677,7 +677,7 @@ fn add_csv(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
         // On the desktop the dialog is open again, for the file picked.
         return close && app.dialogs.csv.is_none();
     };
-    let sheet = rustgis_engine::data::sheets::is_sheet_name(&name);
+    let sheet = powergis_engine::data::sheets::is_sheet_name(&name);
     let shown = std::path::Path::new(&name).file_name().and_then(|n| n.to_str()).unwrap_or(&name).to_string();
     ui.label(egui::RichText::new(shown).strong());
     ui.label(egui::RichText::new(tl!("Columns named like longitude/latitude, easting/northing or geometry are picked for you.")).weak());
@@ -772,7 +772,7 @@ fn add_csv(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 
 /// Add From Service connects to a directory's folder or service (or back to one): the way back
 /// becomes `way` once connected, and stays `before` when connecting fails.
-fn go_to(app: &mut RustGisApp, url: &str, kind: &str, way: Vec<(String, &'static str)>, before: Vec<(String, &'static str)>) {
+fn go_to(app: &mut powergisApp, url: &str, kind: &str, way: Vec<(String, &'static str)>, before: Vec<(String, &'static str)>) {
     app.dialogs.info = None;
     match app.run("ui.addService", json!({"url": url, "type": kind})) {
         Ok(_) => app.ui.service_browse.back = way,
@@ -790,7 +790,7 @@ const SHOWN_LAYERS: usize = 500;
 /// (or a catalogue searched for them, `cswui`).
 /// Connect fetches its capabilities in the background; its layers are then listed, each with an
 /// Add button (map layers become tile layers, features are downloaded).
-fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn add_service(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     const KINDS: [(&str, &str); 8] = [
         ("auto", "Automatic"),
         ("wms", "WMS"),
@@ -813,7 +813,7 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
         }
         return false;
     }
-    let kinds = |app: &mut RustGisApp, ui: &mut egui::Ui| {
+    let kinds = |app: &mut powergisApp, ui: &mut egui::Ui| {
         let input_label = ui.label(tl!("Type"));
         let shown = KINDS.iter().find(|(c, _)| *c == app.dialogs.mode).map(|(_, l)| tl!(*l).to_string()).unwrap_or_default();
         egui::ComboBox::from_id_salt("service_kind")
@@ -1118,7 +1118,7 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
         // unknown view can't stop it.
         let features = l["offer"]["type"] == "features";
         let area =
-            (features && app.ui.service_browse.area).then(|| rustgis_engine::cmd::catalogs::area(&app.session, &Value::Null)).transpose();
+            (features && app.ui.service_browse.area).then(|| powergis_engine::cmd::catalogs::area(&app.session, &Value::Null)).transpose();
         match area.and_then(|area| crate::serviceui::add_layer(app, &src, &l, &time, area, true)) {
             Ok(m) => app.dialogs.info = Some(format!("{m} {title}")),
             Err(e) => app.dialogs.error = Some(e),
@@ -1132,7 +1132,7 @@ fn add_service(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 }
 
 /// Add Data From URL: a file on the web, downloaded and added (a PMTiles archive is read in place).
-fn add_url(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn add_url(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     let hint = if cfg!(target_arch = "wasm32") {
         tl!(
             "GeoJSON, CSV, GeoParquet, FlatGeobuf, GeoPackage, zipped Shapefiles, KML, GPX or GeoTIFF, up to 256 MB; the server must allow requests from web pages (CORS)."
@@ -1162,7 +1162,7 @@ fn add_url(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 
 /// Add From Database: a PostgreSQL/PostGIS, MySQL/MariaDB or SQL Server connection (or a DuckDB
 /// file), its password (kept for the session only) and one table or all of them.
-fn add_database(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn add_database(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     ui.label(egui::RichText::new(tl!("A PostgreSQL/PostGIS connection (host=… port=… dbname=… user=…, or a postgresql:// address), a MySQL or MariaDB address (mysql://user@host:3306/database), a SQL Server address (mssql://user@host:1433/database) or a DuckDB file. PostGIS, MySQL, MariaDB and SQL Server tables are read live, large ones a view at a time; the password is kept until PowerGIS closes, never in the project.")).weak());
     // A bare connection string is a PostgreSQL one.
     let database = |a: &str| {
@@ -1177,11 +1177,11 @@ fn add_database(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     let typed = database(&app.dialogs.a);
     let current = crate::connectionui::picked(&connections, app.dialogs.connection.as_deref(), &typed);
     #[cfg(not(target_arch = "wasm32"))]
-    let postgres = rustgis_engine::connections::database_kind(&typed) == Some("postgres");
+    let postgres = powergis_engine::connections::database_kind(&typed) == Some("postgres");
     let mut pick = None;
     let mut list = false;
     egui::Grid::new("database").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
-        let kinds = rustgis_engine::connections::DATABASE_KINDS;
+        let kinds = powergis_engine::connections::DATABASE_KINDS;
         if connections.iter().any(|c| kinds.contains(&c.kind.as_str())) {
             ui.label(tl!("Saved connection"));
             pick = crate::connectionui::picker_combo(ui, "database_saved", &connections, kinds, current);
@@ -1248,7 +1248,7 @@ fn add_database(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(dsn) = app.session.postgis.clone() {
         ui.horizontal(|ui| {
-            let short = rustgis_engine::data::source::duckdb::Database::Postgres(dsn).short();
+            let short = powergis_engine::data::source::duckdb::Database::Postgres(dsn).short();
             ui.label(egui::RichText::new(crate::i18n::fmt("Connected for editing: {db}", &[("db", &short)])).weak());
             if ui
                 .button(tl!("Disconnect"))
@@ -1295,7 +1295,7 @@ fn add_database(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     ui.horizontal(|ui| {
         let address = database(&app.dialogs.a);
         if app.dialogs.listed.as_deref() == Some(address.as_str())
-            && let Some(kind) = rustgis_engine::connections::database_kind(&address)
+            && let Some(kind) = powergis_engine::connections::database_kind(&address)
             && crate::connectionui::picked(&connections, app.dialogs.connection.as_deref(), &address).is_none()
             && crate::connectionui::keep_button(ui)
         {
@@ -1307,7 +1307,7 @@ fn add_database(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     });
     buttons(app, ui, "Add", |app| {
         let address = database(&app.dialogs.a);
-        if app.dialogs.edit && rustgis_engine::connections::database_kind(&address) == Some("postgres") {
+        if app.dialogs.edit && powergis_engine::connections::database_kind(&address) == Some("postgres") {
             return add_for_editing(app, address);
         }
         let mut p = json!({"database": address, "password": app.dialogs.b});
@@ -1327,7 +1327,7 @@ fn add_database(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 
 /// Add From Database with Load for editing: connects to the PostgreSQL database for editing
 /// (`pg.connect`) and loads the chosen table whole (`pg.addLayer`).
-fn add_for_editing(app: &mut RustGisApp, address: String) -> Result<(), String> {
+fn add_for_editing(app: &mut powergisApp, address: String) -> Result<(), String> {
     let d = &app.dialogs;
     let table = d.c.trim();
     if table.is_empty() {
@@ -1351,7 +1351,7 @@ fn add_for_editing(app: &mut RustGisApp, address: String) -> Result<(), String> 
 }
 
 /// Load one GeoPackage feature table whole, to be edited and saved back to its file.
-fn gpkg_add_layer(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn gpkg_add_layer(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     ui.label(egui::RichText::new(tl!("Loads one feature table of a GeoPackage on this computer (up to 100,000 rows) so its edits can be saved back to that table with Edit › Save to GeoPackage. It needs an INTEGER PRIMARY KEY.")).weak());
     let mut list = false;
     egui::Grid::new("gpkg_add_layer").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
@@ -1436,7 +1436,7 @@ fn gpkg_add_layer(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 
 /// A source-backed layer to save or discard the edits of, and what changed in it: its table
 /// and how many rows are new, changed and deleted (cached until the selection or session changes).
-fn source_layer_edits(app: &mut RustGisApp, ui: &mut egui::Ui, prefix: &'static str) {
+fn source_layer_edits(app: &mut powergisApp, ui: &mut egui::Ui, prefix: &'static str) {
     if prefix == "gpkg"
         && let Err(error) = app.dialogs.gpkg_owner(&app.session)
     {
@@ -1538,7 +1538,7 @@ fn source_layer_edits(app: &mut RustGisApp, ui: &mut egui::Ui, prefix: &'static 
 
 /// Save PostGIS Edits: a PostGIS layer's edits written to its table in one transaction, or none
 /// of them when a row changed there since.
-fn pg_save(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn pg_save(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     ui.label(egui::RichText::new(tl!("Saves the layer's edits to its table in one transaction. When a row you changed or deleted was changed or deleted in the database since it was loaded, or a new row's key is taken, nothing is saved and the rows are listed.")).weak());
     source_layer_edits(app, ui, "pg");
     buttons(app, ui, "Save", |app| {
@@ -1550,14 +1550,14 @@ fn pg_save(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 }
 
 /// Discard PostGIS Edits: a PostGIS layer's rows loaded again as they are in the database.
-fn pg_discard(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn pg_discard(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     ui.label(egui::RichText::new(tl!("Loads the layer's rows again as they are in the database now. Its edits that weren't saved are dropped (Undo brings them back).")).weak());
     source_layer_edits(app, ui, "pg");
     buttons(app, ui, "Discard", |app| app.run("pg.discardEdits", json!({"layer": app.dialogs.layer})).map(|_| ()))
 }
 
 /// Save a GeoPackage layer's edits to its table in one transaction.
-fn gpkg_save(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn gpkg_save(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     ui.label(egui::RichText::new(tl!("Saves the layer's edits to its table in the GeoPackage file in one transaction. When a row you changed or deleted was changed or deleted in the file since it was loaded, nothing is saved and the rows are listed. Saving the project keeps edits in the project only; exporting writes a new file.")).weak());
     source_layer_edits(app, ui, "gpkg");
     buttons(app, ui, "Save", |app| {
@@ -1569,7 +1569,7 @@ fn gpkg_save(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 }
 
 /// Reload a GeoPackage layer's rows as they are in the file.
-fn gpkg_discard(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+fn gpkg_discard(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     ui.label(
         egui::RichText::new(tl!(
             "Loads the layer's rows again as they are in the file now. Its edits that weren't saved are dropped (Undo brings them back)."
@@ -1584,8 +1584,8 @@ fn gpkg_discard(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 }
 
 /// Add Tile Layer: an XYZ/TMS/WMS template, vector tiles or a MapLibre style by address.
-fn add_tiles(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
-    use rustgis_engine::map::TileKind;
+fn add_tiles(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
+    use powergis_engine::map::TileKind;
     ui.label(egui::RichText::new(tl!("A tile service's address: raster tiles with {z}/{x}/{y} (or {-y}, {q}, {bbox-epsg-3857} for WMS), vector tiles (.pbf) or TileJSON, a MapLibre style, a PMTiles archive (a web address, or a file on this computer), or an MBTiles file on this computer.")).weak());
     egui::Grid::new("tiles").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
         ui.label(tl!("Address"));
@@ -1667,26 +1667,29 @@ pub(crate) fn text_box(text: &mut String) -> egui::TextEdit<'_> {
 }
 
 /// OK/Cancel row; returns true when the dialog should close.
-pub(crate) fn buttons(app: &mut RustGisApp, ui: &mut egui::Ui, ok: &str, f: impl FnOnce(&mut RustGisApp) -> Result<(), String>) -> bool {
+pub(crate) fn buttons(app: &mut powergisApp, ui: &mut egui::Ui, ok: &str, f: impl FnOnce(&mut powergisApp) -> Result<(), String>) -> bool {
     let mut close = false;
-    ui.add_space(4.0);
-    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+    ui.add_space(8.0);
+    ui.separator();
+    ui.add_space(6.0);
+    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
         let t = Tokens::get(ui.ctx());
         let enter = ui.input(|i| i.key_pressed(egui::Key::Enter) && !i.modifiers.shift);
-        if crate::widgets::dialog_button(ui, tl!(ok), Some(t.accent), vec2(84.0, 28.0)).clicked() || enter {
+        if crate::widgets::dialog_button(ui, tl!(ok), Some(t.accent), vec2(92.0, 30.0)).clicked() || enter {
             match f(app) {
                 Ok(()) => close = true,
                 Err(e) => app.dialogs.error = Some(e),
             }
         }
-        if crate::widgets::dialog_button(ui, tl!("Cancel"), None, vec2(84.0, 28.0)).clicked() {
+        ui.add_space(4.0);
+        if crate::widgets::dialog_button(ui, tl!("Cancel"), None, vec2(84.0, 30.0)).clicked() {
             close = true;
         }
     });
     close
 }
 
-fn field_chips(app: &mut RustGisApp, ui: &mut egui::Ui) {
+fn field_chips(app: &mut powergisApp, ui: &mut egui::Ui) {
     let fields: Vec<String> = app
         .session
         .map()
@@ -1714,7 +1717,7 @@ fn field_chips(app: &mut RustGisApp, ui: &mut egui::Ui) {
     });
 }
 
-fn select_by_attributes(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) -> bool {
+fn select_by_attributes(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens) -> bool {
     let layers: Vec<String> = app.session.map().layers.iter().map(|l| l.name.clone()).collect();
     egui::Grid::new("sba").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
         let input_label = ui.label(tl!("Input Rows"));
@@ -1763,7 +1766,7 @@ fn select_by_attributes(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) -> 
     field_chips(app, ui);
     // Live validation.
     let check =
-        app.session.map().layer_by_name(&app.dialogs.layer).map(|l| rustgis_engine::data::query::select(&app.dialogs.text, &l.dataset));
+        app.session.map().layer_by_name(&app.dialogs.layer).map(|l| powergis_engine::data::query::select(&app.dialogs.text, &l.dataset));
     match (&check, app.dialogs.text.trim().is_empty()) {
         (_, true) => {}
         (Some(Ok(rows)), _) => {
@@ -1845,11 +1848,11 @@ fn unused(_: Value) {}
 /// The map's coordinate system: Web Mercator, the globe, a preset, or any projected EPSG code. The
 /// list is on the left; the right shows what the selection is, where it can be used, its PROJ
 /// definition, and a link to its page on epsg.io.
-fn coordinate_system(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) -> bool {
+fn coordinate_system(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens) -> bool {
     let current = app.session.map().projection.code();
     ui.label(egui::RichText::new(tl!("The map is drawn in this coordinate system; layers are projected on the fly.")).weak());
     let mut choices: Vec<(String, String)> = vec![("mercator".into(), "Web Mercator".into()), ("globe".into(), "Globe".into())];
-    choices.extend(rustgis_engine::map::projection::PRESETS.iter().map(|(id, label, _)| (id.to_string(), label.to_string())));
+    choices.extend(powergis_engine::map::projection::PRESETS.iter().map(|(id, label, _)| (id.to_string(), label.to_string())));
     // Two panes of a fixed height, so the dialog doesn't stretch to the window.
     let pane_h = 340.0;
     ui.allocate_ui_with_layout(vec2(ui.available_width(), pane_h), egui::Layout::left_to_right(egui::Align::Min), |ui| {
@@ -1858,7 +1861,7 @@ fn coordinate_system(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) -> boo
             ui.set_width(270.0);
             egui::ScrollArea::vertical().id_salt("crs_list").max_height(pane_h - 44.0).auto_shrink([false, false]).show(ui, |ui| {
                 ui.with_layout(egui::Layout::top_down_justified(egui::Align::LEFT), |ui| {
-                    let picked = rustgis_engine::map::projection::parse_preset(&app.dialogs.text).ok().flatten().map(|(id, _)| id);
+                    let picked = powergis_engine::map::projection::parse_preset(&app.dialogs.text).ok().flatten().map(|(id, _)| id);
                     for (id, label) in &choices {
                         let selected = app.dialogs.text.eq_ignore_ascii_case(id) || picked == Some(id.as_str());
                         if ui.selectable_label(selected, tl!(label.as_str())).clicked() {
@@ -1890,7 +1893,7 @@ fn coordinate_system(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) -> boo
     });
     ui.separator();
     let chosen = app.dialogs.text.clone();
-    let check = rustgis_engine::map::Projection::from_code(&chosen);
+    let check = powergis_engine::map::Projection::from_code(&chosen);
     let same = check.as_ref().is_ok_and(|p| p.code() == current);
     let mut close = false;
     ui.horizontal(|ui| {
@@ -1917,8 +1920,8 @@ pub(crate) fn format_degrees(deg: f64) -> String {
 
 /// The chosen preset's parameters (opengeos/PowerGIS#517): the central meridian, and a conic's
 /// standard parallels, each written back into the chosen code. Nothing for a preset without any.
-fn preset_fields(app: &mut RustGisApp, ui: &mut egui::Ui) {
-    use rustgis_engine::map::projection::{VN2000_UI_PROVINCES, parse_preset, preset_code, preset_params, preset_value};
+fn preset_fields(app: &mut powergisApp, ui: &mut egui::Ui) {
+    use powergis_engine::map::projection::{VN2000_UI_PROVINCES, parse_preset, preset_code, preset_params, preset_value};
     // A province typed by name is already the preset (`typed_crs`), and `vn2000:hanoi` is one too.
     let Ok(Some((id, params))) = parse_preset(&app.dialogs.text) else { return };
     let takes = preset_params(id);
@@ -1983,7 +1986,7 @@ pub(crate) fn typed_crs(text: &str) -> String {
     let text = text.trim();
     if text.starts_with(|c: char| c.is_ascii_digit()) {
         format!("EPSG:{text}")
-    } else if let Some(lon) = rustgis_engine::map::projection::resolve_vn2000_alias(text) {
+    } else if let Some(lon) = powergis_engine::map::projection::resolve_vn2000_alias(text) {
         format!("vn2000tm3 +lon_0={lon}")
     } else {
         text.to_string()
@@ -1992,8 +1995,8 @@ pub(crate) fn typed_crs(text: &str) -> String {
 
 /// What a coordinate system is: its kind, area of use, definition and epsg.io page.
 fn crs_details(ui: &mut egui::Ui, chosen: &str, current: &str, t: &Tokens) {
-    use rustgis_engine::map::projection::{Domain, Projector, lookup};
-    let projection = match rustgis_engine::map::Projection::from_code(chosen) {
+    use powergis_engine::map::projection::{Domain, Projector, lookup};
+    let projection = match powergis_engine::map::Projection::from_code(chosen) {
         Ok(p) => p,
         Err(e) => {
             ui.label(egui::RichText::new(e).color(t.red));
@@ -2008,7 +2011,7 @@ fn crs_details(ui: &mut egui::Ui, chosen: &str, current: &str, t: &Tokens) {
     let lower = code.to_ascii_lowercase();
     let epsg = lower.strip_prefix("epsg:").or_else(|| lower.strip_prefix("esri:")).map(str::to_string);
     // A preset with parameters is described as its preset, without the page of its standard form.
-    let preset = rustgis_engine::map::projection::parse_preset(&code).ok().flatten();
+    let preset = powergis_engine::map::projection::parse_preset(&code).ok().flatten();
     let tuned = preset.as_ref().is_some_and(|(_, p)| !p.is_empty());
     let (kind, page): (&str, Option<String>) = match preset.map_or(code.as_str(), |(id, _)| id) {
         "mercator" => (tl!("World, conformal: the usual web map; areas grow towards the poles."), Some("3857".into())),
@@ -2101,12 +2104,12 @@ mod tests {
     fn the_coordinate_system_dialog_sets_a_central_meridian() {
         use egui::accesskit::{Action, ActionData, ActionRequest, Role};
         use egui_kittest::kittest::{NodeT, Queryable};
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("map.projection", json!({"type": "robinson"})).unwrap();
         app.run("ui.dialog", json!({"name": "coordinateSystem"})).unwrap();
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(1200.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2156,24 +2159,24 @@ mod tests {
 
     #[test]
     fn vn2000_in_coordinate_system_dialog() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("ui.dialog", json!({"name": "coordinateSystem"})).unwrap();
         // A bare "vn2000" names no projection: it is passed on, and refused as ambiguous.
         app.dialogs.a = "vn2000".into();
         app.dialogs.text = typed_crs(&app.dialogs.a);
         assert_eq!(app.dialogs.text, "vn2000");
-        let err = rustgis_engine::map::Projection::from_code(&app.dialogs.text).unwrap_err();
+        let err = powergis_engine::map::Projection::from_code(&app.dialogs.text).unwrap_err();
         assert!(err.contains("ambiguous"), "{err}");
 
         // Explicit "vn2000tm3" resolves to VN-2000 TM-3 preset
         app.dialogs.a = "vn2000tm3".into();
         app.dialogs.text = typed_crs(&app.dialogs.a);
         assert_eq!(app.dialogs.text, "vn2000tm3");
-        let proj = rustgis_engine::map::Projection::from_code(&app.dialogs.text).unwrap();
+        let proj = powergis_engine::map::Projection::from_code(&app.dialogs.text).unwrap();
         assert_eq!(proj.label(), "VN-2000 / TM-3 (Vietnam)");
 
         // Explicit "VN-2000 / UTM zone 48N" resolves to UTM 48N
-        let proj_utm = rustgis_engine::map::Projection::from_code("VN-2000 / UTM zone 48N").unwrap();
+        let proj_utm = powergis_engine::map::Projection::from_code("VN-2000 / UTM zone 48N").unwrap();
         assert_eq!(proj_utm.label(), "VN-2000 / UTM zone 48N");
 
         // A province with the vn2000: prefix, in ASCII or Vietnamese.
@@ -2187,7 +2190,7 @@ mod tests {
         ] {
             app.dialogs.a = name.into();
             app.dialogs.text = typed_crs(&app.dialogs.a);
-            let proj_p = rustgis_engine::map::Projection::from_code(&app.dialogs.text).unwrap();
+            let proj_p = powergis_engine::map::Projection::from_code(&app.dialogs.text).unwrap();
             assert!(proj_p.label().contains("VN-2000"), "{name}");
             assert_eq!(proj_p.code(), code, "{name}");
         }
@@ -2195,7 +2198,7 @@ mod tests {
         // as `map.projection` reads them.
         for name in ["hanoi", "Hà Nội", "hue", "vinh", "tphcm", "vithanh", "vitri", "vietnam"] {
             assert_eq!(typed_crs(name), name);
-            assert!(rustgis_engine::map::Projection::from_code(name).is_err(), "{name}");
+            assert!(powergis_engine::map::Projection::from_code(name).is_err(), "{name}");
         }
         // A prefixed province given to the command is saved as the preset too.
         app.run("map.projection", json!({"type": "VN2000/Đà Nẵng"})).unwrap();

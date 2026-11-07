@@ -38,7 +38,7 @@ const RETRY_RENEWAL: i64 = 30;
 /// PowerGIS's own OAuth app on ArcGIS Online, used when no client id is given for an ArcGIS Online
 /// portal (an Enterprise portal registers its own). Its redirect URLs are the desktop's
 /// [`redirect_uri`] for [`PORT`] and the web app's callback page (`oauth-callback.html`) at
-/// https://web.rustgis.app and `trunk serve`'s http://127.0.0.1:8772. A client id isn't a secret.
+/// https://web.powergis.app and `trunk serve`'s http://127.0.0.1:8772. A client id isn't a secret.
 pub const DEFAULT_CLIENT_ID: &str = "nD2lKYqFqsaddfuD";
 /// The web app's callback page, next to its index.
 pub const WEB_CALLBACK: &str = "oauth-callback.html";
@@ -799,7 +799,7 @@ mod native {
         // A token request is never redirected: a redirect would replay the code or the refresh token.
         ureq::Agent::config_builder()
             .timeout_global(Some(REQUEST_TIMEOUT))
-            .user_agent(concat!("PowerGIS/", env!("CARGO_PKG_VERSION"), " (+https://rustgis.app)"))
+            .user_agent(concat!("PowerGIS/", env!("CARGO_PKG_VERSION"), " (+https://powergis.app)"))
             .max_redirects(0)
             .build()
             .into()

@@ -1,5 +1,5 @@
 //! Units are interpreted at the command boundary; stored geometry stays in lon/lat.
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::Geometry,
     geom::{Coord, lonlat_to_merc},
@@ -60,14 +60,14 @@ fn traverse_feet_and_metres_draw_the_same_line() {
 fn constant_elevation_feet_are_stored_in_metres() {
     let mut s = paths();
     s.run("edit.elevation", &json!({"mode": "constant", "z": 1000, "units": "Feet"})).unwrap();
-    assert_eq!(s.map().editing.settings.elevation, rustgis_engine::map::design::Elevation::Constant(304.8));
+    assert_eq!(s.map().editing.settings.elevation, powergis_engine::map::design::Elevation::Constant(304.8));
     s.run("edit.elevation", &json!({"mode": "constant", "z": 1000})).unwrap();
-    assert_eq!(s.map().editing.settings.elevation, rustgis_engine::map::design::Elevation::Constant(1000.0));
+    assert_eq!(s.map().editing.settings.elevation, powergis_engine::map::design::Elevation::Constant(1000.0));
 }
 
 #[test]
 fn select_by_location_feet_selects_only_features_within_the_radius() {
-    use rustgis_engine::data::{Dataset, GeometryType};
+    use powergis_engine::data::{Dataset, GeometryType};
     let mut s = paths();
     let mut points = Dataset::new("Parcels", GeometryType::Point, vec![]);
     // About 111 m and 222 m from the origin: only the first is within 500 ft.

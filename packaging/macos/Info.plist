@@ -4,11 +4,11 @@
 <dict>
   <key>CFBundleName</key><string>PowerGIS</string>
   <key>CFBundleDisplayName</key><string>PowerGIS</string>
-  <key>CFBundleIdentifier</key><string>org.rustgis.PowerGIS</string>
+  <key>CFBundleIdentifier</key><string>org.powergis.PowerGIS</string>
   <key>CFBundleVersion</key><string>@VERSION@</string>
   <key>CFBundleShortVersionString</key><string>@VERSION@</string>
-  <key>CFBundleExecutable</key><string>rustgis</string>
-  <key>CFBundleIconFile</key><string>rustgis</string>
+  <key>CFBundleExecutable</key><string>powergis</string>
+  <key>CFBundleIconFile</key><string>powergis</string>
   <key>CFBundlePackageType</key><string>APPL</string>
   <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
   <key>LSApplicationCategoryType</key><string>public.app-category.education</string>

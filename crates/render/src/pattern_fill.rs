@@ -9,9 +9,9 @@ use std::cell::RefCell;
 use std::collections::{HashMap, VecDeque};
 use std::sync::Arc;
 
-use rustgis_geom::Coord;
-use rustgis_map::fills::{FillLayer, FillPattern};
-use rustgis_map::{Marker, Rgba, Symbol};
+use powergis_geom::Coord;
+use powergis_map::fills::{FillLayer, FillPattern};
+use powergis_map::{Marker, Rgba, Symbol};
 use tiny_skia::{FillRule, Paint, Pixmap, Transform};
 
 use crate::{Ctx, paint};
@@ -123,7 +123,7 @@ impl Ctx<'_> {
             return None;
         }
         let ppp = self.view.pixels_per_point;
-        let mut b = rustgis_geom::Extent::EMPTY;
+        let mut b = powergis_geom::Extent::EMPTY;
         for c in ring {
             let (x, y) = self.view.to_screen(*c);
             let (x, y) = (x * ppp, y * ppp);
@@ -412,7 +412,7 @@ mod tests {
         assert!(key(&dots(Marker::Circle), red, 1.0) != key(&dots(Marker::Square), red, 1.0));
         // One not to keep (a character marker drawn before the fonts are indexed) is drawn once
         // and kept apart, not among the tiles; settled, it is drawn again and kept.
-        let glyph = |c| key(&dots(Marker::Char(rustgis_map::Glyph::new(c, "Noto Sans"))), red, 1.0);
+        let glyph = |c| key(&dots(Marker::Char(powergis_map::Glyph::new(c, "Noto Sans"))), red, 1.0);
         let mut drawn = 0;
         for _ in 0..3 {
             assert!(tile(&glyph('x'), || false, 4.0, 4.0, |_| drawn += 1).is_some());

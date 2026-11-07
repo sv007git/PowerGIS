@@ -2204,7 +2204,7 @@ mod tests {
             read_geojson(r#"{"type":"Feature","properties":{"name":"old"},"geometry":{"type":"Point","coordinates":[1,2]}}"#, "roads")
                 .map_err(std::io::Error::other)?;
         let (parts, _) = shapefile_parts(&original).map_err(std::io::Error::other)?;
-        const CHILD: &str = "RUSTGIS_SHAPEFILE_STAGING_COLLISION";
+        const CHILD: &str = "powergis_SHAPEFILE_STAGING_COLLISION";
         let Ok(case) = std::env::var(CHILD) else {
             let kinds: &[&str] = if cfg!(unix) { &["file", "live", "dangling"] } else { &["file"] };
             for index in 0..parts.len() {
@@ -2237,7 +2237,7 @@ mod tests {
         if !matches!(kind, "file" | "live" | "dangling") {
             return Err(std::io::Error::other("unknown collision kind"));
         }
-        let workspace = tempfile::Builder::new().prefix("rustgis-shp-collision-").tempdir()?;
+        let workspace = tempfile::Builder::new().prefix("powergis-shp-collision-").tempdir()?;
         let root = workspace.path();
         let path = root.join("roads.SHP");
         let destination = |extension: &str| if extension == "shp" { path.clone() } else { path.with_extension(extension) };
@@ -2296,7 +2296,7 @@ mod tests {
 
     #[test]
     fn staging_collision_preserves_the_existing_file() -> std::io::Result<()> {
-        let path = temp_beside(&std::env::temp_dir().join("rustgis-staging-collision"))?;
+        let path = temp_beside(&std::env::temp_dir().join("powergis-staging-collision"))?;
         write_new(&path, b"unrelated existing file")?;
         let error = write_new(&path, b"must not replace").err().ok_or_else(|| std::io::Error::other("collision succeeded"))?;
         assert_eq!(error.kind(), std::io::ErrorKind::AlreadyExists);
@@ -2307,7 +2307,7 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn staging_collision_preserves_symlinks_and_their_targets() -> std::io::Result<()> {
-        let target = temp_beside(&std::env::temp_dir().join("rustgis-staging-target"))?;
+        let target = temp_beside(&std::env::temp_dir().join("powergis-staging-target"))?;
         let link = temp_beside(&target)?;
         write_new(&target, b"unrelated target")?;
         std::os::unix::fs::symlink(&target, &link)?;
@@ -2323,7 +2323,7 @@ mod tests {
 
     #[test]
     fn write_atomic_failed_install_preserves_destination_and_removes_staging() -> std::io::Result<()> {
-        let root = temp_beside(&std::env::temp_dir().join("rustgis-atomic-failed-install"))?;
+        let root = temp_beside(&std::env::temp_dir().join("powergis-atomic-failed-install"))?;
         std::fs::create_dir(&root)?;
         let destination = root.join("occupied");
         std::fs::create_dir(&destination)?;
@@ -2338,7 +2338,7 @@ mod tests {
     #[test]
     fn topojson_named_json_from_disk() {
         let topo = r#"{"type":"Topology","objects":{"pts":{"type":"GeometryCollection","geometries":[{"type":"Point","coordinates":[5,6]}]},"more":{"type":"GeometryCollection","geometries":[{"type":"Point","coordinates":[1,2]}]}},"arcs":[]}"#;
-        let path = std::env::temp_dir().join(format!("rustgis-topo-{}.json", std::process::id()));
+        let path = std::env::temp_dir().join(format!("powergis-topo-{}.json", std::process::id()));
         std::fs::write(&path, topo).unwrap();
         let (ds, report) = read_path(&path).unwrap();
         let _ = std::fs::remove_file(&path);
@@ -2400,7 +2400,7 @@ mod tests {
 
     #[test]
     fn write_atomic_replaces_and_cleans_up() {
-        let dir = std::env::temp_dir().join(format!("rustgis-atomic-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-atomic-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("out.txt");
         write_atomic(&p, b"one").unwrap();
@@ -2611,7 +2611,7 @@ mod tests {
 
     #[test]
     fn read_path_dispatches_by_extension() {
-        let dir = std::env::temp_dir().join(format!("rustgis-io-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-io-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let p = dir.join("square.GeoJSON");
         std::fs::write(&p, r#"{"type":"Polygon","coordinates":[[[0,0],[1,0],[1,1],[0,0]]]}"#).unwrap();
@@ -2625,7 +2625,7 @@ mod tests {
     #[test]
     fn shapefile_prj_reprojects() {
         use shapefile::dbase::{FieldValue, Record, TableWriterBuilder};
-        let dir = std::env::temp_dir().join(format!("rustgis-shp-prj-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-shp-prj-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let shp = dir.join("paris.shp");
         {

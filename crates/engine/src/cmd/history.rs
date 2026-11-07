@@ -1,5 +1,5 @@
-//! A geoprocessing run from the History pane as code (#539): a call for the `rustgis` Python
-//! package, a line for the Script pane, or a `rustgis-cli` command; and the whole history as a
+//! A geoprocessing run from the History pane as code (#539): a call for the `powergis` Python
+//! package, a line for the Script pane, or a `powergis-cli` command; and the whole history as a
 //! Python script.
 //!
 //! The parameters are as the tool ran with them, without what would give someone else the user's
@@ -27,7 +27,7 @@ fn code(s: &mut Session, p: &Value) -> CmdResult {
     let text = match ps(p, "as").unwrap_or("python") {
         "python" => python(&cmd, &params),
         "command" => format!("{cmd} {params}"),
-        "cli" => format!("rustgis-cli run --project {} --cmd {}", shell(&project_file(s)), shell(&format!("{cmd}={params}"))),
+        "cli" => format!("powergis-cli run --project {} --cmd {}", shell(&project_file(s)), shell(&format!("{cmd}={params}"))),
         other => return Err(format!("unknown kind '{other}': python, command or cli")),
     };
     Ok(json!({"code": text}))
@@ -53,10 +53,10 @@ fn script(s: &mut Session, _: &Value) -> CmdResult {
     } else if s.dirty() {
         text.push_str("# The project has changes that aren't saved: save it first, so its layers are there.\n");
     }
-    text.push_str(&format!("import rustgis\n\ns = rustgis.Session({})\n", quoted(&project_file(s))));
+    text.push_str(&format!("import powergis\n\ns = powergis.Session({})\n", quoted(&project_file(s))));
     for (n, r) in runs.iter().enumerate() {
         let when = if r.at > 0 {
-            let (date, time) = rustgis_map::graphics::civil(r.at);
+            let (date, time) = powergis_map::graphics::civil(r.at);
             format!(" ({date} {time} UTC)")
         } else {
             String::new()
@@ -114,7 +114,7 @@ pub fn tool_of(r: &GpRecord) -> Option<String> {
 /// anything there.
 pub(crate) fn redacted(v: &Value) -> Value {
     use crate::sources::looks_like_a_key;
-    use rustgis_data::source::credentials::secret_key;
+    use powergis_data::source::credentials::secret_key;
     match v {
         Value::String(t) => Value::String(redacted_text(t)),
         Value::Array(a) => Value::Array(a.iter().map(redacted).collect()),
@@ -255,7 +255,7 @@ fn secret_pairs_emptied(t: &str) -> String {
             let value = rest.get(at..).unwrap_or("");
             let v = value.get(..value.find(parts).unwrap_or(value.len())).unwrap_or("");
             !k.is_empty()
-                && rustgis_data::source::credentials::secret_key(k)
+                && powergis_data::source::credentials::secret_key(k)
                 && (!["key", "sig", "sas"].iter().any(|p| k.eq_ignore_ascii_case(p))
                     || crate::sources::looks_like_a_key(v.trim_matches(['\'', '"', '{', '}'])))
         };
@@ -334,7 +334,7 @@ fn file_stem(name: &str) -> String {
     if stem.is_empty() { "project".into() } else { stem.to_string() }
 }
 
-/// A call of the `rustgis` package's `Session.run`, one parameter a line (as ArcGIS Pro copies a
+/// A call of the `powergis` package's `Session.run`, one parameter a line (as ArcGIS Pro copies a
 /// tool's Python): keywords where the names allow, `gp.run`'s tool before its parameters.
 pub fn python(cmd: &str, params: &Value) -> String {
     let mut out = format!("s.run(\n    {},\n", quoted(cmd));

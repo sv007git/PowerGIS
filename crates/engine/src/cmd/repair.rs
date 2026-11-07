@@ -17,10 +17,10 @@ pub fn commands() -> Vec<C> {
 #[cfg(not(target_arch = "wasm32"))]
 fn replacement(p: &Value) -> Result<String, String> {
     let path = super::layer::s_req(p, "path")?.trim();
-    if !rustgis_map::paths::is_local(path) {
+    if !powergis_map::paths::is_local(path) {
         return Err(format!("{path}: give a file or folder on this computer (web addresses and databases aren't repaired here)"));
     }
-    let path = rustgis_map::paths::local_path(path);
+    let path = powergis_map::paths::local_path(path);
     let full = std::path::absolute(path).map_err(|e| format!("{path}: {e}"))?.display().to_string();
     if !std::path::Path::new(&full).exists() {
         return Err(format!("{full}: there's no such file or folder"));
@@ -56,7 +56,7 @@ fn repair_source(s: &mut Session, p: &Value) -> CmdResult {
             let src = l.source.as_ref().ok_or("the layer has no linked source")?;
             let new = src.relinked(&full, table)?;
             if let Some(info) = new.info() {
-                if l.dataset.geometry_type != rustgis_data::GeometryType::None && info.geometry_type != l.dataset.geometry_type {
+                if l.dataset.geometry_type != powergis_data::GeometryType::None && info.geometry_type != l.dataset.geometry_type {
                     return Err(format!(
                         "{full} holds {} features; {} draws {} features: choose a file of {} features",
                         info.geometry_type.label(),
@@ -100,7 +100,7 @@ fn repair_tiles(s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_render::rustgis_tiles::{cache, mbtiles, pmtiles};
+        use powergis_render::powergis_tiles::{cache, mbtiles, pmtiles};
         let i = super::tiles::find(s, p)?.ok_or("name, index or id is required")?;
         let t = s.map().tiles.get(i).ok_or("the tile layer no longer exists")?;
         if t.archive_file().is_none() {
@@ -112,7 +112,7 @@ fn repair_tiles(s: &mut Session, p: &Value) -> CmdResult {
         new.error = None;
         new.repair()?;
         let vector = match new.kind {
-            rustgis_map::TileKind::MbTiles => mbtiles::info(&full)?.format.is_vector(),
+            powergis_map::TileKind::MbTiles => mbtiles::info(&full)?.format.is_vector(),
             _ => pmtiles::info_blocking(&full, web_time::Duration::from_secs(10))?.tile_type.is_vector(),
         };
         if (!t.layers.is_empty() || !t.style_layers.is_empty()) && !vector {

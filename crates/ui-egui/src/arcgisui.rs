@@ -1,11 +1,11 @@
 //! Sign in to ArcGIS, in Add From Service: an ArcGIS Online organization or an ArcGIS Enterprise
 //! portal, through its own sign-in page in the browser (`arcgis.signIn`), so its secured services
 //! can be added. Who is signed in, and Sign out (`arcgis.signOut`). The portal's address and the
-//! OAuth client id are remembered; tokens never are (see `rustgis_tiles::arcgis_auth`).
+//! OAuth client id are remembered; tokens never are (see `powergis_tiles::arcgis_auth`).
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::Tokens;
-use rustgis_engine::render::rustgis_tiles::arcgis_auth;
+use powergis_engine::render::powergis_tiles::arcgis_auth;
 use serde_json::json;
 
 const PORTAL_PREF: &str = "arcgis_portal";
@@ -25,7 +25,7 @@ pub struct State {
 
 /// Whether Add From Service shows the sign-in: the ArcGIS REST type, an ArcGIS-looking address,
 /// or a session kept.
-pub fn wanted(app: &RustGisApp) -> bool {
+pub fn wanted(app: &powergisApp) -> bool {
     let address = app.dialogs.text.to_ascii_lowercase();
     // A service known as ArcGIS by its answer (behind a proxy's address), or one refused for a token.
     let answered = app.ui.service.as_ref().is_some_and(|c| {
@@ -40,7 +40,7 @@ pub fn wanted(app: &RustGisApp) -> bool {
 }
 
 /// The sign-in's controls, folded under a header.
-pub fn section(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn section(app: &mut powergisApp, ui: &mut egui::Ui) {
     if !app.ui.arcgis.loaded {
         app.ui.arcgis.loaded = true;
         if let Some(load) = &app.services.load_pref {
@@ -78,7 +78,7 @@ pub fn section(app: &mut RustGisApp, ui: &mut egui::Ui) {
 }
 
 /// The portal and client id fields, with what to register.
-fn fields(app: &mut RustGisApp, ui: &mut egui::Ui) {
+fn fields(app: &mut powergisApp, ui: &mut egui::Ui) {
     prefill(&mut app.ui.arcgis);
     let redirect = if cfg!(target_arch = "wasm32") {
         format!("…/{}", arcgis_auth::WEB_CALLBACK)
@@ -118,7 +118,7 @@ fn prefill(s: &mut State) {
     }
 }
 
-fn remember(app: &RustGisApp, portal: &str, client_id: &str) {
+fn remember(app: &powergisApp, portal: &str, client_id: &str) {
     if let Some(save) = &app.services.save_pref {
         save(PORTAL_PREF, portal);
         save(CLIENT_PREF, client_id);
@@ -127,7 +127,7 @@ fn remember(app: &RustGisApp, portal: &str, client_id: &str) {
 
 /// The browser: the sign-in runs in a pop-up window (`Services::arcgis_sign_in`).
 #[cfg(target_arch = "wasm32")]
-fn form(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
+fn form(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens) {
     fields(app, ui);
     let done = app.ui.arcgis.pending.as_ref().and_then(|slot| slot.lock().unwrap_or_else(|e| e.into_inner()).take());
     if let Some(result) = done {
@@ -154,7 +154,7 @@ fn form(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn form(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
+fn form(app: &mut powergisApp, ui: &mut egui::Ui, t: &Tokens) {
     use arcgis_auth::Progress;
     fields(app, ui);
     match arcgis_auth::progress() {
@@ -181,7 +181,7 @@ fn form(app: &mut RustGisApp, ui: &mut egui::Ui, t: &Tokens) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn start(app: &mut RustGisApp) {
+fn start(app: &mut powergisApp) {
     app.ui.arcgis.error = None;
     let (portal, client_id) = (app.ui.arcgis.portal.trim().to_string(), app.ui.arcgis.client_id.trim().to_string());
     match app.run("arcgis.signIn", json!({"portal": portal, "clientId": client_id})) {

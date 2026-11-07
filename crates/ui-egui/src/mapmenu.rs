@@ -2,11 +2,11 @@
 //! place, Quick Analysis tools run there, and the place in Google Maps or Google Earth.
 
 use egui::Ui;
-use rustgis_engine::geom::Coord;
+use powergis_engine::geom::Coord;
 use serde_json::json;
 
 use crate::widgets::{menu_row, submenu_row};
-use crate::{RustGisApp, i18n};
+use crate::{powergisApp, i18n};
 
 /// Decimal places of the coordinates shown, copied and sent to Google (~0.1 m).
 const PRECISION: usize = 6;
@@ -83,9 +83,9 @@ fn google_earth_url(c: Coord, zoom: f64) -> String {
 
 /// The elevation raster for a viewshed: the active layer when it is a one-band raster, else the
 /// first one-band raster.
-fn elevation_layer(app: &RustGisApp) -> Option<String> {
+fn elevation_layer(app: &powergisApp) -> Option<String> {
     let map = app.session.map();
-    let one_band = |l: &&rustgis_engine::map::Layer| l.raster.as_ref().and_then(|r| r.data.as_ref()).is_some_and(|d| d.band_count() == 1);
+    let one_band = |l: &&powergis_engine::map::Layer| l.raster.as_ref().and_then(|r| r.data.as_ref()).is_some_and(|d| d.band_count() == 1);
     let active = app.session.active_layer.and_then(|id| map.layer(id)).filter(one_band);
     active.or_else(|| map.layers.iter().find(one_band)).map(|l| l.name.clone())
 }
@@ -97,14 +97,14 @@ fn place(c: Coord) -> Coord {
 }
 
 /// Runs a menu action; a failure shows in the status bar (the menu closes either way).
-fn run(app: &mut RustGisApp, id: &str, params: serde_json::Value) {
+fn run(app: &mut powergisApp, id: &str, params: serde_json::Value) {
     if let Err(e) = app.run(id, params) {
         app.session.notify(e, true);
     }
 }
 
 /// The menu for the place `c` that was right-clicked.
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, c: Coord) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, c: Coord) {
     let c = place(c);
     ui.set_min_width(240.0);
     let coords = lat_lon(c);
@@ -160,7 +160,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui, c: Coord) {
 
 /// Quick Analysis: the Buffer tool at a few distances, a viewshed and a line of sight on an
 /// elevation raster in the map, and the Buffer tool's own pane.
-fn quick_analysis(app: &mut RustGisApp, ui: &mut Ui, c: Coord) {
+fn quick_analysis(app: &mut powergisApp, ui: &mut Ui, c: Coord) {
     ui.set_min_width(220.0);
     crate::navui::load(app);
     let imperial = app.ui.nav.imperial;
@@ -215,7 +215,7 @@ mod tests {
     fn world_copies_wrap_and_failures_show() {
         let c = place(Coord::new(-83.9207 + 360.0, 35.9606));
         assert!((c.x - -83.9207).abs() < 1e-9 && (c.y - 35.9606).abs() < 1e-9);
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         assert!(app.run("gp.bufferPoint", json!({"lon": c.x, "lat": c.y, "distance": 500.0, "units": "Meters"})).is_ok());
         let before = app.session.notices.len();
         run(&mut app, "map.goToXY", json!({"lon": 500.0, "lat": 0.0}));

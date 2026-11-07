@@ -1,13 +1,13 @@
 //! Real pointer gestures for source-addressed snapping in the application.
 use egui::{Event, Modifiers, PointerButton, Pos2};
 use egui_kittest::Harness;
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{Dataset, Feature, Geometry, VertexId},
     geom::{Coord, merc_to_lonlat},
     map::design::Snapping,
 };
-use rustgis_ui_egui::RustGisApp;
+use powergis_ui_egui::powergisApp;
 use serde_json::json;
 
 /// Stores a small metre-based fixture in the same longitude/latitude format as imported data.
@@ -16,7 +16,7 @@ fn c(x: f64, y: f64) -> Coord {
 }
 
 /// A selected multipart line exposes both an ordinary vertex and an insertion midpoint.
-fn harness(bearing: f64) -> Harness<'static, RustGisApp> {
+fn harness(bearing: f64) -> Harness<'static, powergisApp> {
     let mut session = Session::new(Project::new("Vertex snapping"));
     let geometry = Geometry::Line(vec![vec![c(0., 0.), c(0., 160.)], vec![c(180., 0.), c(180., 160.)]]);
     let mut data = Dataset::new("Editable paths", geometry.kind(), vec![]);
@@ -27,12 +27,12 @@ fn harness(bearing: f64) -> Harness<'static, RustGisApp> {
     session.map_mut().camera.res = 1.;
     session.map_mut().camera.set_bearing(bearing);
     session.map_mut().editing.snapping = Snapping { enabled: true, tolerance_px: 8., vertex: true, edge: false, end: false };
-    let mut app = RustGisApp::new(session);
+    let mut app = powergisApp::new(session);
     app.run("tool.set", json!({"tool":"editVertices"})).unwrap();
     app.ui.tab = "Edit".into();
     app.session.clear_history();
     let mut h = Harness::builder().with_accessibility_check(false).with_size(egui::vec2(1480., 900.)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -46,7 +46,7 @@ fn harness(bearing: f64) -> Harness<'static, RustGisApp> {
 }
 
 /// Converts fixture coordinates using the actual map rectangle and rotated camera.
-fn screen(h: &Harness<'_, RustGisApp>, at: Coord) -> Pos2 {
+fn screen(h: &Harness<'_, powergisApp>, at: Coord) -> Pos2 {
     let rect = h.state().map.view_rect.unwrap().0;
     let map = h.state().session.map();
     let (x, y) = map.camera.to_screen(map.to_map(at).unwrap(), rect.width() as f64, rect.height() as f64);
@@ -54,7 +54,7 @@ fn screen(h: &Harness<'_, RustGisApp>, at: Coord) -> Pos2 {
 }
 
 /// A held drag follows the production threshold and event path instead of calling tool helpers.
-fn drag(h: &mut Harness<'_, RustGisApp>, from: Pos2, to: Pos2) {
+fn drag(h: &mut Harness<'_, powergisApp>, from: Pos2, to: Pos2) {
     h.event(Event::PointerMoved(from));
     h.event(Event::PointerButton { pos: from, button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
     h.step();
@@ -65,7 +65,7 @@ fn drag(h: &mut Harness<'_, RustGisApp>, from: Pos2, to: Pos2) {
 }
 
 /// Releases the held primary pointer and lets the edit command finish.
-fn release(h: &mut Harness<'_, RustGisApp>, at: Pos2) {
+fn release(h: &mut Harness<'_, powergisApp>, at: Pos2) {
     h.event(Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
     for _ in 0..3 {
         h.step();
@@ -73,7 +73,7 @@ fn release(h: &mut Harness<'_, RustGisApp>, at: Pos2) {
 }
 
 /// Reads the first source node; previews must never replace this stored geometry.
-fn first(h: &Harness<'_, RustGisApp>) -> Coord {
+fn first(h: &Harness<'_, powergisApp>) -> Coord {
     h.state().session.map().layers[0].dataset.features[0].geometry.as_ref().unwrap().vertex(VertexId::new(0, 0, 0)).unwrap()
 }
 

@@ -50,7 +50,7 @@ jobs:
           # Only main saves the cache (see test-rust.yml).
           save-if: ${{ github.ref == 'refs/heads/main' }}
       - name: Build for the browser
-        run: cargo build --locked --target wasm32-unknown-unknown -p rustgis-web
+        run: cargo build --locked --target wasm32-unknown-unknown -p powergis-web
 
   # Every dependency's licence must be one the project accepts (deny.toml). The third-party
   # notices the packages ship (`cargo xtask notices`) only warn here when out of date, since

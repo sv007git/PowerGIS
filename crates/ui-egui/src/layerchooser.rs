@@ -3,7 +3,7 @@
 //! Add Data or double-clicked in the Browser. Built on `info.fileLayers` (read off the frame) and
 //! `layer.addData`'s `"layer"`; with Home › Add Data › Ask Which Layers to Add off, every layer is
 //! added, as before.
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::Tokens;
 use serde_json::{Value, json};
 
@@ -35,7 +35,7 @@ pub fn lists_layers(path: &str) -> bool {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_engine::data::source;
+        use powergis_engine::data::source;
         if source::duckdb::is_duckdb_name(&lower) || source::gdal::is_gdal_name(&lower) {
             return true;
         }
@@ -46,10 +46,10 @@ pub fn lists_layers(path: &str) -> bool {
 
 /// Adds a file the user dropped, picked or double-clicked: a project opens, and a file with
 /// several layers asks which first (when the setting says to).
-pub fn add_file(app: &mut RustGisApp, path: &str) -> Result<Value, String> {
+pub fn add_file(app: &mut powergisApp, path: &str) -> Result<Value, String> {
     // Opening a project replaces this one: asked about first when it has unsaved changes. Only
     // the interface comes here (drops, Add Data, the Browser pane, `ui.addFile`).
-    let command = rustgis_engine::project::open_command(path);
+    let command = powergis_engine::project::open_command(path);
     if command != "layer.addData" {
         return app.run_by_user(command, json!({"path": path}));
     }
@@ -61,7 +61,7 @@ pub fn add_file(app: &mut RustGisApp, path: &str) -> Result<Value, String> {
     let out = slot.clone();
     let listed = path.to_string();
     std::thread::spawn(move || {
-        let mut session = rustgis_engine::Session::new(rustgis_engine::Project::default());
+        let mut session = powergis_engine::Session::new(powergis_engine::Project::default());
         let result = session.run("info.fileLayers", &json!({"path": listed}));
         *out.lock().unwrap_or_else(|e| e.into_inner()) = Some(result);
     });
@@ -72,7 +72,7 @@ pub fn add_file(app: &mut RustGisApp, path: &str) -> Result<Value, String> {
 
 /// Adds the layers ticked, each by name (a failure is told, by the command, and the rest still
 /// added).
-fn add_chosen(app: &mut RustGisApp, path: &str, layers: &[String]) {
+fn add_chosen(app: &mut powergisApp, path: &str, layers: &[String]) {
     for layer in layers {
         let _ = app.run("layer.addData", json!({"path": path, "layer": layer}));
     }
@@ -81,7 +81,7 @@ fn add_chosen(app: &mut RustGisApp, path: &str, layers: &[String]) {
 
 /// Shows the first file waiting to be chosen from; one that turns out to hold a single layer (or
 /// can't be listed) is added as it would have been.
-pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn show(app: &mut powergisApp, ctx: &egui::Context) {
     // Files chosen from for a project since replaced (new, open, sample) are dropped.
     let opened = app.session.opened;
     app.ui.choosing.retain(|c| c.opened == opened);
@@ -189,12 +189,12 @@ pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_engine::{Project, Session};
+    use powergis_engine::{Project, Session};
 
     /// The app drawn for a test, past its first frames (which install the fonts).
-    fn harness(app: RustGisApp) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn harness(app: powergisApp) -> egui_kittest::Harness<'static, powergisApp> {
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 900.0)).with_max_steps(64).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
@@ -219,13 +219,13 @@ mod tests {
 
     #[test]
     fn geolibre_local_drop_and_browser_route_import_without_replacing_work() {
-        let dir = std::env::temp_dir().join(format!("rustgis-geolibre-add-file-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-geolibre-add-file-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let text = json!({"version":"0.2.0","name":"Dropped map","mapView":{},"basemapStyleUrl":"","layers":[]}).to_string();
         for name in ["map.geolibre", "map.geolibre.json"] {
             let path = dir.join(name);
             std::fs::write(&path, &text).unwrap();
-            let mut app = RustGisApp::with_sample();
+            let mut app = powergisApp::with_sample();
             let original = app.session.map().name.clone();
             let maps = app.session.project.maps.len();
             add_file(&mut app, &path.to_string_lossy()).unwrap();
@@ -245,7 +245,7 @@ mod tests {
         let kml = dir.path().join("two.kml");
         std::fs::write(&kml, KML).unwrap();
         let kml = kml.display().to_string();
-        let mut app = RustGisApp::new(Session::new(Project::default()));
+        let mut app = powergisApp::new(Session::new(Project::default()));
         let listing = app.session.run("info.fileLayers", &json!({"path": kml}));
         let names: Vec<String> =
             listing.as_ref().unwrap()["layers"].as_array().unwrap().iter().map(|v| v.as_str().unwrap().to_string()).collect();
@@ -300,7 +300,7 @@ mod tests {
     /// The setting: off, a file is added whole without listing it; it is kept as a preference.
     #[test]
     fn the_setting_adds_every_layer() {
-        let mut app = RustGisApp::new(Session::new(Project::default()));
+        let mut app = powergisApp::new(Session::new(Project::default()));
         let saved = std::sync::Arc::new(std::sync::Mutex::new(Vec::new()));
         let log = saved.clone();
         app.services.save_pref = Some(Box::new(move |k, v| log.lock().unwrap().push((k.to_string(), v.to_string()))));

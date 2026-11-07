@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use rustgis_analysis::{Inputs, Output, OutputLayer, ParamKind, ParamSpec, ToolResult, ToolSpec};
+use powergis_analysis::{Inputs, Output, OutputLayer, ParamKind, ParamSpec, ToolResult, ToolSpec};
 use serde_json::{Map, Value, json};
 
 use crate::manifest::is_layer_kind;
@@ -25,12 +25,12 @@ pub const MAX_FILE: usize = 64 * 1024 * 1024;
 
 /// Adds plugin tools to the geoprocessing tools. Cheap: the list is built when first needed.
 pub fn register() {
-    rustgis_analysis::register_external(SOURCE, specs, run);
+    powergis_analysis::register_external(SOURCE, specs, run);
 }
 
 /// Rebuilds the tool list the next time it's needed (a plugin was loaded, removed or toggled).
 pub(crate) fn reload() {
-    rustgis_analysis::reload_external_of(SOURCE);
+    powergis_analysis::reload_external_of(SOURCE);
 }
 
 /// A `'static` copy of `s`, shared, so reloading the list doesn't leak another copy of every
@@ -109,7 +109,7 @@ fn specs() -> Vec<ToolSpec> {
                 toolbox: leak(format!("Plugins › {toolbox}")),
                 summary: leak(t.summary.as_str()),
                 params,
-                run: rustgis_analysis::external_placeholder,
+                run: powergis_analysis::external_placeholder,
             });
         }
     }
@@ -172,9 +172,9 @@ fn layer_geojson(inputs: &dyn Inputs, name: &str) -> Result<Value, String> {
     let ds = inputs.dataset(name).ok_or_else(|| format!("no layer named '{name}'"))?;
     let sel = inputs.selection(name);
     if sel.is_empty() {
-        return Ok(rustgis_data::io::to_geojson(ds));
+        return Ok(powergis_data::io::to_geojson(ds));
     }
-    let sub = rustgis_data::Dataset {
+    let sub = powergis_data::Dataset {
         name: ds.name.clone(),
         geometry_type: ds.geometry_type,
         fields: ds.fields.clone(),
@@ -184,7 +184,7 @@ fn layer_geojson(inputs: &dyn Inputs, name: &str) -> Result<Value, String> {
         crs_incomplete: false,
         windowed: false,
     };
-    Ok(rustgis_data::io::to_geojson(&sub))
+    Ok(powergis_data::io::to_geojson(&sub))
 }
 
 fn run(spec: &ToolSpec, inputs: &dyn Inputs, params: &Value) -> Result<ToolResult, String> {
@@ -329,13 +329,13 @@ pub fn file_extensions(tool: &str, param: &str) -> Vec<String> {
 }
 
 /// Reads a dataset a tool returned: `{"name": "...", "geojson": {FeatureCollection}}`.
-fn dataset(v: &Value, fallback: &str) -> Result<rustgis_data::Dataset, String> {
+fn dataset(v: &Value, fallback: &str) -> Result<powergis_data::Dataset, String> {
     let name = v.get("name").and_then(Value::as_str).filter(|n| !n.trim().is_empty()).unwrap_or(fallback);
     let gj = v.get("geojson").ok_or_else(|| format!("{name}: an output has no 'geojson'"))?;
     if gj.get("features").and_then(Value::as_array).is_some_and(|f| f.len() > MAX_FEATURES) {
         return Err(format!("{name}: too many features"));
     }
-    let (ds, _) = rustgis_data::io::read_geojson(&gj.to_string(), name).map_err(|e| format!("{name}: {e}"))?;
+    let (ds, _) = powergis_data::io::read_geojson(&gj.to_string(), name).map_err(|e| format!("{name}: {e}"))?;
     Ok(ds)
 }
 

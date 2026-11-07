@@ -26,27 +26,41 @@ if (-not (Test-Path $InstallDir)) {
 
 # 2. Copy binaries and assets
 Write-Host "`n[2/5] Copying PowerGIS Application Files..." -ForegroundColor Yellow
-$BinSource = "$env:LOCALAPPDATA\Programs\RustGIS"
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Path
 
-# Copy from source or existing binaries
-$FilesToCopy = @("rustgis.exe", "rustgis-cli.exe", "LICENSE.txt", "THIRD-PARTY-LICENSES.txt")
+# Candidate source directories
+$CandidateDirs = @(
+    $ScriptDir,
+    (Join-Path $ScriptDir "..\..\target\release"),
+    (Join-Path $ScriptDir "..\..\target\debug"),
+    (Join-Path (Get-Location) "target\release"),
+    "$env:LOCALAPPDATA\Programs\PowerGIS"
+)
+
+$FilesToCopy = @("powergis.exe", "powergis-cli.exe", "LICENSE.txt", "THIRD-PARTY-LICENSES.txt")
 foreach ($f in $FilesToCopy) {
-    $src = Join-Path $BinSource $f
-    if (-not (Test-Path $src)) {
-        $src = Join-Path $ScriptDir $f
+    $found = $null
+    foreach ($dir in $CandidateDirs) {
+        $testPath = Join-Path $dir $f
+        if (Test-Path $testPath) {
+            $found = $testPath
+            break
+        }
     }
-    if (Test-Path $src) {
-        Copy-Item -Path $src -Destination (Join-Path $InstallDir $f) -Force
+    if ($found -and (Resolve-Path $found).Path -ne (Resolve-Path (Join-Path $InstallDir $f) -ErrorAction SilentlyContinue).Path) {
+        Copy-Item -Path $found -Destination (Join-Path $InstallDir $f) -Force
+        Write-Host "  -> Copied $f from $found"
+    } elseif (Test-Path (Join-Path $InstallDir $f)) {
+        Write-Host "  -> $f already present in $InstallDir"
     }
 }
 
-# Ensure powergis.exe and powergis-cli.exe exist
-if (Test-Path (Join-Path $InstallDir "rustgis.exe")) {
-    Copy-Item -Path (Join-Path $InstallDir "rustgis.exe") -Destination (Join-Path $InstallDir "powergis.exe") -Force
+# Verify powergis.exe and powergis-cli.exe exist
+if (-not (Test-Path (Join-Path $InstallDir "powergis.exe"))) {
+    Write-Warning "powergis.exe was not found in $InstallDir"
 }
-if (Test-Path (Join-Path $InstallDir "rustgis-cli.exe")) {
-    Copy-Item -Path (Join-Path $InstallDir "rustgis-cli.exe") -Destination (Join-Path $InstallDir "powergis-cli.exe") -Force
+if (-not (Test-Path (Join-Path $InstallDir "powergis-cli.exe"))) {
+    Write-Warning "powergis-cli.exe was not found in $InstallDir"
 }
 
 # 3. Create Shortcuts

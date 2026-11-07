@@ -1,6 +1,6 @@
 //! Synthetic land-cover comparisons: full paths, projected LOD and pre-projection LOD.
 use super::*;
-use rustgis_data::Dataset;
+use powergis_data::Dataset;
 
 /// Raster-like polygon boundaries with thirty vertices per cell, generated without fixtures.
 fn landcover(side: usize) -> Map {
@@ -26,7 +26,7 @@ fn landcover(side: usize) -> Map {
         }
     }
     let mut map = Map::new("LOD comparison");
-    map.basemap = rustgis_map::Basemap::Blank;
+    map.basemap = powergis_map::Basemap::Blank;
     map.graticule = false;
     map.add_dataset(ds);
     map
@@ -111,7 +111,7 @@ fn lod_landcover_matches_full_geometry_at_several_zooms_and_densities() {
                 sky: false,
                 camera: Camera::new(
                     lonlat_to_merc(Coord::new(36.25, -1.25)),
-                    0.5 / 84.0 * rustgis_geom::MERCATOR_R.to_radians() / across * ppp,
+                    0.5 / 84.0 * powergis_geom::MERCATOR_R.to_radians() / across * ppp,
                 ),
             };
             let expected = render(&mut full, &view).unwrap();
@@ -145,7 +145,7 @@ fn lod_landcover_matches_full_geometry_at_several_zooms_and_densities() {
                 assert!(map.layers[0].projected_cache().is_empty(), "plain drawing must leave full projection lazy");
                 assert!(map.layers[0].display_cache().is_some());
             }
-            if let Ok(dir) = std::env::var("RUSTGIS_LOD_EVIDENCE_DIR") {
+            if let Ok(dir) = std::env::var("powergis_LOD_EVIDENCE_DIR") {
                 got.pixmap.save_png(format!("{dir}/lod-{across}-{ppp}.png")).unwrap();
                 expected.pixmap.save_png(format!("{dir}/full-{across}-{ppp}.png")).unwrap();
             }
@@ -167,7 +167,7 @@ fn lod_display_survives_rejected_frame_and_returns_without_rebuilding() {
         height: 320.0,
         pixels_per_point: 1.0,
         sky: false,
-        camera: Camera::new(lonlat_to_merc(Coord::new(36.25, -1.25)), 0.5 / 84.0 * rustgis_geom::MERCATOR_R.to_radians() / 3.0),
+        camera: Camera::new(lonlat_to_merc(Coord::new(36.25, -1.25)), 0.5 / 84.0 * powergis_geom::MERCATOR_R.to_radians() / 3.0),
     };
     let first = render(&mut map, &view).unwrap();
     assert!(map.layers[0].projected_cache().is_empty());
@@ -202,7 +202,7 @@ fn lod_display_survives_rejected_frame_and_returns_without_rebuilding() {
 
 /// Times cold and warm complete renders for a 210,681-cell layer without import costs.
 #[test]
-#[ignore = "manual benchmark: cargo test --release -p rustgis-render lod_landcover_whole_frame_benchmark -- --ignored --nocapture"]
+#[ignore = "manual benchmark: cargo test --release -p powergis-render lod_landcover_whole_frame_benchmark -- --ignored --nocapture"]
 fn lod_landcover_whole_frame_benchmark() {
     let base = landcover(459);
     let view = View {
@@ -210,7 +210,7 @@ fn lod_landcover_whole_frame_benchmark() {
         height: 900.0,
         pixels_per_point: 2.0,
         sky: false,
-        camera: Camera::new(lonlat_to_merc(Coord::new(36.25, -1.25)), 0.5 / 459.0 * rustgis_geom::MERCATOR_R.to_radians() / 3.0 * 2.0),
+        camera: Camera::new(lonlat_to_merc(Coord::new(36.25, -1.25)), 0.5 / 459.0 * powergis_geom::MERCATOR_R.to_radians() / 3.0 * 2.0),
     };
     let mut full = unthinned(&base);
     let mut exact = base.clone();

@@ -7,7 +7,7 @@
 //! can't be read are skipped and counted.
 
 use roxmltree::{Node, ParsingOptions};
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 use crate::{DataError, Dataset, Field, FieldType, Geometry, GeometryType, ReadReport, Result, Value};
 

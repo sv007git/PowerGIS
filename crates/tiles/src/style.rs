@@ -9,9 +9,9 @@ use serde_json::{Map, Value as Json};
 use std::cmp::Ordering;
 use std::collections::HashMap;
 
-/// Parses a CSS color (moved to [`rustgis_data::color::parse`], which the expression language shares).
-pub use rustgis_data::color::parse as parse_color;
-use rustgis_data::color::unit_u8;
+/// Parses a CSS color (moved to [`powergis_data::color::parse`], which the expression language shares).
+pub use powergis_data::color::parse as parse_color;
+use powergis_data::color::unit_u8;
 
 /// Straight (not premultiplied) RGBA.
 pub type Rgba = [u8; 4];

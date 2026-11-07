@@ -1,20 +1,20 @@
 //! Headless interaction tests for the units users choose and the results they see.
 use egui_kittest::kittest::{NodeT, Queryable};
-use rustgis_engine::{Project, Session, data::Geometry, geom::lonlat_to_merc};
-use rustgis_ui_egui::{RustGisApp, Services};
+use powergis_engine::{Project, Session, data::Geometry, geom::lonlat_to_merc};
+use powergis_ui_egui::{powergisApp, Services};
 use serde_json::json;
 
-fn harness() -> egui_kittest::Harness<'static, RustGisApp> {
+fn harness() -> egui_kittest::Harness<'static, powergisApp> {
     harness_with_services(Services::default())
 }
 
-fn harness_with_services(services: Services) -> egui_kittest::Harness<'static, RustGisApp> {
-    let mut app = RustGisApp::new(Session::new(Project::default())).with_services(services);
+fn harness_with_services(services: Services) -> egui_kittest::Harness<'static, powergisApp> {
+    let mut app = powergisApp::new(Session::new(Project::default())).with_services(services);
     app.run("layer.template", json!({"template": "lines", "name": "Paths"})).unwrap();
     app.run("edit.addFeature", json!({"geometry": {"type": "LineString", "coordinates": [[0, 0], [0, 0.001]]}})).unwrap();
     app.run("select.rows", json!({"layer": "Paths", "rows": [0]})).unwrap();
     egui_kittest::Harness::builder().with_size(egui::vec2(1800.0, 1000.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -23,7 +23,7 @@ fn harness_with_services(services: Services) -> egui_kittest::Harness<'static, R
     )
 }
 
-fn first_x_metres(h: &egui_kittest::Harness<'_, RustGisApp>) -> f64 {
+fn first_x_metres(h: &egui_kittest::Harness<'_, powergisApp>) -> f64 {
     let Geometry::Line(parts) = h.state().session.map().layer_by_name("Paths").unwrap().dataset.features[0].geometry.as_ref().unwrap()
     else {
         panic!("line")
@@ -31,7 +31,7 @@ fn first_x_metres(h: &egui_kittest::Harness<'_, RustGisApp>) -> f64 {
     lonlat_to_merc(parts[0][0]).x
 }
 
-fn choose_editing_units(h: &mut egui_kittest::Harness<'_, RustGisApp>, unit: &str) {
+fn choose_editing_units(h: &mut egui_kittest::Harness<'_, powergisApp>, unit: &str) {
     h.get_by_role_and_label(egui::accesskit::Role::ComboBox, "Distance units").click();
     // The list opens on the frame after the click.
     h.step();
@@ -70,7 +70,7 @@ fn editing_pane_sets_constant_elevation_in_feet() {
     choose_editing_units(&mut h, "Feet");
     h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "Constant").click();
     h.step();
-    assert_eq!(h.state().session.map().editing.settings.elevation, rustgis_engine::map::design::Elevation::Constant(304.8));
+    assert_eq!(h.state().session.map().editing.settings.elevation, powergis_engine::map::design::Elevation::Constant(304.8));
 }
 
 #[test]
@@ -90,10 +90,10 @@ fn editing_units_are_remembered_and_applied_explicitly() {
     }
     choose_editing_units(&mut h, "Feet");
     assert!(saved.lock().unwrap().contains(&("editing_distance_units".into(), "Feet".into())), "editing units were not saved");
-    assert_eq!(h.state().session.map().editing.settings.elevation, rustgis_engine::map::design::Elevation::Constant(1000.0));
+    assert_eq!(h.state().session.map().editing.settings.elevation, powergis_engine::map::design::Elevation::Constant(1000.0));
     h.get_by_role_and_label(egui::accesskit::Role::Button, "Apply elevation").click();
     h.step();
-    assert_eq!(h.state().session.map().editing.settings.elevation, rustgis_engine::map::design::Elevation::Constant(304.8));
+    assert_eq!(h.state().session.map().editing.settings.elevation, powergis_engine::map::design::Elevation::Constant(304.8));
     drop(h);
 
     let reads = saved.clone();
@@ -137,7 +137,7 @@ fn editing_units_are_remembered_and_applied_explicitly() {
     }
 }
 
-fn click_map(h: &mut egui_kittest::Harness<'_, RustGisApp>, at: egui::Pos2) {
+fn click_map(h: &mut egui_kittest::Harness<'_, powergisApp>, at: egui::Pos2) {
     h.event(egui::Event::PointerMoved(at));
     for pressed in [true, false] {
         h.event(egui::Event::PointerButton { pos: at, button: egui::PointerButton::Primary, pressed, modifiers: Default::default() });
@@ -147,7 +147,7 @@ fn click_map(h: &mut egui_kittest::Harness<'_, RustGisApp>, at: egui::Pos2) {
     }
 }
 
-fn painted_text(h: &egui_kittest::Harness<'_, RustGisApp>) -> Vec<String> {
+fn painted_text(h: &egui_kittest::Harness<'_, powergisApp>) -> Vec<String> {
     fn collect(shape: &egui::Shape, text: &mut Vec<String>) {
         match shape {
             egui::Shape::Text(t) => text.push(t.galley.text().to_string()),
@@ -166,14 +166,14 @@ fn painted_text(h: &egui_kittest::Harness<'_, RustGisApp>) -> Vec<String> {
     text
 }
 
-fn profile_harness(length: f64) -> egui_kittest::Harness<'static, RustGisApp> {
+fn profile_harness(length: f64) -> egui_kittest::Harness<'static, powergisApp> {
     let mut h = harness();
     let grid = "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\n30 30\n30 30\n";
-    let raster = rustgis_engine::data::raster::ascii::read(grid, "Terrain", None).unwrap();
+    let raster = powergis_engine::data::raster::ascii::read(grid, "Terrain", None).unwrap();
     h.state_mut()
         .session
         .map_mut()
-        .add_raster("Terrain", rustgis_engine::map::RasterLayer::from_bytes(raster, "terrain.asc", grid.as_bytes().to_vec()));
+        .add_raster("Terrain", powergis_engine::map::RasterLayer::from_bytes(raster, "terrain.asc", grid.as_bytes().to_vec()));
     h.state_mut().ws.profile = Some(json!({
         "length": length, "min": 30, "max": 40, "gain": 10, "loss": 0,
         "samples": [{"distance": 0, "elevation": 30}, {"distance": length, "elevation": 40}]
@@ -381,7 +381,7 @@ fn measurement_unit_choice_is_saved_restored_and_available_to_scripts() {
     h.get_by_role_and_label(egui::accesskit::Role::RadioButton, "Imperial").click();
     h.step();
     assert!(saved.lock().unwrap().contains(&("measurement_units".into(), "imperial".into())));
-    let mut restored = RustGisApp::new(Session::new(Project::default())).with_services(Services {
+    let mut restored = powergisApp::new(Session::new(Project::default())).with_services(Services {
         load_pref: Some(Box::new(|k| (k == "measurement_units").then(|| "imperial".into()))),
         ..Services::default()
     });

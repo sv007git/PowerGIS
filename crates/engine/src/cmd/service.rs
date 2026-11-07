@@ -9,7 +9,7 @@
 //! here as `"text"`; the command line, MCP and the desktop assistant let these commands fetch
 //! (waiting for the answer).
 
-use rustgis_data::ogc::{Coverage, Offer, Service, SliderSteps};
+use powergis_data::ogc::{Coverage, Offer, Service, SliderSteps};
 use serde_json::{Value, json};
 
 use super::ps;
@@ -53,7 +53,7 @@ fn url_of(p: &Value) -> Result<&str, String> {
 /// goes, as the request's credential, to every request to that server: the service's layers, tiles and feature
 /// pages), so the address the layer keeps has no token in it. `None` when there is none.
 pub(crate) fn without_token(p: &Value) -> Result<Option<Value>, String> {
-    use crate::render::rustgis_tiles::arcgis_auth;
+    use crate::render::powergis_tiles::arcgis_auth;
     let Some(url) = ps(p, "url").map(str::trim) else { return Ok(None) };
     let has_token = url
         .split_once('?')
@@ -73,7 +73,7 @@ pub(crate) fn without_token(p: &Value) -> Result<Option<Value>, String> {
     owned["url"] = json!(arcgis_auth::adopt_url_token(url)?);
     // What was cached unauthorized (refused tiles) is asked for again with the new token.
     if arcgis_auth::authorization(url) != before {
-        crate::render::rustgis_tiles::cache::clear();
+        crate::render::powergis_tiles::cache::clear();
     }
     Ok(Some(owned))
 }
@@ -108,7 +108,7 @@ const MAX_SERVICE_DOCUMENTS: usize = 4;
 
 fn capabilities(p: &Value) -> Result<Discovery, String> {
     let original = url_of(p)?;
-    let mut address = rustgis_data::ogc::capabilities_url(original, ps(p, "type"));
+    let mut address = powergis_data::ogc::capabilities_url(original, ps(p, "type"));
     let supplied = ps(p, "text");
     let documents = p.get("documents").map(|v| v.as_array().ok_or("documents must be an array")).transpose()?;
     if let Some(docs) = documents {
@@ -125,7 +125,7 @@ fn capabilities(p: &Value) -> Result<Discovery, String> {
     let mut seen = std::collections::HashSet::new();
     let mut parent = original.to_string();
     loop {
-        if let Err(e) = crate::render::rustgis_tiles::address::check(&address, Some(&parent)) {
+        if let Err(e) = crate::render::powergis_tiles::address::check(&address, Some(&parent)) {
             return result.failed(e);
         }
         if seen.contains(&address) {
@@ -144,7 +144,7 @@ fn capabilities(p: &Value) -> Result<Discovery, String> {
                 result.next = Some(address);
                 return Ok(result);
             };
-            rustgis_data::ogc::parse(&address, text.as_bytes())
+            powergis_data::ogc::parse(&address, text.as_bytes())
         } else {
             fetch_capabilities(original, &address)
         };
@@ -193,8 +193,8 @@ fn fetch_capabilities(url: &str, _caps: &str) -> Result<Service, String> {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn fetch_capabilities(url: &str, caps: &str) -> Result<Service, String> {
-    let bytes = crate::render::rustgis_tiles::cache::download_blocking(caps).map_err(|e| format!("{url}: {e}"))?;
-    rustgis_data::ogc::parse(caps, &bytes).map_err(|e| format!("{url}: {e}"))
+    let bytes = crate::render::powergis_tiles::cache::download_blocking(caps).map_err(|e| format!("{url}: {e}"))?;
+    powergis_data::ogc::parse(caps, &bytes).map_err(|e| format!("{url}: {e}"))
 }
 
 /// Leaves out the layers whose addresses a document on the web may not send PowerGIS to: the
@@ -208,7 +208,7 @@ fn vet(mut svc: Service, caps: &str) -> Service {
             Offer::Features { url } | Offer::Style { url } | Offer::Service { url } => url,
             Offer::Coverage(Coverage { endpoint, .. }) => endpoint,
         };
-        crate::render::rustgis_tiles::address::check(u, Some(caps)).is_ok()
+        crate::render::powergis_tiles::address::check(u, Some(caps)).is_ok()
     });
     let dropped = before - svc.layers.len();
     if dropped > 0 {
@@ -219,13 +219,13 @@ fn vet(mut svc: Service, caps: &str) -> Service {
 
 /// A service's GeoJSON answer made ready to read: latitude-first coordinates turned round, judged
 /// against the layer's longitude/latitude `bounds` from its capabilities (see
-/// [`fix_axes`](rustgis_data::ogc::fix_axes); none: left as they come), and a cut-off answer
+/// [`fix_axes`](powergis_data::ogc::fix_axes); none: left as they come), and a cut-off answer
 /// pointed out.
 pub fn features_answer(s: &mut Session, name: &str, bytes: Vec<u8>, bounds: Option<[f64; 4]>) -> Vec<u8> {
-    if let Some(note) = rustgis_data::ogc::partial_note(&bytes) {
+    if let Some(note) = powergis_data::ogc::partial_note(&bytes) {
         s.notify(format!("{name}: {note}"), false);
     }
-    rustgis_data::ogc::fix_axes(&bytes, bounds).unwrap_or(bytes)
+    powergis_data::ogc::fix_axes(&bytes, bounds).unwrap_or(bytes)
 }
 
 /// A layer's longitude/latitude bounds as a listing or a parameter gives them (`[west, south,
@@ -233,27 +233,27 @@ pub fn features_answer(s: &mut Session, name: &str, bytes: Vec<u8>, bounds: Opti
 pub(crate) fn bounds_of(v: Option<&Value>) -> Result<Option<[f64; 4]>, String> {
     let Some(v) = v.filter(|v| !v.is_null()) else { return Ok(None) };
     let b: [f64; 4] = serde::Deserialize::deserialize(v).map_err(|_| "bounds must be [west, south, east, north]")?;
-    if !rustgis_map::tiles::valid_bounds(&b) {
+    if !powergis_map::tiles::valid_bounds(&b) {
         return Err("bounds must be a finite, ordered geographic rectangle".into());
     }
     Ok(Some(b))
 }
 
 /// A service's features at `url`, with the pages that follow (its `next` links, or an ArcGIS
-/// layer's pages past its record limit, see [`read_pages`](rustgis_data::ogc::read_pages)): at
-/// most `max` bytes and [`BLOCKING_TIMEOUT`](crate::render::rustgis_tiles::cache::BLOCKING_TIMEOUT)
+/// layer's pages past its record limit, see [`read_pages`](powergis_data::ogc::read_pages)): at
+/// most `max` bytes and [`BLOCKING_TIMEOUT`](crate::render::powergis_tiles::cache::BLOCKING_TIMEOUT)
 /// in all. A page is fetched only where the page before it may point.
 #[cfg(not(target_arch = "wasm32"))]
 pub(crate) fn download_features(s: &mut Session, name: &str, url: &str, max: usize) -> Result<Vec<u8>, String> {
-    use crate::render::rustgis_tiles::{address, cache};
+    use crate::render::powergis_tiles::{address, cache};
     let until = std::time::Instant::now() + cache::BLOCKING_TIMEOUT;
     let first = cache::download_blocking_limited(url, max).map_err(|e| format!("{url}: {e}"))?;
     let mut left = max.saturating_sub(first.len());
-    let mut step = rustgis_data::ogc::read_pages(url, first, rustgis_data::ogc::MAX_PAGED_FEATURES);
+    let mut step = powergis_data::ogc::read_pages(url, first, powergis_data::ogc::MAX_PAGED_FEATURES);
     let (bytes, note) = loop {
         let pages = match step {
-            rustgis_data::ogc::Step::Done(bytes, note) => break (bytes, note),
-            rustgis_data::ogc::Step::Fetch(pages) => pages,
+            powergis_data::ogc::Step::Done(bytes, note) => break (bytes, note),
+            powergis_data::ogc::Step::Fetch(pages) => pages,
         };
         let answer = address::check(pages.next_url(), Some(pages.referrer())).and_then(|()| {
             let wait = until.saturating_duration_since(std::time::Instant::now());
@@ -282,7 +282,7 @@ fn checked_template(service: &str, t: &str) -> Result<String, String> {
     if !(t.contains("{z}") && t.contains("{x}") && t.contains("{y}")) || t.len() > 2000 {
         return Err(format!("{t}: not a tile template"));
     }
-    crate::render::rustgis_tiles::address::check(t, Some(service))?;
+    crate::render::powergis_tiles::address::check(t, Some(service))?;
     Ok(t.to_string())
 }
 
@@ -290,11 +290,11 @@ fn checked_template(service: &str, t: &str) -> Result<String, String> {
 /// (the list, then the tileset when the list doesn't carry it). `None` when it can't be read.
 #[cfg(not(target_arch = "wasm32"))]
 fn advertised_template(list: &str, vector: bool) -> Option<String> {
-    use rustgis_data::ogc::{TilesStep, resolve_tiles};
+    use powergis_data::ogc::{TilesStep, resolve_tiles};
     let mut doc = list.to_string();
     for _ in 0..2 {
-        crate::render::rustgis_tiles::address::check(&doc, Some(list)).ok()?;
-        let body = crate::render::rustgis_tiles::cache::download_blocking(&doc).ok()?;
+        crate::render::powergis_tiles::address::check(&doc, Some(list)).ok()?;
+        let body = crate::render::powergis_tiles::cache::download_blocking(&doc).ok()?;
         match resolve_tiles(list, &doc, &body, vector)? {
             TilesStep::Template(t) => return checked_template(list, &t).ok(),
             TilesStep::Next(next) => doc = next,
@@ -323,7 +323,7 @@ pub fn service_json(svc: &Service) -> Value {
                 Offer::Features { url } => json!({"type": "features", "url": url}),
                 Offer::Style { url } => json!({"type": "style", "url": url}),
                 Offer::VectorTiles { template, layers } => json!({"type": "vectorTiles", "url": template, "layers": layers}),
-                Offer::Coverage(c) => json!({"type": "coverage", "url": c.endpoint, "describe": rustgis_data::ogc::describe_coverage_url(c), "version": c.version}),
+                Offer::Coverage(c) => json!({"type": "coverage", "url": c.endpoint, "describe": powergis_data::ogc::describe_coverage_url(c), "version": c.version}),
                 Offer::Service { url } => json!({"type": "service", "url": url}),
             };
             let mut layer = json!({"name": l.name, "title": l.title, "bbox": l.bbox, "offer": offer, "tilesets": l.tilesets});
@@ -410,8 +410,8 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     let asked = asked.filter(|_| slider.is_none() && !pinned);
     let time = match (&layer.time, asked) {
         // A WMS layer's: a list of times or an interval when it takes several (WMS 1.3.0 Annex C).
-        (Some(l), Some(t)) if l.multiple => Some(rustgis_data::ogc::checked_wms_time(t)?),
-        (Some(_), Some(t)) => Some(rustgis_data::ogc::checked_time(t)?),
+        (Some(l), Some(t)) if l.multiple => Some(powergis_data::ogc::checked_wms_time(t)?),
+        (Some(_), Some(t)) => Some(powergis_data::ogc::checked_time(t)?),
         (Some(_), None) if slider.is_some() => None,
         (Some(t), None) => Some(t.default.clone()),
         (None, Some(_)) => return Err(format!("{}: the layer has no time to pick (leave time out)", layer.title)),
@@ -424,7 +424,7 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     let name = ps(p, "name").map(str::trim).filter(|n| !n.is_empty()).unwrap_or(&title).to_string();
     let zoom = |s: &mut Session| {
         if let Some([w, so, e, n]) = layer.bbox {
-            s.zoom_to(&rustgis_geom::Extent::new(w, so, e, n));
+            s.zoom_to(&powergis_geom::Extent::new(w, so, e, n));
         }
     };
     // An OGC API layer's tiles: the template its tileset advertises (given, or read now), else
@@ -440,7 +440,7 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
             let template = match (&time, &slider) {
                 // Its time written as the layer writes its times, filled at each step.
                 (_, Some(st)) => template.replace("{Time}", &format!("{{date:{}}}", st.format)),
-                (Some(t), None) => rustgis_data::ogc::with_time(template, t),
+                (Some(t), None) => powergis_data::ogc::with_time(template, t),
                 (None, None) => template.to_string(),
             };
             // With its legends, as its service gives them (none: no key, as before).
@@ -448,7 +448,7 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
             // A layer its service draws on request (a WMS, an ArcGIS map service) is asked for
             // as one picture of the view, so its symbols and labels aren't cut at tile edges
             // (#1162); `map.setTiles` turns it back to tiles.
-            if rustgis_map::tiles::drawn_on_request(&template) {
+            if powergis_map::tiles::drawn_on_request(&template) {
                 add["singleImage"] = json!(true);
             }
             // The zooms its service draws it at (a WMS layer's scale hints, a WMTS layer's matrices):
@@ -472,7 +472,7 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
                 }
             }
             // (Those the layer wouldn't keep, an address too long, are left out, not refused.)
-            let legends = rustgis_map::tiles::checked_legends(layer.legends.iter().cloned());
+            let legends = powergis_map::tiles::checked_legends(layer.legends.iter().cloned());
             if !legends.is_empty() {
                 add["legend"] = json!(legends);
             }
@@ -530,14 +530,14 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
             }
             #[cfg(not(target_arch = "wasm32"))]
             {
-                let bytes = crate::render::rustgis_tiles::cache::download_blocking(&get).map_err(|e| format!("{name}: {e}"))?;
+                let bytes = crate::render::powergis_tiles::cache::download_blocking(&get).map_err(|e| format!("{name}: {e}"))?;
                 coverage_check(&name, &bytes)?;
                 super::raster::add_named_bytes(s, &json!({"name": name}), format!("{name}.tif"), bytes)
             }
         }
         Offer::Features { url: items } => {
             let area = features_area(s, p)?;
-            let asked = area.and_then(|a| rustgis_data::ogc::features_in_area(items, a));
+            let asked = area.and_then(|a| powergis_data::ogc::features_in_area(items, a));
             #[cfg(target_arch = "wasm32")]
             {
                 let _ = (items, asked);
@@ -552,14 +552,14 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
                     let why = if area.is_none() { "an area across the antimeridian" } else { "its request can't carry an area" };
                     s.notify(format!("{name}: {why}, so the whole layer is asked for"), false);
                 }
-                let max = crate::render::rustgis_tiles::cache::MAX_DOWNLOAD;
+                let max = crate::render::powergis_tiles::cache::MAX_DOWNLOAD;
                 let bytes = download_features(s, &name, asked.as_deref().unwrap_or(items), max).map_err(|e| slow_whole_layer(e, given))?;
                 let bytes = features_answer(s, &name, bytes, layer.bbox);
                 let mut r = super::raster::add_named_bytes(s, &json!({"name": name}), format!("{name}.geojson"), bytes)?;
                 // Over an area, the features crossing it: the view stays, or goes to a box given
                 // (the whole layer's bounds would show a country to fill one state).
                 match (asked.is_some(), area, p.get("bbox")) {
-                    (true, Some([w, so, e, n]), Some(Value::Array(_))) => s.zoom_to(&rustgis_geom::Extent::new(w, so, e, n)),
+                    (true, Some([w, so, e, n]), Some(Value::Array(_))) => s.zoom_to(&powergis_geom::Extent::new(w, so, e, n)),
                     (true, ..) => {}
                     _ => zoom(s),
                 }
@@ -596,7 +596,7 @@ fn slow_whole_layer(e: String, area_given: bool) -> String {
 
 /// The area a coverage is asked for over: `bbox` given, `"full"` (its bounds), or the map's view
 /// (the default); within its bounds when they are known.
-fn coverage_area(s: &Session, p: &Value, info: &rustgis_data::ogc::CoverageInfo, id: &str) -> Result<[f64; 4], String> {
+fn coverage_area(s: &Session, p: &Value, info: &powergis_data::ogc::CoverageInfo, id: &str) -> Result<[f64; 4], String> {
     let area = match p.get("bbox") {
         Some(Value::String(f)) if f == "full" => {
             info.bbox.ok_or_else(|| format!("{id}: its bounds aren't known; give bbox or use the view"))?
@@ -606,31 +606,31 @@ fn coverage_area(s: &Session, p: &Value, info: &rustgis_data::ogc::CoverageInfo,
     if area[0] > area[2] {
         return Err(format!("{id}: an area across the antimeridian; give it one side at a time"));
     }
-    rustgis_data::ogc::coverage_area(info, area).ok_or_else(|| format!("{id}: the coverage has no data in the area"))
+    powergis_data::ogc::coverage_area(info, area).ok_or_else(|| format!("{id}: the coverage has no data in the area"))
 }
 
 /// A coverage's GetCoverage address and the area it covers: its description from `"describe"`, or
 /// fetched (waiting for it).
 fn coverage_request(s: &Session, p: &Value, c: &Coverage) -> Result<(String, [f64; 4]), String> {
-    let describe = rustgis_data::ogc::describe_coverage_url(c);
+    let describe = powergis_data::ogc::describe_coverage_url(c);
     let info = match ps(p, "describe") {
-        Some(text) => rustgis_data::ogc::parse_describe(c, text.as_bytes())?,
+        Some(text) => powergis_data::ogc::parse_describe(c, text.as_bytes())?,
         None => fetch_describe(c, &describe)?,
     };
     let area = coverage_area(s, p, &info, &c.id)?;
-    let get = rustgis_data::ogc::get_coverage_url(c, &info, area);
-    crate::render::rustgis_tiles::address::check(&get, Some(&c.endpoint))?;
+    let get = powergis_data::ogc::get_coverage_url(c, &info, area);
+    crate::render::powergis_tiles::address::check(&get, Some(&c.endpoint))?;
     Ok((get, area))
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn fetch_describe(c: &Coverage, describe: &str) -> Result<rustgis_data::ogc::CoverageInfo, String> {
-    let bytes = crate::render::rustgis_tiles::cache::download_blocking(describe).map_err(|e| format!("{}: {e}", c.id))?;
-    rustgis_data::ogc::parse_describe(c, &bytes)
+fn fetch_describe(c: &Coverage, describe: &str) -> Result<powergis_data::ogc::CoverageInfo, String> {
+    let bytes = crate::render::powergis_tiles::cache::download_blocking(describe).map_err(|e| format!("{}: {e}", c.id))?;
+    powergis_data::ogc::parse_describe(c, &bytes)
 }
 
 #[cfg(target_arch = "wasm32")]
-fn fetch_describe(c: &Coverage, _: &str) -> Result<rustgis_data::ogc::CoverageInfo, String> {
+fn fetch_describe(c: &Coverage, _: &str) -> Result<powergis_data::ogc::CoverageInfo, String> {
     Err(format!("{}: in the web app, the description is read first (give it as \"describe\")", c.id))
 }
 
@@ -651,7 +651,7 @@ fn coverage(s: &mut Session, p: &Value) -> CmdResult {
         .ok_or_else(|| format!("{url}: no coverage '{want}' (service.layers lists them)"))?;
     let Offer::Coverage(c) = &layer.offer else { return Err(format!("{url}: '{want}' isn't a WCS coverage")) };
     let (get, area) = coverage_request(s, p, c)?;
-    Ok(json!({"url": get, "name": layer.title, "bbox": area, "describe": rustgis_data::ogc::describe_coverage_url(c)}))
+    Ok(json!({"url": get, "name": layer.title, "bbox": area, "describe": powergis_data::ogc::describe_coverage_url(c)}))
 }
 
 /// The GetRecords request `catalog.search` makes of its parameters (the app fetches it first).
@@ -664,7 +664,7 @@ pub fn records_request(s: &Session, p: &Value) -> Result<String, String> {
         Some(_) => Some(super::catalogs::area(s, p)?).filter(|a| a[0] <= a[2]),
     };
     let start = p.get("start").and_then(Value::as_u64).unwrap_or(1).clamp(1, 1_000_000);
-    Ok(rustgis_data::ogc::records_url(url, words, bbox, start))
+    Ok(powergis_data::ogc::records_url(url, words, bbox, start))
 }
 
 /// A WCS coverage's answer is a GeoTIFF; anything else (an XML exception, an HTML page, plain
@@ -684,7 +684,7 @@ pub(super) fn catalog_search(s: &mut Session, p: &Value) -> CmdResult {
     let url = url_of(p)?;
     let request = records_request(s, p)?;
     let page = match ps(p, "text") {
-        Some(text) => rustgis_data::ogc::parse_records(&request, text.as_bytes()).map_err(|e| format!("{url}: {e}"))?,
+        Some(text) => powergis_data::ogc::parse_records(&request, text.as_bytes()).map_err(|e| format!("{url}: {e}"))?,
         None => fetch_records(url, &request)?,
     };
     let mut dropped = 0usize;
@@ -696,7 +696,7 @@ pub(super) fn catalog_search(s: &mut Session, p: &Value) -> CmdResult {
                 .links
                 .iter()
                 .filter(|l| {
-                    let ok = crate::render::rustgis_tiles::address::check(&l.url, Some(&request)).is_ok();
+                    let ok = crate::render::powergis_tiles::address::check(&l.url, Some(&request)).is_ok();
                     dropped += usize::from(!ok);
                     ok
                 })
@@ -714,13 +714,13 @@ pub(super) fn catalog_search(s: &mut Session, p: &Value) -> CmdResult {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-fn fetch_records(url: &str, request: &str) -> Result<rustgis_data::ogc::RecordPage, String> {
-    let bytes = crate::render::rustgis_tiles::cache::download_blocking(request).map_err(|e| format!("{url}: {e}"))?;
-    rustgis_data::ogc::parse_records(request, &bytes).map_err(|e| format!("{url}: {e}"))
+fn fetch_records(url: &str, request: &str) -> Result<powergis_data::ogc::RecordPage, String> {
+    let bytes = crate::render::powergis_tiles::cache::download_blocking(request).map_err(|e| format!("{url}: {e}"))?;
+    powergis_data::ogc::parse_records(request, &bytes).map_err(|e| format!("{url}: {e}"))
 }
 
 #[cfg(target_arch = "wasm32")]
-fn fetch_records(url: &str, _: &str) -> Result<rustgis_data::ogc::RecordPage, String> {
+fn fetch_records(url: &str, _: &str) -> Result<powergis_data::ogc::RecordPage, String> {
     Err(format!("{url}: in the web app, use Home › Add › Add Data › From Service › Search Catalogue"))
 }
 

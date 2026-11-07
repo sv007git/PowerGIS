@@ -31,7 +31,7 @@ fn query(_s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::duckdb;
+        use powergis_data::source::duckdb;
         let database = super::layer::sql_database_param(p)?;
         let limit = f(p, "limit").filter(|l| l.is_finite()).map(|l| l.clamp(1.0, duckdb::MAX_PREVIEW as f64) as usize).unwrap_or(100);
         let r = duckdb::preview(&duckdb::Query { sql, database: database.as_ref(), crs: None }, limit).map_err(|e| e.to_string())?;
@@ -41,7 +41,7 @@ fn query(_s: &mut Session, p: &Value) -> CmdResult {
 
 /// A preview as the command returns it.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn preview_json(r: &rustgis_data::source::duckdb::Preview) -> Value {
+pub fn preview_json(r: &powergis_data::source::duckdb::Preview) -> Value {
     json!({
         "columns": r.columns.iter().map(|(n, t)| json!({"name": n, "type": t})).collect::<Vec<_>>(),
         "rows": r.rows,
@@ -60,7 +60,7 @@ fn schema(_s: &mut Session, p: &Value) -> CmdResult {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let db = super::layer::sql_database_param(p)?.ok_or("database is required")?;
-        let cols = rustgis_data::source::duckdb::schema_of(&db).map_err(|e| format!("{}: {e}", db.short()))?;
+        let cols = powergis_data::source::duckdb::schema_of(&db).map_err(|e| format!("{}: {e}", db.short()))?;
         let mut tables = serde_json::Map::new();
         for (t, c) in cols {
             if let Some(a) = tables.entry(t).or_insert_with(|| json!([])).as_array_mut() {

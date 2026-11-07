@@ -23,16 +23,16 @@ pub mod sources;
 mod tests;
 
 pub use project::Project;
-pub use rustgis_analysis as analysis;
-pub use rustgis_data as data;
-pub use rustgis_geom as geom;
-pub use rustgis_map as map;
-pub use rustgis_plugins as plugins;
-pub use rustgis_render as render;
+pub use powergis_analysis as analysis;
+pub use powergis_data as data;
+pub use powergis_geom as geom;
+pub use powergis_map as map;
+pub use powergis_plugins as plugins;
+pub use powergis_render as render;
 
 use std::path::PathBuf;
 
-use rustgis_map::{Camera, Map};
+use powergis_map::{Camera, Map};
 use serde_json::Value;
 
 pub type CmdResult = Result<Value, String>;
@@ -473,7 +473,7 @@ struct PutAside {
     pending: Vec<PendingRun>,
     file_outputs: Vec<cmd::gp::PendingFile>,
     #[cfg(feature = "geolibre")]
-    started: Vec<(u64, rustgis_geolibre::Job, serde_json::Value, u64)>,
+    started: Vec<(u64, powergis_geolibre::Job, serde_json::Value, u64)>,
     plugin_runs: Vec<cmd::gp::StartedRun>,
     downloading: Vec<u64>,
     downloaded: Vec<(u64, Vec<u8>)>,
@@ -482,8 +482,8 @@ struct PutAside {
     /// A style of the project still loading, which mustn't move the next one's view.
     style_view: Option<(String, Camera)>,
     #[cfg(not(target_arch = "wasm32"))]
-    sql_results: Vec<(u64, String, Option<String>, rustgis_data::source::duckdb::Output)>,
-    trend_results: Vec<(u64, Vec<rustgis_data::raster::Raster>, usize)>,
+    sql_results: Vec<(u64, String, Option<String>, powergis_data::source::duckdb::Output)>,
+    trend_results: Vec<(u64, Vec<powergis_data::raster::Raster>, usize)>,
     edit_counts: std::collections::HashMap<u32, cmd::design::EditCounts>,
 }
 
@@ -512,7 +512,7 @@ pub struct Session {
     /// Saved connections (`connection.*`): kept with the app's preferences, not the project; never a secret.
     pub connections: connections::Connections,
     /// The runtime token of each saved S3 connection's login in this session, by saved id (see
-    /// `rustgis_tiles::s3::connect_saved`): given on the first successful login, kept after.
+    /// `powergis_tiles::s3::connect_saved`): given on the first successful login, kept after.
     pub(crate) s3_bindings: std::collections::BTreeMap<String, String>,
     /// Project sources that read an S3 bucket through a saved connection and wait for the user to
     /// choose which (see [`s3_connections`]); none is fetched meanwhile.
@@ -523,7 +523,7 @@ pub struct Session {
     pub database_logins: connections::DatabaseLogins,
     /// How rasters added from now on are drawn (`raster.setDefaultStyle`; kept with the app's
     /// preferences, not the project).
-    pub raster_defaults: rustgis_map::RasterDefaults,
+    pub raster_defaults: powergis_map::RasterDefaults,
     pub registry: Registry,
     /// Bumped on every change so views can cache.
     pub revision: u64,
@@ -564,7 +564,7 @@ pub struct Session {
     /// (undone, or restored by a failed command, past a save) would write its edits again.
     /// Outside the project, so undo keeps it.
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    pub(crate) saved_over: Vec<rustgis_map::source::Versions>,
+    pub(crate) saved_over: Vec<powergis_map::source::Versions>,
     /// The feature cache fills itself after projection changes (Data › Feature Cache).
     pub auto_cache: bool,
     /// Mensuration results (Analyze › Mensuration › Results).
@@ -600,7 +600,7 @@ pub struct Session {
     pub active_presentation: Option<usize>,
     pub active_notebook: Option<usize>,
     /// Electrical distribution grid state in memory (GridSense).
-    pub grid: Option<rustgis_analysis::grid::ElectricalNetwork>,
+    pub grid: Option<powergis_analysis::grid::ElectricalNetwork>,
     /// Drawing tools stay active after a graphic is drawn (Edit › Graphics).
     pub keep_tool: bool,
     /// Copied features (Edit › Clipboard).
@@ -641,13 +641,13 @@ pub struct Session {
     queue_gp_files: bool,
     /// Asynchronous runs started and not yet complete: (id, job, resolved params, start time).
     #[cfg(feature = "geolibre")]
-    pub(crate) started: Vec<(u64, rustgis_geolibre::Job, serde_json::Value, u64)>,
+    pub(crate) started: Vec<(u64, powergis_geolibre::Job, serde_json::Value, u64)>,
     /// Plugin tool runs started and not yet complete (`gp::plugin_start`).
     pub(crate) plugin_runs: Vec<cmd::gp::StartedRun>,
     /// Plugins' panels, by plugin id: the widgets' values and what the plugin last said about
     /// them (it keeps nothing between calls). Not saved with the project: a plugin's state
     /// command reads what it needs from the map when the panel opens.
-    pub plugin_panels: std::collections::BTreeMap<String, rustgis_plugins::PanelState>,
+    pub plugin_panels: std::collections::BTreeMap<String, powergis_plugins::PanelState>,
     /// Data downloads of this project under way (Home › Add › Add Data › From URL), by id.
     downloading: Vec<u64>,
     /// Downloads that landed, waiting for `layer.addDownload`.
@@ -671,11 +671,11 @@ pub struct Session {
     /// Query results the app ran off the frame (the SQL pane), waiting for `layer.addSql {"ran"}`:
     /// the id, the query and database (label) they came from, and the result.
     #[cfg(not(target_arch = "wasm32"))]
-    pub(crate) sql_results: Vec<(u64, String, Option<String>, rustgis_data::source::duckdb::Output)>,
+    pub(crate) sql_results: Vec<(u64, String, Option<String>, powergis_data::source::duckdb::Output)>,
     /// Trends the app worked out on a thread, waiting for `cube.trend {"ran"}`: the id, the
     /// layers and how many dates (see [`cmd::cube::land`]).
-    pub(crate) trend_results: Vec<(u64, Vec<rustgis_data::raster::Raster>, usize)>,
-    /// Set where nothing waits on a command but a shell (`rustgis-cli run`): long runs a command
+    pub(crate) trend_results: Vec<(u64, Vec<powergis_data::raster::Raster>, usize)>,
+    /// Set where nothing waits on a command but a shell (`powergis-cli run`): long runs a command
     /// works out where it's called (a trend over a state from a data cube) take the app's larger
     /// bounds, as its panes do on a thread, and tell their progress (a share, 0 to 1, and 1 when
     /// one succeeds) through this. Python leaves it unset: a run there holds the interpreter's
@@ -693,7 +693,7 @@ pub(crate) struct PendingRun {
     /// The tool's id, for the history.
     pub tool_id: String,
     pub params: serde_json::Value,
-    pub result: Result<rustgis_analysis::ToolResult, String>,
+    pub result: Result<powergis_analysis::ToolResult, String>,
     /// When the run started, in milliseconds since 1970.
     pub started: u64,
     pub millis: u64,
@@ -714,11 +714,11 @@ fn strip_windows(p: &mut Project) {
 /// The first streamed layer whose features or fields differ between two versions of a project
 /// for a reason other than a read of its source.
 fn edited_streamed(before: &Project, after: &Project) -> Option<String> {
-    let schema = |l: &rustgis_map::Layer| l.dataset.fields.iter().map(|f| (f.name.clone(), f.ty)).collect::<Vec<_>>();
+    let schema = |l: &powergis_map::Layer| l.dataset.fields.iter().map(|f| (f.name.clone(), f.ty)).collect::<Vec<_>>();
     for (mb, ma) in before.maps.iter().zip(&after.maps) {
         for la in ma.layers.iter().filter(|l| l.is_streamed()) {
             let Some(lb) = mb.layers.iter().find(|l| l.id == la.id && l.is_streamed()) else { continue };
-            let reads = |l: &rustgis_map::Layer| l.source.as_ref().map(|s| s.reads);
+            let reads = |l: &powergis_map::Layer| l.source.as_ref().map(|s| s.reads);
             if reads(la) == reads(lb) && (la.dataset.features != lb.dataset.features || schema(la) != schema(lb)) {
                 return Some(la.name.clone());
             }
@@ -788,10 +788,10 @@ impl Session {
     pub fn new(project: Project) -> Self {
         // Cheap: the suite's tools load the first time a tool list is needed.
         #[cfg(feature = "geolibre")]
-        rustgis_geolibre::register();
-        rustgis_plugins::tools::register();
+        powergis_geolibre::register();
+        powergis_plugins::tools::register();
         // FlatGeobuf and GeoParquet by their web address are read through the tile fetchers.
-        render::rustgis_tiles::remote::install();
+        render::powergis_tiles::remote::install();
         Session {
             project,
             path: None,
@@ -806,7 +806,7 @@ impl Session {
             s3_bindings: std::collections::BTreeMap::new(),
             s3_pending: Vec::new(),
             database_logins: connections::DatabaseLogins::default(),
-            raster_defaults: rustgis_map::RasterDefaults::default(),
+            raster_defaults: powergis_map::RasterDefaults::default(),
             registry: Registry { commands: cmd::all() },
             revision: 1,
             opened: 0,
@@ -879,13 +879,13 @@ impl Session {
     }
 
     /// The electrical distribution network, if loaded.
-    pub fn grid(&self) -> Option<&rustgis_analysis::grid::ElectricalNetwork> {
+    pub fn grid(&self) -> Option<&powergis_analysis::grid::ElectricalNetwork> {
         self.grid.as_ref()
     }
 
     /// The mutable electrical distribution network, initializing the reference sample if not present.
-    pub fn grid_mut(&mut self) -> &mut rustgis_analysis::grid::ElectricalNetwork {
-        self.grid.get_or_insert_with(rustgis_analysis::grid::create_sample_network)
+    pub fn grid_mut(&mut self) -> &mut powergis_analysis::grid::ElectricalNetwork {
+        self.grid.get_or_insert_with(powergis_analysis::grid::create_sample_network)
     }
 
     /// Keeps a query's result the app ran off the frame, for `layer.addSql {"ran": id}`, with the
@@ -893,7 +893,7 @@ impl Session {
     /// layer's saved query is the one that made it. A few at a time: past that many, the oldest
     /// are forgotten.
     #[cfg(not(target_arch = "wasm32"))]
-    pub fn sql_ran(&mut self, sql: &str, database: Option<&str>, out: rustgis_data::source::duckdb::Output) -> u64 {
+    pub fn sql_ran(&mut self, sql: &str, database: Option<&str>, out: powergis_data::source::duckdb::Output) -> u64 {
         self.next_pending = self.next_pending.wrapping_add(1);
         if self.sql_results.len() >= 8 {
             self.sql_results.remove(0);
@@ -1029,7 +1029,7 @@ impl Session {
         // land: logged then, once. (Another command's `pending`, a download the web app makes, is
         // logged as it is asked for: nothing runs it again.)
         let pending =
-            id.starts_with(rustgis_plugins::PREFIX) && res.as_ref().is_ok_and(|v| v.get("pending").and_then(Value::as_bool) == Some(true));
+            id.starts_with(powergis_plugins::PREFIX) && res.as_ref().is_ok_and(|v| v.get("pending").and_then(Value::as_bool) == Some(true));
         // With logging off, only its own switching and clearing go in: nothing else is clipped
         // or redacted for nothing.
         let wanted = self.log.on() || matches!(id, "project.logCommands" | "project.clearLog");
@@ -1064,7 +1064,7 @@ impl Session {
         if self.style_view.is_some() {
             self.follow_style_view();
         }
-        if id.starts_with(rustgis_plugins::PREFIX) {
+        if id.starts_with(powergis_plugins::PREFIX) {
             self.merge = merge;
             return self.run_plugin(id, params);
         }
@@ -1195,7 +1195,7 @@ impl Session {
                 // snapshot until written) take the window again.
                 for (i, m) in self.project.maps.iter_mut().enumerate() {
                     // No slider (a layer pasted from a map with one): no window either.
-                    let window = m.time.as_ref().map(rustgis_map::time::TimeSlider::window);
+                    let window = m.time.as_ref().map(powergis_map::time::TimeSlider::window);
                     // Layer ids are a map's own: compared within the same map (any layer, when
                     // maps came or went).
                     let before = snap.maps.get(i).filter(|o| o.name == m.name).map(|o| o.layers.as_slice()).unwrap_or_default();
@@ -1203,7 +1203,7 @@ impl Session {
                         let same = before.iter().find(|o| o.id == l.id).is_some_and(|o| {
                             o.dataset.features.shares(&l.dataset.features) && o.dataset.fields == l.dataset.fields && o.time.is_some()
                         });
-                        let rustgis_map::Layer { time, dataset, .. } = l;
+                        let powergis_map::Layer { time, dataset, .. } = l;
                         if let Some(b) = time.as_mut().filter(|_| !same) {
                             b.apply(dataset, window);
                         }
@@ -1269,7 +1269,7 @@ impl Session {
                 for record in failed_history
                     .into_iter()
                     .skip(history_from)
-                    .filter(|record| !record.ok && rustgis_analysis::tool(&record.id).is_some_and(cmd::gp::writes_files))
+                    .filter(|record| !record.ok && powergis_analysis::tool(&record.id).is_some_and(cmd::gp::writes_files))
                 {
                     self.project.gp_history.push(record);
                     recorded_failure = true;
@@ -1590,7 +1590,7 @@ impl Session {
             let Some(p) = old.tiles.iter().find(|t| t.selected) else { continue };
             // Of the same address, kind and role (a basemap and an overlay of one service can
             // both be there); a name that leaves more than one is too unsure to pick any.
-            let same = |t: &&mut rustgis_map::tiles::TileLayer| t.url == p.url && t.kind == p.kind && t.overlay == p.overlay;
+            let same = |t: &&mut powergis_map::tiles::TileLayer| t.url == p.url && t.kind == p.kind && t.overlay == p.overlay;
             let mut like: Vec<_> = m.tiles.iter_mut().filter(same).collect();
             let named: Vec<usize> = like.iter().enumerate().filter(|(_, t)| t.name == p.name).map(|(i, _)| i).collect();
             let at = match named[..] {
@@ -1666,7 +1666,7 @@ impl Session {
         if let Some(last) = self.last_camera {
             let moved = (last.center.x - cam.center.x).abs() > last.res * 2.0
                 || (last.res / cam.res - 1.0).abs() > 0.01
-                || rustgis_map::camera::normalize_bearing(last.bearing - cam.bearing).abs() > 0.5
+                || powergis_map::camera::normalize_bearing(last.bearing - cam.bearing).abs() > 0.5
                 || (last.pitch - cam.pitch).abs() > 0.5;
             if !moved {
                 return;
@@ -1779,14 +1779,14 @@ impl Session {
     }
 
     /// A colour ramp by name: one of the built-in ones, else one of the project's custom ramps.
-    pub fn ramp(&self, name: &str) -> Result<rustgis_map::Ramp, String> {
-        rustgis_map::Ramp::from_name(name)
+    pub fn ramp(&self, name: &str) -> Result<powergis_map::Ramp, String> {
+        powergis_map::Ramp::from_name(name)
             .or_else(|| {
                 self.project
                     .ramps
                     .iter()
                     .find(|r| r.name().eq_ignore_ascii_case(name.trim()))
-                    .map(|r| rustgis_map::Ramp::Custom(Box::new(r.clone())))
+                    .map(|r| powergis_map::Ramp::Custom(Box::new(r.clone())))
             })
             .ok_or_else(|| format!("unknown colour scheme '{name}'"))
     }
@@ -1837,11 +1837,11 @@ impl Session {
     }
 
     /// Fits the camera to a lon/lat extent in the current view size.
-    pub fn zoom_to(&mut self, e: &rustgis_geom::Extent) {
+    pub fn zoom_to(&mut self, e: &powergis_geom::Extent) {
         let (w, h) = self.view_size;
         let m = self.map_mut();
         if m.projection.is_globe() {
-            rustgis_map::Globe::fit(&mut m.camera, e, w, h);
+            powergis_map::Globe::fit(&mut m.camera, e, w, h);
         } else {
             m.fit_lonlat(e, w, h);
         }

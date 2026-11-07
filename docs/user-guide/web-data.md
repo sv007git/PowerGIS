@@ -64,7 +64,7 @@ and `stac.addAsset` with an item returned by `stac.search` (`"item"`) or an item
 (`"url"`) and `"asset"`. API searches return one page and a `"next"` address when there is another:
 
 ```sh
-rustgis-cli run --cmd 'stac.search={"collections":"sentinel-2-c1-l2a","bbox":[7.4,46.9,7.5,47],"datetime":"2024-07-01/2024-07-31","maxCloud":20}' --cmd 'stac.addAsset={"url":"https://earth-search.aws.element84.com/v1/collections/sentinel-2-c1-l2a/items/S2B_T32TLS_20240727T103439_L2A","asset":"scl"}'
+powergis-cli run --cmd 'stac.search={"collections":"sentinel-2-c1-l2a","bbox":[7.4,46.9,7.5,47],"datetime":"2024-07-01/2024-07-31","maxCloud":20}' --cmd 'stac.addAsset={"url":"https://earth-search.aws.element84.com/v1/collections/sentinel-2-c1-l2a/items/S2B_T32TLS_20240727T103439_L2A","asset":"scl"}'
 ```
 
 Assets can use HTTP(S) or `s3://` addresses. S3 assets use the saved connection serving their
@@ -110,7 +110,7 @@ and band, such as INPE's [Brazil Data Cube](https://data.inpe.br/bdc/) or Sentin
   trend: see [Trend analysis](analysis.md#trend-analysis).
 
 ```sh
-rustgis-cli run --cmd 'stac.addCube={"url":"https://data.inpe.br/bdc/stac/v1","collection":"S2-16D-2","asset":"NDVI","bbox":[-55.9,-12.6,-55.5,-12.35],"start":"2024-08-01","end":"2025-06-30","range":[0,0.9]}' --cmd 'time.export={"path":"ndvi.gif"}'
+powergis-cli run --cmd 'stac.addCube={"url":"https://data.inpe.br/bdc/stac/v1","collection":"S2-16D-2","asset":"NDVI","bbox":[-55.9,-12.6,-55.5,-12.35],"start":"2024-08-01","end":"2025-06-30","range":[0,0.9]}' --cmd 'time.export={"path":"ndvi.gif"}'
 ```
 
 ### A catalog of data cubes
@@ -188,7 +188,7 @@ address is a web address (https or http), the dates are `YYYY-MM-DD`, and each i
 once; the list is checked when it is read.
 
 ```sh
-rustgis-cli run --cmd 'cube.catalog={"theme":"vegetation","bbox":[-43,-6,-42.5,-5.5]}' --cmd 'cube.open={"id":"bdc-mod13q1-ndvi","bbox":[-43,-6,-42.5,-5.5]}'
+powergis-cli run --cmd 'cube.catalog={"theme":"vegetation","bbox":[-43,-6,-42.5,-5.5]}' --cmd 'cube.open={"id":"bdc-mod13q1-ndvi","bbox":[-43,-6,-42.5,-5.5]}'
 ```
 
 ### Saved connections
@@ -216,7 +216,7 @@ time.
 address), and `stac.search` walks one, with `"phase"` (`"pre"` or `"post"`) for catalogs of events:
 
 ```sh
-rustgis-cli run --cmd 'stac.search={"url":"https://vantor-opendata.s3.amazonaws.com/events/catalog.json","phase":"post"}'
+powergis-cli run --cmd 'stac.search={"url":"https://vantor-opendata.s3.amazonaws.com/events/catalog.json","phase":"post"}'
 ```
 
 The services below are STAC Search opened on one API or catalog, with the dialog titled after
@@ -243,7 +243,7 @@ others) are listed, and **Add** adds the one chosen (`visual` first, often a PMT
 ### Sentinel-2 Explorer
 
 <figure markdown="span">
-  ![The Sentinel-2 Explorer in the Web Data pane over Bern: the clearest recent scenes as cards with previews, and their footprints drawn on the map](https://assets.rustgis.app/images/web-data.webp)
+  ![The Sentinel-2 Explorer in the Web Data pane over Bern: the clearest recent scenes as cards with previews, and their footprints drawn on the map](https://assets.powergis.app/images/web-data.webp)
   <figcaption>The Sentinel-2 Explorer: the clearest recent scenes where the map is, with their footprints.</figcaption>
 </figure>
 
@@ -289,7 +289,7 @@ latest release (or one named with `"release"`). Two ways:
 tiles):
 
 ```sh
-rustgis-cli run --cmd 'map.zoomToExtent={"extent":[7.40,46.93,7.47,46.97]}' --cmd 'overture.add={"theme":"buildings"}' --cmd 'overture.add={"theme":"transportation"}' --cmd 'share.exportMap={"path":"bern.png"}'
+powergis-cli run --cmd 'map.zoomToExtent={"extent":[7.40,46.93,7.47,46.97]}' --cmd 'overture.add={"theme":"buildings"}' --cmd 'overture.add={"theme":"transportation"}' --cmd 'share.exportMap={"path":"bern.png"}'
 ```
 
 The data's licences differ by theme (OpenStreetMap's ODbL for most, CDLA Permissive 2.0 for
@@ -330,7 +330,7 @@ it. `fieldsOfTheWorld.add` does the same (`"year"`, `"draw"`:
 `both`, `fields` or `density`, `"minScore"`):
 
 ```sh
-rustgis-cli run --cmd 'map.goToXY={"lon":-93.6,"lat":42.03,"scale":40000}' --cmd 'fieldsOfTheWorld.add={"year":2024,"minScore":40}' --cmd 'share.exportMap={"path":"fields.png"}'
+powergis-cli run --cmd 'map.goToXY={"lon":-93.6,"lat":42.03,"scale":40000}' --cmd 'fieldsOfTheWorld.add={"year":2024,"minScore":40}' --cmd 'share.exportMap={"path":"fields.png"}'
 ```
 
 The look is the tile layer's own style layers (`map.addTiles` takes MapLibre style layers as
@@ -355,7 +355,7 @@ or provinces (`ADM1`) and finer divisions down to `ADM5` where they exist, simpl
 `boundaries.countries` lists the countries.
 
 ```sh
-rustgis-cli run --cmd 'osm.download={"bbox":[7.44,46.944,7.456,46.952],"preset":"buildings"}' --cmd 'boundaries.add={"country":"KEN","level":"ADM1"}'
+powergis-cli run --cmd 'osm.download={"bbox":[7.44,46.944,7.456,46.952],"preset":"buildings"}' --cmd 'boundaries.add={"country":"KEN","level":"ADM1"}'
 ```
 
 Both reach the network: the [AI Assistant](assistant.md) asks before it runs them, and plugins need
@@ -418,10 +418,10 @@ their files (they send no CORS headers), so GeoTIFFs are added in the desktop ap
 still opens a file in a new tab, where Earthdata Login asks you to sign in.
 
 ```sh
-rustgis-cli run --cmd 'earthdata.collections={"keyword":"GEDI biomass","cloudHosted":true}'
-rustgis-cli run --sample --cmd 'earthdata.granules={"shortName":"HLSL30","bbox":[-90,42.5,-89,43.5],"start":"2024-06-01","end":"2024-06-30"}' --cmd 'share.exportMap={"path":"hls.png"}'
-rustgis-cli run --sample --cmd 'earthdata.login={"token":"…"}' --cmd 'layer.addUrl={"url":"https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSL30.020/…/….B04.tif"}'
-rustgis-cli run --sample --use-saved-secrets --cmd 'layer.addUrl={"url":"https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSL30.020/…/….B04.tif"}'
+powergis-cli run --cmd 'earthdata.collections={"keyword":"GEDI biomass","cloudHosted":true}'
+powergis-cli run --sample --cmd 'earthdata.granules={"shortName":"HLSL30","bbox":[-90,42.5,-89,43.5],"start":"2024-06-01","end":"2024-06-30"}' --cmd 'share.exportMap={"path":"hls.png"}'
+powergis-cli run --sample --cmd 'earthdata.login={"token":"…"}' --cmd 'layer.addUrl={"url":"https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSL30.020/…/….B04.tif"}'
+powergis-cli run --sample --use-saved-secrets --cmd 'layer.addUrl={"url":"https://data.lpdaac.earthdatacloud.nasa.gov/lp-prod-protected/HLSL30.020/…/….B04.tif"}'
 ```
 
 ## Open-data portals
@@ -447,8 +447,8 @@ features unless `"layer"` names one, or an ArcGIS map or image service's whole m
 lists up to 50 datasets.
 
 ```sh
-rustgis-cli run --cmd 'portal.search={"portal":"socrata","url":"data.cityofnewyork.us","query":"parks"}'
-rustgis-cli run --sample --cmd 'portal.add={"url":"https://data.cityofnewyork.us/resource/enfh-gkve.geojson?$limit=50000","name":"Parks","portal":"https://api.us.socrata.com"}'
+powergis-cli run --cmd 'portal.search={"portal":"socrata","url":"data.cityofnewyork.us","query":"parks"}'
+powergis-cli run --sample --cmd 'portal.add={"url":"https://data.cityofnewyork.us/resource/enfh-gkve.geojson?$limit=50000","name":"Parks","portal":"https://api.us.socrata.com"}'
 ```
 
 An address a portal lists is judged as one found in a document on the web: it may not point into
@@ -490,9 +490,9 @@ read through GeoLibre's relay (`tiles.geolibre.app`), the platform answering onl
 those requests pass through it.
 
 ```sh
-rustgis-cli run --cmd 'portal.search={"portal":"usgs-dem","bbox":[-122.25,46.15,-122.15,46.25]}'
-rustgis-cli run --cmd 'portal.files={"dataset":"giswqs/geospatial"}'
-rustgis-cli run --sample --cmd 'portal.add={"url":"https://data.geopf.fr/telechargement/download/LiDARHD-NUALID/NUALHD_1-0__LAZ_LAMB93_KE_2025-06-06/LHD_FXX_0652_6864_PTS_LAMB93_IGN69.copc.laz","name":"LiDAR HD 0652-6864"}'
+powergis-cli run --cmd 'portal.search={"portal":"usgs-dem","bbox":[-122.25,46.15,-122.15,46.25]}'
+powergis-cli run --cmd 'portal.files={"dataset":"giswqs/geospatial"}'
+powergis-cli run --sample --cmd 'portal.add={"url":"https://data.geopf.fr/telechargement/download/LiDARHD-NUALID/NUALHD_1-0__LAZ_LAMB93_KE_2025-06-06/LHD_FXX_0652_6864_PTS_LAMB93_IGN69.copc.laz","name":"LiDAR HD 0652-6864"}'
 ```
 
 ### Layers that change with time
@@ -530,9 +530,9 @@ default. For example, a daily layer at one day, a yearly map on the slider expor
 animation, and a layer whose only time is `current`:
 
 ```sh
-rustgis-cli run --cmd 'service.add={"url":"https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml","layer":"MODIS_Terra_CorrectedReflectance_TrueColor","time":"2024-06-01"}' --cmd 'share.exportMap={"path":"gibs.png"}'
-rustgis-cli run --cmd 'service.add={"url":"https://wms.geo.admin.ch/?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0","layer":"ch.swisstopo.pixelkarte-farbe-pk25.noscale"}' --cmd 'map.goToXY={"lon":7.4474,"lat":46.948,"scale":25000}' --cmd 'time.set={"interval":15}' --cmd 'time.export={"path":"bern.gif"}'
-rustgis-cli run --cmd 'service.add={"url":"https://wmts.geo.admin.ch/EPSG/3857/1.0.0/WMTSCapabilities.xml","layer":"ch.swisstopo.pixelkarte-farbe"}' --cmd 'share.exportMap={"path":"map.png"}'
+powergis-cli run --cmd 'service.add={"url":"https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml","layer":"MODIS_Terra_CorrectedReflectance_TrueColor","time":"2024-06-01"}' --cmd 'share.exportMap={"path":"gibs.png"}'
+powergis-cli run --cmd 'service.add={"url":"https://wms.geo.admin.ch/?SERVICE=WMS&REQUEST=GetCapabilities&VERSION=1.3.0","layer":"ch.swisstopo.pixelkarte-farbe-pk25.noscale"}' --cmd 'map.goToXY={"lon":7.4474,"lat":46.948,"scale":25000}' --cmd 'time.set={"interval":15}' --cmd 'time.export={"path":"bern.gif"}'
+powergis-cli run --cmd 'service.add={"url":"https://wmts.geo.admin.ch/EPSG/3857/1.0.0/WMTSCapabilities.xml","layer":"ch.swisstopo.pixelkarte-farbe"}' --cmd 'share.exportMap={"path":"map.png"}'
 ```
 
 ## United States
@@ -567,7 +567,7 @@ the others as images the server draws). `nationalMap.services` lists them and `n
 (`"service"`: an id or title) adds one:
 
 ```sh
-rustgis-cli run --cmd 'nationalMap.add={"service":"basemap/USGSTopo"}' --cmd 'nationalMap.add={"service":"hydro/wbd"}' --cmd 'map.goToXY={"lon":-105.27,"lat":40.0,"scale":300000}' --cmd 'share.exportMap={"path":"topo.png"}'
+powergis-cli run --cmd 'nationalMap.add={"service":"basemap/USGSTopo"}' --cmd 'nationalMap.add={"service":"hydro/wbd"}' --cmd 'map.goToXY={"lon":-105.27,"lat":40.0,"scale":300000}' --cmd 'share.exportMap={"path":"topo.png"}'
 ```
 
 ### USGS NLDI
@@ -592,7 +592,7 @@ The NLDI's server is sometimes slow or fails for a point it hasn't seen before: 
 later, or another point.
 
 ```sh
-rustgis-cli run --sample --cmd 'nldi.flowline={"lon":-89.36083,"lat":43.08944}' --cmd 'nldi.basin={"comid":13293750}' --cmd 'nldi.navigate={"comid":13293750,"mode":"UM","distance":100}' --cmd 'nldi.navigate={"comid":13293750,"mode":"DM","distance":50,"source":"nwissite"}' --cmd 'share.exportMap={"path":"nldi.png"}'
+powergis-cli run --sample --cmd 'nldi.flowline={"lon":-89.36083,"lat":43.08944}' --cmd 'nldi.basin={"comid":13293750}' --cmd 'nldi.navigate={"comid":13293750,"mode":"UM","distance":100}' --cmd 'nldi.navigate={"comid":13293750,"mode":"DM","distance":50,"source":"nwissite"}' --cmd 'share.exportMap={"path":"nldi.png"}'
 ```
 
 ## Satellite embeddings
@@ -618,8 +618,8 @@ are read in place too. The commands: `embeddings.datasets`, `embeddings.search` 
 `"bands"`, `"stretch"`, `"dimension"`, `"bbox"`, `"year"`):
 
 ```sh
-rustgis-cli run --cmd 'map.zoomToExtent={"extent":[-122.55,37.7,-122.3,37.85]}' --cmd 'embeddings.search={"dataset":"alphaearth","year":2024}' --cmd 'embeddings.add={"dataset":"alphaearth","url":"https://data.source.coop/tge-labs/aef/v1/annual/2024/10N/xcyo46pot2fg6a61t-0000008192-0000000000.tiff"}' --cmd 'share.exportMap={"path":"aef.png"}'
-rustgis-cli run --cmd 'map.zoomToExtent={"extent":[-83.96,35.94,-83.9,35.98]}' --cmd 'embeddings.add={"dataset":"tessera","year":2024}' --cmd 'share.exportMap={"path":"tessera.png"}'
+powergis-cli run --cmd 'map.zoomToExtent={"extent":[-122.55,37.7,-122.3,37.85]}' --cmd 'embeddings.search={"dataset":"alphaearth","year":2024}' --cmd 'embeddings.add={"dataset":"alphaearth","url":"https://data.source.coop/tge-labs/aef/v1/annual/2024/10N/xcyo46pot2fg6a61t-0000008192-0000000000.tiff"}' --cmd 'share.exportMap={"path":"aef.png"}'
+powergis-cli run --cmd 'map.zoomToExtent={"extent":[-83.96,35.94,-83.9,35.98]}' --cmd 'embeddings.add={"dataset":"tessera","year":2024}' --cmd 'share.exportMap={"path":"tessera.png"}'
 ```
 
 These reach the network: the AI Assistant asks first and plugins need the network permission.

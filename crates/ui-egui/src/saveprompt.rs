@@ -4,13 +4,13 @@
 //!
 //! Commands never ask: `project.new` and the rest run as before for the CLI, scripts, the AI
 //! Assistant and attached agents. What the user does in the interface goes through
-//! [`RustGisApp::run_by_user`], which asks first. The desktop app asks; the browser warns before
+//! [`powergisApp::run_by_user`], which asks first. The desktop app asks; the browser warns before
 //! its page is left instead, and saves by downloading, so it doesn't.
 
 use egui::vec2;
 use serde_json::Value;
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, semibold};
 
 /// The commands that replace the open project.
@@ -31,7 +31,7 @@ pub(crate) struct SavePromptState {
     pub asking: Option<Discard>,
     /// The user chose to quit: the next close request goes through.
     pub closing: bool,
-    /// The project's state when asked ([`rustgis_engine::Session::state`]): Don't Save discards
+    /// The project's state when asked ([`powergis_engine::Session::state`]): Don't Save discards
     /// the changes the user was asked about, not ones an agent made while the dialog showed.
     pub asked: u64,
     /// The project changed while the dialog showed: it asks again, and says why.
@@ -40,19 +40,19 @@ pub(crate) struct SavePromptState {
 
 /// Whether running command `id` from the interface asks first: it replaces the project, which
 /// has unsaved changes, in the desktop app.
-pub(crate) fn asks(app: &RustGisApp, id: &str) -> bool {
+pub(crate) fn asks(app: &powergisApp, id: &str) -> bool {
     REPLACES.contains(&id) && unsaved_here(app)
 }
 
 /// Whether the project has unsaved changes in a shell that asks about them (the desktop app).
-fn unsaved_here(app: &RustGisApp) -> bool {
+fn unsaved_here(app: &powergisApp) -> bool {
     app.session.dirty() && app.opens_files()
 }
 
 /// Shows the dialog for `what`, about the project as it is now. One already showing keeps its
 /// question (the dialog takes the pointer and the keys; a drop that opens a project waits with
 /// the rest of its files). Quitting does replace it, as the user asked for it last.
-pub(crate) fn ask(app: &mut RustGisApp, what: Discard) {
+pub(crate) fn ask(app: &mut powergisApp, what: Discard) {
     if app.save_prompt.asking.is_none() || what == Discard::Quit {
         app.save_prompt.asking = Some(what);
         app.save_prompt.asked = app.session.state();
@@ -62,20 +62,20 @@ pub(crate) fn ask(app: &mut RustGisApp, what: Discard) {
 
 /// Whether the dialog is waiting for an answer: what asked it waits too (the Project tab stays
 /// open, so Cancel goes back to it; it closes once the project is replaced).
-pub(crate) fn waiting(app: &RustGisApp) -> bool {
+pub(crate) fn waiting(app: &powergisApp) -> bool {
     app.save_prompt.asking.is_some()
 }
 
 /// Whether the app ends with unsaved changes the user hasn't agreed to lose: the project has
 /// some, this shell asks, and the dialog wasn't answered with Don't Save (or Save, which leaves
 /// none). Only an end that skipped the close request gets here: macOS's Quit.
-pub(crate) fn unanswered(app: &RustGisApp) -> bool {
+pub(crate) fn unanswered(app: &powergisApp) -> bool {
     unsaved_here(app) && !app.save_prompt.closing
 }
 
 /// Each frame, before anything draws: a request to close the window (its close button, the
 /// system's Quit, or `ui.quit`) waits while the project has unsaved changes, and the dialog asks.
-pub(crate) fn close_requested(app: &mut RustGisApp, ctx: &egui::Context) {
+pub(crate) fn close_requested(app: &mut powergisApp, ctx: &egui::Context) {
     if !ctx.input(|i| i.viewport().close_requested()) || app.save_prompt.closing {
         return;
     }
@@ -89,7 +89,7 @@ pub(crate) fn close_requested(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// The dialog: Save (then go on, once the project is saved), Don't Save (go on), or Cancel.
-pub(crate) fn show(app: &mut RustGisApp, ctx: &egui::Context) {
+pub(crate) fn show(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(what) = app.save_prompt.asking.clone() else { return };
     let t = Tokens::get(ctx);
     let name = &app.session.project.name;
@@ -157,7 +157,7 @@ enum Answer {
 
 /// Does what waited for the answer. Quitting removes the recovery copy as a clean exit does
 /// (`on_exit`); a replacement leaves no unsaved changes, so autosave removes it too.
-fn proceed(app: &mut RustGisApp, what: Discard) {
+fn proceed(app: &mut powergisApp, what: Discard) {
     match what {
         Discard::Replace(id, params) => {
             let _ = app.run(&id, params);
@@ -180,14 +180,14 @@ mod tests {
     use serde_json::json;
     use std::path::PathBuf;
 
-    type Harness = egui_kittest::Harness<'static, RustGisApp>;
+    type Harness = egui_kittest::Harness<'static, powergisApp>;
 
     /// The desktop app on the World Atlas sample, never saved, drawing its frames.
     fn launch() -> Harness {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.start(&Default::default()).unwrap();
         egui_kittest::Harness::builder().with_size(vec2(1400.0, 860.0)).with_max_steps(64).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
@@ -198,7 +198,7 @@ mod tests {
 
     /// A folder of its own for test `name`, emptied first.
     fn folder(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("rustgis-save-prompt-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-save-prompt-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
@@ -375,13 +375,13 @@ mod tests {
         h.state_mut().run("tool.set", json!({"tool": "measure"})).unwrap();
         h.key_press(egui::Key::Escape);
         frames(&mut h, 3);
-        assert!(!asking(&h) && h.state().session.tool == rustgis_engine::Tool::Measure);
+        assert!(!asking(&h) && h.state().session.tool == powergis_engine::Tool::Measure);
         // Command Search closes on its own Escape too, leaving the tool.
         h.state_mut().run("ui.commandSearch", Value::Null).unwrap();
         frames(&mut h, 3);
         h.key_press(egui::Key::Escape);
         frames(&mut h, 3);
-        assert!(h.state().ui.command_search.is_none() && h.state().session.tool == rustgis_engine::Tool::Measure);
+        assert!(h.state().ui.command_search.is_none() && h.state().session.tool == powergis_engine::Tool::Measure);
         h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::N);
         frames(&mut h, 3);
         click(&mut h, "Don't Save");

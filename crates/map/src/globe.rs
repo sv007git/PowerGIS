@@ -10,7 +10,7 @@
 //! swings back about the centre of view (keeping its distance from it) and `z` follows it, so the
 //! visible side is still where `z` exceeds the horizon value (one over the camera's distance).
 
-use rustgis_geom::{Coord, Extent, MERCATOR_R};
+use powergis_geom::{Coord, Extent, MERCATOR_R};
 use serde::{Deserialize, Serialize};
 
 use crate::Camera;
@@ -355,7 +355,7 @@ impl Globe {
         let lon = c.x - (dx / g.radius).to_degrees() / cos0.max(0.2);
         let lat = (c.y + (dy / g.radius).to_degrees()).clamp(-85.0, 85.0);
         let lon = (lon + 540.0).rem_euclid(360.0) - 180.0;
-        camera.center = rustgis_geom::lonlat_to_merc(Coord::new(lon, lat));
+        camera.center = powergis_geom::lonlat_to_merc(Coord::new(lon, lat));
         let cos1 = lat.to_radians().cos();
         if cos1 > 0.0 && cos0 > 0.0 {
             camera.res *= cos0 / cos1;
@@ -383,7 +383,7 @@ impl Globe {
 
     /// Whether any of a longitude/latitude extent can be on the visible side: a cap test on its
     /// centre, widened by its angular radius.
-    pub fn may_see(&self, e: &rustgis_geom::Extent) -> bool {
+    pub fn may_see(&self, e: &powergis_geom::Extent) -> bool {
         if e.is_empty() || e.width() > 180.0 || e.height() > 90.0 {
             return !e.is_empty();
         }
@@ -427,14 +427,14 @@ impl Globe {
 
     /// Points the camera at a longitude/latitude extent: centred on it, with the whole globe in
     /// view when the extent spans most of a hemisphere, otherwise zoomed as the flat map would.
-    pub fn fit(camera: &mut Camera, e: &rustgis_geom::Extent, w: f64, h: f64) {
+    pub fn fit(camera: &mut Camera, e: &powergis_geom::Extent, w: f64, h: f64) {
         if e.is_empty() || w <= 1.0 || h <= 1.0 {
             return;
         }
         if e.width() > 100.0 || e.height() > 70.0 {
             let c = e.center();
             let lat = c.y.clamp(-60.0, 60.0);
-            camera.center = rustgis_geom::lonlat_to_merc(Coord::new(c.x, lat));
+            camera.center = powergis_geom::lonlat_to_merc(Coord::new(c.x, lat));
             // Disc radius ≈ 44% of the shorter side.
             let disc = 0.44 * w.min(h);
             let radius = disc / ((GLOBE_DISTANCE - 1.0) / (GLOBE_DISTANCE + 1.0)).sqrt();
@@ -508,7 +508,7 @@ impl Globe {
     /// ±180° longitude and the Web Mercator latitudes: a view across the antimeridian gets one
     /// box on either side of it. Empty when the globe is out of sight.
     pub fn drape_extents(&self, w: f64, h: f64, margin: f64) -> Vec<Extent> {
-        use rustgis_geom::MAX_LAT;
+        use powergis_geom::MAX_LAT;
         let pts = self.visible_points(w, h);
         if pts.is_empty() {
             return Vec::new();
@@ -546,7 +546,7 @@ impl Globe {
 
     /// Whether `boxes` (from [`Globe::drape_extents`]) cover everything a `w × h` view shows.
     pub fn drape_covers(&self, w: f64, h: f64, boxes: &[Extent]) -> bool {
-        use rustgis_geom::MAX_LAT;
+        use powergis_geom::MAX_LAT;
         self.visible_points(w, h).iter().all(|p| {
             let p = Coord::new(p.x, p.y.clamp(-MAX_LAT, MAX_LAT));
             boxes.iter().any(|b| b.contains(p))
@@ -558,7 +558,7 @@ impl Globe {
     /// reaching the Web Mercator latitude limit is stretched on to the pole, as the globe's
     /// tiles are.
     pub fn drape_mesh(&self, merc: &Extent) -> DrapeMesh {
-        use rustgis_geom::merc_to_lonlat;
+        use powergis_geom::merc_to_lonlat;
         let mut out = DrapeMesh::default();
         if !(!merc.is_empty() && merc.width() > 0.0 && merc.height() > 0.0 && merc.width().is_finite() && merc.height().is_finite()) {
             return out;
@@ -648,7 +648,7 @@ pub fn densify(a: V3, b: V3, step: f64) -> Vec<V3> {
 
 #[cfg(test)]
 mod tests {
-    use rustgis_geom::lonlat_to_merc;
+    use powergis_geom::lonlat_to_merc;
 
     use super::*;
 
@@ -780,12 +780,12 @@ mod tests {
         let r1 = Globe::new(&cam, 800.0, 600.0).disc_radius();
         assert!((r1 - r0).abs() < 1e-6 * r0, "{r0} vs {r1}");
         let g = Globe::new(&Camera { center: lonlat_to_merc(Coord::new(0.0, 0.0)), res: 20_000.0, bearing: 0.0, pitch: 0.0 }, 800.0, 600.0);
-        let near = rustgis_geom::Extent::new(-5.0, -5.0, 5.0, 5.0);
-        let far = rustgis_geom::Extent::new(170.0, -5.0, 179.0, 5.0);
-        let limb = rustgis_geom::Extent::new(75.0, -5.0, 85.0, 5.0);
+        let near = powergis_geom::Extent::new(-5.0, -5.0, 5.0, 5.0);
+        let far = powergis_geom::Extent::new(170.0, -5.0, 179.0, 5.0);
+        let limb = powergis_geom::Extent::new(75.0, -5.0, 85.0, 5.0);
         assert!(g.may_see(&near) && !g.may_see(&far) && g.may_see(&limb));
-        assert!(g.may_see(&rustgis_geom::Extent::new(-180.0, -90.0, 180.0, 90.0)));
-        assert!(!g.may_see(&rustgis_geom::Extent::EMPTY));
+        assert!(g.may_see(&powergis_geom::Extent::new(-180.0, -90.0, 180.0, 90.0)));
+        assert!(!g.may_see(&powergis_geom::Extent::EMPTY));
     }
 
     #[test]
@@ -820,7 +820,7 @@ mod tests {
         let boxes = g.drape_extents(w, h, 0.25);
         assert_eq!(boxes.len(), 2, "{boxes:?}");
         for b in &boxes {
-            assert!(b.min_x >= -180.0 && b.max_x <= 180.0 && b.min_y >= -rustgis_geom::MAX_LAT, "{b:?}");
+            assert!(b.min_x >= -180.0 && b.max_x <= 180.0 && b.min_y >= -powergis_geom::MAX_LAT, "{b:?}");
         }
         assert!(g.drape_covers(w, h, &boxes));
         // A pole in view: the box spans every longitude.
@@ -836,8 +836,8 @@ mod tests {
     #[test]
     fn the_drape_mesh_lands_on_the_globe() {
         let g = at(10.0, 45.0, 20_000.0);
-        let world = Extent::new(-180.0, -rustgis_geom::MAX_LAT, 180.0, rustgis_geom::MAX_LAT);
-        let m = g.drape_mesh(&rustgis_geom::extent_to_merc(&world));
+        let world = Extent::new(-180.0, -powergis_geom::MAX_LAT, 180.0, powergis_geom::MAX_LAT);
+        let m = g.drape_mesh(&powergis_geom::extent_to_merc(&world));
         assert_eq!(m.pos.len(), m.uv.len());
         assert!(!m.indices.is_empty() && m.indices.len().is_multiple_of(3));
         assert!(m.indices.iter().all(|&i| (i as usize) < m.pos.len()));
@@ -850,22 +850,22 @@ mod tests {
         assert!(m.indices.len() / 3 < cells, "{} triangles", m.indices.len() / 3);
         // A picture's point lands where the globe puts it: the vertex at a texture position maps
         // to the screen position of its longitude/latitude.
-        let merc = rustgis_geom::extent_to_merc(&Extent::new(0.0, 40.0, 20.0, 50.0));
+        let merc = powergis_geom::extent_to_merc(&Extent::new(0.0, 40.0, 20.0, 50.0));
         let m = g.drape_mesh(&merc);
         let k = m.uv.iter().position(|uv| uv[0] == 0.5 && uv[1] == 0.5).unwrap();
-        let ll = rustgis_geom::merc_to_lonlat(merc.center());
+        let ll = powergis_geom::merc_to_lonlat(merc.center());
         let (x, y) = g.forward(ll).unwrap();
         assert!((m.pos[k][0] - x as f32).abs() < 0.01 && (m.pos[k][1] - y as f32).abs() < 0.01);
         // Every vertex on the near side is where `forward` puts its longitude/latitude (the mesh
         // works out its sines and cosines by row and column instead).
         let ll = Extent::from_points(
-            rustgis_geom::merc_to_lonlat(Coord::new(merc.min_x, merc.min_y)),
-            rustgis_geom::merc_to_lonlat(Coord::new(merc.max_x, merc.max_y)),
+            powergis_geom::merc_to_lonlat(Coord::new(merc.min_x, merc.min_y)),
+            powergis_geom::merc_to_lonlat(Coord::new(merc.max_x, merc.max_y)),
         );
         for (p, uv) in m.pos.iter().zip(&m.uv) {
             let lon = ll.min_x + ll.width() * f64::from(uv[0]);
             let y = merc.max_y - merc.height() * f64::from(uv[1]);
-            let lat = rustgis_geom::merc_to_lonlat(Coord::new(0.0, y)).y;
+            let lat = powergis_geom::merc_to_lonlat(Coord::new(0.0, y)).y;
             if let Some((x, y)) = g.forward(Coord::new(lon, lat)) {
                 assert!((p[0] - x as f32).abs() < 0.01 && (p[1] - y as f32).abs() < 0.01, "{p:?} vs {x}, {y}");
             }

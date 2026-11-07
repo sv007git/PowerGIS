@@ -9,8 +9,8 @@
 //! - Band 1: Predicted value surface
 //! - Band 2: Estimation variance (uncertainty/error surface)
 
-use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
-use rustgis_geom::{Coord, Extent};
+use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+use powergis_geom::{Coord, Extent};
 
 use crate::rasterops::{MAX_PIXELS, NODATA};
 

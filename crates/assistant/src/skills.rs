@@ -130,7 +130,7 @@ pub fn with(mut skills: Vec<Skill>, extra: Vec<Skill>) -> Vec<Skill> {
 /// read.
 pub fn from_plugins() -> (Vec<Skill>, Vec<String>) {
     let (mut skills, mut problems) = (Vec::new(), Vec::new());
-    for p in rustgis_engine::plugins::skills() {
+    for p in powergis_engine::plugins::skills() {
         match parse(&p.text) {
             Ok(s) if s.name == p.name => {
                 skills.push(Skill { name: format!("{}:{}", p.plugin, p.name), source: Source::Plugin(p.plugin), ..s });
@@ -244,7 +244,7 @@ mod local {
         /// The usual folders: `skills` and `skills.json` in the settings folder, and
         /// `~/.agents/skills`.
         pub fn here() -> Places {
-            let settings = rustgis_engine::data::dirs::config_dir();
+            let settings = powergis_engine::data::dirs::config_dir();
             let home = std::env::var_os(if cfg!(windows) { "USERPROFILE" } else { "HOME" }).filter(|h| !h.is_empty());
             Places {
                 user: settings.as_ref().map(|d| d.join("skills")),
@@ -343,7 +343,7 @@ mod local {
             std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
         }
         let text = serde_json::to_string_pretty(&state).map_err(|e| e.to_string())?;
-        rustgis_engine::data::io::write_atomic(path, text.as_bytes()).map_err(|e| format!("{}: {e}", path.display()))
+        powergis_engine::data::io::write_atomic(path, text.as_bytes()).map_err(|e| format!("{}: {e}", path.display()))
     }
 
     /// Adds skills to the user's: a `SKILL.md`, a skill's folder, a folder of skill folders, or
@@ -686,7 +686,7 @@ mod local {
             std::fs::create_dir_all(&folder).unwrap();
             std::fs::write(folder.join("SKILL.md"), "---\nname: thematic-map\ndescription: shared\n---\nShared instructions.").unwrap();
             let places = Places { user: None, shared: Some(root.path().join("shared")), state: Some(root.path().join("state.json")) };
-            // The built-in is on, so `enable` means the shared one (`rustgis-cli skills enable`).
+            // The built-in is on, so `enable` means the shared one (`powergis-cli skills enable`).
             set_enabled(&places, "thematic-map", true).unwrap();
             assert!(list(&places).0.iter().any(|l| l.skill.name == "thematic-map" && l.on && matches!(l.skill.source, Source::Shared(_))));
             // And `disable` switches off the one that's on: the shared one, bringing back the built-in.

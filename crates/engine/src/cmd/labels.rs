@@ -1,9 +1,9 @@
 //! The Labeling tab (#897): Map Labeling (lock, pause, unplaced labels, convert to annotation), a
 //! layer's label visibility range and placement, and its label classes (#618).
 
-use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as Attr};
-use rustgis_map::symbology::{MAX_LABEL_CLASSES, label_class_name};
-use rustgis_map::{LabelBackground, LabelClass, LabelMatcher, LabelPlacement, Labeling, Renderer, Rgba, Symbol};
+use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as Attr};
+use powergis_map::symbology::{MAX_LABEL_CLASSES, label_class_name};
+use powergis_map::{LabelBackground, LabelClass, LabelMatcher, LabelPlacement, Labeling, Renderer, Rgba, Symbol};
 use serde_json::{Value, json};
 
 use super::layer::s_req;
@@ -17,7 +17,7 @@ fn number(v: &Value) -> Option<f64> {
 
 /// A label offset given as `[right, down]` (points), each kept within the range a class keeps.
 fn label_offset(v: &Value) -> Option<[f32; 2]> {
-    let range = rustgis_map::symbology::LABEL_OFFSET;
+    let range = powergis_map::symbology::LABEL_OFFSET;
     let [x, y] = v.as_array()?.as_slice() else { return None };
     let within = |v: &Value| number(v).map(|v| v.clamp(*range.start(), *range.end()) as f32);
     Some([within(x)?, within(y)?])
@@ -148,7 +148,7 @@ pub fn commands() -> Vec<C> {
                 Some(Value::Null) => Some(None),
                 Some(v) => match number(v) {
                     Some(0.0) => Some(None),
-                    Some(r) if r > 0.0 => Some(rustgis_map::symbology::label_repeat(r)),
+                    Some(r) if r > 0.0 => Some(powergis_map::symbology::label_repeat(r)),
                     _ => return Err("repeat must be a number of points, or 0 or null for none".into()),
                 },
             };
@@ -346,7 +346,7 @@ fn clause(p: &Value, ds: &Dataset) -> Result<Option<Option<String>>, String> {
         Some(Value::Null) => Ok(Some(None)),
         Some(Value::String(w)) if w.trim().is_empty() => Ok(Some(None)),
         Some(Value::String(w)) => {
-            rustgis_data::query::parse(w, ds).map_err(|e| format!("the class's clause doesn't read: {e}"))?;
+            powergis_data::query::parse(w, ds).map_err(|e| format!("the class's clause doesn't read: {e}"))?;
             Ok(Some(Some(w.trim().to_string())))
         }
         Some(_) => Err("where must be a SQL clause".into()),

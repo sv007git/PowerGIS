@@ -9,9 +9,9 @@ use lyon::tessellation::{
     BuffersBuilder, FillGeometryBuilder, FillOptions, FillRule, FillTessellator, FillVertex, GeometryBuilder, LineCap, LineJoin,
     StrokeGeometryBuilder, StrokeOptions, StrokeTessellator, StrokeVertex, VertexBuffers, VertexId,
 };
-use rustgis_data::Geometry;
-use rustgis_geom::{Coord, Extent};
-use rustgis_map::{Layer, Marker, Rgba, Symbol};
+use powergis_data::Geometry;
+use powergis_geom::{Coord, Extent};
+use powergis_map::{Layer, Marker, Rgba, Symbol};
 
 use crate::SELECTION;
 use crate::gpu_scene::{DrawCmd, MeshVertex, PointInstance, f32_holds};
@@ -562,8 +562,8 @@ pub(crate) fn collect_graticule(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::GeometryType;
-    use rustgis_map::Marker;
+    use powergis_data::GeometryType;
+    use powergis_map::Marker;
 
     fn square(x: f64, y: f64, s: f64) -> Vec<Coord> {
         vec![Coord::new(x, y), Coord::new(x + s, y), Coord::new(x + s, y + s), Coord::new(x, y + s)]

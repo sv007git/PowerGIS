@@ -667,8 +667,8 @@ mod native {
     };
     use crate::provider::{HttpRequest, HttpResponse};
     use crate::{Error, Recovery, http};
-    use rustgis_engine::data::dirs::config_dir;
-    use rustgis_engine::data::secrets::{Secret, SecretStore};
+    use powergis_engine::data::dirs::config_dir;
+    use powergis_engine::data::secrets::{Secret, SecretStore};
     use std::collections::BTreeMap;
     use std::sync::{LazyLock, MutexGuard};
 
@@ -814,7 +814,7 @@ mod native {
         Secret::new(serde_json::json!({"rev": c.rev, "refresh_token": c.refresh_token}).to_string())
     }
 
-    fn keychain_error(what: &str, e: &rustgis_engine::data::secrets::SecretError) -> Error {
+    fn keychain_error(what: &str, e: &powergis_engine::data::secrets::SecretError) -> Error {
         Error::new(Recovery::Auth, format!("{what}: {e}"))
     }
 
@@ -1781,7 +1781,7 @@ mod native {
     #[cfg(test)]
     mod tests {
         use super::*;
-        use rustgis_engine::data::secrets::{MemorySecrets, SecretError};
+        use powergis_engine::data::secrets::{MemorySecrets, SecretError};
 
         fn access(exp: i64) -> String {
             let payload = serde_json::json!({"client_id": "oaiapp_synthetic", "sub": "user-1", "exp": exp});

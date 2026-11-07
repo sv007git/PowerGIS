@@ -1,0 +1,5 @@
+# Built by maturin develop / pip install, never committed.
+python/powergis/_powergis*.so
+python/powergis/_powergis*.pyd
+dist/
+.pytest_cache/

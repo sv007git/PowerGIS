@@ -135,7 +135,7 @@ fn bad_packages_are_refused() {
         (json!({"id": "x", "name": "X", "version": "one"}), "version"),
         (json!({"id": "x", "name": "X", "version": "1.0.0", "entry": "../evil.wasm"}), "entry"),
         (json!({"id": "x", "name": "X", "version": "1.0.0", "abi": 99}), "ABI"),
-        (json!({"id": "x", "name": "X", "version": "1.0.0", "minRustgisVersion": "999.0.0"}), "needs PowerGIS"),
+        (json!({"id": "x", "name": "X", "version": "1.0.0", "minpowergisVersion": "999.0.0"}), "needs PowerGIS"),
         (json!({"id": "x", "name": "X", "version": "1.0.0", "permissions": ["root"]}), "plugin.json"),
         (
             json!({"id": "x", "name": "X", "version": "1.0.0", "tools": [{"id": "t", "name": "T", "params": [{"name": "a", "label": "A", "kind": "laser"}]}]}),
@@ -160,7 +160,7 @@ fn bad_packages_are_refused() {
     let empty = wat::parse_str("(module)").unwrap();
     let e = testing::zip_of(&[("plugin.json", ok.to_string().as_bytes()), ("plugin.wasm", &empty)]);
     assert!(crate::load(Package::from_zip(&e).unwrap(), "t").unwrap_err().contains("doesn't export"));
-    let wasi = wat::parse_str(r#"(module (import "wasi_snapshot_preview1" "fd_write" (func (param i32 i32 i32 i32) (result i32))) (memory (export "memory") 1) (func (export "rustgis_alloc") (param i32) (result i32) i32.const 0) (func (export "rustgis_call") (param i32 i32) (result i64) i64.const 0))"#).unwrap();
+    let wasi = wat::parse_str(r#"(module (import "wasi_snapshot_preview1" "fd_write" (func (param i32 i32 i32 i32) (result i32))) (memory (export "memory") 1) (func (export "powergis_alloc") (param i32) (result i32) i32.const 0) (func (export "powergis_call") (param i32 i32) (result i64) i64.const 0))"#).unwrap();
     let e = testing::zip_of(&[("plugin.json", ok.to_string().as_bytes()), ("plugin.wasm", &wasi)]);
     assert!(crate::load(Package::from_zip(&e).unwrap(), "t").unwrap_err().contains("doesn't provide"));
 }
@@ -218,35 +218,35 @@ fn plugin_tool_and_parameter_limits_stay_bounded() {
 fn tools_join_the_geoprocessing_tools() {
     crate::tools::register();
     load("unit-tools", &[]);
-    let spec = rustgis_analysis::tool("plugin:unit-tools/m").unwrap();
+    let spec = powergis_analysis::tool("plugin:unit-tools/m").unwrap();
     assert_eq!(spec.toolbox, "Plugins › Test unit-tools");
-    assert_eq!(rustgis_analysis::external_source(spec), Some(crate::tools::SOURCE));
-    assert!(matches!(spec.params.get(2).map(|p| p.kind), Some(rustgis_analysis::ParamKind::Choice(c)) if c == ["a", "b"]));
-    struct One(rustgis_data::Dataset);
-    impl rustgis_analysis::Inputs for One {
-        fn dataset(&self, l: &str) -> Option<&rustgis_data::Dataset> {
+    assert_eq!(powergis_analysis::external_source(spec), Some(crate::tools::SOURCE));
+    assert!(matches!(spec.params.get(2).map(|p| p.kind), Some(powergis_analysis::ParamKind::Choice(c)) if c == ["a", "b"]));
+    struct One(powergis_data::Dataset);
+    impl powergis_analysis::Inputs for One {
+        fn dataset(&self, l: &str) -> Option<&powergis_data::Dataset> {
             (l == "Cities").then_some(&self.0)
         }
         fn selection(&self, _: &str) -> &[usize] {
             &[]
         }
     }
-    let (ds, _) = rustgis_data::io::read_geojson(r#"{"type":"Point","coordinates":[3,4]}"#, "Cities").unwrap();
+    let (ds, _) = powergis_data::io::read_geojson(r#"{"type":"Point","coordinates":[3,4]}"#, "Cities").unwrap();
     let inputs = One(ds);
-    let r = rustgis_analysis::run("plugin:unit-tools/m", &inputs, &json!({"input": "Cities"})).unwrap();
+    let r = powergis_analysis::run("plugin:unit-tools/m", &inputs, &json!({"input": "Cities"})).unwrap();
     assert_eq!(r.messages, vec!["made"]);
     match r.output {
-        rustgis_analysis::Output::Layers(v) => {
-            assert!(matches!(v.as_slice(), [rustgis_analysis::OutputLayer::Vector(d)] if d.name == "Made" && d.features.len() == 1))
+        powergis_analysis::Output::Layers(v) => {
+            assert!(matches!(v.as_slice(), [powergis_analysis::OutputLayer::Vector(d)] if d.name == "Made" && d.features.len() == 1))
         }
         o => panic!("{o:?}"),
     }
-    let r = rustgis_analysis::run("plugin:unit-tools/x", &inputs, &json!({"input": "Cities"})).unwrap();
-    assert!(matches!(r.output, rustgis_analysis::Output::Selection { ref layer, ref rows } if layer == "Cities" && rows == &[0, 2]));
-    assert!(rustgis_analysis::run("plugin:unit-tools/m", &inputs, &json!({"input": "Nope"})).unwrap_err().contains("no layer"));
+    let r = powergis_analysis::run("plugin:unit-tools/x", &inputs, &json!({"input": "Cities"})).unwrap();
+    assert!(matches!(r.output, powergis_analysis::Output::Selection { ref layer, ref rows } if layer == "Cities" && rows == &[0, 2]));
+    assert!(powergis_analysis::run("plugin:unit-tools/m", &inputs, &json!({"input": "Nope"})).unwrap_err().contains("no layer"));
     // Disabled plugins offer no tools.
     crate::set_enabled("unit-tools", false).unwrap();
-    assert!(rustgis_analysis::tool("plugin:unit-tools/m").is_none());
+    assert!(powergis_analysis::tool("plugin:unit-tools/m").is_none());
     crate::unload("unit-tools");
 }
 
@@ -264,9 +264,9 @@ fn registries_and_blocklists_are_read_defensively() {
         7
     ]})
     .to_string();
-    let v = registry::parse(&text, "https://plugins.rustgis.app/registry.json").unwrap();
+    let v = registry::parse(&text, "https://plugins.powergis.app/registry.json").unwrap();
     assert_eq!(v.iter().map(|e| e.id.as_str()).collect::<Vec<_>>(), ["a-plugin", "b-plugin"]);
-    assert_eq!(v[1].package, "https://plugins.rustgis.app/packages/b/b-1.2.0.rgplugin");
+    assert_eq!(v[1].package, "https://plugins.powergis.app/packages/b/b-1.2.0.rgplugin");
     assert!(v[0].homepage.is_empty(), "only http(s) homepages");
     // Only the name and description keep translations.
     assert_eq!(v[1].translate("de", "B"), "Be");
@@ -279,14 +279,14 @@ fn registries_and_blocklists_are_read_defensively() {
     }
     i18n.insert("de".into(), json!({"C": "Ce"}));
     let one = json!([{"id": "c-plugin", "name": "C", "version": "1.0.0", "package": "c.rgplugin", "sha256": sha, "i18n": i18n}]);
-    let v = registry::parse(&one.to_string(), "https://plugins.rustgis.app/registry.json").unwrap();
+    let v = registry::parse(&one.to_string(), "https://plugins.powergis.app/registry.json").unwrap();
     assert_eq!(v[0].translate("de", "C"), "Ce");
     assert_eq!(v[0].i18n.len(), 1);
     assert!(registry::parse("[]", "x").unwrap().is_empty());
     assert!(registry::parse("{", "x").is_err());
     assert_eq!(registry::resolve("http://localhost:8000/r/registry.json", "/p.rgplugin"), "http://localhost:8000/p.rgplugin");
     for (url, ok) in [
-        ("https://plugins.rustgis.app/x", true),
+        ("https://plugins.powergis.app/x", true),
         ("http://localhost:8000/registry.json", true),
         ("http://127.0.0.1/registry.json", true),
         ("http://localhost", true),
@@ -300,7 +300,7 @@ fn registries_and_blocklists_are_read_defensively() {
     ] {
         assert_eq!(registry::allowed_url(url), ok, "{url}");
     }
-    assert_eq!(registry::blocklist_url("https://plugins.rustgis.app/registry.json"), "https://plugins.rustgis.app/blocklist.json");
+    assert_eq!(registry::blocklist_url("https://plugins.powergis.app/registry.json"), "https://plugins.powergis.app/blocklist.json");
     let list =
         registry::parse_blocklist(&json!({"blocked": [{"id": "x", "reason": "bad"}, {"id": "y", "sha256": sha}]}).to_string()).unwrap();
     assert!(registry::blocked(&list, "x", "anything").is_some());
@@ -850,7 +850,7 @@ fn registry_entries_say_how_a_plugin_runs() {
     let mut future = base("future");
     future["runtime"] = json!("docker");
     let text = json!([base("wasm"), py, exe, skills, wasm_py, bad_py, future]).to_string();
-    let v = registry::parse(&text, "https://plugins.rustgis.app/registry.json").unwrap();
+    let v = registry::parse(&text, "https://plugins.powergis.app/registry.json").unwrap();
     let got: Vec<(&str, Runtime, Option<&str>)> = v.iter().map(|e| (e.id.as_str(), e.runtime, e.python.as_deref())).collect();
     assert_eq!(
         got,
@@ -885,7 +885,7 @@ fn large_registries_are_read_quickly() {
     let list: Vec<Value> = (0..20_000).chain(0..20_000).map(one).collect();
     let text = json!({"plugins": list}).to_string();
     let t0 = std::time::Instant::now();
-    let v = registry::parse(&text, "https://plugins.rustgis.app/registry.json").unwrap();
+    let v = registry::parse(&text, "https://plugins.powergis.app/registry.json").unwrap();
     assert_eq!(v.len(), 20_000);
     assert!(t0.elapsed() < std::time::Duration::from_secs(5), "{:?}", t0.elapsed());
 }
@@ -908,7 +908,7 @@ fn file_parameters_need_files_and_hand_tools_the_file() {
     let decl = m.tools.iter().find(|t| t.id == "r").unwrap();
 
     // A path is read; the parameter keeps the file's name and the contents go beside it.
-    let dir = std::env::temp_dir().join(format!("rustgis-test-file-param-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-test-file-param-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("model.nc");
     std::fs::write(&path, b"CDF\x01").unwrap();
@@ -957,7 +957,7 @@ fn process_child() {
 
 /// A folder holding the process test plugin's manifest (played by this binary).
 fn process_folder(id: &str, perms: &[&str]) -> std::path::PathBuf {
-    let dir = std::env::temp_dir().join(format!("rustgis-test-process-{id}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-test-process-{id}-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let run = testing::child_run("tests::process_child");
     std::fs::write(dir.join("plugin.json"), testing::process_manifest(id, perms, &run)).unwrap();
@@ -1016,10 +1016,10 @@ fn process_plugins_that_hang_are_stopped() {
     }
     // A plugin folder given by a relative path still finds its program in it.
     let rel = std::path::Path::new(env!("CARGO_MANIFEST_DIR"));
-    let spec = crate::process::Spec::new(&["rustgis-no-such-program".to_string()], std::path::Path::new(".")).unwrap();
+    let spec = crate::process::Spec::new(&["powergis-no-such-program".to_string()], std::path::Path::new(".")).unwrap();
     assert!(spec.dir.is_absolute() && spec.dir.ends_with(rel.file_name().unwrap()), "{:?}", spec.dir);
     // A program that can't be started is an error too.
-    let missing = crate::process::Spec::new(&["rustgis-no-such-program".to_string()], &dir).unwrap();
+    let missing = crate::process::Spec::new(&["powergis-no-such-program".to_string()], &dir).unwrap();
     assert!(crate::process::call(&missing, &mut Recorder::default(), &req, None).unwrap_err().contains("couldn't start"));
 }
 
@@ -1106,7 +1106,7 @@ fn process_manifests_are_checked() {
 #[test]
 fn process_packages_unpack_safely() {
     use std::io::Write;
-    let plugins = std::env::temp_dir().join(format!("rustgis-test-unpack-{}", std::process::id()));
+    let plugins = std::env::temp_dir().join(format!("powergis-test-unpack-{}", std::process::id()));
     let _store = store_lock();
     crate::store::set_dir(Some(plugins.clone()));
     let run = testing::child_run("tests::process_child");
@@ -1182,7 +1182,7 @@ fn python_environments_are_declared_checked_and_required() {
     assert!(Manifest::parse(&wasm.to_string()).unwrap_err().contains("process plugins"));
 
     // Loaded, `python` is the environment's interpreter, and calls wait for it to be ready.
-    let plugins = std::env::temp_dir().join(format!("rustgis-test-pyenv-{}", std::process::id()));
+    let plugins = std::env::temp_dir().join(format!("powergis-test-pyenv-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&plugins);
     let _store = store_lock();
     crate::store::set_dir(Some(plugins.clone()));
@@ -1212,7 +1212,7 @@ fn python_environments_are_declared_checked_and_required() {
         h.update(b"3.12\nnumpy\n");
         h.finalize().iter().map(|b| format!("{b:02x}")).collect::<String>()
     };
-    std::fs::write(check.env.join(".rustgis-env"), &made_for).unwrap();
+    std::fs::write(check.env.join(".powergis-env"), &made_for).unwrap();
     assert!(check.ready() && crate::pyenv::status("pyenv-test") == Some(true));
     std::fs::write(dir.join("requirements.txt"), "numpy\nscipy\n").unwrap();
     let p = crate::load(Package::from_dir(&dir).unwrap(), "test").unwrap();
@@ -1231,11 +1231,11 @@ fn python_environments_are_declared_checked_and_required() {
 }
 
 /// Downloads uv and a Python and runs a plugin in its environment (network; run by hand:
-/// `cargo test -p rustgis-plugins --features testing -- --ignored python_environments_are_made`).
+/// `cargo test -p powergis-plugins --features testing -- --ignored python_environments_are_made`).
 #[test]
 #[ignore]
 fn python_environments_are_made() {
-    let plugins = std::env::temp_dir().join(format!("rustgis-test-pyenv-made-{}", std::process::id()));
+    let plugins = std::env::temp_dir().join(format!("powergis-test-pyenv-made-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&plugins);
     let _store = store_lock();
     crate::store::set_dir(Some(plugins.clone()));
@@ -1272,7 +1272,7 @@ fn python_environments_are_made() {
 #[test]
 fn python_environment_preparations_wait_for_the_lock() {
     use std::sync::{Arc, Mutex};
-    let plugins = std::env::temp_dir().join(format!("rustgis-test-pyenv-wait-{}", std::process::id()));
+    let plugins = std::env::temp_dir().join(format!("powergis-test-pyenv-wait-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&plugins);
     let _store = store_lock();
     crate::store::set_dir(Some(plugins.clone()));
@@ -1309,7 +1309,7 @@ fn python_environment_preparations_wait_for_the_lock() {
         use sha2::{Digest, Sha256};
         Sha256::digest(b"3.12\n").iter().map(|b| format!("{b:02x}")).collect::<String>()
     };
-    std::fs::write(env.join(".rustgis-env"), made_for).unwrap();
+    std::fs::write(env.join(".powergis-env"), made_for).unwrap();
     drop(held);
     assert_eq!(prep.join().unwrap().unwrap(), python);
     let said = said.lock().unwrap().clone();
@@ -1318,12 +1318,12 @@ fn python_environment_preparations_wait_for_the_lock() {
     let _ = std::fs::remove_dir_all(&plugins);
 }
 
-/// Two preparations of one environment at once (the app and rustgis-cli): the second waits for
+/// Two preparations of one environment at once (the app and powergis-cli): the second waits for
 /// the first and finds its environment (network; run by hand with `--ignored`).
 #[test]
 #[ignore]
 fn python_environments_are_prepared_one_at_a_time() {
-    let plugins = std::env::temp_dir().join(format!("rustgis-test-pyenv-lock-{}", std::process::id()));
+    let plugins = std::env::temp_dir().join(format!("powergis-test-pyenv-lock-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&plugins);
     let _store = store_lock();
     crate::store::set_dir(Some(plugins.clone()));

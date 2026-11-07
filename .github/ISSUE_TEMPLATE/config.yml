@@ -7,5 +7,5 @@ contact_links:
     url: https://github.com/opengeos/PowerGIS/discussions
     about: Share early-stage ideas, show your work, or chat with the community in Discussions.
   - name: Documentation
-    url: https://rustgis.app
+    url: https://powergis.app
     about: Browse the docs and guides before opening an issue.

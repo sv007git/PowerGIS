@@ -2,7 +2,7 @@
 xtask = "run -q -p xtask --"
 
 [env]
-# The `rustgis` Python module (apps/rustgis-python) is loaded by Python, which provides its
+# The `powergis` Python module (apps/powergis-python) is loaded by Python, which provides its
 # symbols: never link it against libpython, so workspace builds need no Python development files.
 PYO3_BUILD_EXTENSION_MODULE = "1"
 

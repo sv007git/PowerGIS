@@ -1217,7 +1217,7 @@ pub fn to_wkt(crs: Crs) -> Option<String> {
 
 #[cfg(test)]
 mod tests {
-    use rustgis_geom::Coord;
+    use powergis_geom::Coord;
 
     use super::*;
 

@@ -4,8 +4,8 @@
 //! the map follows. Nothing is sent before the user agrees to share the places with the server.
 
 use egui::{Align2, Color32, Pos2, Rect, Stroke, Ui, vec2};
-use rustgis_engine::geom::Coord;
-use rustgis_engine::render::rustgis_tiles::{
+use powergis_engine::geom::Coord;
+use powergis_engine::render::powergis_tiles::{
     cache,
     geocode::{Geocoder, Place},
     routing::{self, Avoid, Mode, Request, Route, Router},
@@ -14,7 +14,7 @@ use serde_json::json;
 use web_time::Instant;
 
 use crate::theme::{Tokens, regular, semibold};
-use crate::{RustGisApp, Slot, i18n};
+use crate::{powergisApp, Slot, i18n};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -162,7 +162,7 @@ fn take(slot: &Answer) -> Option<Result<Vec<u8>, String>> {
 }
 
 /// Reads the pane's preferences once.
-pub fn load(app: &mut RustGisApp) {
+pub fn load(app: &mut powergisApp) {
     if app.ui.nav.loaded {
         return;
     }
@@ -175,7 +175,7 @@ pub fn load(app: &mut RustGisApp) {
     }
 }
 
-fn save(app: &RustGisApp, k: &str, v: &str) {
+fn save(app: &powergisApp, k: &str, v: &str) {
     if let Some(save) = &app.services.save_pref {
         save(k, v);
     }
@@ -183,7 +183,7 @@ fn save(app: &RustGisApp, k: &str, v: &str) {
 
 /// Sets place `i` (the start for `Some(0)`, the destination for `None`) and opens the pane: the
 /// map's Directions From Here and To Here.
-pub fn seed(app: &mut RustGisApp, i: Option<usize>, c: Coord) {
+pub fn seed(app: &mut powergisApp, i: Option<usize>, c: Coord) {
     load(app);
     let st = &mut app.ui.nav;
     let last = st.points.len().saturating_sub(1);
@@ -198,7 +198,7 @@ pub fn seed(app: &mut RustGisApp, i: Option<usize>, c: Coord) {
 
 /// Opens the pane on a route (`ui.pane.directions` with `from`, `to`, `via` as `[lon, lat]` or
 /// `"lat, lon"`, and `mode`); places that aren't coordinates are typed in, to look up.
-pub fn open_with(app: &mut RustGisApp, p: &serde_json::Value) {
+pub fn open_with(app: &mut powergisApp, p: &serde_json::Value) {
     load(app);
     let place = |v: &serde_json::Value| -> Waypoint {
         let at = match v {
@@ -237,7 +237,7 @@ pub fn open_with(app: &mut RustGisApp, p: &serde_json::Value) {
 /// A map click while a place waits for one: sets it, and moves on to the next place missing.
 /// Returns whether the click was taken.
 /// `other` is another route under the click, which it picks.
-pub fn click(app: &mut RustGisApp, c: Coord, other: Option<usize>) -> bool {
+pub fn click(app: &mut powergisApp, c: Coord, other: Option<usize>) -> bool {
     let st = &mut app.ui.nav;
     if let Some(i) = st.picking.filter(|i| *i < st.points.len()) {
         if let Some(pt) = st.points.get_mut(i) {
@@ -262,7 +262,7 @@ pub fn click(app: &mut RustGisApp, c: Coord, other: Option<usize>) -> bool {
 
 /// Sends a route request when the places or options changed; lands answers and lookups; moves a
 /// simulated drive along.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let open = app.ui.right == Some(crate::RightPane::Directions);
     let opened = open && !app.ui.nav.open;
     app.ui.nav.open = open;
@@ -408,7 +408,7 @@ pub fn distance_at(r: &Route, t: f64) -> f64 {
 }
 
 /// Zooms to an extent (west, south, east, north) with a margin.
-fn fit(app: &mut RustGisApp, e: [f64; 4]) {
+fn fit(app: &mut powergisApp, e: [f64; 4]) {
     let [w, s, ea, n] = e;
     if !(w.is_finite() && s.is_finite() && ea.is_finite() && n.is_finite()) || w > ea || s > n {
         return;
@@ -418,7 +418,7 @@ fn fit(app: &mut RustGisApp, e: [f64; 4]) {
 }
 
 /// Looks a typed place up: coordinates are taken as they are; a name goes to the geocoder.
-fn resolve(app: &mut RustGisApp, row: usize) {
+fn resolve(app: &mut powergisApp, row: usize) {
     let st = &mut app.ui.nav;
     let Some(pt) = st.points.get_mut(row) else { return };
     let text = pt.text.trim().to_string();
@@ -448,7 +448,7 @@ fn resolve(app: &mut RustGisApp, row: usize) {
 }
 
 /// The pane.
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     load(app);
     if !app.ui.nav.consent {
         consent(app, ui, t);
@@ -511,7 +511,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// The notice before anything is sent.
-fn consent(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn consent(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     ui.label(egui::RichText::new(tl!("Directions use an external routing server")).font(semibold(14.0)).color(t.text));
     ui.add_space(6.0);
     ui.label(tl!("Planning a route sends its start, stops and destination to a routing server, and looking up a place by name sends the name to OpenStreetMap's Nominatim."));
@@ -537,7 +537,7 @@ fn consent(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// The start, stops and destination: a box each, with a pick-on-map button.
-fn places(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn places(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     let n = app.ui.nav.points.len();
     let mut remove = None;
     let mut look = None;
@@ -612,7 +612,7 @@ fn places(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// What's happening, in a line.
-fn status(app: &RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn status(app: &powergisApp, ui: &mut Ui, t: &Tokens) {
     let st = &app.ui.nav;
     let (text, busy) = if st.lookup.is_some() {
         (tl!("Looking up the place…"), true)
@@ -639,7 +639,7 @@ fn status(app: &RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// The routes found: time, distance and main roads; the one picked is drawn blue.
-fn routes(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn routes(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     let st = &app.ui.nav;
     let many = st.routes.len() > 1;
     let mut pick = None;
@@ -681,7 +681,7 @@ fn routes(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// Simulate, Save as Layer, Steps.
-fn actions(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn actions(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     ui.add_space(4.0);
     let Some(r) = app.ui.nav.route() else { return };
     let (total_s, total_m) = (r.duration_s, r.distance_m);
@@ -765,7 +765,7 @@ fn actions(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// The maneuvers, each with its arrow; one clicked is zoomed to.
-fn steps(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn steps(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     ui.add_space(6.0);
     let Some(r) = app.ui.nav.route() else { return };
     let imperial = app.ui.nav.imperial;

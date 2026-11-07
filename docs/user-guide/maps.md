@@ -63,7 +63,7 @@ or `{"by": 10}`), `map.resetNorth` faces north and looks straight down, and `map
 back about the centre of view, so the horizon comes into sight past the curve of the Earth.
 
 <figure markdown="span">
-  ![Countries extruded by population on a map tilted 55° and turned 20°, lit and shaded, with labels on their roofs](https://assets.rustgis.app/images/extrusion.webp)
+  ![Countries extruded by population on a map tilted 55° and turned 20°, lit and shaded, with labels on their roofs](https://assets.powergis.app/images/extrusion.webp)
   <figcaption>Countries extruded by population on a map tilted 55°.</figcaption>
 </figure>
 
@@ -80,7 +80,7 @@ maps; a flat (untilted) view, the globe and other projections stay flat, extrude
 not lifted onto the relief yet, and identify and selection still pick on the flat ground.
 
 <figure markdown="span">
-  ![Mount Rainier in USGS imagery draped over Terrarium elevation tiles, tilted 65°](https://assets.rustgis.app/images/terrain.webp)
+  ![Mount Rainier in USGS imagery draped over Terrarium elevation tiles, tilted 65°](https://assets.powergis.app/images/terrain.webp)
   <figcaption>Mount Rainier: USGS imagery draped over Terrarium elevation tiles.</figcaption>
 </figure>
 
@@ -117,7 +117,7 @@ marked with a pin until the box is cleared (✕ or ++esc++). `map.search` runs t
 the command line or a script, and goes to a hit with `"go"`:
 
 ```
-rustgis-cli run --sample --cmd 'map.search={"query":"Tokyo","go":true}'
+powergis-cli run --sample --cmd 'map.search={"query":"Tokyo","go":true}'
 ```
 
 **Right-click the map** for a menu about that place. Its first row shows the latitude and
@@ -159,7 +159,7 @@ sends its places to the same public servers (names to Nominatim, at most five a 
 apart; coordinates to FOSSGIS's Valhalla), so the AI Assistant asks before running it:
 
 ```
-rustgis-cli run --sample --cmd 'map.route={"from":"Brandenburg Gate, Berlin","to":"Alexanderplatz, Berlin","mode":"bike"}'
+powergis-cli run --sample --cmd 'map.route={"from":"Brandenburg Gate, Berlin","to":"Alexanderplatz, Berlin","mode":"bike"}'
 ```
 
 On the web, plan routes in the Directions pane; `map.route` cannot fetch a route or look up
@@ -168,7 +168,7 @@ place names there. On the desktop, its optional `url` selects another Valhalla s
 ## Basemaps
 
 <figure markdown="span">
-  ![A MapLibre style from OpenFreeMap drawn over Paris, with the Basemap gallery listing the built-in basemaps and the web tile layer](https://assets.rustgis.app/images/tiles.webp)
+  ![A MapLibre style from OpenFreeMap drawn over Paris, with the Basemap gallery listing the built-in basemaps and the web tile layer](https://assets.powergis.app/images/tiles.webp)
   <figcaption>An OpenFreeMap MapLibre style over Paris, and the Basemap gallery.</figcaption>
 </figure>
 
@@ -213,7 +213,7 @@ that already shows then takes it off). Toggling the checkbox keeps the gallery o
 choose a basemap; choosing one closes it. For many
 more (OpenStreetMap, Esri, NASA and others), follow **Install the Basemaps plugin** under them,
 which opens the Plugin Manager at the
-[Basemaps plugin](https://plugins.rustgis.app/catalog/basemaps/); it adds a tab of public
+[Basemaps plugin](https://plugins.powergis.app/catalog/basemaps/); it adds a tab of public
 basemaps. Add any other with **Add Tile Layer…** at the bottom of the Basemap gallery.
 The gallery lists the map's tile layers: show or hide them, change their opacity and order, or
 remove them. The Layers pane lists them too, at their place in the drawing order: a basemap
@@ -250,7 +250,7 @@ archive's `sourceLayers` once its header is read, and `map.setTiles` takes `"hid
 off is an edit to undo, and a project keeps which are off.
 
 Tiles load in the background and the map fills in as they arrive, with coarser tiles standing in
-meanwhile; exports and `rustgis-cli` wait for them. On the globe and in other projections the
+meanwhile; exports and `powergis-cli` wait for them. On the globe and in other projections the
 tiles are reprojected. From scripts: `map.addTiles`, `map.removeTiles`, `map.setTiles`,
 `map.zoomToTiles` and `map.tiles`. `map.addTiles` accepts optional `"bounds": [west, south, east,
 north]` in longitude/latitude; `service.add` retains the bounds advertised by map and tile services.
@@ -273,13 +273,13 @@ it away), and `map.expandTiles` shows or hides it (as `layer.expand` does a laye
 an edit to undo). A project keeps a layer's legends and whether they show.
 
 ```sh
-rustgis-cli run --cmd 'service.add={"url":"https://wms.geo.admin.ch/","layer":"ch.swisstopo.geologie-swissgeocover2d_lines"}' --cmd 'map.tiles={}'
+powergis-cli run --cmd 'service.add={"url":"https://wms.geo.admin.ch/","layer":"ch.swisstopo.geologie-swissgeocover2d_lines"}' --cmd 'map.tiles={}'
 ```
 
 ### Other worlds
 
 <figure markdown="span">
-  ![Mars on the 3D globe, on the Viking mosaic, with Valles Marineris across the middle](https://assets.rustgis.app/images/mars-globe.webp)
+  ![Mars on the 3D globe, on the Viking mosaic, with Valles Marineris across the middle](https://assets.powergis.app/images/mars-globe.webp)
   <figcaption>Mars on the globe, on the Viking mosaic: Valles Marineris crosses the middle.</figcaption>
 </figure>
 
@@ -305,7 +305,7 @@ adds what browsers need, reprojects the USGS mosaics and caches the tiles. From 
 taking other bodies' basemaps off) and `map.bodies`.
 
 <figure markdown="span">
-  ![The Moon's near side on the LOLA hillshaded albedo basemap, its maria dark among the cratered highlands](https://assets.rustgis.app/images/moon.webp)
+  ![The Moon's near side on the LOLA hillshaded albedo basemap, its maria dark among the cratered highlands](https://assets.powergis.app/images/moon.webp)
   <figcaption>The Moon's near side on LOLA's hillshaded albedo.</figcaption>
 </figure>
 
@@ -315,8 +315,8 @@ The world outline and the World Atlas sample's countries come in two worldviews:
 Earth's default borders, and China's (Natural Earth's China point of view: Taiwan, Aksai Chin
 and South Tibet are part of China). PowerGIS picks China's when the system's time zone is
 mainland China's (such as `Asia/Shanghai`) or its first locale is `zh-CN`; nothing is looked up
-over the network. Choose one in **Settings › Language › Worldview**, set `RUSTGIS_WORLDVIEW`
-(`default` or `china`), or pass `--worldview` to `rustgis-cli`. An untouched sample project
+over the network. Choose one in **Settings › Language › Worldview**, set `powergis_WORLDVIEW`
+(`default` or `china`), or pass `--worldview` to `powergis-cli`. An untouched sample project
 switches its countries at once; others keep the layer they have.
 
 ## Projections
@@ -379,7 +379,7 @@ World, Sphere and Africa Sinusoidal (`ESRI:54008`, `53008`, `102011`) can be the
 ## Globe
 
 <figure markdown="span">
-  ![The World Atlas on the 3D globe, with the View tab open](https://assets.rustgis.app/images/globe.webp)
+  ![The World Atlas on the 3D globe, with the View tab open](https://assets.powergis.app/images/globe.webp)
   <figcaption>The World Atlas on the 3D globe.</figcaption>
 </figure>
 
@@ -403,7 +403,7 @@ suits a light page (on the Midnight basemap the space stays dark).
 ## View effects
 
 <figure markdown="span">
-  ![Dark mode over Europe on the Midnight basemap, with the View tab open](https://assets.rustgis.app/images/dark.webp)
+  ![Dark mode over Europe on the Midnight basemap, with the View tab open](https://assets.powergis.app/images/dark.webp)
   <figcaption>Dark mode on the Midnight basemap.</figcaption>
 </figure>
 
@@ -431,7 +431,7 @@ to the CPU. Raster tiles and opaque vector tile styles can be drawn directly on 
 north-up Web Mercator map; translucent or blended tiles use cached pictures during navigation.
 
 GPU Rendering is off by default and remembered across sessions (`ui.map.gpu` is the command;
-`RUSTGIS_GPU=1` forces it on for development). The globe, view effects and colour-vision
+`powergis_GPU=1` forces it on for development). The globe, view effects and colour-vision
 simulation stay on the CPU, and exports are unaffected. A rotated or tilted map uses the GPU
 only when every visible layer can be drawn there: tiles, rasters, terrain, transparency,
 masking, swipe, blending, aggregation, graphics, stacked strokes, fills or labels with icons keep it

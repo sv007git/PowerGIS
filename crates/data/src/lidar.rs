@@ -6,7 +6,7 @@ use std::io::{Read, Seek, SeekFrom};
 
 use crate::raster::Crs;
 use crate::{DataError, Dataset, Feature, Field, FieldType, Geometry, GeometryType, ReadReport, Result, Value};
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 /// Most points a layer holds: past it, an evenly spread sample.
 pub const MAX_POINTS: usize = if cfg!(target_arch = "wasm32") { 500_000 } else { 2_000_000 };

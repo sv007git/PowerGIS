@@ -110,7 +110,7 @@ impl FeatureInfo {
                 let code = super::warp::epsg_of(name)?;
                 super::warp::usable(code)?;
                 let t = super::warp::transformer(code)?;
-                let to = |dx: f64, dy: f64| t.from_merc(rustgis_geom::Coord::new(x + dx, y + dy));
+                let to = |dx: f64, dy: f64| t.from_merc(powergis_geom::Coord::new(x + dx, y + dy));
                 let c = to(0.0, 0.0)?;
                 let corners = [to(-half, -half)?, to(half, -half)?, to(-half, half)?, to(half, half)?];
                 let rx = corners.iter().map(|p| (p.x - c.x).abs()).fold(0.0, f64::max);
@@ -880,7 +880,7 @@ mod tests {
             ..FeatureInfo::default()
         };
         // Bern (7.4474°E, 46.948°N): LV95 2 600 000 E, 1 200 000 N, about.
-        let m = rustgis_geom::lonlat_to_merc(rustgis_geom::Coord::new(7.4474, 46.948));
+        let m = powergis_geom::lonlat_to_merc(powergis_geom::Coord::new(7.4474, 46.948));
         let r = fi.request(m.x, m.y, 2.0).unwrap();
         assert!(r.contains("&CRS=EPSG:2056&BBOX="), "{r}");
         let bbox = r.split("&BBOX=").nth(1).unwrap().split('&').next().unwrap();

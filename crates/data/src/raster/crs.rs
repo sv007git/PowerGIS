@@ -6,7 +6,7 @@
 //! such as the Albers of the NLCD land cover, is a [`Crs::Custom`]: its PROJ definition, kept in a
 //! table for the run.
 
-use rustgis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
+use powergis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
 use serde::{Deserialize, Serialize};
 
 /// The PROJ definition of an EPSG code: from the `crs-definitions` table, or from the built-in
@@ -22,7 +22,7 @@ fn listed_epsg(code: u16) -> Option<&'static str> {
 }
 
 /// Whether proj4rs' azimuthal equidistant projection (`aeqd`, Equi7's) is in this build. The
-/// browser build leaves it out (Cargo.toml); asked of proj4rs itself, as rustgis-map's
+/// browser build leaves it out (Cargo.toml); asked of proj4rs itself, as powergis-map's
 /// `local_views_supported` does, so the lookup and the tests stay in step with the build.
 pub fn aeqd_supported() -> bool {
     static SUPPORTED: std::sync::OnceLock<bool> = std::sync::OnceLock::new();
@@ -131,7 +131,7 @@ fn custom_table() -> &'static std::sync::Mutex<Vec<std::sync::Arc<CustomCrs>>> {
     T.get_or_init(Default::default)
 }
 
-/// The VN-2000 to WGS 84 Helmert shift as a literal, for `concat!` (rustgis-map's presets):
+/// The VN-2000 to WGS 84 Helmert shift as a literal, for `concat!` (powergis-map's presets):
 /// PROJ's position-vector `+towgs84` for EPSG:3405, 3406 and 5897.
 #[doc(hidden)]
 #[macro_export]
@@ -158,7 +158,7 @@ pub fn is_bare_vn2000(text: &str) -> bool {
 /// The EPSG code an explicit VN-2000 system name stands for, matched on its letters and digits
 /// in any case: `VN-2000 / UTM zone 48N`, `vn2000_utm48` or `vn-2000-48` (3405), the same for
 /// 49 (3406), `VN-2000 / TM-3` or `vn2000tm3` (5897). The one table for [`Crs::parse`] and
-/// rustgis-map's presets, so a name one takes the other takes too.
+/// powergis-map's presets, so a name one takes the other takes too.
 pub fn vn2000_epsg(text: &str) -> Option<u16> {
     match squash(text).as_str() {
         "VN2000UTMZONE48N" | "VN2000UTM48N" | "VN2000UTM48" | "VN2000UTMZONE48" | "VN200048" | "VN200048N" => Some(3405),
@@ -214,7 +214,7 @@ impl Crs {
     /// Adds a system to the run's table; one `typed` as a PROJ string counts against
     /// `MAX_TYPED` too, checked under the same lock as the insertion.
     fn register(def: CustomCrs, typed: bool) -> Result<Crs, String> {
-        let checked = match rustgis_geom::Sinusoidal::from_proj4(&def.proj4) {
+        let checked = match powergis_geom::Sinusoidal::from_proj4(&def.proj4) {
             Some(sinu) => sinu.map(|_| ()),
             None => proj4rs::Proj::from_proj_string(&def.proj4).map(|_| ()).map_err(|e| e.to_string()),
         };
@@ -342,7 +342,7 @@ impl Crs {
                 Crs::Custom(_) => {
                     let def = self.custom_def().ok_or("an unknown custom coordinate system")?;
                     // Sinusoidal (MODIS), which proj4rs lacks, is computed here.
-                    if let Some(sinu) = rustgis_geom::Sinusoidal::from_proj4(&def.proj4) {
+                    if let Some(sinu) = powergis_geom::Sinusoidal::from_proj4(&def.proj4) {
                         return Ok(Transformer { kind: Kind::Sinusoidal(sinu.map_err(|e| format!("{}: {e}", def.label))?) });
                     }
                     let native = proj4rs::Proj::from_proj_string(&def.proj4).map_err(|e| format!("{}: {e}", def.label))?;
@@ -359,7 +359,7 @@ enum Kind {
     LonLat,
     Merc,
     Proj { native: Box<proj4rs::Proj>, wgs84: Box<proj4rs::Proj>, geographic: bool },
-    Sinusoidal(rustgis_geom::Sinusoidal),
+    Sinusoidal(powergis_geom::Sinusoidal),
 }
 
 /// Converts between a raster's coordinates and WGS 84 longitude/latitude.

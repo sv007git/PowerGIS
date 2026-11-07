@@ -154,7 +154,7 @@ impl Style {
             layer.line_strokes = s.clone();
         }
         // (Only a polygon layer's fills draw.)
-        if let Some(f) = self.fill_layers.as_ref().filter(|_| layer.geometry_type() == rustgis_data::GeometryType::Polygon) {
+        if let Some(f) = self.fill_layers.as_ref().filter(|_| layer.geometry_type() == powergis_data::GeometryType::Polygon) {
             layer.fill_layers = f.clone();
         }
         if let Some(on) = self.stroke_levels {
@@ -162,12 +162,12 @@ impl Style {
         }
         // Only a point layer's markers turn.
         if let Some(r) = &self.marker_rotation {
-            layer.marker_rotation = r.clone().filter(|_| layer.geometry_type() == rustgis_data::GeometryType::Point);
+            layer.marker_rotation = r.clone().filter(|_| layer.geometry_type() == powergis_data::GeometryType::Point);
         }
         if let Some(by) = &self.symbol_by {
             layer.symbol_by = by.clone();
             // Only a point layer's markers turn.
-            if layer.geometry_type() != rustgis_data::GeometryType::Point {
+            if layer.geometry_type() != powergis_data::GeometryType::Point {
                 layer.symbol_by.angle = None;
             }
         }

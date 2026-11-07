@@ -1,6 +1,6 @@
 //! A GeoJSON FeatureCollection's legacy `crs` member (issue #930) is honoured when it is added,
 //! whole or read in place, and what is written is still WGS 84 with no `crs`.
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{io, raster::Crs},
     geom::Extent,
@@ -28,7 +28,7 @@ fn declared(name: &str) -> Value {
 }
 
 fn file(name: &str, text: &str) -> PathBuf {
-    let d = std::env::temp_dir().join(format!("rustgis-geojson-crs-{}", std::process::id()));
+    let d = std::env::temp_dir().join(format!("powergis-geojson-crs-{}", std::process::id()));
     std::fs::create_dir_all(&d).unwrap();
     let p = d.join(name);
     std::fs::write(&p, text).unwrap();

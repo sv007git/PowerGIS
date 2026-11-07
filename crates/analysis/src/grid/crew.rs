@@ -3,9 +3,9 @@
 //! Uses geodesic distance, crew availability, and skill matching to optimize
 //! emergency response dispatch and compute estimated restoration times (ETR).
 
-use rustgis_geom::haversine_m;
+use powergis_geom::haversine_m;
 
-use super::model::{Crew, CrewAssignment, CrewStatus, FaultType, GridAssetType};
+use super::model::{Crew, CrewAssignment, CrewStatus, GridAssetType};
 use super::topology::ElectricalNetwork;
 
 /// Result of crew dispatch recommendation.

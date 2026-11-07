@@ -5,15 +5,15 @@
 //! picked at the top. Every change runs `layer.fillLayers`.
 
 use egui::{CornerRadius, Rect, Sense, Stroke, Ui, pos2, vec2};
-use rustgis_engine::map::fills::{
+use powergis_engine::map::fills::{
     self, FillLayer, FillPattern, GradientPoint, GradientShape, MAX_BURST_BLUR, MAX_BURST_DISTANCE, MAX_DOT_SIZE, MAX_FILLS,
     MAX_HATCH_WIDTH, MAX_PATTERN_OFFSET, PATTERN_SPACING, Spread, Stops,
 };
-use rustgis_engine::map::symbology::ClassRef;
-use rustgis_engine::map::{Layer, Marker, Symbol};
+use powergis_engine::map::symbology::ClassRef;
+use powergis_engine::map::{Layer, Marker, Symbol};
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, c32, rgba, semibold};
 
 /// The fill's settings as `layer.fillLayers` takes them.
@@ -78,7 +78,7 @@ fn spread_name(s: Spread) -> &'static str {
 }
 
 /// Runs `layer.fillLayers` with `fills` for the class picked (`None`: the layer's).
-fn set_fills(app: &mut RustGisApp, class: Option<&ClassRef>, fills: &[FillLayer]) {
+fn set_fills(app: &mut powergisApp, class: Option<&ClassRef>, fills: &[FillLayer]) {
     let mut p = json!({"fills": fills.iter().map(fill_json).collect::<Vec<_>>()});
     match class {
         Some(ClassRef::Value(v)) => p["value"] = json!(v),
@@ -100,7 +100,7 @@ fn kind(f: &FillLayer) -> &'static str {
     }
 }
 
-pub(crate) fn fills_editor(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, t: &Tokens) {
+pub(crate) fn fills_editor(app: &mut powergisApp, ui: &mut Ui, l: &Layer, t: &Tokens) {
     let classes = crate::panes::stroke_classes(&l.renderer);
     let picked_id = egui::Id::unique(("fill_class", l.id));
     // The class being edited, while the renderer still has it; `None` is the layer's own fills.
@@ -201,7 +201,7 @@ pub(crate) fn fills_editor(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, t: &Tok
                     }
                 });
             });
-            let set = |app: &mut RustGisApp, new: FillLayer| {
+            let set = |app: &mut powergisApp, new: FillLayer| {
                 let mut next = fills.clone();
                 if let Some(slot) = next.get_mut(i) {
                     *slot = new;
@@ -231,7 +231,7 @@ pub(crate) fn fills_editor(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, t: &Tok
                             FillLayer {
                                 pattern: FillPattern::Gradient {
                                     shape: GradientShape::Linear,
-                                    color2: rustgis_engine::map::Rgba::rgb(255, 255, 255),
+                                    color2: powergis_engine::map::Rgba::rgb(255, 255, 255),
                                     stops: Stops::default(),
                                     discrete: false,
                                     from: GradientPoint::At([0.5, 0.0]),
@@ -244,7 +244,7 @@ pub(crate) fn fills_editor(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, t: &Tok
                             },
                             FillLayer {
                                 pattern: FillPattern::Shapeburst {
-                                    color2: rustgis_engine::map::Rgba::rgb(255, 255, 255),
+                                    color2: powergis_engine::map::Rgba::rgb(255, 255, 255),
                                     stops: Stops::default(),
                                     discrete: false,
                                     // QGIS's: over the whole shape.
@@ -285,7 +285,7 @@ pub(crate) fn fills_editor(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, t: &Tok
                 ui.end_row();
                 // A number changed, its command run straight after (one step to undo a drag).
                 let number =
-                    |app: &mut RustGisApp, ui: &mut Ui, label: &str, v: f32, range: std::ops::RangeInclusive<f32>, suffix: &str| {
+                    |app: &mut powergisApp, ui: &mut Ui, label: &str, v: f32, range: std::ops::RangeInclusive<f32>, suffix: &str| {
                         let input_label = ui.label(tl!(label));
                         let mut x = v;
                         let resp = ui.add(egui::DragValue::new(&mut x).range(range).speed(0.1).suffix(suffix)).labelled_by(input_label.id);
@@ -562,11 +562,11 @@ mod tests {
     /// markers or removed, each a `layer.fillLayers`.
     #[test]
     fn fills_are_stacked_and_changed_in_the_editor() {
-        let app = RustGisApp::with_sample();
+        let app = powergisApp::with_sample();
         // The section's fonts (its semibold heading) are installed on the first frame, as the app does.
         let mut fonts = false;
         let mut h = egui_kittest::Harness::builder().with_size(vec2(420.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -579,7 +579,7 @@ mod tests {
         );
         h.run();
         let fills =
-            |h: &egui_kittest::Harness<'_, RustGisApp>| h.state().session.map().layer_by_name("Countries").unwrap().fill_layers.clone();
+            |h: &egui_kittest::Harness<'_, powergisApp>| h.state().session.map().layer_by_name("Countries").unwrap().fill_layers.clone();
         assert!(fills(&h).is_empty());
         assert!(h.query_by_label("Fill 1").is_none());
         h.get_by_label("Add Fill").click();

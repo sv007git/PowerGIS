@@ -1,13 +1,13 @@
 //! NASA Earthaccess: Earthdata's collections found by keyword, a collection's granules where the
 //! map is and between two dates (their footprints added as a layer), and the Earthdata Login
 //! token their files are read with (kept for the session, or remembered on this computer; see
-//! `rustgis_tiles::earthdata`). A granule's GeoTIFF is added by its address (`layer.addUrl`),
+//! `powergis_tiles::earthdata`). A granule's GeoTIFF is added by its address (`layer.addUrl`),
 //! read in place as a COG.
 
 use serde_json::{Value, json};
 
 use super::{b, f, ps};
-use crate::render::rustgis_tiles::earthdata::{self, Collection};
+use crate::render::powergis_tiles::earthdata::{self, Collection};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -144,7 +144,7 @@ fn answer_or_fetch(p: &Value, url: &str) -> Result<Vec<u8>, String> {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn fetch(url: &str) -> Result<Vec<u8>, String> {
-    crate::render::rustgis_tiles::cache::download_blocking(url)
+    crate::render::powergis_tiles::cache::download_blocking(url)
 }
 
 #[cfg(target_arch = "wasm32")]

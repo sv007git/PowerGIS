@@ -1,0 +1,21 @@
+[package]
+name = "powergis-cli"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+default-run = "powergis-cli"
+description = "PowerGIS command line: run commands and geoprocessing, render maps, inspect data"
+
+[[bin]]
+name = "powergis-cli"
+path = "src/main.rs"
+
+[lints]
+workspace = true
+
+[dependencies]
+powergis-engine = { workspace = true, features = ["geolibre"] }
+serde_json = { workspace = true }
+powergis-assistant = { workspace = true }
+powergis-keychain = { workspace = true }

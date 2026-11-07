@@ -1,10 +1,10 @@
 //! S3 connections and bucket listings (`s3://` addresses are read wherever data is added by
-//! address: see `rustgis_tiles::s3`).
+//! address: see `powergis_tiles::s3`).
 
 use serde_json::{Value, json};
 
 use super::ps;
-use crate::render::rustgis_tiles::s3::{self, Connection, Credentials};
+use crate::render::powergis_tiles::s3::{self, Connection, Credentials};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -84,7 +84,7 @@ pub(super) fn connect(_s: &mut Session, p: &Value) -> CmdResult {
 }
 
 /// The login of the saved connection `id`, made live under this session's runtime token
-/// `binding` in one step (see `rustgis_tiles::s3::connect_saved`): it signs only the addresses
+/// `binding` in one step (see `powergis_tiles::s3::connect_saved`): it signs only the addresses
 /// that name the binding, never one found by its bucket or host. Takes the same parameters as
 /// `s3.connect`.
 pub(super) fn connect_saved(_s: &mut Session, p: &Value, binding: &str, id: &str) -> CmdResult {
@@ -169,7 +169,7 @@ pub(super) fn list(_s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let fetch = |url: &str| crate::render::rustgis_tiles::cache::download_blocking(url);
+        let fetch = |url: &str| crate::render::powergis_tiles::cache::download_blocking(url);
         // A saved connection's login signs only the addresses that name it.
         let through = |c: &s3::Connection, url: String| match s3::binding_of(&c.name) {
             Some(binding) => s3::bound_url(&binding, &url),

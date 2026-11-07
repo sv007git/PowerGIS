@@ -7,7 +7,7 @@ pub mod style;
 
 pub use crate::qgis::{NoteKind, Report};
 use crate::{Bookmark, Camera};
-use rustgis_geom::{Coord, lonlat_to_merc};
+use powergis_geom::{Coord, lonlat_to_merc};
 use serde_json::Value;
 
 /// Maximum JSON text accepted from any input channel.
@@ -147,7 +147,7 @@ pub fn array<'a>(v: &'a Value, key: &str) -> &'a [Value] {
 }
 /// MapLibre uses a 512-pixel world at zoom zero; PowerGIS uses metres per logical pixel.
 pub fn resolution(zoom: f64) -> f64 {
-    (std::f64::consts::TAU * rustgis_geom::MERCATOR_R / (512.0 * 2f64.powf(zoom.clamp(0.0, 24.0))))
+    (std::f64::consts::TAU * powergis_geom::MERCATOR_R / (512.0 * 2f64.powf(zoom.clamp(0.0, 24.0))))
         .clamp(crate::camera::MIN_RES, crate::camera::MAX_RES)
 }
 /// Clamps a saved view to finite, drawable Mercator coordinates.
@@ -231,7 +231,7 @@ mod style_tests {
     use serde_json::json;
 
     fn layer() -> crate::Layer {
-        let (ds,_)=rustgis_data::io::read_bytes("points.geojson",br#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[0,0]},"properties":{"value":50,"kind":"a"}}]}"#).unwrap();
+        let (ds,_)=powergis_data::io::read_bytes("points.geojson",br#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[0,0]},"properties":{"value":50,"kind":"a"}}]}"#).unwrap();
         crate::Layer::new(1, ds)
     }
 
@@ -286,7 +286,7 @@ mod boundary_tests {
             .map(|value| json!({"type":"Feature","geometry":{"type":"Point","coordinates":[0,0]},"properties":{"value":value}}))
             .collect();
         let data = json!({"type":"FeatureCollection","features":features});
-        let (ds, _) = rustgis_data::io::read_bytes("points.geojson", data.to_string().as_bytes()).unwrap();
+        let (ds, _) = powergis_data::io::read_bytes("points.geojson", data.to_string().as_bytes()).unwrap();
         let mut layer = crate::Layer::new(1, ds);
         style::apply(
             &mut layer,
@@ -309,7 +309,7 @@ mod review_regressions {
 
     /// A point with both fields, so scale and class assertions exercise real symbols.
     fn point() -> crate::Layer {
-        let (ds, _) = rustgis_data::io::read_bytes("point.geojson", br#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[0,0]},"properties":{"value":50,"kind":"a"}}]}"#).unwrap();
+        let (ds, _) = powergis_data::io::read_bytes("point.geojson", br#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[0,0]},"properties":{"value":50,"kind":"a"}}]}"#).unwrap();
         crate::Layer::new(1, ds)
     }
 

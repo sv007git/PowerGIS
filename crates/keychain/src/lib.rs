@@ -1,12 +1,12 @@
 //! The one crate that talks to the OS secret store (macOS Keychain, Windows Credential Manager,
-//! Secret Service), used by the desktop, `rustgis-cli --use-saved-secrets` and Python's
+//! Secret Service), used by the desktop, `powergis-cli --use-saved-secrets` and Python's
 //! `use_saved_secrets`.
 
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic, clippy::unimplemented, clippy::todo, clippy::unreachable)]
 
 use std::sync::{Arc, OnceLock};
 
-use rustgis_data::secrets::{SERVICE, Secret, SecretError, SecretStore, check_account};
+use powergis_data::secrets::{SERVICE, Secret, SecretError, SecretStore, check_account};
 
 /// The OS credential store, opened on the first call: constructing this hook never touches
 /// D-Bus or triggers a prompt. Callers such as Assistant key migration use a worker thread.
@@ -126,10 +126,10 @@ mod tests {
         let keychain = Keychain::default();
         let account = "test/keychain-smoke";
         keychain.delete(account).unwrap();
-        keychain.save(account, &Secret::new("rustgis-smoke-1")).unwrap();
-        assert_eq!(keychain.load(account).unwrap(), Some(Secret::new("rustgis-smoke-1")));
-        keychain.save(account, &Secret::new("rustgis-smoke-2")).unwrap();
-        assert_eq!(keychain.load(account).unwrap(), Some(Secret::new("rustgis-smoke-2")));
+        keychain.save(account, &Secret::new("powergis-smoke-1")).unwrap();
+        assert_eq!(keychain.load(account).unwrap(), Some(Secret::new("powergis-smoke-1")));
+        keychain.save(account, &Secret::new("powergis-smoke-2")).unwrap();
+        assert_eq!(keychain.load(account).unwrap(), Some(Secret::new("powergis-smoke-2")));
         keychain.delete(account).unwrap();
         assert_eq!(keychain.load(account).unwrap(), None);
     }

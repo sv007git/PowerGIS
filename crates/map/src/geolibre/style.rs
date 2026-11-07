@@ -106,7 +106,7 @@ pub fn apply(layer: &mut Layer, record: &Value, report: &mut Report) {
     }
     if boolean(st, "proportionalSizeEnabled", false) {
         let field = string(st, "proportionalSizeProperty");
-        if layer.geometry_type() != rustgis_data::GeometryType::Point {
+        if layer.geometry_type() != powergis_data::GeometryType::Point {
             report.approximated(&name, "proportional sizing is supported only for point markers; using a fixed width");
         } else if mode == "single" || mode.is_empty() {
             if layer.dataset.field_index(field).is_some() {
@@ -181,9 +181,9 @@ fn color(v: &Value, key: &str, default: Rgba, report: &mut Report, name: &str) -
     default
 }
 /// Changes the class colour without changing the saved outline or fill opacity.
-fn painted(mut s: Symbol, c: Rgba, g: rustgis_data::GeometryType, opacity: f64) -> Symbol {
+fn painted(mut s: Symbol, c: Rgba, g: powergis_data::GeometryType, opacity: f64) -> Symbol {
     s.fill = c.with_alpha((f64::from(c.a()) * opacity.clamp(0.0, 1.0)).round() as u8);
-    if g == rustgis_data::GeometryType::Polyline {
+    if g == powergis_data::GeometryType::Polyline {
         s.stroke = c;
     }
     s

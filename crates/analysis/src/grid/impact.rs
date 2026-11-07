@@ -6,7 +6,7 @@
 use serde::{Deserialize, Serialize};
 
 use super::model::{
-    CustomerCategory, FaultPriority, FaultRecord, FaultSeverity, FaultType, GridAssetStatus, GridAssetType, MeterStatus,
+    CustomerCategory, FaultPriority, FaultRecord, FaultType, GridAssetStatus, GridAssetType, MeterStatus,
 };
 use super::topology::ElectricalNetwork;
 
@@ -190,12 +190,6 @@ pub fn trigger_fault(
         asset_name: node_name,
         fault_type,
         status: "ACTIVE".to_string(),
-        severity: match summary.priority {
-            FaultPriority::Critical => FaultSeverity::Critical,
-            FaultPriority::High => FaultSeverity::High,
-            FaultPriority::Medium => FaultSeverity::Medium,
-            FaultPriority::Low => FaultSeverity::Low,
-        },
         priority: summary.priority,
         priority_score: summary.priority_score,
         priority_explanation: summary.priority_explanation,

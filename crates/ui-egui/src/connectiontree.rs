@@ -8,14 +8,14 @@ use std::sync::Arc;
 
 use egui::collapsing_header::CollapsingState;
 use egui::{Label, RichText, Sense, Ui};
-use rustgis_engine::connections::{Connection, DATABASE_KINDS};
-use rustgis_engine::render::rustgis_tiles::stac;
-use rustgis_engine::sources::Source;
+use powergis_engine::connections::{Connection, DATABASE_KINDS};
+use powergis_engine::render::powergis_tiles::stac;
+use powergis_engine::sources::Source;
 use serde_json::{Value, json};
 
 use crate::serviceui::{self, ServiceSource};
 use crate::theme::Tokens;
-use crate::{RustGisApp, Slot, i18n};
+use crate::{powergisApp, Slot, i18n};
 
 type Key = (String, String);
 
@@ -49,7 +49,7 @@ pub(crate) const ORIGIN: &str = "_origin";
 
 /// Runs `ui.addUrl` for a dataset of the connection named `origin` (none: for any other source):
 /// whichever way the download ends, the add is noted in Recent under that name.
-pub(crate) fn run_add_url(app: &mut RustGisApp, params: Value, origin: Option<&str>) -> Result<Value, String> {
+pub(crate) fn run_add_url(app: &mut powergisApp, params: Value, origin: Option<&str>) -> Result<Value, String> {
     app.ui.connection_tree.origin = origin.map(str::to_string);
     let r = app.run("ui.addUrl", params);
     app.ui.connection_tree.origin = None;
@@ -57,7 +57,7 @@ pub(crate) fn run_add_url(app: &mut RustGisApp, params: Value, origin: Option<&s
 }
 
 /// The connection `ui.addUrl` was run for ([`run_add_url`]).
-pub(crate) fn take_origin(app: &mut RustGisApp) -> Option<String> {
+pub(crate) fn take_origin(app: &mut powergisApp) -> Option<String> {
     app.ui.connection_tree.origin.take()
 }
 
@@ -70,7 +70,7 @@ pub(crate) fn take_origin_key(params: &mut Value) -> Option<String> {
 }
 
 /// Runs a command that adds a dataset now, noting it in Recent under the connection's name.
-pub(crate) fn run_named(app: &mut RustGisApp, id: &str, params: Value, origin: Option<&str>) -> Result<Value, String> {
+pub(crate) fn run_named(app: &mut powergisApp, id: &str, params: Value, origin: Option<&str>) -> Result<Value, String> {
     let before = app.session.sources.generation;
     let r = app.run(id, params);
     if r.is_ok() {
@@ -83,7 +83,7 @@ pub(crate) fn run_named(app: &mut RustGisApp, id: &str, params: Value, origin: O
 /// shows it, after the connection it came from. The kind, address and `extra` are the ones noted
 /// (cleaned and redacted), so reopening it targets the same dataset; a name is a snapshot, taken
 /// when added. Nothing noted (a failed add, one still on its way) leaves Recent as it was.
-pub(crate) fn name_recent(app: &mut RustGisApp, before: u64, origin: Option<&str>) {
+pub(crate) fn name_recent(app: &mut powergisApp, before: u64, origin: Option<&str>) {
     let Some(origin) = origin else { return };
     if app.session.sources.generation == before {
         return;
@@ -138,7 +138,7 @@ fn params(id: &str, node: &str) -> Value {
 
 /// Starts reading a level: what it needs fetched is asked for, and a level read without a fetch
 /// (a database's tables, an S3 connection's own buckets) is read now. Errors go into the entry.
-fn start(app: &mut RustGisApp, c: &Connection, node: &str) {
+fn start(app: &mut powergisApp, c: &Connection, node: &str) {
     let mut probe = params(&c.id, node);
     probe["probe"] = json!(true);
     let entry = match app.session.run("connection.browse", &probe) {
@@ -180,7 +180,7 @@ fn listing(v: &Value, first: Option<String>, documents: Vec<Value>) -> Listing {
 
 /// An answer arrived: asks again with it (and what came before). A service's discovery may need
 /// further documents, which are fetched in turn.
-fn advance(app: &mut RustGisApp, id: &str, mut f: Fetch, bytes: Vec<u8>) -> Entry {
+fn advance(app: &mut powergisApp, id: &str, mut f: Fetch, bytes: Vec<u8>) -> Entry {
     let Ok(text) = crate::service_text(bytes) else {
         return Entry::Failed(tl!("The answer isn't UTF-8 text").to_string());
     };
@@ -207,7 +207,7 @@ fn advance(app: &mut RustGisApp, id: &str, mut f: Fetch, bytes: Vec<u8>) -> Entr
     }
 }
 
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let tree = &mut app.ui.connection_tree;
     let mut landed = Vec::new();
     for (key, entry) in &tree.entries {
@@ -252,7 +252,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 /// Adds one dataset a listing offers. Each branch is one command, so each is one undo step.
 /// `origin` is the connection it is for: Recent then shows the dataset's source (as added, its
 /// address and options unchanged) under that name, once it is added.
-fn add_from(app: &mut RustGisApp, child: &Value, source: Option<&ServiceSource>, origin: Option<&str>) -> Result<(), String> {
+fn add_from(app: &mut powergisApp, child: &Value, source: Option<&ServiceSource>, origin: Option<&str>) -> Result<(), String> {
     let add = child.get("add").filter(|a| a.is_object()).ok_or_else(|| tl!("Nothing to add here").to_string())?;
     let command = add["command"].as_str().unwrap_or("");
     let params = add["params"].clone();
@@ -276,7 +276,7 @@ fn add_from(app: &mut RustGisApp, child: &Value, source: Option<&ServiceSource>,
 
 /// A STAC asset by its address, signed first when it needs a token (one in hand is used; one to
 /// fetch is fetched off the frame and the asset added when it lands).
-fn add_asset(app: &mut RustGisApp, href: &str, name: &str, origin: Option<&str>) -> Result<(), String> {
+fn add_asset(app: &mut powergisApp, href: &str, name: &str, origin: Option<&str>) -> Result<(), String> {
     if !stac::needs_signing(href) {
         run_add_url(app, json!({"url": href, "name": name, "zoom": true}), origin)?;
         return Ok(());
@@ -294,7 +294,7 @@ fn add_asset(app: &mut RustGisApp, href: &str, name: &str, origin: Option<&str>)
 
 /// Opens the kind's own add dialog on a dataset: a table in the database dialog, a service layer
 /// in the service dialog, a STAC collection in the STAC dialog.
-fn add_with_options(app: &mut RustGisApp, c: &Connection, child: &Value, source: Option<&ServiceSource>) -> Result<(), String> {
+fn add_with_options(app: &mut powergisApp, c: &Connection, child: &Value, source: Option<&ServiceSource>) -> Result<(), String> {
     match child["what"].as_str().unwrap_or("") {
         "table" => {
             crate::sourcespane::open(
@@ -355,11 +355,11 @@ fn what_label(what: &str) -> &'static str {
     }
 }
 
-fn picked(app: &RustGisApp, conn: &str, key: &str) -> bool {
+fn picked(app: &powergisApp, conn: &str, key: &str) -> bool {
     app.ui.connection_tree.picks.iter().any(|p| p.conn == conn && p.key == key)
 }
 
-fn toggle(app: &mut RustGisApp, c: &Connection, child: &Value, source: Option<&Arc<ServiceSource>>) {
+fn toggle(app: &mut powergisApp, c: &Connection, child: &Value, source: Option<&Arc<ServiceSource>>) {
     let key = child["key"].as_str().unwrap_or("");
     let picks = &mut app.ui.connection_tree.picks;
     if let Some(i) = picks.iter().position(|p| p.conn == c.id && p.key == key) {
@@ -377,7 +377,7 @@ fn toggle(app: &mut RustGisApp, c: &Connection, child: &Value, source: Option<&A
 
 /// Forgets what a connection (or, with `None`, every connection) listed and what was selected
 /// from it: the next expansion reads it again.
-pub fn refresh(app: &mut RustGisApp, id: Option<&str>) {
+pub fn refresh(app: &mut powergisApp, id: Option<&str>) {
     let tree = &mut app.ui.connection_tree;
     match id {
         Some(id) => {
@@ -393,14 +393,14 @@ pub fn refresh(app: &mut RustGisApp, id: Option<&str>) {
 
 /// Drops the picks of a connection that was edited or removed since (even while its row is
 /// folded, when its list isn't refreshed): they would add from the old definition.
-pub fn prune(app: &mut RustGisApp) {
+pub fn prune(app: &mut powergisApp) {
     let (connections, tree) = (&app.session.connections, &mut app.ui.connection_tree);
     let seen = &tree.seen;
     tree.picks.retain(|p| connections.find(&p.conn).is_some_and(|c| seen.get(&p.conn) == Some(c)));
 }
 
 /// Adds every selected dataset, each as its own undo step, and clears the selection.
-fn add_picks(app: &mut RustGisApp) {
+fn add_picks(app: &mut powergisApp) {
     prune(app);
     for pick in std::mem::take(&mut app.ui.connection_tree.picks) {
         // The name as it is now, for the whole add (pruned above: the connection is there).
@@ -412,7 +412,7 @@ fn add_picks(app: &mut RustGisApp) {
 }
 
 /// A connection's expanded body: its top level, listed (or its error).
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connection) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, c: &Connection) {
     // An edited connection lists what it now offers.
     if app.ui.connection_tree.seen.get(&c.id) != Some(c) {
         refresh(app, Some(&c.id));
@@ -422,7 +422,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connection) {
 }
 
 /// One level: loading, its error with the ways to go on, or its children.
-fn level(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connection, node: &str) {
+fn level(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, c: &Connection, node: &str) {
     let key = (c.id.clone(), node.to_string());
     let shown = match app.ui.connection_tree.entries.get(&key) {
         None => None,
@@ -477,12 +477,12 @@ fn level(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connection, node: &s
 /// `node` is set when the body is a level of its own (read when first opened, refreshed from
 /// the header's menu).
 fn branch(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     ui: &mut Ui,
     c: &Connection,
     child: &Value,
     node: Option<&str>,
-    body: impl FnOnce(&mut RustGisApp, &mut Ui),
+    body: impl FnOnce(&mut powergisApp, &mut Ui),
 ) {
     let salt = node.or(child["key"].as_str()).unwrap_or("");
     let id = ui.make_persistent_id(("conntree", &c.id, salt));
@@ -511,7 +511,7 @@ fn branch(
     }
 }
 
-fn children(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connection, listing: &Listing, list: &[Value]) {
+fn children(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, c: &Connection, listing: &Listing, list: &[Value]) {
     for child in list {
         if let Some(node) = child["node"].as_str() {
             branch(app, ui, c, child, Some(node), |app, ui| level(app, ui, t, c, node));
@@ -531,7 +531,7 @@ fn children(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, c: &Connection, listi
 }
 
 /// A dataset: click selects it, double-click adds it, the menu adds it (with options).
-fn dataset(app: &mut RustGisApp, ui: &mut Ui, c: &Connection, listing: &Listing, child: &Value) {
+fn dataset(app: &mut powergisApp, ui: &mut Ui, c: &Connection, listing: &Listing, child: &Value) {
     let name = child["name"].as_str().unwrap_or("");
     let is_picked = picked(app, &c.id, child["key"].as_str().unwrap_or(""));
     let r = ui
@@ -604,19 +604,19 @@ fn dataset(app: &mut RustGisApp, ui: &mut Ui, c: &Connection, listing: &Listing,
 mod tests {
     use super::*;
     use egui_kittest::kittest::Queryable;
-    use rustgis_engine::sources::{self, Source};
+    use powergis_engine::sources::{self, Source};
     use std::io::{Read, Write};
 
-    type Harness = egui_kittest::Harness<'static, RustGisApp>;
+    type Harness = egui_kittest::Harness<'static, powergisApp>;
 
     fn harness() -> Harness {
         egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 860.0)).with_max_steps(64).with_step_dt(0.05).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let ctx = ui.ctx().clone();
                 app.logic(&ctx);
                 app.ui(ui);
             },
-            RustGisApp::with_sample(),
+            powergisApp::with_sample(),
         )
     }
 
@@ -637,7 +637,7 @@ mod tests {
         base
     }
 
-    fn until(h: &mut Harness, done: impl Fn(&RustGisApp) -> bool) {
+    fn until(h: &mut Harness, done: impl Fn(&powergisApp) -> bool) {
         let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
         while !done(h.state()) {
             assert!(std::time::Instant::now() < deadline, "timed out waiting");
@@ -811,7 +811,7 @@ mod tests {
     #[test]
     fn a_coverage_is_named_once_its_download_lands() {
         let _turn = crate::fetching::turn();
-        use rustgis_engine::data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+        use powergis_engine::data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
         let r = Raster::new(
             "soc",
             8,

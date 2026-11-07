@@ -6,8 +6,8 @@
 //! beyond the project (files, the network, the user's own automation) need the user's approval
 //! first ([`gate`]).
 
-use rustgis_engine::cmd::plugins::{Reach, reaches, user_only};
-use rustgis_engine::{Session, analysis, project};
+use powergis_engine::cmd::plugins::{Reach, reaches, user_only};
+use powergis_engine::{Session, analysis, project};
 use serde_json::{Value, json};
 
 use crate::provider::{ToolCall, ToolDef};
@@ -167,7 +167,7 @@ pub fn gate(s: &Session, call: &ToolCall) -> Option<String> {
     // A script asks once, for every line that needs it, each named.
     if call.name == "run" {
         let script = call.args.get("script").and_then(Value::as_str).unwrap_or("");
-        let reasons: Vec<String> = rustgis_engine::cmd::workflows::script_commands(script)
+        let reasons: Vec<String> = powergis_engine::cmd::workflows::script_commands(script)
             .unwrap_or_default()
             .into_iter()
             .filter_map(|(n, id, params)| {
@@ -178,7 +178,7 @@ pub fn gate(s: &Session, call: &ToolCall) -> Option<String> {
         return (!reasons.is_empty()).then(|| reasons.join("; "));
     }
     let (id, params) = target(call)?;
-    if id.starts_with(rustgis_engine::plugins::PREFIX) {
+    if id.starts_with(powergis_engine::plugins::PREFIX) {
         return Some("it runs a plugin's command".into());
     }
     if id == "ui.addUrl" && ["geolibreProject", "geolibreLayer", "geolibreZarr"].iter().any(|key| params.get(key).is_some()) {
@@ -198,7 +198,7 @@ pub fn gate(s: &Session, call: &ToolCall) -> Option<String> {
         });
     }
     let spec = s.registry.get(&id)?;
-    if id == rustgis_engine::cmd::plugins::SQL || id == "sql.query" {
+    if id == powergis_engine::cmd::plugins::SQL || id == "sql.query" {
         let why = "it runs an SQL query, which can read files on this computer and addresses on the internet";
         // Views in a database the query opens run too, though the query doesn't show them.
         return Some(match params.get("database").and_then(Value::as_str).filter(|d| !d.trim().is_empty()) {
@@ -226,7 +226,7 @@ pub fn approval_key(s: &Session, call: &ToolCall) -> Option<String> {
         "run_tool" => ("gp.run".to_string(), format!("gp.run:{}", str_arg(&call.args, "tool")?)),
         _ => return None,
     };
-    if command.starts_with(rustgis_engine::plugins::PREFIX) || user_only(&command) || s.registry.get(&command).is_none() {
+    if command.starts_with(powergis_engine::plugins::PREFIX) || user_only(&command) || s.registry.get(&command).is_none() {
         return None;
     }
     // Object keys serialise sorted, so the same parameters always make the same key.
@@ -274,7 +274,7 @@ pub fn run_with_budget(s: &mut Session, call: &ToolCall, tokens: usize) -> Resul
             if id.starts_with("ui.") {
                 return Err("ui.* commands only open panes and dialogs; the assistant can't use them".into());
             }
-            if s.registry.get(&id).is_none() && !id.starts_with(rustgis_engine::plugins::PREFIX) {
+            if s.registry.get(&id).is_none() && !id.starts_with(powergis_engine::plugins::PREFIX) {
                 return Err(format!("unknown command '{id}'; find ids with search_commands"));
             }
             let (before, mark) = (layer_snap(s), s.notice_mark());
@@ -587,7 +587,7 @@ struct RowSource<'a> {
     /// The reply's key for the name: `layer` or `table`.
     kind: &'static str,
     name: &'a str,
-    ds: &'a rustgis_engine::data::Dataset,
+    ds: &'a powergis_engine::data::Dataset,
     /// The layer's selected rows; a standalone table has no selection.
     selection: Option<&'a [usize]>,
 }
@@ -647,7 +647,7 @@ fn read_features(s: &Session, a: &Value) -> Result<Value, String> {
         (0..ds.features.len()).collect()
     };
     if let Some(w) = str_arg(a, "where").filter(|w| !w.is_empty()) {
-        let hits: std::collections::HashSet<usize> = rustgis_engine::data::query::select(&w, ds)?.into_iter().collect();
+        let hits: std::collections::HashSet<usize> = powergis_engine::data::query::select(&w, ds)?.into_iter().collect();
         rows.retain(|r| hits.contains(r));
     }
     let fields: Vec<usize> = match a.get("fields").and_then(Value::as_array) {
@@ -678,7 +678,7 @@ fn read_features(s: &Session, a: &Value) -> Result<Value, String> {
         // values.
         let key = |r: usize| -> (u8, f64, String) {
             match ds.features.get(r).and_then(|f| f.attrs.get(fi)) {
-                Some(rustgis_engine::data::Value::Null) | None => (2, 0.0, String::new()),
+                Some(powergis_engine::data::Value::Null) | None => (2, 0.0, String::new()),
                 Some(v) => match v.as_f64() {
                     Some(x) => (0, x, String::new()),
                     None => (1, 0.0, v.to_string().to_lowercase()),
@@ -712,11 +712,11 @@ fn read_features(s: &Session, a: &Value) -> Result<Value, String> {
             for &fi in &fields {
                 let (Some(field), Some(v)) = (ds.fields.get(fi), f.attrs.get(fi)) else { continue };
                 let v = match v {
-                    rustgis_engine::data::Value::Null => Value::Null,
-                    rustgis_engine::data::Value::Int(i) => json!(i),
-                    rustgis_engine::data::Value::Float(x) => json!(x),
-                    rustgis_engine::data::Value::Bool(b) => json!(b),
-                    rustgis_engine::data::Value::Text(t) => json!(clip(t, 200)),
+                    powergis_engine::data::Value::Null => Value::Null,
+                    powergis_engine::data::Value::Int(i) => json!(i),
+                    powergis_engine::data::Value::Float(x) => json!(x),
+                    powergis_engine::data::Value::Bool(b) => json!(b),
+                    powergis_engine::data::Value::Text(t) => json!(clip(t, 200)),
                 };
                 o.insert(field.name.clone(), v);
             }

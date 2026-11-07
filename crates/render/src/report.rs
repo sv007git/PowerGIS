@@ -2,9 +2,9 @@
 //! each page, headings kept with what follows, long text split between pages), with a page
 //! number footer. Layout sections are drawn as whole pages by the layout renderer.
 
-use rustgis_map::layout::Layout;
-use rustgis_map::report::{Block, Doc};
-use rustgis_map::{Map, Rgba};
+use powergis_map::layout::Layout;
+use powergis_map::report::{Block, Doc};
+use powergis_map::{Map, Rgba};
 use tiny_skia::{Pixmap, PixmapPaint, Rect, Transform};
 
 use crate::{paint, text};
@@ -420,7 +420,7 @@ pub fn draw_page(doc: &Doc, pages: &[Page], n: usize, dpi: f64, layouts: &[Layou
                     if let Some(r) = Rect::from_xywh(at(MARGIN + label_w), at(y + 0.8), at(w), at(3.4)) {
                         pm.fill_rect(r, &paint(ACCENT, 1.0), Transform::identity(), None);
                     }
-                    let num = rustgis_map::symbology::fmt_num(*v);
+                    let num = powergis_map::symbology::fmt_num(*v);
                     text::text_at(
                         &mut pm,
                         &num,

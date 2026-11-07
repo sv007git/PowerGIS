@@ -3,8 +3,8 @@
 # The PowerGIS web app, built from this checkout and served by nginx (see docs/installation.md ›
 # Self-host the web app with Docker):
 #
-#   docker build -t rustgis .
-#   docker run --rm -p 8080:8080 rustgis     # http://localhost:8080
+#   docker build -t powergis .
+#   docker run --rm -p 8080:8080 powergis     # http://localhost:8080
 #
 # It builds as .github/workflows/web-deploy.yml does, with three differences: no analytics tag
 # (only the official deploy adds one), relative addresses (as the docs preview's build) so it can
@@ -15,7 +15,7 @@
 # own platform, also when the image is for another (`--platform linux/amd64,linux/arm64`).
 FROM --platform=$BUILDPLATFORM rust:1.99.1-slim@sha256:1a939748a7cbab172de91a014e3804a97af1394a8c844faa67fce9401c4e40fb AS build
 
-# clang compiles the Zstandard decoder in rustgis-data to WebAssembly; curl downloads Trunk, and
+# clang compiles the Zstandard decoder in powergis-data to WebAssembly; curl downloads Trunk, and
 # crates/render/build.rs uses curl to fetch the Natural Earth sample data it embeds.
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ca-certificates clang curl \
@@ -42,7 +42,7 @@ COPY . .
 
 # The cargo registry, the target directory and the tools Trunk downloads are cache mounts, so a
 # rebuild after a change redoes only what changed. The output, dist/web, is outside them.
-WORKDIR /src/apps/rustgis-web
+WORKDIR /src/apps/powergis-web
 RUN --mount=type=cache,target=/usr/local/cargo/registry \
     --mount=type=cache,target=/src/target \
     --mount=type=cache,target=/root/.cache/trunk \
@@ -58,7 +58,7 @@ FROM nginxinc/nginx-unprivileged:1.31.7-alpine-slim@sha256:a8cb0f33d51fa107c96fd
 # The base image's labels describe nginx: the ones that apply are replaced, the rest cleared.
 LABEL org.opencontainers.image.title="PowerGIS web app" \
       org.opencontainers.image.description="The PowerGIS web app (WebAssembly), served by nginx" \
-      org.opencontainers.image.url="https://rustgis.app" \
+      org.opencontainers.image.url="https://powergis.app" \
       org.opencontainers.image.source="https://github.com/opengeos/PowerGIS" \
       org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.version="" \

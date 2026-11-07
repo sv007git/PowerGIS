@@ -3,7 +3,7 @@
 ## Symbology
 
 <figure markdown="span">
-  ![The Style tab and the Symbology pane with graduated colours; the larger African countries are selected on the map and in the attribute table](https://assets.rustgis.app/images/symbology-table.webp)
+  ![The Style tab and the Symbology pane with graduated colours; the larger African countries are selected on the map and in the attribute table](https://assets.powergis.app/images/symbology-table.webp)
   <figcaption>Graduated colours in the Symbology pane, with a selection synced between map and table.</figcaption>
 </figure>
 
@@ -489,7 +489,7 @@ Turn labels on per layer (Labeling › Labels › **Label**), then:
   when Default is hidden.
 
 <figure markdown="span">
-  ![Europe with the Countries and Cities labelled; the city names sit above and to the right of their points](https://assets.rustgis.app/images/labels.webp)
+  ![Europe with the Countries and Cities labelled; the city names sit above and to the right of their points](https://assets.powergis.app/images/labels.webp)
   <figcaption>City labels placed above and to the right of their points, beside the country labels.</figcaption>
 </figure>
 

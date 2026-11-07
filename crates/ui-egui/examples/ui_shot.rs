@@ -1,6 +1,6 @@
 //! Headless UI screenshots: renders the whole PowerGIS window offscreen (wgpu).
 //!
-//! `cargo run -p rustgis-ui-egui --example ui_shot -- script.jsonl`
+//! `cargo run -p powergis-ui-egui --example ui_shot -- script.jsonl`
 //!
 //! The script is JSON lines: `{"cmd": id, "params": {...}}` runs a command (ui.* included),
 //! `{"shot": "/abs/out.png"}` saves the window, `{"steps": n}` runs frames, `{"sleep": ms}` runs frames
@@ -16,7 +16,7 @@
 //! pointer and optionally presses/releases it, stepping one frame; omit `pressed` for motion.
 //! `{"scroll": [x, y, dy]}` turns the mouse wheel by `dy` points over (x, y) (negative zooms
 //! out) and runs one frame (shots then catch the map mid-zoom),
-//! `{"plugin": path}` loads a `.rgplugin` or a plugin folder for the run (as `rustgis-cli run
+//! `{"plugin": path}` loads a `.rgplugin` or a plugin folder for the run (as `powergis-cli run
 //! --plugin` does), and `{"testPlugin": "panel"}` the plugin tests use, with a panel,
 //! `{"titlebar": {"left_inset": 80, "height": 34}}`
 //! draws the header as a macOS unified title bar (`null` turns it off), and
@@ -37,7 +37,7 @@
 //! but leaves "Zoom options" enabled.
 
 use egui_kittest::kittest::Queryable;
-use rustgis_ui_egui::{RustGisApp, big_split_menu, i18n, theme};
+use powergis_ui_egui::{powergisApp, big_split_menu, i18n, theme};
 use serde_json::{Value, json};
 
 #[derive(Default)]
@@ -49,7 +49,7 @@ struct RibbonSplitShowcase {
     applied_dark: Option<bool>,
 }
 
-fn split_tool_menu(ui: &mut egui::Ui, app: &mut RustGisApp) {
+fn split_tool_menu(ui: &mut egui::Ui, app: &mut powergisApp) {
     for (label, tool) in [("Pan", "explore"), ("Measure Distance", "measure")] {
         if ui.button(i18n::t(label)).clicked() {
             if let Err(e) = app.run("tool.set", json!({"tool": tool})) {
@@ -61,7 +61,7 @@ fn split_tool_menu(ui: &mut egui::Ui, app: &mut RustGisApp) {
 }
 
 impl RibbonSplitShowcase {
-    fn show(&mut self, ui: &mut egui::Ui, app: &mut RustGisApp) {
+    fn show(&mut self, ui: &mut egui::Ui, app: &mut powergisApp) {
         if !self.fonts_installed {
             theme::install_fonts(ui.ctx(), &[], None);
             self.fonts_installed = true;
@@ -147,10 +147,10 @@ fn main() {
     let dt = lines.iter().find_map(|l| l.get("dt").and_then(|v| v.as_f64())).unwrap_or(0.25) as f32;
     let ribbon_split = lines.first().and_then(|l| l.get("ribbonSplit")).and_then(Value::as_bool).unwrap_or(false);
     let mut split_showcase = RibbonSplitShowcase::default();
-    let mut app = RustGisApp::with_sample();
+    let mut app = powergisApp::with_sample();
     if let Some(dir) = lines.first().and_then(|l| l.get("recovery")).and_then(Value::as_str) {
-        let store = rustgis_ui_egui::FolderStore::open(std::path::Path::new(dir)).expect("recovery folder");
-        app = app.with_services(rustgis_ui_egui::Services { recovery: Some(Box::new(store)), ..Default::default() });
+        let store = powergis_ui_egui::FolderStore::open(std::path::Path::new(dir)).expect("recovery folder");
+        app = app.with_services(powergis_ui_egui::Services { recovery: Some(Box::new(store)), ..Default::default() });
     }
     // One shared wgpu render state: the app's GPU map backend and the harness's renderer must
     // live on the same device for the map's paint callback to be valid.
@@ -180,7 +180,7 @@ fn main() {
         .with_step_dt(dt)
         .renderer(egui_kittest::wgpu::WgpuTestRenderer::from_render_state(rs))
         .build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if ribbon_split {
                     split_showcase.show(ui, app);
                 } else {
@@ -237,7 +237,7 @@ fn main() {
                 harness.step();
             }
         } else if let Some(p) = l.get("plugin").and_then(|v| v.as_str()) {
-            let loaded = rustgis_plugins::Package::from_path(std::path::Path::new(p)).and_then(|pkg| rustgis_plugins::load(pkg, p));
+            let loaded = powergis_plugins::Package::from_path(std::path::Path::new(p)).and_then(|pkg| powergis_plugins::load(pkg, p));
             if let Err(e) = loaded {
                 eprintln!("{p}: {e}");
             }
@@ -246,10 +246,10 @@ fn main() {
             }
         } else if let Some(which) = l.get("testPlugin").and_then(|v| v.as_str()) {
             let bytes = match which {
-                "panel" => rustgis_plugins::testing::panel_package("test-panel"),
-                _ => rustgis_plugins::testing::package("test-plugin", &[]),
+                "panel" => powergis_plugins::testing::panel_package("test-panel"),
+                _ => powergis_plugins::testing::package("test-plugin", &[]),
             };
-            if let Err(e) = rustgis_plugins::Package::from_zip(&bytes).and_then(|pkg| rustgis_plugins::load(pkg, "test")) {
+            if let Err(e) = powergis_plugins::Package::from_zip(&bytes).and_then(|pkg| powergis_plugins::load(pkg, "test")) {
                 eprintln!("{which}: {e}");
             }
             for _ in 0..3 {
@@ -257,10 +257,10 @@ fn main() {
             }
         } else if let Some(t) = l.get("titlebar") {
             let num = |k: &str| t.get(k).and_then(|v| v.as_f64()).unwrap_or(0.0) as f32;
-            harness.state_mut().ui.titlebar = t.is_object().then(|| rustgis_ui_egui::TitlebarMetrics {
+            harness.state_mut().ui.titlebar = t.is_object().then(|| powergis_ui_egui::TitlebarMetrics {
                 left_inset: num("left_inset"),
                 height: num("height"),
-                ..rustgis_ui_egui::TitlebarMetrics::FALLBACK
+                ..powergis_ui_egui::TitlebarMetrics::FALLBACK
             });
             for _ in 0..3 {
                 harness.step();

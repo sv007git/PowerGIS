@@ -1,7 +1,7 @@
 //! Opens a GeoLibre project as a new map, resolving sources through existing commands.
 use super::ps;
 use crate::{CmdResult, CommandSpec as C, Session};
-use rustgis_map::geolibre::{self, Report, array, boolean, number, string};
+use powergis_map::geolibre::{self, Report, array, boolean, number, string};
 use serde_json::{Value, json};
 
 /// The importer reads files and URLs named inside the project, so callers require approval.
@@ -26,12 +26,12 @@ fn project_text(p: &Value) -> Result<String, String> {
         }
         return Ok(text.into());
     } else if let Some(url) = ps(p, "url") {
-        if !rustgis_map::tiles::is_web(url) {
+        if !powergis_map::tiles::is_web(url) {
             return Err("url must be http:// or https://".into());
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            crate::render::rustgis_tiles::cache::download_blocking_limited(&geolibre::download_url(url), geolibre::MAX_TEXT)?
+            crate::render::powergis_tiles::cache::download_blocking_limited(&geolibre::download_url(url), geolibre::MAX_TEXT)?
         }
         #[cfg(target_arch = "wasm32")]
         {
@@ -59,7 +59,7 @@ fn import_project(s: &mut Session, p: &Value) -> CmdResult {
         let mut q = p.clone();
         q["geolibreProject"] = json!(true);
         if let Some(url) = ps(p, "url") {
-            if !rustgis_map::tiles::is_web(url) {
+            if !powergis_map::tiles::is_web(url) {
                 return Err("url must be http:// or https://".into());
             }
             q["url"] = json!(geolibre::download_url(url));
@@ -77,7 +77,7 @@ fn import_project(s: &mut Session, p: &Value) -> CmdResult {
             .map(|d| if d.as_os_str().is_empty() { ".".into() } else { d.to_string_lossy().into_owned() })
     });
     s.run_part("map.new", &json!({"name":project.name}))?;
-    s.map_mut().basemap = rustgis_map::Basemap::Blank;
+    s.map_mut().basemap = powergis_map::Basemap::Blank;
     s.map_mut().graticule = false;
     if !project.basemap.is_empty() {
         if let Err(e) = s.run_part(
@@ -146,7 +146,7 @@ fn import_project(s: &mut Session, p: &Value) -> CmdResult {
         }
     }
     for g in &project.groups {
-        let mut group = rustgis_map::LayerGroup::new(string(g, "name"));
+        let mut group = powergis_map::LayerGroup::new(string(g, "name"));
         group.children = if string(g, "id").is_empty() { Vec::new() } else { groups.remove(string(g, "id")).unwrap_or_default() };
         group.expanded = !boolean(g, "collapsed", false);
         let (visible, opacity) = group_look(&group_index, string(g, "id"));
@@ -214,7 +214,7 @@ fn ensure_download_capacity(s: &Session, layers: &[Value]) -> Result<(), String>
         .filter(|r| {
             let kind = string(r, "type");
             let address = source_address(r);
-            rustgis_map::tiles::is_web(address)
+            powergis_map::tiles::is_web(address)
                 && !(kind == "geojson" && inline_data(r).is_some())
                 && (matches!(kind, "geojson" | "flatgeobuf" | "geoparquet" | "zarr" | "lidar" | "mbtiles")
                     || (kind == "raster" && array(&r["source"], "tiles").is_empty() && !super::layer::is_tiff_url(address)))
@@ -264,11 +264,11 @@ fn add_layer(s: &mut Session, r: &Value, dir: Option<&str>, report: &mut Report,
             return Err("no inline data, path or URL".into());
         }
         let address = resolve(address, dir)?;
-        if kind == "mbtiles" && rustgis_map::tiles::is_web(&address) {
+        if kind == "mbtiles" && powergis_map::tiles::is_web(&address) {
             let index;
             #[cfg(not(target_arch = "wasm32"))]
             {
-                let bytes = crate::render::rustgis_tiles::cache::download_blocking(&address)?;
+                let bytes = crate::render::powergis_tiles::cache::download_blocking(&address)?;
                 let out = super::raster::add_named_bytes(s, &json!({"name":name}), format!("{}.mbtiles", pending_token()), bytes)?;
                 index =
                     out.get("index").and_then(Value::as_u64).and_then(|i| usize::try_from(i).ok()).ok_or("archive added no tile layer")?;
@@ -282,7 +282,7 @@ fn add_layer(s: &mut Session, r: &Value, dir: Option<&str>, report: &mut Report,
                 let token = pending_token();
                 // An unfilled upload address cannot start an independent archive fetch.
                 let mut tile =
-                    rustgis_map::tiles::TileLayer::new(name, rustgis_map::tiles::TileKind::MbTiles, &format!("upload:{token}.mbtiles"));
+                    powergis_map::tiles::TileLayer::new(name, powergis_map::tiles::TileKind::MbTiles, &format!("upload:{token}.mbtiles"));
                 tile.id = token.clone();
                 tile.visible = boolean(r, "visible", true);
                 tile.opacity = number(r, "opacity", 1.0).clamp(0.0, 1.0) as f32;
@@ -336,7 +336,7 @@ fn add_layer(s: &mut Session, r: &Value, dir: Option<&str>, report: &mut Report,
         if !matches!(kind, "geojson" | "cog" | "raster" | "flatgeobuf" | "geoparquet" | "zarr" | "lidar") {
             return Err(format!("unsupported {kind} layer"));
         }
-        let remote = rustgis_map::tiles::is_web(&address);
+        let remote = powergis_map::tiles::is_web(&address);
         let mut q = json!({"name":name,"zoom":false});
         q[if remote { "url" } else { "path" }] = json!(address);
         #[cfg(target_arch = "wasm32")]
@@ -344,7 +344,7 @@ fn add_layer(s: &mut Session, r: &Value, dir: Option<&str>, report: &mut Report,
             // Reserve the final position and group membership before downloads can finish in
             // arbitrary order. The token follows the layer across map switches and reordering.
             let token = pending_token();
-            let mut ds = rustgis_data::Dataset::new(name, rustgis_data::GeometryType::Point, Vec::new());
+            let mut ds = powergis_data::Dataset::new(name, powergis_data::GeometryType::Point, Vec::new());
             ds.source = Some(token.clone());
             let id = s.map_mut().add_dataset(ds);
             if let Some(layer) = s.map_mut().layer_mut(id) {
@@ -403,7 +403,7 @@ fn add_layer(s: &mut Session, r: &Value, dir: Option<&str>, report: &mut Report,
 /// Absolute saved paths are tried first, then their basename in the supplied project folder.
 /// Local paths require a locally chosen project or explicit folder, even when absolute.
 fn resolve(address: &str, dir: Option<&str>) -> Result<String, String> {
-    if rustgis_map::tiles::is_web(address) {
+    if powergis_map::tiles::is_web(address) {
         return Ok(address.into());
     }
     if crate::map::qgis::is_drive_relative(address) {
@@ -417,7 +417,7 @@ fn resolve(address: &str, dir: Option<&str>) -> Result<String, String> {
     {
         let name = address.rsplit(['/', '\\']).next().unwrap_or(address);
         let path = if crate::map::qgis::is_relative(address) {
-            rustgis_map::paths::resolve(dir, address)
+            powergis_map::paths::resolve(dir, address)
                 .map(std::path::PathBuf::from)
                 .unwrap_or_else(|| std::path::Path::new(dir).join(address))
         } else {

@@ -6,8 +6,8 @@
 use geo::algorithm::bool_ops::{BooleanOps, FillRule};
 use geo::line_intersection::line_intersection;
 use geo::{Coord as GeoCoord, Intersects, Line, LineString, MultiPolygon, Point, Polygon};
-use rustgis_data::{Geometry, geometry::ring_contains};
-use rustgis_geom::{Coord, Extent};
+use powergis_data::{Geometry, geometry::ring_contains};
+use powergis_geom::{Coord, Extent};
 
 /// Maximum number of supplied or sampled vertices in a selection outline.
 pub const MAX_POINTS: usize = 20_000;
@@ -271,7 +271,7 @@ mod tests {
     #[test]
     fn projected_l_boundary_point_intersects_after_normalization() {
         let project = |lon, lat| {
-            let p = rustgis_geom::lonlat_to_merc(Coord::new(lon, lat));
+            let p = powergis_geom::lonlat_to_merc(Coord::new(lon, lat));
             Coord::new(p.x, p.y)
         };
         let outline = [(0.0, 0.0), (3.0, 0.0), (3.0, 1.0), (1.0, 1.0), (1.0, 3.0), (0.0, 3.0)].map(|(lon, lat)| project(lon, lat));

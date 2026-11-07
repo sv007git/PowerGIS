@@ -6,7 +6,7 @@ use std::collections::HashMap;
 use std::hash::{Hash, Hasher};
 
 use base64::Engine;
-use rustgis_data::{Dataset, Value};
+use powergis_data::{Dataset, Value};
 use tiny_skia::{FilterQuality, Pixmap, PixmapPaint, Transform};
 
 /// Pictures are drawn from at most this many pixels per side (bigger ones are scaled down).

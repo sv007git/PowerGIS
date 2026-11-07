@@ -4,7 +4,7 @@
 use std::collections::{BTreeMap, BTreeSet};
 use std::sync::Arc;
 
-use rustgis_data::secrets::{Secret, SecretError, SecretStore};
+use powergis_data::secrets::{Secret, SecretError, SecretStore};
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -63,9 +63,9 @@ pub struct Connections {
 }
 
 pub fn database_kind(address: &str) -> Option<&'static str> {
-    if rustgis_data::source::myconn::split_password(address).is_some() {
+    if powergis_data::source::myconn::split_password(address).is_some() {
         Some("mysql")
-    } else if rustgis_data::source::msconn::split_password(address).is_some() {
+    } else if powergis_data::source::msconn::split_password(address).is_some() {
         Some("sqlserver")
     } else {
         let lower = address.trim().to_ascii_lowercase();
@@ -78,7 +78,7 @@ pub fn database_kind(address: &str) -> Option<&'static str> {
 pub fn database_key(address: &str) -> Option<(&'static str, String)> {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::duckdb::Database;
+        use powergis_data::source::duckdb::Database;
         match Database::parse(address) {
             Database::Postgres(d) => Some(("postgres", d)),
             Database::Mysql(d) => Some(("mysql", d)),
@@ -94,7 +94,7 @@ pub fn database_key(address: &str) -> Option<(&'static str, String)> {
 }
 
 /// The kind and database address a streamed layer reads.
-pub fn layer_database(src: &rustgis_map::source::SourceLayer) -> Option<(&'static str, &str)> {
+pub fn layer_database(src: &powergis_map::source::SourceLayer) -> Option<(&'static str, &str)> {
     if let Some(origin) = &src.postgis {
         Some(("postgres", origin.database.as_str()))
     } else if let Some(origin) = &src.mysql {
@@ -165,7 +165,7 @@ pub fn clean(mut c: Connection) -> Result<(Connection, bool), String> {
             "buckets" => {
                 if !v.is_empty() {
                     let buckets: Vec<_> = v.split(',').map(str::trim).collect();
-                    if buckets.iter().any(|b| !crate::render::rustgis_tiles::s3::valid_bucket(b)) {
+                    if buckets.iter().any(|b| !crate::render::powergis_tiles::s3::valid_bucket(b)) {
                         return Err("invalid S3 bucket name".into());
                     }
                     *v = buckets.join(",");
@@ -216,7 +216,7 @@ impl Connections {
     }
 
     /// The saved connection a layer that reads a database comes from, when exactly one does.
-    pub fn for_layer(&self, l: &rustgis_map::Layer) -> Option<&Connection> {
+    pub fn for_layer(&self, l: &powergis_map::Layer) -> Option<&Connection> {
         let (kind, database) = layer_database(l.source.as_ref()?)?;
         self.for_database(kind, database)
     }
@@ -724,7 +724,7 @@ impl DatabaseLogins {
             return Some(p.clone());
         }
         let (kind, _) = database_key(&c.address)?;
-        let p = Secret::new(rustgis_data::source::duckdb::ambient_password(kind)?);
+        let p = Secret::new(powergis_data::source::duckdb::ambient_password(kind)?);
         self.ambient.insert(c.id.clone(), p.clone());
         Some(p)
     }

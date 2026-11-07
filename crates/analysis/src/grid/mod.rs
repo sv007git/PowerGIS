@@ -25,7 +25,7 @@ pub use layers::{
     power_lines_dataset, substations_dataset, transformers_dataset,
 };
 pub use model::{
-    Crew, CrewAssignment, CrewStatus, CustomerCategory, CustomerProfile, FaultPriority, FaultRecord, FaultSeverity,
+    Crew, CrewAssignment, CrewStatus, CustomerCategory, CustomerProfile, FaultPriority, FaultRecord,
     FaultType, GridAssetStatus, GridAssetType, GridEdge, GridEdgeType, GridNode, MeterStatus, MeterTelemetry,
     PowerFlowSummary, RiskAssessment, RiskHotspot, SmartMeter, TelemetryAnomaly, TransformerLoading, UserRole,
     VoltageViolation,

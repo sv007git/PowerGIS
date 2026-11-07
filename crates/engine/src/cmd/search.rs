@@ -5,8 +5,8 @@
 use std::collections::hash_map::DefaultHasher;
 use std::hash::{Hash, Hasher};
 
-use rustgis_data::Value as Attr;
-use rustgis_geom::{Coord, Extent};
+use powergis_data::Value as Attr;
+use powergis_geom::{Coord, Extent};
 use serde_json::{Value, json};
 
 use super::{f, ps};
@@ -39,7 +39,7 @@ const MAX_CHARS: usize = 200;
 #[derive(Clone, Debug, PartialEq)]
 pub struct TileIdentity {
     name: String,
-    kind: rustgis_map::tiles::TileKind,
+    kind: powergis_map::tiles::TileKind,
     /// Static URL, present only for non-dated sources.
     url: Option<String>,
     time_url: Option<String>,
@@ -54,7 +54,7 @@ pub struct TileIdentity {
 }
 
 impl TileIdentity {
-    fn of(tile: &rustgis_map::tiles::TileLayer) -> Self {
+    fn of(tile: &powergis_map::tiles::TileLayer) -> Self {
         Self {
             name: tile.name.clone(),
             kind: tile.kind,
@@ -68,7 +68,7 @@ impl TileIdentity {
         }
     }
 
-    pub(crate) fn matches(&self, tile: &rustgis_map::tiles::TileLayer) -> bool {
+    pub(crate) fn matches(&self, tile: &powergis_map::tiles::TileLayer) -> bool {
         self.name == tile.name
             && self.kind == tile.kind
             && self.url.as_ref().is_none_or(|url| url == &tile.url)
@@ -221,7 +221,7 @@ pub fn search(s: &Session, query: &str, limit: usize) -> Results {
 
 /// The field that names a layer's features: `name`, or one starting with it (`NAME_EN`,
 /// `name_long`), or a title or label.
-fn name_field(fields: &[rustgis_data::Field]) -> Option<usize> {
+fn name_field(fields: &[powergis_data::Field]) -> Option<usize> {
     let low: Vec<String> = fields.iter().map(|f| f.name.to_ascii_lowercase()).collect();
     low.iter()
         .position(|n| n == "name")
@@ -628,7 +628,7 @@ mod tests {
         }
         for (go, lon) in [(json!(true), 15.0), (json!(1), -15.0)] {
             s.run("map.search", &json!({"query": "Coverage", "go": go})).unwrap();
-            let c = rustgis_geom::merc_to_lonlat(s.map().camera.center);
+            let c = powergis_geom::merc_to_lonlat(s.map().camera.center);
             assert!((c.x - lon).abs() < 1e-6 && c.y.abs() < 1e-6, "{c:?}");
             assert!(s.map().camera.res < 10_000.0, "{:?}", s.map().camera);
         }
@@ -650,7 +650,7 @@ mod tests {
         let hit = search(&s, "Coverage east", LIMIT).hits.remove(0);
         s.run("map.setTiles", &json!({"name": "Coverage east", "move": "bottom"})).unwrap();
         go_to(&mut s, &hit).unwrap();
-        let c = rustgis_geom::merc_to_lonlat(s.map().camera.center);
+        let c = powergis_geom::merc_to_lonlat(s.map().camera.center);
         assert!((c.x - 15.0).abs() < 1e-6, "{c:?}");
         s.run("map.removeTiles", &json!({"name": "Coverage east"})).unwrap();
         let e = go_to(&mut s, &hit).unwrap_err();
@@ -660,7 +660,7 @@ mod tests {
     #[test]
     fn retained_tile_hit_resolves_past_the_limited_search_results() {
         let mut s = Session::new(crate::Project::default());
-        for i in 0..rustgis_map::tiles::MAX_TILE_LAYERS - 1 {
+        for i in 0..powergis_map::tiles::MAX_TILE_LAYERS - 1 {
             s.run(
                 "map.addTiles",
                 &json!({
@@ -685,10 +685,10 @@ mod tests {
         let Hit::Tile { index, identity, .. } = &hit else {
             panic!("expected tile hit");
         };
-        assert_eq!(super::super::tiles::index_of_identity(&s, identity, *index), Some(rustgis_map::tiles::MAX_TILE_LAYERS - 1));
+        assert_eq!(super::super::tiles::index_of_identity(&s, identity, *index), Some(powergis_map::tiles::MAX_TILE_LAYERS - 1));
         assert!(!search(&s, "Coverage", LIMIT).hits.iter().any(|h| matches!(h, Hit::Tile { name, .. } if name == "Coverage target")));
         go_to(&mut s, &hit).unwrap();
-        let c = rustgis_geom::merc_to_lonlat(s.map().camera.center);
+        let c = powergis_geom::merc_to_lonlat(s.map().camera.center);
         assert!((c.x - 15.0).abs() < 1e-6, "{c:?}");
     }
 
@@ -752,7 +752,7 @@ mod tests {
             assert_eq!(super::super::tiles::index_of_identity(&s, identity, *index), Some(*index));
             go_to(&mut s, hit).unwrap();
         }
-        let c = rustgis_geom::merc_to_lonlat(s.map().camera.center);
+        let c = powergis_geom::merc_to_lonlat(s.map().camera.center);
         assert!((c.x - 15.0).abs() < 1e-6, "{c:?}");
     }
 

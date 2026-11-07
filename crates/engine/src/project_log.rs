@@ -33,8 +33,8 @@ pub(crate) fn is_logged(s: &Session, id: &str, params: &Value) -> bool {
     ) {
         return true;
     }
-    let mutates = if id.starts_with(rustgis_plugins::PREFIX) {
-        rustgis_plugins::command(id).is_some_and(|c| c.mutates())
+    let mutates = if id.starts_with(powergis_plugins::PREFIX) {
+        powergis_plugins::command(id).is_some_and(|c| c.mutates())
     } else {
         match s.registry.get(id) {
             Some(spec) => spec.mutates,
@@ -244,7 +244,7 @@ fn last_secret_name(t: &str) -> Option<usize> {
         let end = from.find(|c: char| !name(c)).unwrap_or(from.len());
         let (key, after) = from.split_at(end);
         let separator = after.trim_start_matches(['"', '\'']).trim_start();
-        if separator.starts_with([':', '=']) && rustgis_data::source::credentials::secret_key(key) {
+        if separator.starts_with([':', '=']) && powergis_data::source::credentials::secret_key(key) {
             last = Some(t.len() - from.len());
         }
         rest = after;
@@ -374,7 +374,7 @@ impl SessionLog {
         if self.off && !matches!(e.command.as_str(), "project.logCommands" | "project.clearLog") {
             return;
         }
-        let plugin = |e: &LogEntry| e.command.starts_with(rustgis_plugins::PREFIX);
+        let plugin = |e: &LogEntry| e.command.starts_with(powergis_plugins::PREFIX);
         if plugin(&e)
             && self.plugin_entries >= LOG_PLUGIN_LIMIT
             && let Some(oldest) = self.entries.iter().position(plugin)

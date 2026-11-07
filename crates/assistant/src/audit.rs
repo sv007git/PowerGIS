@@ -20,7 +20,7 @@ const MAX_ARGS: usize = 8_000;
 
 /// The folder the desktop app keeps the log in: `mcp-audit` in the app-data folder.
 pub fn dir() -> Option<PathBuf> {
-    rustgis_engine::data::dirs::app_data_dir().map(|d| d.join("mcp-audit"))
+    powergis_engine::data::dirs::app_data_dir().map(|d| d.join("mcp-audit"))
 }
 
 /// The day's log file in `dir` for `secs` since the Unix epoch (`2026-10-18.jsonl`).
@@ -210,7 +210,7 @@ fn redact_string(s: &str) -> String {
         w.contains("://") || schemes.iter().any(|p| l.starts_with(p))
     };
     if !t.contains(char::is_whitespace) {
-        return if address(t) { rustgis_engine::sources::redact(t) } else { s.to_string() };
+        return if address(t) { powergis_engine::sources::redact(t) } else { s.to_string() };
     }
     // Text with an address in it (a query, a description): each address word that carries
     // credentials (a user and password, or a key or token in its query) loses them; the rest,
@@ -221,7 +221,7 @@ fn redact_string(s: &str) -> String {
         let mut word = String::new();
         let flush = |word: &mut String, out: &mut String| {
             if !word.is_empty() {
-                out.push_str(&if carries(word) { rustgis_engine::sources::redact(word) } else { word.clone() });
+                out.push_str(&if carries(word) { powergis_engine::sources::redact(word) } else { word.clone() });
                 word.clear();
             }
         };
@@ -273,7 +273,7 @@ fn redact_script(script: &str) -> String {
 }
 
 /// `v` without what would give someone else the user's access: values under keys that name a
-/// secret, the passwords, keys and tokens in addresses ([`rustgis_engine::sources::redact`]),
+/// secret, the passwords, keys and tokens in addresses ([`powergis_engine::sources::redact`]),
 /// and the same inside a script's lines.
 fn redact(v: Value, depth: usize) -> Value {
     match v {

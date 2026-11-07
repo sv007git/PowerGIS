@@ -4,13 +4,13 @@
 
 use std::sync::Arc;
 
-use rustgis_analysis::georef::{self, Gcp, Kind};
-use rustgis_analysis::rasterops::{self, NODATA};
-use rustgis_analysis::warp;
-use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
-use rustgis_data::{Geometry, GeometryType};
-use rustgis_geom::{Coord, Extent};
-use rustgis_map::RasterLayer;
+use powergis_analysis::georef::{self, Gcp, Kind};
+use powergis_analysis::rasterops::{self, NODATA};
+use powergis_analysis::warp;
+use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+use powergis_data::{Geometry, GeometryType};
+use powergis_geom::{Coord, Extent};
+use powergis_map::RasterLayer;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 
@@ -142,10 +142,10 @@ pub(crate) fn bands_param(p: &Value, r: &Raster) -> Result<Vec<usize>, String> {
 }
 
 /// Embeds a raster as GeoTIFF bytes (colour rasters keep their bands; others band 1).
-fn layer_of(r: Raster) -> Result<rustgis_map::RasterLayer, String> {
-    let bytes = rustgis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
+fn layer_of(r: Raster) -> Result<powergis_map::RasterLayer, String> {
+    let bytes = powergis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
     let fname = format!("{}.tif", r.name);
-    Ok(rustgis_map::RasterLayer::from_bytes(r, fname, bytes))
+    Ok(powergis_map::RasterLayer::from_bytes(r, fname, bytes))
 }
 
 /// Adds a raster layer; classes get unique-value colours.
@@ -153,7 +153,7 @@ pub(crate) fn add(s: &mut Session, r: Raster, classes: bool) -> CmdResult {
     let n = r.name.clone();
     let mut layer = layer_of(r)?;
     if classes && let Some(d) = layer.data.clone() {
-        layer.style.renderer = rustgis_map::raster::unique_values(&d, 0, rustgis_map::Ramp::Harbour);
+        layer.style.renderer = powergis_map::raster::unique_values(&d, 0, powergis_map::Ramp::Harbour);
     }
     super::raster::add_raster(s, &n, layer)
 }
@@ -164,7 +164,7 @@ fn replace(s: &mut Session, layer: &str, r: Raster) -> CmdResult {
 }
 
 /// [`replace`], with the new pixels already in a layer (kept in a file, say, not embedded).
-fn replace_layer(s: &mut Session, layer: &str, mut new: rustgis_map::RasterLayer) -> CmdResult {
+fn replace_layer(s: &mut Session, layer: &str, mut new: powergis_map::RasterLayer) -> CmdResult {
     let id = s.map().layer_by_name(layer).map(|l| l.id).ok_or_else(|| format!("no raster layer '{layer}'"))?;
     let l = s.map_mut().layer_mut(id).ok_or("no such layer")?;
     if let Some(old) = &l.raster {
@@ -258,7 +258,7 @@ fn crs_param(p: &Value, key: &str) -> Result<Option<Crs>, String> {
 }
 
 /// `raster.georeference` with a transform: fits the control points and warps the raster onto a
-/// north-up grid in the output coordinate system (see `rustgis_analysis::warp`).
+/// north-up grid in the output coordinate system (see `powergis_analysis::warp`).
 fn warp_to_fit(s: &mut Session, p: &Value, layer: &str, r: &Raster) -> CmdResult {
     let kind = ps(p, "transform")
         .and_then(Kind::parse)
@@ -299,7 +299,7 @@ fn warp_to_fit(s: &mut Session, p: &Value, layer: &str, r: &Raster) -> CmdResult
     let rl = match &path {
         Some(path) => {
             let cog =
-                rustgis_data::raster::cogwrite::write_file(&out, 0, std::path::Path::new(path)).map_err(|e| format!("{path}: {e}"))?;
+                powergis_data::raster::cogwrite::write_file(&out, 0, std::path::Path::new(path)).map_err(|e| format!("{path}: {e}"))?;
             info["path"] = json!(path);
             info["cog"] = json!({"overviews": cog.levels.len().saturating_sub(1), "bigTiff": cog.big, "bytes": cog.bytes});
             let e = out.extent();
@@ -329,7 +329,7 @@ const EXTENT: &str = "extent is a polygon layer's name, [west, south, east, nort
 
 /// `raster.project`: the layer on a grid of another coordinate system, cell size, origin and
 /// extent, or on another raster's grid, each cell sampled at its centre or taken from every
-/// pixel whose centre falls in it (see `rustgis_analysis::warp::project`). A new layer.
+/// pixel whose centre falls in it (see `powergis_analysis::warp::project`). A new layer.
 fn project_raster(s: &mut Session, p: &Value) -> CmdResult {
     let r = raster(s, p)?;
     r.require_coordinates()?;
@@ -427,7 +427,7 @@ fn project_raster(s: &mut Session, p: &Value) -> CmdResult {
     let rl = match &path {
         Some(path) => {
             let cog =
-                rustgis_data::raster::cogwrite::write_file(&out, 0, std::path::Path::new(path)).map_err(|e| format!("{path}: {e}"))?;
+                powergis_data::raster::cogwrite::write_file(&out, 0, std::path::Path::new(path)).map_err(|e| format!("{path}: {e}"))?;
             info["path"] = json!(path);
             info["cog"] = json!({"overviews": cog.levels.len().saturating_sub(1), "bigTiff": cog.big, "bytes": cog.bytes});
             RasterLayer::from_path(out, path.clone())
@@ -846,7 +846,7 @@ fn raster_mosaic(s: &mut Session, p: &Value) -> CmdResult {
     if inputs.len() > 10_000 {
         return Err("a mosaic takes at most 10000 inputs".into());
     }
-    let max = rustgis_data::raster::MAX_SAMPLES as i64;
+    let max = powergis_data::raster::MAX_SAMPLES as i64;
     let mut rs: Vec<Arc<Raster>> = Vec::with_capacity(inputs.len());
     // Each input's place on the first one's grid, and the bounds of them all so far.
     let mut places: Vec<(i64, i64)> = Vec::with_capacity(inputs.len());
@@ -857,8 +857,8 @@ fn raster_mosaic(s: &mut Session, p: &Value) -> CmdResult {
         let n = v.as_str().map(str::trim).filter(|n| !n.is_empty()).ok_or("each input is a raster layer's name or a file path")?;
         let r = match raster_named(s, n) {
             Ok(r) => r,
-            Err(_) if rustgis_data::raster::is_raster_name(n) => {
-                Arc::new(rustgis_data::raster::read_path(std::path::Path::new(n)).map_err(|e| format!("{n}: {e}"))?)
+            Err(_) if powergis_data::raster::is_raster_name(n) => {
+                Arc::new(powergis_data::raster::read_path(std::path::Path::new(n)).map_err(|e| format!("{n}: {e}"))?)
             }
             Err(e) => return Err(e),
         };
@@ -939,8 +939,8 @@ fn raster_mosaic(s: &mut Session, p: &Value) -> CmdResult {
     out.bands.iter_mut().zip(&first.bands).for_each(|(o, i)| o.name = i.name.clone());
     let path = ps(p, "path").map(str::trim).filter(|p| !p.is_empty()).map(str::to_string);
     if let Some(path) = &path {
-        let bytes = rustgis_data::raster::geotiff::write(&out, 0).map_err(|e| e.to_string())?;
-        rustgis_data::io::write_atomic(std::path::Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+        let bytes = powergis_data::raster::geotiff::write(&out, 0).map_err(|e| e.to_string())?;
+        powergis_data::io::write_atomic(std::path::Path::new(path), &bytes).map_err(|e| format!("{path}: {e}"))?;
     }
     let mut v = add(s, out, false)?;
     if let (Some(o), Some(path)) = (v.as_object_mut(), path) {
@@ -1082,7 +1082,7 @@ fn edit_pixels(s: &mut Session, p: &Value) -> CmdResult {
         for col in cols.clone() {
             let w = r.transform.to_world(col as f64 + 0.5, row as f64 + 0.5);
             let Some(ll) = tr.to_lonlat(w) else { continue };
-            if !e.contains(ll) || !rustgis_data::geometry::polygon_contains(&rings, ll) {
+            if !e.contains(ll) || !powergis_data::geometry::polygon_contains(&rings, ll) {
                 continue;
             }
             for (bi, b) in bands.iter_mut().enumerate() {
@@ -1123,7 +1123,7 @@ fn measure(s: &mut Session, p: &Value) -> CmdResult {
             if pts.len() < 2 {
                 return Err("a distance needs two or more points".into());
             }
-            let flat = body.length(rustgis_geom::geodesic_length_m(&pts));
+            let flat = body.length(powergis_geom::geodesic_length_m(&pts));
             // Along the surface when there's an elevation raster.
             let surface = dem.as_ref().map(|d| {
                 let prof = rasterops::profile(d, 0, &pts, 500);
@@ -1150,7 +1150,7 @@ fn measure(s: &mut Session, p: &Value) -> CmdResult {
             if let Some(first) = pts.first() {
                 ring.push(*first);
             }
-            json!({"kind": "area", "squareMetres": body.area(rustgis_geom::geodesic_ring_area_m2(&ring)), "perimeterMetres": body.length(rustgis_geom::geodesic_length_m(&ring))})
+            json!({"kind": "area", "squareMetres": body.area(powergis_geom::geodesic_ring_area_m2(&ring)), "perimeterMetres": body.length(powergis_geom::geodesic_length_m(&ring))})
         }
         "height" => {
             let (Some(a), Some(c)) = (pts.first(), pts.get(1)) else { return Err("a height needs two points (base, top)".into()) };
@@ -1177,7 +1177,7 @@ fn measure(s: &mut Session, p: &Value) -> CmdResult {
                 for col in cols.clone().map(i64::from) {
                     let w = d.transform.to_world(col as f64 + 0.5, row as f64 + 0.5);
                     let Some(ll) = tr.to_lonlat(w) else { continue };
-                    if !e.contains(ll) || !rustgis_data::geometry::polygon_contains(&rings, ll) {
+                    if !e.contains(ll) || !powergis_data::geometry::polygon_contains(&rings, ll) {
                         continue;
                     }
                     if let Some(v) = d.value(0, col, row) {
@@ -1374,7 +1374,7 @@ fn mesh(s: &mut Session, p: &Value) -> CmdResult {
     }
     match ps(p, "path") {
         Some(path) => {
-            rustgis_data::io::write_atomic(std::path::Path::new(path), obj.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(std::path::Path::new(path), obj.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"path": path, "vertices": v, "faces": faces}))
         }
         None => Ok(json!({"text": obj, "vertices": v, "faces": faces})),

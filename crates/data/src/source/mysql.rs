@@ -17,7 +17,7 @@ use super::{Batch, Family, FeatureSource, Reproject, Request, SourceInfo, clamp_
 use crate::raster::Crs;
 use crate::{DataError, Feature, Field, FieldType, Geometry, GeometryType, Result, Value, wkb};
 use mysql::prelude::Queryable;
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use std::sync::{Arc, Mutex, OnceLock, Weak};
 use std::time::Duration;
 
@@ -738,7 +738,7 @@ impl MysqlSource {
             );
         }
         let order = pk.as_deref().map(|k| format!("ORDER BY t.{}", ident(k))).unwrap_or_default();
-        let id = pk.map(|k| ident(&k)).unwrap_or_else(|| "`rustgis rn`".into());
+        let id = pk.map(|k| ident(&k)).unwrap_or_else(|| "`powergis rn`".into());
         let mut select = vec![id, wkb];
         select.extend(casts);
 
@@ -962,8 +962,8 @@ impl MysqlSource {
         // network.
         let numbered = |every: &str| {
             format!(
-                "SELECT {}, `rustgis total` FROM (SELECT {}, ROW_NUMBER() OVER ({}) AS `rustgis rn`, {} AS `rustgis total` \
-                 FROM {from} t WHERE {filter}) s WHERE MOD(`rustgis rn` - 1, {every}) = 0 LIMIT {limit}",
+                "SELECT {}, `powergis total` FROM (SELECT {}, ROW_NUMBER() OVER ({}) AS `powergis rn`, {} AS `powergis total` \
+                 FROM {from} t WHERE {filter}) s WHERE MOD(`powergis rn` - 1, {every}) = 0 LIMIT {limit}",
                 cols.join(", "),
                 self.numbered_cols,
                 self.order,
@@ -973,7 +973,7 @@ impl MysqlSource {
         let (matched, rows) = if window.is_some() {
             // A view: counted and numbered in one pass (counting first would scan the view twice,
             // which doubles its time on MySQL's geographic columns).
-            let sql = numbered(&format!("GREATEST(CEIL(`rustgis total` / {limit}), 1)"));
+            let sql = numbered(&format!("GREATEST(CEIL(`powergis total` / {limit}), 1)"));
             let sql = timed(sql);
             let rows: Vec<mysql::Row> = self.conn.with(|c| c.query(sql.as_str()))?;
             let total = rows.first().and_then(|r| int_of(at(r, self.select.len()))).and_then(|n| u64::try_from(n).ok());
@@ -1150,12 +1150,12 @@ mod tests {
         assert_eq!(box_text(&Extent::new(0.0, 0.0, f64::INFINITY, 1.0), false), None);
     }
 
-    /// Reads every table of a live database: `RUSTGIS_TEST_MYSQL="mysql://user:password@host/db"
-    /// cargo test -p rustgis-data -- --ignored mysql_live --nocapture`.
+    /// Reads every table of a live database: `powergis_TEST_MYSQL="mysql://user:password@host/db"
+    /// cargo test -p powergis-data -- --ignored mysql_live --nocapture`.
     #[test]
     #[ignore]
     fn mysql_live() {
-        let Ok(address) = std::env::var("RUSTGIS_TEST_MYSQL") else { return };
+        let Ok(address) = std::env::var("powergis_TEST_MYSQL") else { return };
         let super::super::duckdb::Database::Mysql(address) = super::super::duckdb::Database::parse(&address) else {
             panic!("not a connection")
         };

@@ -5,7 +5,7 @@
 //! malformed geometry is `None`, never a panic.
 
 use crate::Geometry;
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 /// Deepest nesting accepted (a collection of collections of …).
 const MAX_DEPTH: usize = 8;

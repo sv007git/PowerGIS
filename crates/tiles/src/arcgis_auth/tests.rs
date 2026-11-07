@@ -201,10 +201,10 @@ fn arcgis_online_has_a_default_client_id() {
 
 #[test]
 fn a_browser_sign_in_reads_its_callback_page() {
-    let redirect = "https://web.rustgis.app/oauth-callback.html";
+    let redirect = "https://web.powergis.app/oauth-callback.html";
     let w = web_sign_in("https://myorg.maps.arcgis.com", "", redirect, "verifier", "st8").unwrap();
     assert!(w.url.starts_with("https://myorg.maps.arcgis.com/sharing/rest/oauth2/authorize?client_id=nD2lKYqFqsaddfuD&"));
-    assert!(w.url.contains("redirect_uri=https%3A%2F%2Fweb.rustgis.app%2Foauth-callback.html"));
+    assert!(w.url.contains("redirect_uri=https%3A%2F%2Fweb.powergis.app%2Foauth-callback.html"));
     // Still on the portal's pages, or blank: not yet.
     assert!(w.exchange("about:blank").is_none() && w.exchange(redirect).is_none());
     assert!(w.exchange("https://evil.example/oauth-callback.html?code=c&state=st8").is_none());

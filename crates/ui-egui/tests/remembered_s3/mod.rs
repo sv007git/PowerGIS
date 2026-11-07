@@ -1,14 +1,14 @@
 use super::*;
 use egui::accesskit::Role;
-use rustgis_engine::data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
-use rustgis_engine::render::rustgis_tiles::s3;
-use rustgis_ui_egui::Services;
+use powergis_engine::data::secrets::{MemorySecrets, Secret, SecretError, SecretStore};
+use powergis_engine::render::powergis_tiles::s3;
+use powergis_ui_egui::Services;
 use std::sync::{
     Arc,
     atomic::{AtomicUsize, Ordering},
 };
 
-type Harness = egui_kittest::Harness<'static, RustGisApp>;
+type Harness = egui_kittest::Harness<'static, powergisApp>;
 
 #[derive(Default)]
 struct CountedStore {
@@ -29,9 +29,9 @@ impl SecretStore for CountedStore {
 }
 
 fn with_store(store: Option<Arc<dyn SecretStore>>) -> Harness {
-    let app = RustGisApp::with_sample().with_services(Services { secrets: store, ..Default::default() });
+    let app = powergisApp::with_sample().with_services(Services { secrets: store, ..Default::default() });
     egui_kittest::Harness::builder().with_size(egui::vec2(1400.0, 1000.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -211,7 +211,7 @@ fn s3_saved_chooser_cancel_selection_and_explicit_login_retry() {
         ids.push(c["id"].as_str().unwrap().to_string());
     }
     let inner = "s3://s3-widget-choice-bucket/fixture.pmtiles";
-    let address = rustgis_engine::data::s3_address::bind("", "http://127.0.0.1:1", inner).unwrap();
+    let address = powergis_engine::data::s3_address::bind("", "http://127.0.0.1:1", inner).unwrap();
     h.state_mut().run("map.addTiles", json!({"name":"S3 choice fixture","kind":"pmtiles","url":address})).unwrap();
     let text = serde_json::to_string(&h.state().session.project).unwrap();
     h.state_mut().run("project.openText", json!({"text":text})).unwrap();

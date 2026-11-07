@@ -55,7 +55,7 @@ pub(crate) fn need_connection(s: &Session) -> Option<&'static str> {
 
 /// The layer `p` names (or the active one), which must have been added from PostGIS: its id,
 /// name and table.
-fn postgis_layer(s: &Session, p: &Value) -> Result<(u32, String, rustgis_map::source::PostgisEdit), String> {
+fn postgis_layer(s: &Session, p: &Value) -> Result<(u32, String, powergis_map::source::PostgisEdit), String> {
     let id = s.layer_id(p)?;
     let l = s.map().layer(id).ok_or("no such layer")?;
     let edit = l
@@ -87,7 +87,7 @@ fn save_edits(s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::{duckdb::Database, postgis};
+        use powergis_data::source::{duckdb::Database, postgis};
         let (id, name, edit) = postgis_layer(s, p)?;
         let l = s.map().layer(id).ok_or("no such layer")?;
         let changes = edit.versions.changes(&l.dataset.features);
@@ -111,7 +111,7 @@ fn save_edits(s: &mut Session, p: &Value) -> CmdResult {
             return Err(format!("{name}: not a PostgreSQL connection"));
         };
         let label = Database::Postgres(dsn.clone()).short();
-        let err = |e: rustgis_data::DataError| format!("{label}: {e}");
+        let err = |e: powergis_data::DataError| format!("{label}: {e}");
         // The user's own credentials (PGPASSWORD, the password file) go only to the database
         // they connected to this session, never to one a project file names.
         let ask = s.postgis.as_deref() == Some(dsn.as_str());
@@ -120,7 +120,7 @@ fn save_edits(s: &mut Session, p: &Value) -> CmdResult {
         let t = postgis::find_table(&conn, &table).map_err(err)?;
         let src = postgis::PostgisSource::open(conn, t, edit.origin.family, edit.origin.crs.as_deref()).map_err(err)?;
         let rows = changes.insert_rows.clone();
-        let edits = rustgis_data::source::edits::Edits { updates: changes.updates, deletes: changes.deletes, inserts: changes.inserts };
+        let edits = powergis_data::source::edits::Edits { updates: changes.updates, deletes: changes.deletes, inserts: changes.inserts };
         let saved = match src.save(&edits, &fields).map_err(err)? {
             Ok(saved) => saved,
             Err(conflicts) => {
@@ -144,17 +144,17 @@ fn save_edits(s: &mut Session, p: &Value) -> CmdResult {
                 if let Some(f) = l.dataset.features.get_mut(*row) {
                     f.id = *key;
                     if let Some(a) = key_field.and_then(|i| f.attrs.get_mut(i)) {
-                        *a = rustgis_data::Value::Int(key.cast_signed());
+                        *a = powergis_data::Value::Int(key.cast_signed());
                     }
                 }
             }
-            let baseline = rustgis_map::source::versions_of(&l.dataset.features, &edit.versions, &versions);
+            let baseline = powergis_map::source::versions_of(&l.dataset.features, &edit.versions, &versions);
             if let Some(pg) = l.postgis.as_mut() {
                 pg.versions = baseline;
             }
         }
         // The versions saved over, while an undo step can bring them back.
-        s.saved_over.retain(rustgis_map::source::Versions::held_elsewhere);
+        s.saved_over.retain(powergis_map::source::Versions::held_elsewhere);
         s.saved_over.push(edit.versions);
         s.notify(
             format!("{name}: saved to {table}: {} new, {} changed, {} deleted", saved.inserted.len(), saved.updated, saved.deleted),
@@ -183,13 +183,13 @@ fn discard_edits(s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::{FeatureSource, duckdb::Database, postgis};
+        use powergis_data::source::{FeatureSource, duckdb::Database, postgis};
         let (id, name, edit) = postgis_layer(s, p)?;
         let Database::Postgres(dsn) = Database::parse(&edit.origin.database) else {
             return Err(format!("{name}: not a PostgreSQL connection"));
         };
         let label = Database::Postgres(dsn.clone()).short();
-        let err = |e: rustgis_data::DataError| format!("{label}: {e}");
+        let err = |e: powergis_data::DataError| format!("{label}: {e}");
         let ask = s.postgis.as_deref() == Some(dsn.as_str());
         let conn = postgis::connect(&dsn, ask)
             .map_err(|e| format!("{label}: {e} (connect again: Home › Add Data › Database…, Load for editing)"))?;
@@ -204,7 +204,7 @@ fn discard_edits(s: &mut Session, p: &Value) -> CmdResult {
         l.dataset.features = editable.features.into();
         l.selection.clear();
         l.touch_geometry();
-        let baseline = rustgis_map::source::versions_of(&l.dataset.features, &Default::default(), &read);
+        let baseline = powergis_map::source::versions_of(&l.dataset.features, &Default::default(), &read);
         if let Some(pg) = l.postgis.as_mut() {
             pg.versions = baseline;
             pg.writable = editable.writable;
@@ -222,7 +222,7 @@ fn status(s: &mut Session, _: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::duckdb::Database;
+        use powergis_data::source::duckdb::Database;
         Ok(match &s.postgis {
             Some(dsn) => {
                 let db = Database::Postgres(dsn.clone());
@@ -242,7 +242,7 @@ fn disconnect(s: &mut Session, _: &Value) -> CmdResult {
 /// session): a whole connection string, or its parts.
 #[cfg(not(target_arch = "wasm32"))]
 fn connection_param(p: &Value) -> Result<String, String> {
-    use rustgis_data::source::duckdb::{Database, remember_password};
+    use powergis_data::source::duckdb::{Database, remember_password};
     let text = |k: &str| -> Option<String> {
         match p.get(k)? {
             Value::String(v) => Some(v.trim().to_string()).filter(|v| !v.is_empty()),
@@ -294,7 +294,7 @@ fn connect(s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::{duckdb::Database, postgis};
+        use powergis_data::source::{duckdb::Database, postgis};
         let dsn = connection_param(p)?;
         let db = Database::Postgres(dsn.clone());
         let label = db.short();
@@ -315,7 +315,7 @@ fn tables(s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::{duckdb::Database, postgis};
+        use powergis_data::source::{duckdb::Database, postgis};
         let dsn = s.postgis.clone().ok_or(NOT_CONNECTED)?;
         let label = Database::Postgres(dsn.clone()).short();
         let conn = postgis::connect(&dsn, true).map_err(|e| format!("{label}: {e}"))?;
@@ -341,13 +341,13 @@ fn add_layer(s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::{FeatureSource, duckdb::Database, postgis};
-        use rustgis_map::source::{PostgisEdit, PostgisOrigin};
+        use powergis_data::source::{FeatureSource, duckdb::Database, postgis};
+        use powergis_map::source::{PostgisEdit, PostgisOrigin};
         let dsn = s.postgis.clone().ok_or(NOT_CONNECTED)?;
         let name = ps(p, "table").map(str::trim).filter(|t| !t.is_empty()).ok_or("table is required")?;
         let db = Database::Postgres(dsn.clone());
         let label = db.short();
-        let err = |e: rustgis_data::DataError| format!("{label}: {e}");
+        let err = |e: powergis_data::DataError| format!("{label}: {e}");
         let crs = ps(p, "crs").map(str::trim).filter(|c| !c.is_empty());
         let condition = ps(p, "where");
         let limit = f(p, "limit").map_or(postgis::MAX_EDITABLE, |n| n.clamp(1.0, postgis::MAX_EDITABLE as f64) as usize);
@@ -370,11 +370,11 @@ fn add_layer(s: &mut Session, p: &Value) -> CmdResult {
                 None => table.label(),
             };
             let info = src.info();
-            let mut ds = rustgis_data::Dataset::new(layer_name.clone(), info.geometry_type, info.fields.clone());
-            ds.crs = u32::try_from(src.srid()).ok().filter(|&c| c != 0 && c != 4326).and_then(rustgis_data::raster::Crs::from_epsg);
+            let mut ds = powergis_data::Dataset::new(layer_name.clone(), info.geometry_type, info.fields.clone());
+            ds.crs = u32::try_from(src.srid()).ok().filter(|&c| c != 0 && c != 4326).and_then(powergis_data::raster::Crs::from_epsg);
             let n = editable.features.len() as u64;
             let read: std::collections::HashMap<u64, i64> = editable.versions.iter().copied().collect();
-            let versions = rustgis_map::source::versions_of(&editable.features, &Default::default(), &read);
+            let versions = powergis_map::source::versions_of(&editable.features, &Default::default(), &read);
             ds.features = editable.features.into();
             if n < editable.matched {
                 s.notify(
@@ -411,7 +411,7 @@ fn add_layer(s: &mut Session, p: &Value) -> CmdResult {
             writable &= editable.writable;
         }
         if empty_before {
-            let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(rustgis_geom::Extent::EMPTY, |e, l| e.union(&l.extent()));
+            let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(powergis_geom::Extent::EMPTY, |e, l| e.union(&l.extent()));
             if !e.is_empty() {
                 s.zoom_to(&e);
             }

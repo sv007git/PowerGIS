@@ -34,12 +34,12 @@ licence, and the two read and write the same open formats.
 The same World Atlas data, styled the same way, in each app.
 
 <figure markdown="span">
-  [![PowerGIS with the World Atlas on the globe: the ribbon, the Layers pane and the AI Assistant](https://assets.rustgis.app/images/hero.webp)](https://assets.rustgis.app/images/hero.webp){ target="_blank" rel="noopener" title="Open the full-size image" }
+  [![PowerGIS with the World Atlas on the globe: the ribbon, the Layers pane and the AI Assistant](https://assets.powergis.app/images/hero.webp)](https://assets.powergis.app/images/hero.webp){ target="_blank" rel="noopener" title="Open the full-size image" }
   <figcaption>PowerGIS: the ribbon, the Layers pane and the AI Assistant.</figcaption>
 </figure>
 
 <figure markdown="span">
-  [![QGIS with the same World Atlas data on an orthographic globe: toolbars, the Browser and Layers panels](https://assets.rustgis.app/images/qgis-world-atlas.webp)](https://assets.rustgis.app/images/qgis-world-atlas.webp){ target="_blank" rel="noopener" title="Open the full-size image" }
+  [![QGIS with the same World Atlas data on an orthographic globe: toolbars, the Browser and Layers panels](https://assets.powergis.app/images/qgis-world-atlas.webp)](https://assets.powergis.app/images/qgis-world-atlas.webp){ target="_blank" rel="noopener" title="Open the full-size image" }
   <figcaption>QGIS with the same data and styling: toolbars and the Browser and Layers panels.</figcaption>
 </figure>
 
@@ -52,14 +52,14 @@ The same World Atlas data, styled the same way, in each app.
   See
   [Installation](../installation.md).
 - **In the browser.** The WebAssembly app runs at
-  [web.rustgis.app](https://web.rustgis.app): add files, style them, load the optional
+  [web.powergis.app](https://web.powergis.app): add files, style them, load the optional
   1,000+ GeoLibre/Whitebox suite, build layouts and export. Live database connections and
   external programs are desktop only, and GeoPackage export is not available on web.
   You can serve the static build yourself. QGIS has no official browser version;
   QGIS Server and qgis2web publish maps made on the desktop.
 - **A shared command engine.** Ribbon actions dispatch commands with ids and JSON parameters.
-  Engine commands run from [`rustgis-cli`](../cli.md), the
-  [`rustgis` Python package](../python.md), notebooks, models, the Script pane, the
+  Engine commands run from [`powergis-cli`](../cli.md), the
+  [`powergis` Python package](../python.md), notebooks, models, the Script pane, the
   [MCP server](../mcp.md) and the AI Assistant. UI-only commands open panes and dialogs
   inside the app rather than running headlessly.
   QGIS's processing algorithms are scriptable through `qgis_process` and PyQGIS, but much of
@@ -73,7 +73,7 @@ The same World Atlas data, styled the same way, in each app.
   [MCP server](../mcp.md) lets agents such as Claude Code, Cursor and VS Code drive PowerGIS.
   QGIS has AI through third-party plugins.
 - **Sandboxed WebAssembly plugins.** These PowerGIS [plugins](../plugins.md) use declared,
-  approved permissions and run on desktop, in `rustgis-cli` and in the browser.
+  approved permissions and run on desktop, in `powergis-cli` and in the browser.
   Plugins can add commands, tools, ribbon tabs, panels and assistant skills.
   PowerGIS also supports unsandboxed process plugins, including managed Python environments,
   on desktop and CLI. Like QGIS's Python plugins, these are trusted programs, not contained.
@@ -166,8 +166,8 @@ Most QGIS ideas have a counterpart under a different name:
 | Browser panel, Data Source Manager | Browser pane, **Home › Add › Data Sources**, the Data Sources pane |
 | Processing Toolbox | Tools pane (**Analyze › Tools**), or Command Search (++ctrl+k++) |
 | Graphical Modeler | ModelBuilder: a node canvas of inputs, tools and outputs, which can also build a model from your history |
-| `qgis_process` | `rustgis-cli run --cmd 'gp.run={…}'` |
-| Python console, PyQGIS | The Script pane and notebooks inside the app; the `rustgis` Python package outside it |
+| `qgis_process` | `powergis-cli run --cmd 'gp.run={…}'` |
+| Python console, PyQGIS | The Script pane and notebooks inside the app; the `powergis` Python package outside it |
 | Layer Styling panel | **Style** tab and the Symbology pane |
 | Expressions (select, filter) | SQL `WHERE` clauses for selections and definition queries |
 | Field Calculator | Calculate Field |
@@ -201,7 +201,7 @@ between them without conversion:
 A common split is to do heavy editing, PROJ-dependent work and detailed cartography in QGIS,
 and use PowerGIS where a light install, the browser, scripting by command id or the AI Assistant
 helps: a quick look at a GeoParquet on a laptop without QGIS, a map shared as a web app, a batch
-of maps rendered by `rustgis-cli` in CI, or the optional 1,000+ GeoLibre/Whitebox suite
+of maps rendered by `powergis-cli` in CI, or the optional 1,000+ GeoLibre/Whitebox suite
 loaded in a browser tab.
 
 ## Common questions

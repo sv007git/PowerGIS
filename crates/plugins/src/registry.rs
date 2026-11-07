@@ -1,5 +1,5 @@
 //! The plugin registry: a curated list of plugins (`registry.json`) and a list of pulled ones
-//! (`blocklist.json`), published at <https://plugins.rustgis.app>.
+//! (`blocklist.json`), published at <https://plugins.powergis.app>.
 
 use std::collections::BTreeMap;
 
@@ -9,7 +9,7 @@ use serde_json::Value;
 use crate::manifest::{Permission, Runtime, valid_id, version_parts};
 
 /// The hosted registry.
-pub const DEFAULT_URL: &str = "https://plugins.rustgis.app/registry.json";
+pub const DEFAULT_URL: &str = "https://plugins.powergis.app/registry.json";
 
 /// The most entries read from a registry (or a blocklist): room for tens of thousands of plugins.
 const MAX_ENTRIES: usize = 100_000;
@@ -42,7 +42,7 @@ pub struct Entry {
     #[serde(default)]
     pub size: u64,
     #[serde(default)]
-    pub min_rustgis_version: String,
+    pub min_powergis_version: String,
     #[serde(default)]
     pub permissions: Vec<Permission>,
     /// The plugin's `name` and `description` in other languages, from its manifest's `i18n`.

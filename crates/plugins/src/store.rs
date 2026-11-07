@@ -18,10 +18,10 @@ use crate::{Package, Plugin, Runtime, registry};
 /// The most a process plugin's files may take unpacked (a guard against zip bombs).
 const MAX_UNPACKED: u64 = 1024 * 1024 * 1024;
 /// The file in an unpacked folder naming the package it came from (its SHA-256).
-const UNPACKED_FROM: &str = ".rustgis-package";
+const UNPACKED_FROM: &str = ".powergis-package";
 
 /// The environment variable that names the plugins folder, ahead of the usual place.
-pub const ENV: &str = "RUSTGIS_PLUGINS_DIR";
+pub const ENV: &str = "powergis_PLUGINS_DIR";
 
 static DIR: Mutex<Option<PathBuf>> = Mutex::new(None);
 
@@ -42,7 +42,7 @@ pub fn dir() -> Option<PathBuf> {
     if let Some(d) = std::env::var_os(ENV).filter(|d| !d.is_empty()) {
         return Some(PathBuf::from(d));
     }
-    rustgis_data::dirs::app_data_dir().map(|b| b.join("plugins"))
+    powergis_data::dirs::app_data_dir().map(|b| b.join("plugins"))
 }
 
 #[derive(Default, Serialize, Deserialize)]
@@ -67,7 +67,7 @@ fn write_state(st: &State) -> Result<(), String> {
         std::fs::create_dir_all(d).map_err(|e| format!("{}: {e}", d.display()))?;
     }
     let text = serde_json::to_string_pretty(st).map_err(|e| e.to_string())?;
-    rustgis_data::io::write_atomic(&path, text.as_bytes()).map_err(|e| format!("{}: {e}", path.display()))
+    powergis_data::io::write_atomic(&path, text.as_bytes()).map_err(|e| format!("{}: {e}", path.display()))
 }
 
 /// Loads every installed package and plugin folder (and the cached blocklist); returns what
@@ -151,7 +151,7 @@ fn stage(bytes: &[u8], sha256: &str, target: &Path) -> Result<Option<PathBuf>, S
     let name = target.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
     let tmp = parent.join(format!(".{name}-{nanos}"));
     let res = extract(bytes, &tmp)
-        .and_then(|_| rustgis_data::io::write_atomic(&tmp.join(UNPACKED_FROM), sha256.as_bytes()).map_err(|e| e.to_string()));
+        .and_then(|_| powergis_data::io::write_atomic(&tmp.join(UNPACKED_FROM), sha256.as_bytes()).map_err(|e| e.to_string()));
     if let Err(e) = res {
         let _ = std::fs::remove_dir_all(&tmp);
         return Err(e);
@@ -248,7 +248,7 @@ pub fn install_bytes(bytes: &[u8]) -> Result<Arc<Plugin>, String> {
         Some(target) => stage(bytes, &sha256, target)?.map(|s| (s, target)),
         None => None,
     };
-    if let Err(e) = rustgis_data::io::write_atomic(&path, bytes) {
+    if let Err(e) = powergis_data::io::write_atomic(&path, bytes) {
         if let Some((s, _)) = &staged {
             let _ = std::fs::remove_dir_all(s);
         }
@@ -326,7 +326,7 @@ pub fn save_blocklist(registry_url: &str, text: &str) -> Result<Vec<String>, Str
         && let Some(d) = dir()
     {
         let _ = std::fs::create_dir_all(&d);
-        let _ = rustgis_data::io::write_atomic(&d.join("blocklist.json"), text.as_bytes());
+        let _ = powergis_data::io::write_atomic(&d.join("blocklist.json"), text.as_bytes());
     }
     Ok(crate::apply_blocklist(registry_url, list))
 }

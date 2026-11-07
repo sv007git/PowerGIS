@@ -1,8 +1,8 @@
 //! The time slider: binding layers to a date field, the slider's span, steps and window, moving
 //! through it, and exporting its steps as frames.
 
-use rustgis_data::time::{self, Unit};
-use rustgis_map::time::{TimeBinding, TimeSlider, field_span, time_fields};
+use powergis_data::time::{self, Unit};
+use powergis_map::time::{TimeBinding, TimeSlider, field_span, time_fields};
 use serde_json::{Value, json};
 
 use super::{b, f, need_feature_layer, ps, uint};
@@ -188,7 +188,7 @@ pub(crate) fn set(s: &mut Session, p: &Value) -> CmdResult {
         None | Some(Value::Null) => None,
         Some(Value::Array(a)) => Some(
             a.iter()
-                .take(rustgis_map::time::MAX_STEPS)
+                .take(powergis_map::time::MAX_STEPS)
                 .map(|v| time::parse_input(v).ok_or("dates are dates (text, a year or milliseconds)"))
                 .collect::<Result<Vec<f64>, _>>()?,
         ),
@@ -284,7 +284,7 @@ fn export(s: &mut Session, p: &Value) -> CmdResult {
     s.map_mut().apply_time();
     super::zarr::follow_time(s);
     let bytes = made.map_err(|_| "exporting the time steps failed unexpectedly".to_string())??;
-    rustgis_data::io::write_atomic(std::path::Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+    powergis_data::io::write_atomic(std::path::Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
     Ok(json!({"path": path, "frames": steps.len(), "bytes": bytes.len()}))
 }
 
@@ -319,7 +319,7 @@ fn frames(s: &mut Session, steps: &[f64], w: f64, h: f64, gif: Option<u32>) -> R
             // Zarr layers that follow the slider read this step's slice.
             super::zarr::follow_time(s);
             // Dated tile layers have this step's address now: natively, map_png (through
-            // rustgis_render::render_complete) fetches the tiles it lacks and waits for them
+            // powergis_render::render_complete) fetches the tiles it lacks and waits for them
             // before it draws, so each frame shows its own date's imagery.
             let png = super::share::map_png(s, Some(w), Some(h), Some(96.0))?;
             match (&mut enc, gif) {
@@ -332,5 +332,5 @@ fn frames(s: &mut Session, steps: &[f64], w: f64, h: f64, gif: Option<u32>) -> R
             }
         }
     }
-    if gif.is_some() { Ok(out) } else { rustgis_data::zip::write(&pngs) }
+    if gif.is_some() { Ok(out) } else { powergis_data::zip::write(&pngs) }
 }

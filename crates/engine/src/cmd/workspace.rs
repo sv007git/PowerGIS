@@ -2,9 +2,9 @@
 //! (Infographics, Offline, Feature Cache) and Help (Diagnostic Monitor) commands.
 
 use base64::Engine;
-use rustgis_data::{Geometry, GeometryType};
-use rustgis_geom::{Coord, Extent};
-use rustgis_map::view::Keyframe;
+use powergis_data::{Geometry, GeometryType};
+use powergis_geom::{Coord, Extent};
+use powergis_map::view::Keyframe;
 use serde_json::{Value, json};
 
 use super::{b, f, ps};
@@ -116,7 +116,7 @@ pub fn commands() -> Vec<C> {
         C::new("animation.export", "Export Animation", "View › Animation", |s, p| {
             let path = ps(p, "path").ok_or("path is required (a .zip of PNG frames)")?.to_string();
             let bytes = animation_zip(s, p)?;
-            rustgis_data::io::write_atomic(std::path::Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+            powergis_data::io::write_atomic(std::path::Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
             Ok(json!({"path": path, "bytes": bytes.len()}))
         })
         .view()
@@ -329,7 +329,7 @@ fn points(p: &Value) -> Result<Vec<Coord>, String> {
     if pts.len() < 2 { Err("a profile needs two or more points".into()) } else { Ok(pts) }
 }
 
-fn dem(s: &Session, p: &Value) -> Result<std::sync::Arc<rustgis_data::raster::Raster>, String> {
+fn dem(s: &Session, p: &Value) -> Result<std::sync::Arc<powergis_data::raster::Raster>, String> {
     let n = ps(p, "layer").ok_or("layer (an elevation raster) is required")?;
     s.map().layer_by_name(n).and_then(|l| l.raster.as_ref()).and_then(|r| r.data.clone()).ok_or_else(|| format!("no raster layer '{n}'"))
 }
@@ -338,7 +338,7 @@ fn dem(s: &Session, p: &Value) -> Result<std::sync::Arc<rustgis_data::raster::Ra
 fn profile(s: &Session, p: &Value, path: &[Coord]) -> CmdResult {
     let r = dem(s, p)?;
     let samples = p.get("samples").and_then(Value::as_u64).unwrap_or(200) as usize;
-    let prof = rustgis_analysis::rasterops::profile(&r, 0, path, samples);
+    let prof = powergis_analysis::rasterops::profile(&r, 0, path, samples);
     let zs: Vec<f64> = prof.iter().filter_map(|x| x.2).collect();
     if zs.is_empty() {
         return Err("the line doesn't cross the raster".into());
@@ -414,7 +414,7 @@ fn animation_zip(s: &mut Session, p: &Value) -> Result<Vec<u8>, String> {
             // Smooth in and out; scale changes geometrically.
             let e = t * t * (3.0 - 2.0 * t);
             let c = Coord::new(a.center.x + (b2.center.x - a.center.x) * e, a.center.y + (b2.center.y - a.center.y) * e);
-            let sc = rustgis_map::camera::scale_between(a.scale, b2.scale, e);
+            let sc = powergis_map::camera::scale_between(a.scale, b2.scale, e);
             if let Err(e) = render(s, c, sc) {
                 result = Err(e);
                 break 'frames;
@@ -429,7 +429,7 @@ fn animation_zip(s: &mut Session, p: &Value) -> Result<Vec<u8>, String> {
     s.map_mut().camera = saved;
     s.view_size = saved_size;
     result?;
-    rustgis_data::zip::write(&frames)
+    powergis_data::zip::write(&frames)
 }
 
 /// The project's size and the session's state (Diagnostic Monitor). Read-only, so the monitor can
@@ -515,7 +515,7 @@ pub fn infographic_of(s: &Session, only: Option<&str>) -> Value {
 }
 
 /// The map's feature layers clipped to an extent (rasters stay behind: they're files already).
-fn snapshot(m: &mut rustgis_map::Map, e: &Extent) -> rustgis_map::Map {
+fn snapshot(m: &mut powergis_map::Map, e: &Extent) -> powergis_map::Map {
     // The layers (the bulk) are set aside while the rest of the map is copied, then each
     // feature layer is copied without its features, and only the features in the extent added.
     let layers = std::mem::take(&mut m.layers);
@@ -611,7 +611,7 @@ fn offline_sync(s: &mut Session, p: &Value) -> CmdResult {
             let now_ids: std::collections::HashSet<u64> = ol.dataset.features.iter().map(|f| f.id).collect();
             // The area's copies as last synced: only features changed offline since then go back,
             // so edits made to the source meanwhile aren't overwritten by stale copies.
-            let base: std::collections::HashMap<u64, &rustgis_data::Feature> = area
+            let base: std::collections::HashMap<u64, &powergis_data::Feature> = area
                 .data
                 .layers
                 .iter()
@@ -639,7 +639,7 @@ fn offline_sync(s: &mut Session, p: &Value) -> CmdResult {
                     // Added offline (its id may clash with one outside the area): a fresh id, above
                     // any the source or the area has used.
                     let id = sl.dataset.features.iter().map(|x| x.id).chain(had.iter().copied()).max().unwrap_or(0).saturating_add(1);
-                    sl.dataset.features.push(rustgis_data::Feature { id, ..f.clone() });
+                    sl.dataset.features.push(powergis_data::Feature { id, ..f.clone() });
                     added += 1;
                 }
             }

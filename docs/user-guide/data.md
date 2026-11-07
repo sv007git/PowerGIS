@@ -33,7 +33,7 @@ Formats](data-formats.md).
 
 Add data with **Home › Add › Add Data**: its main button opens the file picker, and its menu offers
 other ways to add data, including **Delimited Text…**, **From URL…** and **From Service…**. Files
-can also be dropped on the window or passed on the command line (`rustgis places.geojson`). The
+can also be dropped on the window or passed on the command line (`powergis places.geojson`). The
 file picker opens formats listed on [Supported Data Formats](data-formats.md), including
 cloud-optimised GeoTIFF, GeoParquet and FlatGeobuf (read in place, a view at a time; see [Files
 on the web](data-formats.md#files-on-the-web)). **Home › Add › Data Sources** opens the pane with
@@ -99,13 +99,13 @@ Features**.
 ## Formats through GDAL
 
 When [GDAL](https://gdal.org) is installed (its `ogr2ogr` and `ogrinfo` programs on the `PATH`,
-or the folder holding them in `RUSTGIS_GDAL_BIN`; GDAL 3.7 or later), the desktop app also opens
+or the folder holding them in `powergis_GDAL_BIN`; GDAL 3.7 or later), the desktop app also opens
 the vector formats GDAL reads: DWG, MapInfo TAB, OpenStreetMap XML, File Geodatabases PowerGIS
 can't read itself (compressed ones, or ones with raster fields)
 and more. PowerGIS doesn't link to GDAL: each layer is converted once, by `ogr2ogr`, into a
 FlatGeobuf with a spatial index in WGS 84 (GDAL reprojects it), kept in the cache folder
-(`~/.cache/rustgis/gdal` on Linux, `~/Library/Caches/PowerGIS/gdal` on macOS,
-`%LOCALAPPDATA%\PowerGIS\cache\gdal` on Windows, or `RUSTGIS_GDAL_CACHE`). Adding the file again
+(`~/.cache/powergis/gdal` on Linux, `~/Library/Caches/PowerGIS/gdal` on macOS,
+`%LOCALAPPDATA%\PowerGIS\cache\gdal` on Windows, or `powergis_GDAL_CACHE`). Adding the file again
 reuses the conversion until the file changes, and large layers stream like any large FlatGeobuf
 (below). Every layer of the file is added; a layer mixing geometry types is
 added as one layer per type. Curves become straight segments, and 3D surfaces (an Esri
@@ -116,7 +116,7 @@ convert it again if the cached copy is gone.
 ## SQL queries and DuckDB databases
 
 When [DuckDB](https://duckdb.org) is installed (the `duckdb` program on the `PATH`, or the folder
-holding it in `RUSTGIS_DUCKDB_BIN`; DuckDB 1.5 or later), the desktop app adds the result of an SQL
+holding it in `powergis_DUCKDB_BIN`; DuckDB 1.5 or later), the desktop app adds the result of an SQL
 query as a layer, with the `layer.addSql` command (Add Data From SQL in command search):
 
 ```json
@@ -200,12 +200,12 @@ are kept in the project as they were when added.
 reaches DuckDB in its environment (`PGPASSWORD`), never on its command line:
 
 ```sh
-rustgis-cli run --cmd 'layer.addSql={"sql":"SELECT name, geom FROM roads WHERE lanes > 2","database":"postgres:host=localhost dbname=gis user=postgres","password":"…"}'
+powergis-cli run --cmd 'layer.addSql={"sql":"SELECT name, geom FROM roads WHERE lanes > 2","database":"postgres:host=localhost dbname=gis user=postgres","password":"…"}'
 ```
 
 PowerGIS doesn't link to DuckDB: it runs `duckdb`, which writes the result as GeoParquet in the
-cache folder (`~/.cache/rustgis/duckdb` on Linux, `~/Library/Caches/PowerGIS/duckdb` on macOS,
-`%LOCALAPPDATA%\PowerGIS\cache\duckdb` on Windows, or `RUSTGIS_DUCKDB_CACHE`), sorted along a
+cache folder (`~/.cache/powergis/duckdb` on Linux, `~/Library/Caches/PowerGIS/duckdb` on macOS,
+`%LOCALAPPDATA%\PowerGIS\cache\duckdb` on Windows, or `powergis_DUCKDB_CACHE`), sorted along a
 Hilbert curve with a bounding-box covering, so large results stream like any large GeoParquet
 (below). DuckDB Spatial is installed the first time (a download from DuckDB's extension
 repository). A database table is converted once and reused until the file changes; a query runs
@@ -257,7 +257,7 @@ aren't saved, and the message names them. The layer says when the database's use
 update or delete the table's rows; saving is then refused.
 
 ```sh
-rustgis-cli run --cmd 'pg.connect={"host":"localhost","database":"gis","user":"postgres"}' \
+powergis-cli run --cmd 'pg.connect={"host":"localhost","database":"gis","user":"postgres"}' \
   --cmd 'pg.addLayer={"table":"public.roads","where":"lanes > 2","name":"Roads"}' \
   --cmd 'edit.enable={"on":true}' \
   --cmd 'edit.setValue={"layer":"Roads","row":0,"field":"name","value":"Main St"}' \
@@ -327,7 +327,7 @@ Read-only files cannot be saved. These editing commands are desktop-only; normal
 reading remains available in the browser.
 
 ```sh
-rustgis-cli run --cmd 'gpkg.addLayer={"path":"/data/roads.gpkg","table":"roads","name":"Roads"}' \
+powergis-cli run --cmd 'gpkg.addLayer={"path":"/data/roads.gpkg","table":"roads","name":"Roads"}' \
   --cmd 'edit.enable={"on":true}' \
   --cmd 'edit.setValue={"layer":"Roads","row":0,"field":"name","value":"Main St"}' \
   --cmd 'gpkg.saveEdits={"layer":"Roads"}'
@@ -359,7 +359,7 @@ don't trust, use `VERIFY_IDENTITY`, which checks the certificate and the host na
 certificate only. `DISABLED` turns encryption off:
 
 ```sh
-rustgis-cli run --cmd 'layer.addDatabase={"database":"mysql://gis@db.example:3306/city?ssl-mode=VERIFY_IDENTITY","password":"…"}' \
+powergis-cli run --cmd 'layer.addDatabase={"database":"mysql://gis@db.example:3306/city?ssl-mode=VERIFY_IDENTITY","password":"…"}' \
   --cmd 'share.exportMap={"path":"city.png"}'
 ```
 
@@ -397,7 +397,7 @@ explicitly disabled with `trust-server-certificate=true`. `connect-timeout` sets
 connection deadline in seconds (default: 10, maximum: 300).
 
 ```sh
-rustgis-cli run --cmd 'layer.addDatabase={"database":"mssql://gis@db.example:1433/city","password":"…"}' \
+powergis-cli run --cmd 'layer.addDatabase={"database":"mssql://gis@db.example:1433/city","password":"…"}' \
   --cmd 'share.exportMap={"path":"city.png"}'
 ```
 
@@ -452,7 +452,7 @@ In the app the requests go out in the background, one at a time, and the layer i
 last answer lands; `layer.geocode` on the command line waits for them.
 
 ```sh
-rustgis-cli run --cmd 'layer.addData={"path":"stores.csv"}' --cmd 'layer.geocode={"table":"stores","address":["street","city","country"]}'
+powergis-cli run --cmd 'layer.addData={"path":"stores.csv"}' --cmd 'layer.geocode={"table":"stores","address":["street","city","country"]}'
 ```
 
 The addresses are sent to the geocoder's server, so the [AI Assistant](assistant.md) asks before
@@ -479,7 +479,7 @@ Keys are typed, or, on the desktop and only when chosen, read from an AWS profil
 with no keys at all.
 
 ```sh
-rustgis-cli run --cmd 's3.connect={"name":"minio","endpoint":"https://minio.example.org","buckets":["my-bucket"],"accessKeyId":"…","secretAccessKey":"…"}' \
+powergis-cli run --cmd 's3.connect={"name":"minio","endpoint":"https://minio.example.org","buckets":["my-bucket"],"accessKeyId":"…","secretAccessKey":"…"}' \
   --cmd 's3.list={"url":"s3://my-bucket/rasters/"}' --cmd 'layer.addUrl={"url":"s3://my-bucket/rasters/dem.tif"}'
 ```
 
@@ -620,7 +620,7 @@ Loaded names that conflict get a numeric suffix; ids and endpoints stay unchange
 a name with `connection.edit` chooses a unique default from the address.
 
 ```sh
-rustgis-cli run \
+powergis-cli run \
   --cmd 'connection.new={"kind":"wms","address":"https://ows.terrestris.de/osm/service","name":"OSM WMS","group":"Public"}' \
   --cmd 'connection.test={"id":"OSM WMS"}' \
   --cmd 'connection.list={"group":"public"}'
@@ -740,7 +740,7 @@ selection and scripted calls; external assistants using MCP cannot run them. Eve
 needs approval: connection operations cannot be approved for the whole conversation.
 
 Desktop and web apps save connections with their preferences (`connections` in desktop
-`prefs.json`, `rustgis.connections` in web localStorage). The first load imports saved services,
+`prefs.json`, `powergis.connections` in web localStorage). The first load imports saved services,
 databases other than DuckDB files, STAC APIs and remembered S3 connections once, without
 changing the old lists. Legacy saved endpoint lists are no longer shown in the pane or the
 S3 dialog; use the imported named connections instead. Testing S3 can register or replace the
@@ -767,7 +767,7 @@ The record directory and R-tree stay on disk, with an 8 MiB SQLite page-cache ta
 index and memory mapping disabled. Query results retain file order and the same sampling
 rules. Attributes and the `.prj` are still read from the source files.
 
-Set `RUSTGIS_SHP_CACHE` to choose the cache directory and `RUSTGIS_SHP_CACHE_MIB` to choose
+Set `powergis_SHP_CACHE` to choose the cache directory and `powergis_SHP_CACHE_MIB` to choose
 the retained index budget (2048 MiB by default, clamped to 64–65536 MiB). Idle indexes are
 evicted in least-recently-used order. Open readers and builders hold operating-system leases,
 so another instance cannot evict their indexes; active files can temporarily exceed the
@@ -842,7 +842,7 @@ serialization continue to use the original source data and existing read limits.
 ## Rasters
 
 <figure markdown="span">
-  ![A shaded-relief elevation raster of the Sierra Nevada with the Style tab open](https://assets.rustgis.app/images/raster.webp)
+  ![A shaded-relief elevation raster of the Sierra Nevada with the Style tab open](https://assets.powergis.app/images/raster.webp)
   <figcaption>An elevation raster of the Sierra Nevada with shaded-relief symbology.</figcaption>
 </figure>
 
@@ -953,7 +953,7 @@ say so. A store by web address must allow the browser to fetch it (CORS) for the
 Google Cloud's CMIP6 bucket does, ARCO-ERA5's doesn't (the desktop reads both).
 
 ```sh
-rustgis-cli run --cmd 'layer.addZarr={"url":"https://storage.googleapis.com/gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2","variable":"2m_temperature","index":{"time":539100}}'
+powergis-cli run --cmd 'layer.addZarr={"url":"https://storage.googleapis.com/gcp-public-data-arco-era5/ar/1959-2022-full_37-1h-0p25deg-chunk-1.zarr-v2","variable":"2m_temperature","index":{"time":539100}}'
 ```
 
 **Follow the time slider** (desktop; `layer.addZarr` with `"time": true`) adds the variable as one
@@ -967,7 +967,7 @@ animation of it. An axis longer than the slider's 20,000 steps (hourly ERA5) tak
 and selection, not as a slice, and reads the slider's step again when it opens.
 
 ```sh
-rustgis-cli run --cmd 'layer.addZarr={"path":"air.zarr","variable":"t","time":true}' --cmd 'time.export={"path":"t.gif"}'
+powergis-cli run --cmd 'layer.addZarr={"path":"air.zarr","variable":"t","time":true}' --cmd 'time.export={"path":"t.gif"}'
 ```
 
 **View › Time Series** (desktop; `zarr.series`) reads a Zarr variable's values through time at a
@@ -979,7 +979,7 @@ The chart draws up to six points as lines and marks the time slider's step, and 
 takes the slider to that date. **Export CSV…** writes the date and value of each point.
 
 ```sh
-rustgis-cli run --cmd 'zarr.series={"path":"air.zarr","variable":"t","lon":-55.7,"lat":-12.5}'
+powergis-cli run --cmd 'zarr.series={"path":"air.zarr","variable":"t","lon":-55.7,"lat":-12.5}'
 ```
 
 **Summarise over time** (in the Time Series pane; `zarr.reduce`) makes a raster of one statistic of
@@ -995,7 +995,7 @@ than `"minValid"` (a share, 0 by default) of the steps read; with the default, *
 project as a GeoTIFF.
 
 ```sh
-rustgis-cli run --cmd 'zarr.reduce={"path":"air.zarr","variable":"t","stat":"mean","months":[12,1,2]}'
+powergis-cli run --cmd 'zarr.reduce={"path":"air.zarr","variable":"t","stat":"mean","months":[12,1,2]}'
 ```
 
 A single step (a layer that doesn't follow the slider) from a store in a folder is saved in the

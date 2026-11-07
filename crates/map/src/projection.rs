@@ -5,9 +5,9 @@
 //! works in that system's units, so panning, zooming and hit testing are the same for all of
 //! them; only conversions between longitude/latitude and map coordinates go through here.
 
-use rustgis_geom::{Coord, Extent, lonlat_to_merc, merc_to_lonlat};
+use powergis_geom::{Coord, Extent, lonlat_to_merc, merc_to_lonlat};
 
-use rustgis_data::vn2000_towgs84;
+use powergis_data::vn2000_towgs84;
 
 /// A named projection: (id, label, PROJ definition).
 pub const PRESETS: &[(&str, &str, &str)] = &[
@@ -203,11 +203,11 @@ pub fn preset_value(id: &str, key: &str) -> Option<f64> {
 pub fn parse_preset(code: &str) -> Result<Option<(&'static str, Vec<(&'static str, f64)>)>, String> {
     let (head, rest) = code.trim().split_once('+').unwrap_or((code.trim(), ""));
     let head = head.trim();
-    if rustgis_data::raster::crs::is_bare_vn2000(head) {
-        return Err(rustgis_data::raster::crs::bare_vn2000_error(head));
+    if powergis_data::raster::crs::is_bare_vn2000(head) {
+        return Err(powergis_data::raster::crs::bare_vn2000_error(head));
     }
     // Matched before `resolve_vn2000_alias` below, which splits `VN-2000 / <province>` on `/`.
-    let vn2000 = rustgis_data::raster::crs::vn2000_epsg(head);
+    let vn2000 = powergis_data::raster::crs::vn2000_epsg(head);
     let Some((id, _, _)) = PRESETS.iter().find(|(id, label, _)| {
         id.eq_ignore_ascii_case(head) || label.eq_ignore_ascii_case(head) || vn2000.is_some_and(|c| VN2000_PRESET_EPSG.contains(&(*id, c)))
     }) else {
@@ -386,7 +386,7 @@ pub fn lookup(code: &str) -> Result<(String, String), String> {
         };
         let unknown = || format!("unknown coordinate system ESRI:{shown}");
         let n = digits.parse::<u32>().map_err(|_| unknown())?;
-        let def = rustgis_data::raster::crs::esri_proj4(n).ok_or_else(unknown)?;
+        let def = powergis_data::raster::crs::esri_proj4(n).ok_or_else(unknown)?;
         return Ok((def.to_string(), format!("ESRI:{n}")));
     }
     let digits = lower.strip_prefix("epsg").map(|r| r.trim_start_matches([':', ' '])).unwrap_or(&lower);
@@ -395,7 +395,7 @@ pub fn lookup(code: &str) -> Result<(String, String), String> {
     }
     let unknown = || format!("unknown coordinate system EPSG:{}", digits.trim_start_matches('0'));
     let n = digits.parse::<u16>().map_err(|_| unknown())?;
-    let def = rustgis_data::raster::crs::epsg_proj4(n).ok_or_else(unknown)?;
+    let def = powergis_data::raster::crs::epsg_proj4(n).ok_or_else(unknown)?;
     if def.contains("+proj=longlat") {
         return Err(format!("EPSG:{n} is in degrees: pick a projected coordinate system"));
     }
@@ -455,7 +455,7 @@ impl Domain {
             Domain::World => true,
             // A box centred near the antimeridian (lon_0 = 150) runs past ±180°.
             Domain::Box(e) => [0.0, 360.0, -360.0].iter().any(|d| e.contains(Coord::new(c.x + d, c.y))),
-            Domain::Cap { center, radius } => rustgis_geom::haversine_m(center, c) <= radius.to_radians() * rustgis_geom::EARTH_RADIUS_M,
+            Domain::Cap { center, radius } => powergis_geom::haversine_m(center, c) <= radius.to_radians() * powergis_geom::EARTH_RADIUS_M,
             Domain::Band { lon0, half } => ((c.x - lon0 + 540.0).rem_euclid(360.0) - 180.0).abs() <= half && c.y.abs() <= 84.0,
         }
     }
@@ -492,7 +492,7 @@ enum Engine {
     },
     World(crate::world::World),
     /// Sinusoidal (MODIS's grid, ESRI:54008), which proj4rs lacks.
-    Sinusoidal(rustgis_geom::Sinusoidal),
+    Sinusoidal(powergis_geom::Sinusoidal),
 }
 
 /// Converts between longitude/latitude and the coordinates of a custom projection.
@@ -591,7 +591,7 @@ impl Projector {
         let preset = parse_preset(code)?.map(|(id, _)| id);
         let proj = def.split_whitespace().find_map(|t| t.strip_prefix("+proj=")).unwrap_or("");
         // Sinusoidal, computed here on the sphere or ellipsoid the definition gives.
-        if let Some(sinu) = rustgis_geom::Sinusoidal::from_proj4(&def) {
+        if let Some(sinu) = powergis_geom::Sinusoidal::from_proj4(&def) {
             let sinu = sinu.map_err(|e| format!("{code}: {e}"))?;
             let domain = Domain::of(preset, &def, (sinu.lon0, 0.0), 0.0);
             let lon0 = sinu.lon0;
@@ -608,7 +608,7 @@ impl Projector {
                 .split_whitespace()
                 .find_map(|t| t.strip_prefix("+R=")?.parse::<f64>().ok())
                 .filter(|r| r.is_finite() && *r > 0.0)
-                .unwrap_or(rustgis_geom::MERCATOR_R);
+                .unwrap_or(powergis_geom::MERCATOR_R);
             let engine = Engine::World(crate::world::World { kind, lon0, radius });
             return Ok(Projector { engine, to_meter: 1.0, domain, lon0, edge: std::sync::OnceLock::new() });
         }
@@ -752,12 +752,12 @@ impl Projector {
     pub fn ground_per_unit(&self, at: Coord) -> f64 {
         let Some(c) = self.inverse(at) else { return self.to_meter };
         let step = 1000.0 / self.to_meter;
-        let radius_ratio = rustgis_geom::MERCATOR_R / rustgis_geom::EARTH_RADIUS_M;
+        let radius_ratio = powergis_geom::MERCATOR_R / powergis_geom::EARTH_RADIUS_M;
         let steps = [Coord::new(step, 0.0), Coord::new(-step, 0.0), Coord::new(0.0, step), Coord::new(0.0, -step)];
         steps
             .iter()
             .filter_map(|s| self.inverse(Coord::new(at.x + s.x, at.y + s.y)))
-            .map(|d| rustgis_geom::haversine_m(c, d) * radius_ratio / step)
+            .map(|d| powergis_geom::haversine_m(c, d) * radius_ratio / step)
             .find(|k| k.is_finite() && *k > 0.0)
             .unwrap_or(self.to_meter)
     }
@@ -799,7 +799,7 @@ impl Flat {
             if !c.is_finite() || !(-180.0..=180.0).contains(&c.x) || !(-90.0..=90.0).contains(&c.y) {
                 return Err("Selection outline contains an invalid longitude or latitude.".into());
             }
-            if matches!(self, Flat::Mercator) && c.y.abs() > rustgis_geom::MAX_LAT {
+            if matches!(self, Flat::Mercator) && c.y.abs() > powergis_geom::MAX_LAT {
                 return Err("Selection outline exceeds the Web Mercator latitude range.".into());
             }
             if !self.forward_checked(c).is_some_and(|p| p.is_finite()) {
@@ -843,7 +843,7 @@ impl Flat {
     /// is first cut along the map's edge, so a feature across it (Russia under a 90°W central
     /// meridian) is drawn on both sides rather than as a band across the map (#209). Points the
     /// projection can't show become NaN, which the renderer skips.
-    pub fn project(&self, g: &rustgis_data::Geometry) -> rustgis_data::Geometry {
+    pub fn project(&self, g: &powergis_data::Geometry) -> powergis_data::Geometry {
         let f = |c: Coord| self.forward_checked(c).unwrap_or(Coord::new(f64::NAN, f64::NAN));
         if let Flat::Custom(p) = self
             && let Some(edge) = p.edge()
@@ -924,7 +924,7 @@ mod tests {
             vec![Coord::new(179.0, 0.0), Coord::new(-179.0, 1.0)],
             vec![Coord::new(-180.0, 0.0)],
             vec![Coord::new(180.0, 0.0)],
-            vec![Coord::new(0.0, rustgis_geom::MAX_LAT + 0.01)],
+            vec![Coord::new(0.0, powergis_geom::MAX_LAT + 0.01)],
             vec![Coord::new(181.0, 0.0)],
             vec![Coord::new(f64::NAN, 0.0)],
         ] {
@@ -1109,7 +1109,7 @@ mod tests {
         // Any other name starting with "esri" isn't read as a code.
         assert_eq!(lookup("esrifoo").unwrap_err(), "unknown projection 'esrifoo'");
         // Every code in the table draws (local azimuthal ones only where aeqd is built in).
-        for n in rustgis_data::raster::crs::esri_codes() {
+        for n in powergis_data::raster::crs::esri_codes() {
             let code = format!("ESRI:{n}");
             let aeqd = lookup(&code).is_ok_and(|(def, _)| def.contains("+proj=aeqd"));
             let p = Projector::new(&code);
@@ -1271,7 +1271,7 @@ mod tests {
         // just west of it draws on the east, just east of it on the west.
         let mut checked = 0;
         let epsg = (1024..=32767u32).map(|n| format!("EPSG:{n}"));
-        for n in epsg.chain(rustgis_data::raster::crs::esri_codes().map(|n| format!("ESRI:{n}"))) {
+        for n in epsg.chain(powergis_data::raster::crs::esri_codes().map(|n| format!("ESRI:{n}"))) {
             // Codes with a prime meridian other than Greenwich (+pm) and a datum shift included.
             let Ok(p) = Projector::new(&n) else { continue };
             let Some(lon0) = p.central_meridian() else { continue };
@@ -1316,7 +1316,7 @@ mod tests {
 
     #[test]
     fn features_across_the_map_edge_are_cut_there() {
-        use rustgis_data::Geometry;
+        use powergis_data::Geometry;
         // #209: Equal Earth Americas (computed here, edge at 90°E) and PDC Mercator (proj4rs,
         // lon_0 = 150°, edge at 30°W). Before, these drew as bands across the whole map.
         // EPSG:5329 is centred on 110°E through its prime meridian (+pm=jakarta), with a datum shift.
@@ -1375,7 +1375,7 @@ mod tests {
         // The presets are EPSG's VN-2000 systems word for word.
         for (id, code) in [("vn2000tm3", 5897), ("vn2000Utm48", 3405), ("vn2000Utm49", 3406)] {
             let def = PRESETS.iter().find(|(p, _, _)| *p == id).map(|(_, _, d)| *d);
-            assert_eq!(def, rustgis_data::raster::crs::epsg_proj4(code), "{id}");
+            assert_eq!(def, powergis_data::raster::crs::epsg_proj4(code), "{id}");
         }
 
         // `vietnam` names no projection: the country spans two UTM zones and many TM-3 meridians.
@@ -1397,7 +1397,7 @@ mod tests {
             ("vn2000 tm-3", "vn2000tm3", 5897),
         ] {
             assert_eq!(parse_preset(name).unwrap().map(|(p, _)| p), Some(id), "{name}");
-            assert_eq!(rustgis_data::raster::crs::Crs::parse(name).map(|c| c.epsg()), Ok(code), "{name}");
+            assert_eq!(powergis_data::raster::crs::Crs::parse(name).map(|c| c.epsg()), Ok(code), "{name}");
         }
 
         // Explicit TM-3 alias lookups

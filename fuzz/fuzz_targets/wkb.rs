@@ -4,5 +4,5 @@
 use libfuzzer_sys::fuzz_target;
 
 fuzz_target!(|data: &[u8]| {
-    let _ = rustgis_data::wkb::decode(data);
+    let _ = powergis_data::wkb::decode(data);
 });

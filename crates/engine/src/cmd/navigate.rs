@@ -1,9 +1,9 @@
 //! Home › Navigate, Add (basemap) and Project (new map), bookmarks.
 
-use rustgis_geom::{Coord, Extent};
-use rustgis_map::layout::ElementKind;
-use rustgis_map::presentation::PageKind;
-use rustgis_map::{Basemap, Bookmark, Map, Projection};
+use powergis_geom::{Coord, Extent};
+use powergis_map::layout::ElementKind;
+use powergis_map::presentation::PageKind;
+use powergis_map::{Basemap, Bookmark, Map, Projection};
 use serde_json::{Value, json};
 
 use super::{f, ps};
@@ -83,8 +83,8 @@ pub fn commands() -> Vec<C> {
         .params(r#"{"on"?: bool (toggles when omitted)}"#),
         C::new("map.reloadWebLayers", "Reload Web Layers", "View › Display", |_, _| {
             // The map view draws again when the tile cache's generation moves.
-            crate::render::rustgis_tiles::cache::clear();
-            Ok(json!({"generation": crate::render::rustgis_tiles::cache::generation()}))
+            crate::render::powergis_tiles::cache::clear();
+            Ok(json!({"generation": crate::render::powergis_tiles::cache::generation()}))
         })
         .view(),
         C::new("map.projection", "Globe", "View › View", |s, p| {
@@ -115,7 +115,7 @@ pub fn commands() -> Vec<C> {
         .params(r#"{"type"?: "mercator"|"globe"|preset id (with parameters: "robinson +lon_0=150")|"EPSG:<code>"|"ESRI:<code>" (toggles the globe when omitted), "lon_0"?: degrees (a preset's central meridian), "lat_1"?, "lat_2"?: degrees (a conic preset's standard parallels; these apply to the map's own preset when type is omitted)}"#),
         C::new("map.projections", "Projections", "View › View", |_, _| {
             let mut v = vec![json!({"id": "mercator", "label": "Web Mercator"}), json!({"id": "globe", "label": "Globe"})];
-            v.extend(rustgis_map::projection::PRESETS.iter().map(|(id, label, _)| json!({"id": id, "label": label})));
+            v.extend(powergis_map::projection::PRESETS.iter().map(|(id, label, _)| json!({"id": id, "label": label})));
             Ok(Value::Array(v))
         })
         .view(),
@@ -236,7 +236,7 @@ pub fn commands() -> Vec<C> {
 
 /// Projection `base`, a preset with or without parameters, with `given` over its own values.
 fn with_preset_params(base: &str, given: Vec<(&str, f64)>) -> Result<Projection, String> {
-    use rustgis_map::projection::{parse_preset, preset_code};
+    use powergis_map::projection::{parse_preset, preset_code};
     let Some((id, mut params)) = parse_preset(base)? else {
         let name = Projection::from_code(base).map_or_else(|_| base.to_string(), |p| p.label());
         return Err(format!("only presets take lon_0, lat_1 and lat_2, not {name}"));
@@ -418,8 +418,8 @@ pub fn is_map_link(text: &str) -> bool {
 
 /// Ground metres per pixel at MapLibre zoom `zoom` and latitude `lat`.
 pub(crate) fn ground_at_zoom(zoom: f64, lat: f64) -> f64 {
-    let lat = lat.clamp(-rustgis_geom::MAX_LAT, rustgis_geom::MAX_LAT);
-    std::f64::consts::TAU * rustgis_geom::MERCATOR_R / (512.0 * zoom.exp2()) * lat.to_radians().cos().abs()
+    let lat = lat.clamp(-powergis_geom::MAX_LAT, powergis_geom::MAX_LAT);
+    std::f64::consts::TAU * powergis_geom::MERCATOR_R / (512.0 * zoom.exp2()) * lat.to_radians().cos().abs()
 }
 
 /// The map's centre (lon/lat) and MapLibre zoom (512-pixel tiles), whatever its projection;
@@ -428,9 +428,9 @@ pub(crate) fn view_of(map: &Map) -> Option<(Coord, f64)> {
     let flat = map.flat();
     let c = flat.inverse(map.camera.center)?;
     let ground = map.camera.res * flat.ground_per_unit(map.camera.center);
-    let merc = ground / c.y.clamp(-rustgis_geom::MAX_LAT, rustgis_geom::MAX_LAT).to_radians().cos().abs().max(1e-9);
+    let merc = ground / c.y.clamp(-powergis_geom::MAX_LAT, powergis_geom::MAX_LAT).to_radians().cos().abs().max(1e-9);
     // Within what a link is read back with (a large window shows the world below zoom 0).
-    let zoom = (std::f64::consts::TAU * rustgis_geom::MERCATOR_R / (512.0 * merc)).log2().clamp(0.0, 30.0);
+    let zoom = (std::f64::consts::TAU * powergis_geom::MERCATOR_R / (512.0 * merc)).log2().clamp(0.0, 30.0);
     (zoom.is_finite() && c.x.is_finite() && c.y.is_finite()).then_some((c, zoom))
 }
 
@@ -592,7 +592,7 @@ fn go_bookmark(s: &mut Session, p: &Value) -> CmdResult {
 
 /// Where camera `at` of map `from` is on map `to`: the same place and ground resolution; None
 /// where `to` can't show it.
-fn place_of(from: &Map, at: &rustgis_map::Camera, to: &Map) -> Option<rustgis_map::Camera> {
+fn place_of(from: &Map, at: &powergis_map::Camera, to: &Map) -> Option<powergis_map::Camera> {
     let flat = from.flat();
     let lonlat = flat.inverse(at.center)?;
     let mut camera = place_at(to, lonlat, at.res * flat.ground_per_unit(at.center))?;
@@ -603,7 +603,7 @@ fn place_of(from: &Map, at: &rustgis_map::Camera, to: &Map) -> Option<rustgis_ma
 
 /// Map `map`'s camera moved to `lonlat` at `ground` metres per pixel; None where it can't show
 /// that place (or the resolution is no number).
-fn place_at(map: &Map, lonlat: Coord, ground: f64) -> Option<rustgis_map::Camera> {
+fn place_at(map: &Map, lonlat: Coord, ground: f64) -> Option<powergis_map::Camera> {
     if !(ground.is_finite() && ground > 0.0) {
         return None;
     }
@@ -685,7 +685,7 @@ pub(crate) fn bookmarks_file(map: &Map) -> Result<Vec<u8>, String> {
     if marks.is_empty() {
         return Err("none of the map's bookmarks has a place on the earth".into());
     }
-    serde_json::to_vec_pretty(&json!({"type": "rustgisBookmarks", "bookmarks": marks})).map_err(|e| e.to_string())
+    serde_json::to_vec_pretty(&json!({"type": "powergisBookmarks", "bookmarks": marks})).map_err(|e| e.to_string())
 }
 
 fn import_bookmarks(s: &mut Session, p: &Value) -> CmdResult {

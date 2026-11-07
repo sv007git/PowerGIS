@@ -1,6 +1,6 @@
 //! Reuse a single feature path without changing feature or stroke compositing order.
 use super::{Ctx, LineStroke, PathBuilder, Pixmap, Symbol};
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 // Retain paths up to this point count per draw chunk; this is not a byte/capacity budget.
 const CACHE_POINTS: usize = 16_384;
 

@@ -3,10 +3,10 @@
 //! archiving and relationships). Every action runs a command.
 
 use egui::{Ui, vec2};
-use rustgis_engine::map::design::{DomainKind, Elevation, RuleKind};
+use powergis_engine::map::design::{DomainKind, Elevation, RuleKind};
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, semibold};
 
 pub(crate) const DISTANCE_UNITS: &[&str] = &["Meters", "Feet", "Kilometers", "Miles"];
@@ -53,7 +53,7 @@ pub struct Forms {
 }
 
 /// A number typed in a form, or an error shown in the pane (so a typo isn't taken as 0).
-fn number(app: &mut RustGisApp, text: &str, what: &str) -> Option<f64> {
+fn number(app: &mut powergisApp, text: &str, what: &str) -> Option<f64> {
     match text.trim().parse::<f64>() {
         Ok(v) if v.is_finite() => Some(v),
         _ => {
@@ -70,7 +70,7 @@ fn heading(ui: &mut Ui, text: &str) {
 }
 
 /// Runs a command and shows its result (or error) at the top of the pane.
-fn run(app: &mut RustGisApp, id: &str, p: Value) -> Option<Value> {
+fn run(app: &mut powergisApp, id: &str, p: Value) -> Option<Value> {
     match app.run(id, p) {
         Ok(v) => {
             app.forms.message = None;
@@ -83,14 +83,14 @@ fn run(app: &mut RustGisApp, id: &str, p: Value) -> Option<Value> {
     }
 }
 
-fn message(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn message(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     if let Some((m, err)) = &app.forms.message {
         let color = if *err { egui::Color32::from_rgb(0xC0, 0x30, 0x30) } else { t.text_dim };
         ui.label(egui::RichText::new(m.as_str()).color(color).small());
     }
 }
 
-fn layer_names(app: &RustGisApp, pred: impl Fn(&rustgis_engine::map::Layer) -> bool) -> Vec<String> {
+fn layer_names(app: &powergisApp, pred: impl Fn(&powergis_engine::map::Layer) -> bool) -> Vec<String> {
     app.session.map().layers.iter().filter(|l| pred(l)).map(|l| l.name.clone()).collect()
 }
 
@@ -107,7 +107,7 @@ fn combo(ui: &mut Ui, id: &str, name: &str, value: &mut String, options: &[Strin
         .on_hover_text(tl!(name));
 }
 
-pub fn editing(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn editing(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     message(app, ui, t);
     let settings = app.session.map().editing.settings.clone();
     ui.horizontal(|ui| {
@@ -144,7 +144,7 @@ pub fn editing(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     // shapes, and a text is a point); they are formatted in the Format pane.
     let only_texts = {
         let mut rows = app.session.map().layers.iter().flat_map(|l| l.selection.iter().map(move |r| (l, *r))).peekable();
-        rows.peek().is_some() && rows.all(|(l, r)| l.graphics && rustgis_engine::map::graphics::kind(&l.dataset, r) == "text")
+        rows.peek().is_some() && rows.all(|(l, r)| l.graphics && powergis_engine::map::graphics::kind(&l.dataset, r) == "text")
     };
     let not_for_texts = tl!("Not for texts: a text is edited in the Format pane.");
     egui::Grid::new("modify").num_columns(3).spacing(vec2(6.0, 6.0)).show(ui, |ui| {
@@ -191,7 +191,7 @@ pub fn editing(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         if r.on_disabled_hover_text(not_for_texts).clicked() {
             app.map.split_mode = !split;
         }
-        let on = app.session.tool == rustgis_engine::Tool::EditVertices;
+        let on = app.session.tool == powergis_engine::Tool::EditVertices;
         let r = ui.add_enabled(!only_texts || on, egui::Button::selectable(on, tl!("Edit Vertices")));
         if r.on_hover_text(tl!("Drag vertices on the map; click an edge to add one")).on_disabled_hover_text(not_for_texts).clicked() {
             app.map.cancel_sketch();
@@ -364,7 +364,7 @@ pub fn editing(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 
     heading(ui, "Edit Status");
     // Read directly: running a command every frame would mark the map changed each time.
-    let counts: Vec<(String, rustgis_engine::cmd::design::EditCounts)> =
+    let counts: Vec<(String, powergis_engine::cmd::design::EditCounts)> =
         app.session.edit_counts.iter().filter_map(|(id, c)| app.session.map().layer(*id).map(|l| (l.name.clone(), *c))).collect();
     if counts.is_empty() {
         ui.label(egui::RichText::new(tl!("No edits since the project was saved")).weak().small());
@@ -383,7 +383,7 @@ pub fn editing(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     }
 }
 
-pub fn design(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn design(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     message(app, ui, t);
     let Some(l) = app.session.active_layer.and_then(|id| app.session.map().layer(id)).filter(|l| !l.is_raster()).cloned() else {
         ui.label(egui::RichText::new(tl!("Select a feature layer in the Layers pane")).weak());
@@ -447,7 +447,7 @@ pub fn design(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         });
     }
     let ints: Vec<String> =
-        l.dataset.fields.iter().filter(|f| f.ty == rustgis_engine::data::FieldType::Integer).map(|f| f.name.clone()).collect();
+        l.dataset.fields.iter().filter(|f| f.ty == powergis_engine::data::FieldType::Integer).map(|f| f.name.clone()).collect();
     ui.horizontal(|ui| {
         combo(ui, "sub_field", "Field", &mut app.forms.subtype_field, &ints);
         if ui.button(tl!("Set Subtypes")).on_hover_text(tl!("One per line: code=name")).clicked() {
@@ -574,7 +574,7 @@ pub fn design(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         });
     }
     let layers = layer_names(app, |l| !l.is_raster() && !l.graphics);
-    let fields_of = |app: &RustGisApp, n: &str| -> Vec<String> {
+    let fields_of = |app: &powergisApp, n: &str| -> Vec<String> {
         app.session.map().layer_by_name(n).map(|l| l.dataset.fields.iter().map(|f| f.name.clone()).collect()).unwrap_or_default()
     };
     let (of, df) = (fields_of(app, &app.forms.rel_origin), fields_of(app, &app.forms.rel_dest));

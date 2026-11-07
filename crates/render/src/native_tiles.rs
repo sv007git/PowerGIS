@@ -6,12 +6,12 @@
 
 use std::sync::Arc;
 
-use rustgis_data::ogc::warp::{Grid, Matrix, System, Warp};
-use rustgis_data::raster::Transformer;
-use rustgis_geom::Coord;
-use rustgis_map::TileLayer;
-use rustgis_map::projection::Flat;
-use rustgis_tiles::cache::{self, Payload, State, Want};
+use powergis_data::ogc::warp::{Grid, Matrix, System, Warp};
+use powergis_data::raster::Transformer;
+use powergis_geom::Coord;
+use powergis_map::TileLayer;
+use powergis_map::projection::Flat;
+use powergis_tiles::cache::{self, Payload, State, Want};
 use tiny_skia::{FillRule, FilterQuality, Paint, PathBuilder, Pattern, Pixmap, SpreadMode, Transform};
 
 use crate::View;
@@ -41,7 +41,7 @@ enum How {
 /// How a tile layer is drawn on a map in `epsg`: `None` when its service doesn't offer it in
 /// that system (it is then warped from Web Mercator with the others).
 pub(crate) fn of(t: &TileLayer, epsg: u16) -> Option<Arc<Native>> {
-    if t.blend != rustgis_map::effects::Blend::Normal || !t.url.contains(rustgis_data::ogc::warp::MARK) {
+    if t.blend != powergis_map::effects::Blend::Normal || !t.url.contains(powergis_data::ogc::warp::MARK) {
         return None;
     }
     // Read once a layer's address and the map's system: the map draws them every frame.
@@ -74,10 +74,10 @@ fn read(url: &str, epsg: u16) -> Option<Native> {
         How::Map(_) => Warp::map_template(base),
         How::Tiles(_) => base.to_string(),
     };
-    let transformer = rustgis_tiles::warp::transformer(epsg)?;
+    let transformer = powergis_tiles::warp::transformer(epsg)?;
     // (Not for a layer over half the world or more: its box there needn't hold all of it.)
     let area =
-        w.area.filter(|a| a[2] - a[0] < 180.0 && a[3] - a[1] < 90.0).and_then(|a| rustgis_data::ogc::warp::native_box(&transformer, a));
+        w.area.filter(|a| a[2] - a[0] < 180.0 && a[3] - a[1] < 90.0).and_then(|a| powergis_data::ogc::warp::native_box(&transformer, a));
     Some(Native { base, how, transformer, area })
 }
 
@@ -119,7 +119,7 @@ fn tile_at(m: &Matrix, x: f64, y: f64) -> Option<(u32, u32)> {
 }
 
 fn tile_address(base: &str, m: &Matrix, c: u32, r: u32) -> String {
-    let id = rustgis_data::ogc::warp::matrix_in_address(&m.id);
+    let id = powergis_data::ogc::warp::matrix_in_address(&m.id);
     base.replace("{nm}", &id).replace("{ncol}", &c.to_string()).replace("{nrow}", &r.to_string())
 }
 
@@ -211,7 +211,7 @@ pub(crate) fn draw(pm: &mut Pixmap, n: &Native, t: &TileLayer, view: &View, flat
             // A WMTS tile the service doesn't have (past its coverage) is left clear, as the warped
             // tiles leave it; any other failure, and a WMS's 4xx (it draws any area), is the
             // layer's error.
-            State::Failed(e) if matches!(n.how, How::Tiles(_)) && rustgis_tiles::warp::missing(&e) => {}
+            State::Failed(e) if matches!(n.how, How::Tiles(_)) && powergis_tiles::warp::missing(&e) => {}
             State::Failed(e) => error = Some(e),
         }
     }

@@ -1,7 +1,7 @@
 //! The map camera: a Web Mercator centre, a resolution (metres per logical pixel), a bearing
 //! and a pitch.
 
-use rustgis_geom::{Coord, Extent, MERCATOR_R, extent_to_merc, merc_to_lonlat, scale_denominator};
+use powergis_geom::{Coord, Extent, MERCATOR_R, extent_to_merc, merc_to_lonlat, scale_denominator};
 use serde::{Deserialize, Serialize};
 
 /// Resolution limits (map units per pixel): in to site plans and finds drawings (#902), out to
@@ -195,6 +195,10 @@ impl Camera {
     }
 
     pub fn world() -> Self {
+        Camera::new(Coord::new(0.0, 2_000_000.0), 30_000.0)
+    }
+
+    pub fn pondicherry() -> Self {
         // Default camera centered on Pondicherry, India (lat 11.9416, lon 79.8083)
         Camera::new(Coord::new(8_884_217.43, 1_338_573.19), 250.0)
     }
@@ -442,7 +446,7 @@ impl Camera {
             return;
         }
         let lat = merc_to_lonlat(self.center).y.to_radians().cos().abs().max(0.01);
-        self.res = scale * rustgis_geom::PIXEL_M / lat;
+        self.res = scale * powergis_geom::PIXEL_M / lat;
         self.clamp();
     }
 
@@ -553,7 +557,7 @@ mod tests {
     fn zooms_in_to_site_plans_and_finds_drawings() {
         // Excavation plans at 1:20 and 1:10, finds at 1:1 and larger (#902), anywhere on Earth.
         for lat in [0.0, 46.5, 70.0] {
-            let mut c = Camera::new(rustgis_geom::lonlat_to_merc(Coord::new(10.0, lat)), 10.0);
+            let mut c = Camera::new(powergis_geom::lonlat_to_merc(Coord::new(10.0, lat)), 10.0);
             for scale in [20.0, 10.0, 1.0, 0.5] {
                 c.set_scale(scale);
                 assert!((c.scale() / scale - 1.0).abs() < 1e-9, "1:{scale} at {lat}°: {}", c.scale());

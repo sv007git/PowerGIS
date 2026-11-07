@@ -35,10 +35,10 @@ pub mod tile_mesh;
 mod tiles;
 pub use tiles::{Live, live as live_tiles};
 
-pub use rustgis_tiles;
+pub use powergis_tiles;
 pub use tiles::{source_layers as tile_source_layers, spec as tile_spec, style_view};
 
-/// Natural Earth 1:110m sample data (public domain), fetched by `build.rs` from rustgis-assets.
+/// Natural Earth 1:110m sample data (public domain), fetched by `build.rs` from powergis-assets.
 pub mod sample_data {
     pub const COUNTRIES: &str = include_str!(concat!(env!("OUT_DIR"), "/countries.geojson"));
     /// The countries as China sees its borders (Natural Earth's China point of view).
@@ -116,11 +116,11 @@ pub mod sample_data {
 
 use std::sync::OnceLock;
 
-use rustgis_data::{Dataset, Geometry, GeometryType};
-use rustgis_geom::{Coord, Extent, extent_to_merc, lonlat_to_merc};
-use rustgis_map::globe::{V3, densify};
-use rustgis_map::layout::TextAlign;
-use rustgis_map::{Camera, Globe, LabelPlacement, LineStroke, Map, Marker, Rgba, Symbol};
+use powergis_data::{Dataset, Geometry, GeometryType};
+use powergis_geom::{Coord, Extent, extent_to_merc, lonlat_to_merc};
+use powergis_map::globe::{V3, densify};
+use powergis_map::layout::TextAlign;
+use powergis_map::{Camera, Globe, LabelPlacement, LineStroke, Map, Marker, Rgba, Symbol};
 pub use text::halo_reach;
 /// The image type pages and maps are drawn into.
 pub use tiny_skia::Pixmap;
@@ -166,7 +166,7 @@ pub struct View {
 impl View {
     /// Display error budget in map units, with one device pixel independent of device density.
     fn lod_tolerance(&self) -> f64 {
-        self.camera.res / self.pixels_per_point.max(0.01) * rustgis_map::lod::THIN_PX
+        self.camera.res / self.pixels_per_point.max(0.01) * powergis_map::lod::THIN_PX
     }
 
     pub fn pixel_size(&self) -> (u32, u32) {
@@ -217,13 +217,13 @@ pub struct PlacedLabel {
     /// screen.
     pub angle: Option<f32>,
     /// How it collides with other labels (padding, optional text or icon, overlaps).
-    pub collide: rustgis_tiles::Collide,
+    pub collide: powergis_tiles::Collide,
     /// Curved along a line: its characters one by one, each placed and turned where the line
     /// takes it (`text` is all of them). Empty for a label drawn as one block.
     pub glyphs: Vec<LabelGlyph>,
     /// A rectangle behind the text (a label class's background, its sizes in points as the
     /// class's grown by a reference scale); none draws the text alone. A curved label has none.
-    pub background: Option<rustgis_map::LabelBackground>,
+    pub background: Option<powergis_map::LabelBackground>,
 }
 
 /// One character of a label curved along a line: its text, and its centre and angle (radians,
@@ -329,7 +329,7 @@ fn world() -> &'static Vec<Geometry> {
     static W: [OnceLock<Vec<Geometry>>; 2] = [OnceLock::new(), OnceLock::new()];
     let wv = sample_data::worldview();
     let cell = &W[wv as usize];
-    cell.get_or_init(|| match rustgis_data::io::read_geojson(sample_data::countries(), "world") {
+    cell.get_or_init(|| match powergis_data::io::read_geojson(sample_data::countries(), "world") {
         Ok((ds, _)) => ds.features.into_iter().filter_map(|f| f.geometry).map(|g| g.map_coords(&lonlat_to_merc)).collect(),
         Err(e) => {
             log::warn!("built-in world outline unreadable: {e}");
@@ -342,7 +342,7 @@ fn world() -> &'static Vec<Geometry> {
 fn world_lonlat() -> &'static Vec<Geometry> {
     static W: [OnceLock<Vec<Geometry>>; 2] = [OnceLock::new(), OnceLock::new()];
     let cell = &W[sample_data::worldview() as usize];
-    cell.get_or_init(|| world().iter().map(|g| g.map_coords(&rustgis_geom::merc_to_lonlat)).collect())
+    cell.get_or_init(|| world().iter().map(|g| g.map_coords(&powergis_geom::merc_to_lonlat)).collect())
 }
 
 thread_local! {
@@ -352,7 +352,7 @@ thread_local! {
 }
 
 /// The built-in world outline in a custom projection's coordinates (kept per projection).
-fn world_in(flat: &rustgis_map::projection::Flat, key: &str) -> std::rc::Rc<Vec<Geometry>> {
+fn world_in(flat: &powergis_map::projection::Flat, key: &str) -> std::rc::Rc<Vec<Geometry>> {
     WORLD_IN.with(|cell| {
         cell.borrow_mut()
             .entry(format!("{}:{key}", sample_data::worldview().code()))
@@ -366,7 +366,7 @@ const GLOBE_STEP: f64 = 0.035;
 
 /// The built-in world dataset (lon/lat), for the sample project.
 pub fn world_dataset(name: &str, text: &str) -> Option<Dataset> {
-    rustgis_data::io::read_geojson(text, name).ok().map(|(d, _)| d)
+    powergis_data::io::read_geojson(text, name).ok().map(|(d, _)| d)
 }
 
 thread_local! {
@@ -701,7 +701,7 @@ impl Ctx<'_> {
     /// pixel a round, or one that would cut the path into more than [`MAX_DASHES`] dashes (each
     /// is a path of its own), would only cost time. The whole path counts, on screen or not: the
     /// dashing doesn't skip what's off screen.
-    fn dash(&self, d: &rustgis_map::symbology::Dash, path: &tiny_skia::Path) -> Option<Vec<f32>> {
+    fn dash(&self, d: &powergis_map::symbology::Dash, path: &tiny_skia::Path) -> Option<Vec<f32>> {
         let steps: Vec<f32> = d.even_steps().iter().map(|v| v * self.ppp).collect();
         let period: f32 = steps.iter().sum();
         // Each round of the pattern draws one dash per pair of steps.
@@ -753,14 +753,14 @@ impl Ctx<'_> {
             let stroke = Stroke {
                 width: (w * self.ppp).max(0.5),
                 line_cap: match st.cap {
-                    rustgis_map::LineCap::Round => LineCap::Round,
-                    rustgis_map::LineCap::Butt => LineCap::Butt,
-                    rustgis_map::LineCap::Square => LineCap::Square,
+                    powergis_map::LineCap::Round => LineCap::Round,
+                    powergis_map::LineCap::Butt => LineCap::Butt,
+                    powergis_map::LineCap::Square => LineCap::Square,
                 },
                 line_join: match st.join {
-                    rustgis_map::LineJoin::Round => LineJoin::Round,
-                    rustgis_map::LineJoin::Miter => LineJoin::Miter,
-                    rustgis_map::LineJoin::Bevel => LineJoin::Bevel,
+                    powergis_map::LineJoin::Round => LineJoin::Round,
+                    powergis_map::LineJoin::Miter => LineJoin::Miter,
+                    powergis_map::LineJoin::Bevel => LineJoin::Bevel,
                 },
                 ..Stroke::default()
             };
@@ -1059,15 +1059,15 @@ impl Ctx<'_> {
                         let outlined = w > 0.0
                             && st
                                 .markers
-                                .is_some_and(|m| !matches!(m.mark, rustgis_map::LineMark::Hash) && m.outline.is_some_and(|o| o.a() > 0));
-                        (w > 0.0 || st.markers.is_some_and(|m| !matches!(m.mark, rustgis_map::LineMark::Hash))) && (c.a() > 0 || outlined)
+                                .is_some_and(|m| !matches!(m.mark, powergis_map::LineMark::Hash) && m.outline.is_some_and(|o| o.a() > 0));
+                        (w > 0.0 || st.markers.is_some_and(|m| !matches!(m.mark, powergis_map::LineMark::Hash))) && (c.a() > 0 || outlined)
                     })
                     .map(|st| LineStroke {
                         // A hollow marker's halo is its outline alone, so it stays hollow.
                         color: Some(if st.markers.is_some() && st.resolve(s).0.a() == 0 { Rgba::new(0, 0, 0, 0) } else { SELECTION }),
                         width: Some(st.resolve(s).1.max(0.0) + 3.0),
                         // A marker's halo is its outline.
-                        markers: st.markers.map(|m| rustgis_map::LineMarkers { outline: Some(SELECTION), ..m }),
+                        markers: st.markers.map(|m| powergis_map::LineMarkers { outline: Some(SELECTION), ..m }),
                         ..*st
                     })
                     .collect();
@@ -1614,14 +1614,14 @@ fn render_with_backend(map: &mut Map, view: &View, full_res_rasters: bool, backe
     // A bearing or pitch set directly on the camera may be unnormalised (or no number, which
     // faces north and looks straight down).
     let mut camera = view.camera;
-    camera.bearing = rustgis_map::camera::normalize_bearing(camera.bearing);
-    camera.pitch = rustgis_map::camera::normalize_pitch(camera.pitch);
+    camera.bearing = powergis_map::camera::normalize_bearing(camera.bearing);
+    camera.pitch = powergis_map::camera::normalize_pitch(camera.pitch);
     // A persisted Shapefile has no chunk handle until it opens. Preflight required local
     // sources in every view so an open failure cannot become a successful incomplete export.
     let complete_layers: std::collections::HashSet<u32> = {
-        let mut scales = vec![map.ground_res_at(&camera) / rustgis_geom::PIXEL_M];
+        let mut scales = vec![map.ground_res_at(&camera) / powergis_geom::PIXEL_M];
         if camera.pitch != 0.0 && !map.projection.is_globe() {
-            scales.extend(camera.tilt_bands(view.width, view.height).iter().map(|b| map.ground_res_at(&b.camera) / rustgis_geom::PIXEL_M));
+            scales.extend(camera.tilt_bands(view.width, view.height).iter().map(|b| map.ground_res_at(&b.camera) / powergis_geom::PIXEL_M));
         }
         map.layers
             .iter()
@@ -1659,7 +1659,7 @@ fn render_with_backend(map: &mut Map, view: &View, full_res_rasters: bool, backe
             }
         }
     }
-    let depth_scale = map.ground_res_at(&camera) / rustgis_geom::PIXEL_M;
+    let depth_scale = map.ground_res_at(&camera) / powergis_geom::PIXEL_M;
     // Perspective markers and extrusions have a global depth pass. Preserve that complete
     // upstream path using an isolated full-source snapshot until it has a chunk-aware sorter.
     // The owning interaction window, selection and editing provider are never replaced.
@@ -1746,7 +1746,7 @@ fn render_with_backend(map: &mut Map, view: &View, full_res_rasters: bool, backe
 
 /// Persisted local Shapefiles can require complete traversal before a handle is opened.
 /// Converted, embedded, remote and database sources retain their own provider behavior.
-pub(crate) fn is_local_shapefile(source: &rustgis_map::source::SourceLayer) -> bool {
+pub(crate) fn is_local_shapefile(source: &powergis_map::source::SourceLayer) -> bool {
     source.embedded.is_none()
         && source.gdal.is_none()
         && source.duckdb.is_none()
@@ -1754,13 +1754,13 @@ pub(crate) fn is_local_shapefile(source: &rustgis_map::source::SourceLayer) -> b
         && source.mysql.is_none()
         && source.sqlserver.is_none()
         && source.path.as_ref().is_some_and(|p| {
-            !rustgis_data::source::is_remote_name(p) && std::path::Path::new(p).extension().is_some_and(|e| e.eq_ignore_ascii_case("shp"))
+            !powergis_data::source::is_remote_name(p) && std::path::Path::new(p).extension().is_some_and(|e| e.eq_ignore_ascii_case("shp"))
         })
 }
 
 /// Layers whose perspective painter needs complete globally depth-ordered features.
 /// Ordinary fills/lines and their masks stay on the complete per-band chunk path.
-fn needs_tilted_snapshot(map: &Map, layer: &rustgis_map::Layer, complete_layers: &std::collections::HashSet<u32>, scale: f64) -> bool {
+fn needs_tilted_snapshot(map: &Map, layer: &powergis_map::Layer, complete_layers: &std::collections::HashSet<u32>, scale: f64) -> bool {
     complete_layers.contains(&layer.id)
         && map.draws_at(layer, scale)
         && layer.source.as_ref().and_then(|s| s.chunk_source()).is_some()
@@ -1769,7 +1769,7 @@ fn needs_tilted_snapshot(map: &Map, layer: &rustgis_map::Layer, complete_layers:
 
 // Separate from the interaction budget: this limits retained complete-source feature storage
 // across the perspective snapshot. Raster targets, derived caches and decoding scratch are extra.
-const COMPLETE_SNAPSHOT_BYTES: usize = rustgis_map::source::VIEW_BYTES * 4;
+const COMPLETE_SNAPSHOT_BYTES: usize = powergis_map::source::VIEW_BYTES * 4;
 /// Owned-storage target for a complete traversal; distinct from interaction and depth budgets.
 const COMPLETE_CHUNK_BYTES: usize = 8 * 1024 * 1024;
 
@@ -1798,11 +1798,11 @@ impl SnapshotBudget {
         Self { limit, used: 0 }
     }
 
-    fn append(&mut self, features: &mut Vec<rustgis_data::Feature>, mut chunk: Vec<rustgis_data::Feature>) -> rustgis_data::Result<()> {
+    fn append(&mut self, features: &mut Vec<powergis_data::Feature>, mut chunk: Vec<powergis_data::Feature>) -> powergis_data::Result<()> {
         let bad =
-            || rustgis_data::DataError::Format(format!("complete perspective snapshot exceeds its {} byte feature budget", self.limit));
-        let row_size = std::mem::size_of::<rustgis_data::Feature>();
-        let heap = chunk.iter().fold(0usize, |n, f| n.saturating_add(rustgis_data::source::chunk_memory::feature_bytes(f)));
+            || powergis_data::DataError::Format(format!("complete perspective snapshot exceeds its {} byte feature budget", self.limit));
+        let row_size = std::mem::size_of::<powergis_data::Feature>();
+        let heap = chunk.iter().fold(0usize, |n, f| n.saturating_add(powergis_data::source::chunk_memory::feature_bytes(f)));
         let needed = features.len().checked_add(chunk.len()).ok_or_else(bad)?;
         let old_capacity = features.capacity();
         let extra = needed.saturating_sub(old_capacity).saturating_mul(row_size);
@@ -1811,7 +1811,7 @@ impl SnapshotBudget {
         }
         features
             .try_reserve_exact(chunk.len())
-            .map_err(|e| rustgis_data::DataError::Format(format!("complete perspective snapshot: {e}")))?;
+            .map_err(|e| powergis_data::DataError::Format(format!("complete perspective snapshot: {e}")))?;
         let extra = features.capacity().saturating_sub(old_capacity).saturating_mul(row_size);
         let used = self.used.saturating_add(heap).saturating_add(extra);
         if used > self.limit {
@@ -1826,12 +1826,12 @@ impl SnapshotBudget {
 /// A capable source must explicitly finish the traversal; an incomplete summary must never
 /// publish an apparently successful frame, even if it already delivered some chunks.
 fn visit_complete(
-    source: &dyn rustgis_data::source::FeatureSource,
-    visit: &mut dyn FnMut(Vec<rustgis_data::Feature>) -> rustgis_data::Result<()>,
-) -> rustgis_data::Result<rustgis_data::source::Batch> {
+    source: &dyn powergis_data::source::FeatureSource,
+    visit: &mut dyn FnMut(Vec<powergis_data::Feature>) -> powergis_data::Result<()>,
+) -> powergis_data::Result<powergis_data::source::Batch> {
     let result = source.visit_chunks(None, COMPLETE_CHUNK_BYTES, visit)?;
     if !result.complete {
-        return Err(rustgis_data::DataError::Format("source traversal was incomplete".into()));
+        return Err(powergis_data::DataError::Format("source traversal was incomplete".into()));
     }
     Ok(result)
 }
@@ -1845,14 +1845,14 @@ fn visit_complete(
 struct Candidate {
     label: PlacedLabel,
     priority: f64,
-    key: rustgis_map::LabelKey,
+    key: powergis_map::LabelKey,
     alternatives: Vec<(f32, f32)>,
     row: usize,
 }
 
 /// A label with no alternatives and no row.
-impl From<(PlacedLabel, f64, rustgis_map::LabelKey)> for Candidate {
-    fn from((label, priority, key): (PlacedLabel, f64, rustgis_map::LabelKey)) -> Candidate {
+impl From<(PlacedLabel, f64, powergis_map::LabelKey)> for Candidate {
+    fn from((label, priority, key): (PlacedLabel, f64, powergis_map::LabelKey)) -> Candidate {
         Candidate { label, priority, key, alternatives: Vec::new(), row: usize::MAX }
     }
 }
@@ -1908,7 +1908,7 @@ fn render_tilted(map: &mut Map, view: &View, full_res_rasters: bool, sources_rea
         let v = band_view(view, &b);
         let Some(RenderOutput::Cpu(r)) = render_frame(map, &v, full_res_rasters, Backend::Cpu, Labels::Tilted(view, &mut candidates))
         else {
-            let scale = map.ground_res_at(&v.camera) / rustgis_geom::PIXEL_M;
+            let scale = map.ground_res_at(&v.camera) / powergis_geom::PIXEL_M;
             let complete = sources_ready
                 || map.layers.iter().filter(|l| map.draws_at(l, scale)).any(|l| {
                     l.source.as_ref().and_then(|s| s.chunk_source()).is_some()
@@ -1978,7 +1978,7 @@ fn drape_terrain(pm: &mut Pixmap, view: &View, map: &Map, bands: &[(View, (f64, 
     let cam = view.camera;
     let (w, h) = (view.width, view.height);
     let k = f64::from(pm.width()) / w.max(1e-9);
-    let far = rustgis_map::camera::FAR;
+    let far = powergis_map::camera::FAR;
     // The sky shading into the fog at the reach's row; fog below it, where no slope stands.
     let sky_y = (cam.sky_y(h).unwrap_or(0.0).max(1.0) * k) as f32;
     let c = |c: Rgba| tiny_skia::Color::from_rgba8(c.r(), c.g(), c.b(), 255);
@@ -2249,14 +2249,14 @@ fn place_tilted_labels(map: &Map, view: &View, mut candidates: Vec<Candidate>, g
 pub fn gpu_may_turn(map: &Map, view: &View) -> bool {
     if map.projection.is_globe()
         || !map.view.effects.is_none()
-        || map.view.color_vision != rustgis_map::view::ColorVision::Normal
+        || map.view.color_vision != powergis_map::view::ColorVision::Normal
         || map.tiles.iter().any(|t| t.draws())
         // The GPU draws the ground flat: a view over terrain stays on the CPU.
         || terrain::Ground::of(map, &view.camera).is_some()
     {
         return false;
     }
-    let scale = map.ground_res_at(&view.camera) / rustgis_geom::PIXEL_M;
+    let scale = map.ground_res_at(&view.camera) / powergis_geom::PIXEL_M;
     let held = map.held_by_group(scale);
     // Layers in a see-through group (none, mostly: then nothing is collected).
     let faded = map.group_opacities();
@@ -2265,7 +2265,7 @@ pub fn gpu_may_turn(map: &Map, view: &View) -> bool {
             && l.opacity() >= 0.999
             && !faded.contains_key(&l.id)
             && l.mask.is_none()
-            && l.blend == rustgis_map::effects::Blend::Normal
+            && l.blend == powergis_map::effects::Blend::Normal
             && map.swipe.is_none_or(|(id, _)| id != l.id)
             && l.aggregation.is_none()
             && !l.graphics
@@ -2358,7 +2358,7 @@ pub struct ExtrudedShape {
 /// The extruded features of a tilted `view` of `map`, tessellated for [`ExtrudedShape`]s, from
 /// geometry thinned for the view's scale, bottom layer first.
 pub fn extruded_shapes(map: &mut Map, view: &View) -> Vec<ExtrudedShape> {
-    let scale = map.ground_res_at(&view.camera) / rustgis_geom::PIXEL_M;
+    let scale = map.ground_res_at(&view.camera) / powergis_geom::PIXEL_M;
     // Layers a hidden or out-of-scale group holds aren't drawn, as in `render_frame`.
     let held = map.held_by_group(scale);
     // Only the features on the ground the view shows (grown by a moving drape's margin).
@@ -2367,7 +2367,7 @@ pub fn extruded_shapes(map: &mut Map, view: &View) -> Vec<ExtrudedShape> {
     // Extrusion heights are metres on the map's body.
     let body = map.body().ratio();
     // Preserve the tighter footprint tolerance used for extruded walls and roofs.
-    let tol = view.camera.res * rustgis_map::lod::EXTRUSION_THIN_PX;
+    let tol = view.camera.res * powergis_map::lod::EXTRUSION_THIN_PX;
     let mut order: Vec<usize> = (0..map.layers.len()).rev().collect();
     order.sort_by_key(|i| map.layers.get(*i).map_or(0, |l| l.priority));
     let mut out = Vec::new();
@@ -2385,7 +2385,7 @@ pub fn extruded_shapes(map: &mut Map, view: &View) -> Vec<ExtrudedShape> {
         let Some(x) = layer.extrusion.clone() else { continue };
         let rows = layer.drawn_rows(scale);
         layer.thinned_in(&flat, &key, tol);
-        let layer: &rustgis_map::Layer = layer;
+        let layer: &powergis_map::Layer = layer;
         let styler = layer.styler(Some(scale));
         let extents = layer.projected_extents();
         for (row, g) in layer.thinned_cache(tol).iter().enumerate() {
@@ -2519,7 +2519,7 @@ const UPRIGHT_SCALE: (f64, f64) = (0.25, 2.0);
 /// Whether a tilted view of `map` stands `layer`'s point markers up, facing the viewer (as
 /// MapLibre's circles do), rather than drawing them flat on the ground. A masked, swiped or
 /// blended layer, an aggregation or graphics keep theirs on the ground.
-fn stands_up(map: &Map, layer: &rustgis_map::Layer) -> bool {
+fn stands_up(map: &Map, layer: &powergis_map::Layer) -> bool {
     // Complete sources must use their total, never the pan-dependent interaction sample.
     // An unknown total conservatively uses complete ground-marker traversal.
     let rows = match layer.source.as_ref().and_then(|s| s.chunk_source()) {
@@ -2531,7 +2531,7 @@ fn stands_up(map: &Map, layer: &rustgis_map::Layer) -> bool {
         && layer.aggregation.is_none()
         && !layer.graphics
         && layer.mask.is_none()
-        && layer.blend == rustgis_map::effects::Blend::Normal
+        && layer.blend == powergis_map::effects::Blend::Normal
         && map.swipe.is_none_or(|(id, _)| id != layer.id)
         // Marks and turned markers stay on the ground, drawn as the flat map draws them.
         && !layer.has_strokes()
@@ -2557,12 +2557,12 @@ impl UprightMarker {
     /// smaller than its symbol it is drawn there (above or below 1), and how far it has faded
     /// into the fog (0 to 1); `None` behind the camera or past the view's reach.
     pub fn place(&self, cam: &Camera, w: f64, h: f64) -> Option<(f64, f64, f64, f64)> {
-        let k = cam.depth_scale(self.at, h).filter(|k| *k * rustgis_map::camera::FAR >= 1.0)?;
+        let k = cam.depth_scale(self.at, h).filter(|k| *k * powergis_map::camera::FAR >= 1.0)?;
         let (u, v) = cam.ground_px(self.at);
         let up = (self.height / cam.res.max(1e-9)).clamp(-1e7, 1e7);
         let (x, y) = cam.project_raised(u, v, up, w, h).filter(|(x, y)| x.is_finite() && y.is_finite())?;
         // Fog from halfway to the reach, as on the ground.
-        let far = rustgis_map::camera::FAR;
+        let far = powergis_map::camera::FAR;
         let t = ((1.0 / k - far * 0.5) / (far * 0.5)).clamp(0.0, 1.0);
         Some((x, y, k.clamp(UPRIGHT_SCALE.0, UPRIGHT_SCALE.1), t * t * (3.0 - 2.0 * t)))
     }
@@ -2615,7 +2615,7 @@ pub fn upright_markers(map: &mut Map, view: &View, margin: f64) -> Vec<UprightMa
     if map.projection.is_globe() {
         return Vec::new();
     }
-    let scale = map.ground_res_at(&view.camera) / rustgis_geom::PIXEL_M;
+    let scale = map.ground_res_at(&view.camera) / powergis_geom::PIXEL_M;
     let (flat, key) = (map.flat(), map.projection.code());
     let cull = view.camera.extent(view.width, view.height).padded(margin.clamp(CULL_MARGIN, 4.0), 0.0);
     let clip = map.view.clip_distance.map(|d| (view.camera.center_lonlat(), d));
@@ -2638,7 +2638,7 @@ pub fn upright_markers(map: &mut Map, view: &View, margin: f64) -> Vec<UprightMa
         let rows = layer.drawn_rows(scale);
         // Refreshes the projected copy for this projection.
         layer.projected_in(&flat, &key);
-        let layer: &rustgis_map::Layer = layer;
+        let layer: &powergis_map::Layer = layer;
         let styler = layer.styler(Some(scale));
         let mut here: Vec<(f64, UprightMarker)> = Vec::new();
         for (row, g) in layer.projected_cache().iter().enumerate() {
@@ -2653,7 +2653,7 @@ pub fn upright_markers(map: &mut Map, view: &View, margin: f64) -> Vec<UprightMa
             let lonlat = clip.and_then(|_| layer.dataset.features.get(row).and_then(|f| f.geometry.as_ref()).map(|g| g.extent()));
             if let (Some((centre, d)), Some(e)) = (clip, lonlat) {
                 let near = Coord::new(centre.x.clamp(e.min_x, e.max_x), centre.y.clamp(e.min_y, e.max_y));
-                if e.is_empty() || rustgis_geom::haversine_m(centre, near) > d {
+                if e.is_empty() || powergis_geom::haversine_m(centre, near) > d {
                     continue;
                 }
             }
@@ -2697,7 +2697,7 @@ fn markers_tilted(map: &mut Map, view: &View, pm: &mut Pixmap) {
 /// The extruded layers of a tilted view, stood up in perspective over its ground, bottom layer
 /// first (a drape of the moving view shows them flat).
 fn extrusions_tilted(map: &mut Map, view: &View, pm: &mut Pixmap) {
-    let scale = map.ground_res_at(&view.camera) / rustgis_geom::PIXEL_M;
+    let scale = map.ground_res_at(&view.camera) / powergis_geom::PIXEL_M;
     // Layers a hidden or out-of-scale group holds aren't drawn, as in `render_frame`.
     let held = map.held_by_group(scale);
     let (flat, key) = (map.flat(), map.projection.code());
@@ -2720,7 +2720,7 @@ fn extrusions_tilted(map: &mut Map, view: &View, pm: &mut Pixmap) {
         let rows = layer.drawn_rows(scale);
         // Refreshes the projected copy for this projection.
         layer.projected_in(&flat, &key);
-        let layer: &rustgis_map::Layer = layer;
+        let layer: &powergis_map::Layer = layer;
         let styler = layer.styler(Some(scale));
         let geoms: Vec<Option<&Geometry>> = layer.projected_cache().iter().map(Option::as_ref).collect();
         effects::extrude_tilted(pm, view, &layer.dataset, &geoms, &rows, &x, |c| flat.ground_per_unit(c) * body, fog, |r| styler.symbol(r));
@@ -2733,7 +2733,7 @@ const MAX_BAND_PX: f64 = 4096.0;
 
 /// The view a band of a tilted `view` is drawn with: at the view's pixel density, or coarser
 /// for a long band.
-fn band_view(view: &View, b: &rustgis_map::camera::Band) -> View {
+fn band_view(view: &View, b: &powergis_map::camera::Band) -> View {
     let ppp = view.pixels_per_point.min(MAX_BAND_PX / b.width.max(b.height).max(1.0));
     View { width: b.width, height: b.height, camera: b.camera, pixels_per_point: ppp, ..*view }
 }
@@ -2750,11 +2750,11 @@ pub fn sync_tilted_view(map: &mut Map, view: &View) -> bool {
 /// (each drawn at its own scale, coarser far away). Reads are kept per extent, so a layer drawn
 /// in two bands asks for the same extent twice and reads once. Returns whether a read is still
 /// running.
-fn sync_tilted(map: &mut Map, view: &View, bands: &[rustgis_map::camera::Band], block: bool) -> bool {
+fn sync_tilted(map: &mut Map, view: &View, bands: &[powergis_map::camera::Band], block: bool) -> bool {
     let lonlat = view_lonlat(map, view);
     let mut pending = false;
     for b in bands {
-        let scale = map.ground_res_at(&b.camera) / rustgis_geom::PIXEL_M;
+        let scale = map.ground_res_at(&b.camera) / powergis_geom::PIXEL_M;
         pending |= map.sync_sources(&lonlat, scale, block);
     }
     pending
@@ -2764,7 +2764,7 @@ fn sync_tilted(map: &mut Map, view: &View, bands: &[rustgis_map::camera::Band], 
 /// band under it, fading into the fog toward the view's reach; then the sky above the horizon
 /// shades from the fog to the sky colour at the top.
 struct Warp {
-    look: rustgis_map::camera::GroundLookup,
+    look: powergis_map::camera::GroundLookup,
     /// Physical pixels per logical point, across and down.
     k: (f64, f64),
     sky_y: f64,
@@ -2798,7 +2798,7 @@ impl Warp {
     /// on the screen rows between `top` and `bottom` (logical points) where its ground lies.
     fn band(&mut self, pm: &mut Pixmap, v: &View, pic: &Pixmap, top: f64, bottom: f64) {
         let (pw, ph) = (pm.width() as usize, pm.height() as usize);
-        let far = rustgis_map::camera::FAR;
+        let far = powergis_map::camera::FAR;
         // A row's worth of slack each way for sampling at the edges.
         let row = |y: f64| ((y * self.k.1).floor().max(0.0) as usize).min(ph);
         let (r0, r1) = (row(top - 1.0 / self.k.1), (row(bottom + 2.0 / self.k.1)).min(ph));
@@ -2912,11 +2912,11 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
     // Streamed layers read the view: in the background for the screen, in place for an export
     // (the full-resolution render), which waits for them; only the layers drawn at the view's
     // scale read. A tilted view's bands share its read.
-    let scale = map.ground_res_at(&view.camera) / rustgis_geom::PIXEL_M;
+    let scale = map.ground_res_at(&view.camera) / powergis_geom::PIXEL_M;
     // The labels a tilted view's bands hand back stand in that view, beside its upright markers:
     // sized, for a reference scale, at its scale rather than the band's.
     let label_scale = match &labels_to {
-        Labels::Tilted(to, _) => map.ground_res_at(&to.camera) / rustgis_geom::PIXEL_M,
+        Labels::Tilted(to, _) => map.ground_res_at(&to.camera) / powergis_geom::PIXEL_M,
         _ => scale,
     };
     let data_pending = match labels_to {
@@ -2925,7 +2925,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
     };
     let globe = map.projection.is_globe().then(|| Globe::new(&view.camera, view.width, view.height));
     let (flat, key) = (map.flat(), map.projection.code());
-    let custom = matches!(flat, rustgis_map::projection::Flat::Custom(_)) && globe.is_none();
+    let custom = matches!(flat, powergis_map::projection::Flat::Custom(_)) && globe.is_none();
     let _antialias = Antialias::set(!map.view.fast);
     let ctx = Ctx {
         view,
@@ -2940,7 +2940,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
     let gpu = backend.is_gpu()
         && globe.is_none()
         && map.view.effects.is_none()
-        && map.view.color_vision == rustgis_map::view::ColorVision::Normal;
+        && map.view.color_vision == powergis_map::view::ColorVision::Normal;
     // The effective backend: the Gpu arm at the end only runs when the frame is compatible.
     let backend = if gpu { backend } else { Backend::Cpu };
     // GPU draw commands; between them, tiny-skia-only content accumulates in `pm` and is
@@ -3068,7 +3068,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                     Some(g) => raster::Place::Globe(g),
                     None => raster::Place::Flat(&flat, &key),
                 };
-                let drawn = |t: &&rustgis_map::TileLayer| t.draws();
+                let drawn = |t: &&powergis_map::TileLayer| t.draws();
                 let shown = which.iter().filter_map(|i| map.tiles.get(*i)).filter(drawn).any(|t| t.opacity > 0.0);
                 // Hidden tile layers draw nothing: marking dirty anyway would emit an empty
                 // full-screen Image command (a pointless upload, and it poisons the camera fast
@@ -3097,14 +3097,14 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
     if !display.locked {
         map.label_lock = None;
     }
-    let lock: Option<std::collections::HashMap<rustgis_map::LabelKey, u8>> = map.label_lock.as_ref().map(|v| v.iter().copied().collect());
+    let lock: Option<std::collections::HashMap<powergis_map::LabelKey, u8>> = map.label_lock.as_ref().map(|v| v.iter().copied().collect());
     // The classes of features with a label locked (any of its repeats), to pass the rest over early.
     let locked_classes: Option<std::collections::HashSet<(u32, usize, usize)>> =
         lock.as_ref().map(|k| k.keys().map(|&(l, r, c, _)| (l, r, c)).collect());
     let distance = viewing_distance(map.ground_res_at(&view.camera), view.height);
     // Graphics text: always drawn, and other labels keep clear of it.
     let mut fixed_labels: Vec<PlacedLabel> = Vec::new();
-    let tokens = rustgis_map::graphics::TokenValues::of(map, scale);
+    let tokens = powergis_map::graphics::TokenValues::of(map, scale);
     let n_layers = map.layers.len();
     // Masks: layers shown only inside another layer's polygons, or left of the swipe divider.
     let masks = layer_masks(map, &ctx, w, h, &flat, &key, scale)?;
@@ -3139,7 +3139,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
         let mask = masks.iter().find(|(id, _)| *id == layer.id).map(|(_, m)| m);
         let blend = blend_mode(layer.blend);
         // Drawn on its own and composited when it is see-through, masked or blended.
-        let offscreen = opacity < 0.999 || mask.is_some() || layer.blend != rustgis_map::effects::Blend::Normal;
+        let offscreen = opacity < 0.999 || mask.is_some() || layer.blend != powergis_map::effects::Blend::Normal;
         let composite = |pm: &mut Pixmap, target: &Pixmap| {
             pm.draw_pixmap(
                 0,
@@ -3177,30 +3177,30 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
         let mut thin_complete = false;
         if globe.is_none()
             && layer.geometry_type() != GeometryType::Point
-            && let (Some(owner), Some(source), Some(level)) = (&layer.source, &source, rustgis_map::lod::level(thin_tol))
+            && let (Some(owner), Some(source), Some(level)) = (&layer.source, &source, powergis_map::lod::level(thin_tol))
         {
             let result = owner.cached_thinning(&key, level, || {
                 let (mut eligible, mut all, mut kept) = (0usize, 0usize, 0usize);
                 visit_complete(source.as_ref(), &mut |features| {
                     for feature in features {
                         if let Some(g) = feature.geometry {
-                            let tolerance = rustgis_map::lod::tolerance(level);
-                            let (counted, thinned) = if matches!(flat, rustgis_map::projection::Flat::Mercator) {
-                                let thinned = rustgis_map::lod::project_thinned(&g, &flat, tolerance);
+                            let tolerance = powergis_map::lod::tolerance(level);
+                            let (counted, thinned) = if matches!(flat, powergis_map::projection::Flat::Mercator) {
+                                let thinned = powergis_map::lod::project_thinned(&g, &flat, tolerance);
                                 (g, thinned)
                             } else {
                                 let projected = flat.project(&g);
-                                let thinned = rustgis_map::lod::thin(&projected, tolerance);
+                                let thinned = powergis_map::lod::thin(&projected, tolerance);
                                 (projected, thinned)
                             };
-                            eligible = eligible.saturating_add(rustgis_map::lod::thinnable(&counted));
-                            all = all.saturating_add(rustgis_map::lod::vertices(&counted));
-                            kept = kept.saturating_add(rustgis_map::lod::vertices(&thinned));
+                            eligible = eligible.saturating_add(powergis_map::lod::thinnable(&counted));
+                            all = all.saturating_add(powergis_map::lod::vertices(&counted));
+                            kept = kept.saturating_add(powergis_map::lod::vertices(&thinned));
                         }
                     }
                     Ok(())
                 })?;
-                Ok(eligible > rustgis_map::lod::THIN_ABOVE && kept as f64 <= all as f64 * (1.0 - rustgis_map::lod::MIN_SAVING))
+                Ok(eligible > powergis_map::lod::THIN_ABOVE && kept as f64 <= all as f64 * (1.0 - powergis_map::lod::MIN_SAVING))
             });
             match result {
                 Ok(decision) => thin_complete = decision,
@@ -3257,7 +3257,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
             scaled_ctx = Ctx { ppp: ctx.ppp * size_factor, sprites: Default::default(), bursts: std::rc::Rc::clone(&ctx.bursts), ..ctx };
             &scaled_ctx
         };
-        let mut draw_chunk = |layer: &mut rustgis_map::Layer| -> rustgis_data::Result<()> {
+        let mut draw_chunk = |layer: &mut powergis_map::Layer| -> powergis_data::Result<()> {
             // The definition query and the display filters that apply at this scale (a feature draws
             // only if it matches all of them).
             let mut rows = layer.drawn_rows(scale);
@@ -3270,7 +3270,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                             layer.dataset.features.get(r).and_then(|f| f.geometry.as_ref()).map(|g| g.extent()).filter(|e| !e.is_empty());
                         *keep = e.is_some_and(|e| {
                             let near = Coord::new(centre.x.clamp(e.min_x, e.max_x), centre.y.clamp(e.min_y, e.max_y));
-                            rustgis_geom::haversine_m(centre, near) <= d
+                            powergis_geom::haversine_m(centre, near) <= d
                         });
                     }
                 }
@@ -3299,7 +3299,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                     .set((display + usize::from(display_only), exact + usize::from(!layer.projected_cache().is_empty())));
             }
             // Everything below only reads the layer: borrow rather than copy its data each frame.
-            let layer: &rustgis_map::Layer = layer;
+            let layer: &powergis_map::Layer = layer;
             // Its symbol by expression, compiled once for the drawing (none: the layer's own).
             let styler = layer.styler(Some(scale));
             // A label is named by its feature's id, not its row: a lock holds through edits that
@@ -3318,15 +3318,15 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
             // Only the fills and strokes below draw thinned: the selection, labels, aggregation and
             // extrusion keep `geoms`, the full geometry, for their exact positions.
             let chunk_thinned: Vec<Option<Geometry>> = if thin_complete && !display_only {
-                let tolerance = rustgis_map::lod::level(thin_tol).map_or(thin_tol, rustgis_map::lod::tolerance);
-                if matches!(flat, rustgis_map::projection::Flat::Mercator) {
+                let tolerance = powergis_map::lod::level(thin_tol).map_or(thin_tol, powergis_map::lod::tolerance);
+                if matches!(flat, powergis_map::projection::Flat::Mercator) {
                     ds_ptr
                         .features
                         .iter()
-                        .map(|f| f.geometry.as_ref().map(|g| rustgis_map::lod::project_thinned(g, &flat, tolerance)))
+                        .map(|f| f.geometry.as_ref().map(|g| powergis_map::lod::project_thinned(g, &flat, tolerance)))
                         .collect()
                 } else {
-                    geoms.iter().map(|g| g.map(|g| rustgis_map::lod::thin(g, tolerance))).collect()
+                    geoms.iter().map(|g| g.map(|g| powergis_map::lod::thin(g, tolerance))).collect()
                 }
             } else {
                 Vec::new()
@@ -3371,7 +3371,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
             let mut gpu_done = false;
             if gpu_layer {
                 flush_acc(&mut pm, &mut cmds, &mut cpu_dirty)
-                    .ok_or_else(|| rustgis_data::DataError::Format("cannot allocate render target".into()))?;
+                    .ok_or_else(|| powergis_data::DataError::Format("cannot allocate render target".into()))?;
                 let collected = mesh::collect_layer(
                     &mut cmds,
                     layer,
@@ -3447,7 +3447,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                         }
                         // A picture draws in its row's turn, so graphics keep their order. (On the globe
                         // the geometry and `px` are both longitude/latitude, so the corners land right.)
-                        if layer.graphics && rustgis_map::graphics::kind(ds_ptr, row) == "picture" {
+                        if layer.graphics && powergis_map::graphics::kind(ds_ptr, row) == "picture" {
                             let e = g.extent();
                             let (x0, y0) = ctx.px(Coord::new(e.min_x, e.max_y));
                             let (x1, y1) = ctx.px(Coord::new(e.max_x, e.min_y));
@@ -3464,7 +3464,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                             styler.style_and_fills(row)
                         } else {
                             let (sym, strokes) = styler.style(row);
-                            (sym, strokes, &[] as &[rustgis_map::fills::FillLayer])
+                            (sym, strokes, &[] as &[powergis_map::fills::FillLayer])
                         };
                         // A feature under a pixel across: blend its coverage into the pixels it touches
                         // (a dense layer seen whole is mostly these, and a path each is slow). Not
@@ -3507,7 +3507,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                         .collect();
                     turns.sort_unstable();
                     turns.dedup();
-                    let mut one: Vec<LineStroke> = Vec::with_capacity(rustgis_map::symbology::MAX_STROKES);
+                    let mut one: Vec<LineStroke> = Vec::with_capacity(powergis_map::symbology::MAX_STROKES);
                     for (level, f) in turns {
                         let Some((parts, sym, strokes)) = stacked.get(f) else { continue };
                         one.clear();
@@ -3532,7 +3532,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                 {
                     // A text graphic's point is invisible: its label carries the frame (`framed`),
                     // drawn with the text wherever that lands (turned, tilted or on the globe).
-                    if layer.graphics && rustgis_map::graphics::label(ds_ptr, *row).is_some() {
+                    if layer.graphics && powergis_map::graphics::label(ds_ptr, *row).is_some() {
                         continue;
                     }
                     // Follow the layer's own backend: when it fell back to the CPU pixmap, the
@@ -3557,28 +3557,28 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                     if rows.get(row) != Some(&true) {
                         continue;
                     }
-                    if let (Some(t), Some(c)) = (rustgis_map::graphics::label(ds_ptr, row), g.label_point())
+                    if let (Some(t), Some(c)) = (powergis_map::graphics::label(ds_ptr, row), g.label_point())
                         && opacity > 0.0
                         && let Some((x, y)) = ctx.screen(c)
                     {
-                        let base = rustgis_map::graphics::text_color(ds_ptr, row);
+                        let base = powergis_map::graphics::text_color(ds_ptr, row);
                         let color = base.with_alpha((base.a() as f32 * opacity).round() as u8);
                         fixed_labels.push(PlacedLabel {
-                            text: rustgis_map::graphics::expand(t, &tokens),
+                            text: powergis_map::graphics::expand(t, &tokens),
                             x: x as f32,
                             y: y as f32,
-                            size: rustgis_map::graphics::font_size(ds_ptr, row),
+                            size: powergis_map::graphics::font_size(ds_ptr, row),
                             color,
                             halo: Some(halo_for(color)),
                             halo_width: None,
-                            bold: rustgis_map::graphics::bold(ds_ptr, row),
+                            bold: powergis_map::graphics::bold(ds_ptr, row),
                             icon: None,
                             align: 0.0,
                             framed: selection.contains(&row),
-                            italic: rustgis_map::graphics::italic(ds_ptr, row),
-                            spacing: rustgis_map::graphics::letter_spacing(ds_ptr, row),
+                            italic: powergis_map::graphics::italic(ds_ptr, row),
+                            spacing: powergis_map::graphics::letter_spacing(ds_ptr, row),
                             font: None,
-                            line_align: rustgis_map::graphics::align(ds_ptr, row),
+                            line_align: powergis_map::graphics::align(ds_ptr, row),
                             angle: None,
                             collide: Default::default(),
                             glyphs: Vec::new(),
@@ -3600,7 +3600,7 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
                 // `render_frame`'s contract) waits for the font index; a frame on screen doesn't.
                 let find = if full_res_rasters { families::find } else { families::find_ready };
                 let class_fonts: Vec<Option<u16>> = labels.in_order().map(|c| c.font.as_deref().and_then(find)).collect();
-                let classes = rustgis_map::LabelMatcher::new(labels, ds_ptr);
+                let classes = powergis_map::LabelMatcher::new(labels, ds_ptr);
                 let lid = layer.id;
                 // Whether a class labels lines along them: those take the stretch of a line in
                 // view, wherever its label point is.
@@ -3924,8 +3924,8 @@ fn render_frame(map: &mut Map, view: &View, full_res_rasters: bool, backend: Bac
         }
     }
     // Effects, and (on screen only) the colour vision simulation.
-    let vision = if full_res_rasters { rustgis_map::view::ColorVision::Normal } else { map.view.color_vision };
-    if !map.view.effects.is_none() || vision != rustgis_map::view::ColorVision::Normal {
+    let vision = if full_res_rasters { powergis_map::view::ColorVision::Normal } else { map.view.color_vision };
+    if !map.view.effects.is_none() || vision != powergis_map::view::ColorVision::Normal {
         let ppp = view.pixels_per_point;
         let lonlat = |x: f64, y: f64| -> Option<Coord> {
             let (sx, sy) = (x / ppp, y / ppp);
@@ -3984,12 +3984,12 @@ fn draw_icon(pm: &mut Pixmap, icon: &PlacedIcon, ppp: f32) {
 }
 
 /// Metres on the ground per logical point at the view's centre.
-fn map_ground_res(view: &View, flat: &rustgis_map::projection::Flat) -> f64 {
+fn map_ground_res(view: &View, flat: &powergis_map::projection::Flat) -> f64 {
     (view.camera.res * flat.ground_per_unit(view.camera.center)).max(1e-9)
 }
 
-pub(crate) fn blend_mode(b: rustgis_map::effects::Blend) -> tiny_skia::BlendMode {
-    use rustgis_map::effects::Blend;
+pub(crate) fn blend_mode(b: powergis_map::effects::Blend) -> tiny_skia::BlendMode {
+    use powergis_map::effects::Blend;
     match b {
         Blend::Normal => tiny_skia::BlendMode::SourceOver,
         Blend::Multiply => tiny_skia::BlendMode::Multiply,
@@ -4008,7 +4008,7 @@ fn layer_masks(
     ctx: &Ctx,
     w: u32,
     h: u32,
-    flat: &rustgis_map::projection::Flat,
+    flat: &powergis_map::projection::Flat,
     key: &str,
     scale: f64,
 ) -> Option<Vec<(u32, tiny_skia::Mask)>> {
@@ -4103,7 +4103,7 @@ struct Space {
 /// The space around the globe for `view`: the interactive view's starry sky, or for exports a
 /// light space (dark on the Midnight basemap) without stars.
 fn space(view: &View, map: &Map) -> Space {
-    let dark = view.sky || map.basemap == rustgis_map::Basemap::Midnight;
+    let dark = view.sky || map.basemap == powergis_map::Basemap::Midnight;
     Space { dark, stars: view.sky && map.view.effects.stars, atmosphere: map.body().is_earth() }
 }
 
@@ -4346,7 +4346,7 @@ pub struct DrapePatch {
 /// Draws the longitude/latitude `boxes` (from `Globe::drape_extents`) of a globe map flat, at
 /// the view's scale, each picture at most `max_side` pixels a side (fewer pixels per point
 /// beyond that). The globe view then drapes them over the sphere
-/// ([`rustgis_map::Globe::drape_mesh`]) while it turns, with no drawing per frame. Labels are
+/// ([`powergis_map::Globe::drape_mesh`]) while it turns, with no drawing per frame. Labels are
 /// left out (the view hides them while it moves).
 pub fn render_globe_drape(map: &mut Map, view: &View, boxes: &[Extent], max_side: u32) -> Vec<DrapePatch> {
     // A coarse drape may have far fewer pixels than points: it shows the map blurrier, but at
@@ -4357,7 +4357,7 @@ pub fn render_globe_drape(map: &mut Map, view: &View, boxes: &[Extent], max_side
         return Vec::new();
     }
     let max_side = f64::from(max_side.clamp(64, 8192));
-    let projection = std::mem::replace(&mut map.projection, rustgis_map::Projection::WebMercator);
+    let projection = std::mem::replace(&mut map.projection, powergis_map::Projection::WebMercator);
     let (display, lock) = (map.label_display, map.label_lock.take());
     map.label_display.paused = true;
     let mut out = Vec::new();
@@ -4393,7 +4393,7 @@ pub fn render_globe_drape(map: &mut Map, view: &View, boxes: &[Extent], max_side
 pub struct TiltPatch {
     pub pixmap: Pixmap,
     /// The flat, north-up camera and size (logical points) it was drawn for.
-    pub band: rustgis_map::camera::Band,
+    pub band: powergis_map::camera::Band,
 }
 
 /// Draws the bands of a tilted view ([`Camera::tilt_bands`]) flat, each grown by `margin` (a
@@ -4431,7 +4431,7 @@ pub fn render_tilt_drape(map: &mut Map, view: &View, margin: f64, max_side: u32)
         let v = View { width: w, height: h, pixels_per_point: ppp, camera, sky: false };
         // The bands share the read above.
         if let Some(RenderOutput::Cpu(r)) = render_frame(map, &v, false, Backend::Cpu, Labels::Shared) {
-            out.push(TiltPatch { pixmap: r.pixmap, band: rustgis_map::camera::Band { camera, width: w, height: h, depth: b.depth } });
+            out.push(TiltPatch { pixmap: r.pixmap, band: powergis_map::camera::Band { camera, width: w, height: h, depth: b.depth } });
         }
     }
     map.label_display = display;
@@ -4479,11 +4479,11 @@ fn tilt_candidate(mut c: Candidate, at: &impl Fn(f32, f32) -> Option<(f32, f32)>
 /// The one band a flat view turned to a bearing is draped on: facing north, square over the
 /// circle round the view, so turning it stays on the band (its tiles and pictures the same at
 /// every bearing). `None` for a view north up or tilted.
-pub fn turned_band(view: &View) -> Option<rustgis_map::camera::Band> {
+pub fn turned_band(view: &View) -> Option<powergis_map::camera::Band> {
     let cam = view.camera;
     (cam.pitch == 0.0 && cam.bearing != 0.0).then(|| {
         let side = view.width.hypot(view.height) + 2.0;
-        rustgis_map::camera::Band { camera: Camera { bearing: 0.0, ..cam }, width: side, height: side, depth: (1.0, 1.0) }
+        powergis_map::camera::Band { camera: Camera { bearing: 0.0, ..cam }, width: side, height: side, depth: (1.0, 1.0) }
     })
 }
 
@@ -4504,7 +4504,7 @@ fn turn_with(l: &mut PlacedLabel, at: &impl Fn(f32, f32) -> Option<(f32, f32)>) 
     };
     if let Some(a) = l.angle {
         let x = l.center_x();
-        l.angle = Some(turned(x, l.y, a).map_or(a, rustgis_tiles::symbols::upright));
+        l.angle = Some(turned(x, l.y, a).map_or(a, powergis_tiles::symbols::upright));
     }
     // A curved label's characters: each moved and turned, about where its centre goes.
     if !l.glyphs.is_empty()
@@ -4557,7 +4557,7 @@ fn read_back(l: &mut PlacedLabel) {
 
 /// A halo that contrasts with the text colour.
 fn halo_for(text: Rgba) -> Rgba {
-    rustgis_map::symbology::auto_halo(text)
+    powergis_map::symbology::auto_halo(text)
 }
 
 struct Placement {
@@ -4565,7 +4565,7 @@ struct Placement {
     unplaced: Vec<PlacedLabel>,
     /// The key of each placed label, and the place it took (0 its own, else its alternative's
     /// number from 1).
-    keys: Vec<(rustgis_map::LabelKey, u8)>,
+    keys: Vec<(powergis_map::LabelKey, u8)>,
 }
 
 /// Greedy collision-free placement, highest priority first. Locked labels are all placed (they
@@ -4787,7 +4787,7 @@ const IDLE_PASSES: usize = 6;
 /// it draws what has arrived.
 pub(crate) fn render_complete(map: &mut Map, view: &View) -> Option<Rendered> {
     // What had come when it drew: what lands meanwhile is news to the wait.
-    let mut drawn_at = rustgis_tiles::cache::generation();
+    let mut drawn_at = powergis_tiles::cache::generation();
     let mut r = render_with(map, view, true)?;
     let start = web_time::Instant::now();
     let budget = web_time::Duration::from_secs(60);
@@ -4796,8 +4796,8 @@ pub(crate) fn render_complete(map: &mut Map, view: &View) -> Option<Rendered> {
         // Each wait within what is left of the minute, until something has come: a fetch of
         // another's (a map open beside it, a slow server) doesn't hold it up.
         let left = budget.saturating_sub(start.elapsed());
-        rustgis_tiles::cache::wait_for_news(drawn_at, left.min(web_time::Duration::from_secs(30)));
-        let now = rustgis_tiles::cache::generation();
+        powergis_tiles::cache::wait_for_news(drawn_at, left.min(web_time::Duration::from_secs(30)));
+        let now = powergis_tiles::cache::generation();
         if now == drawn_at {
             idle += 1;
         }
@@ -4961,7 +4961,7 @@ mod tests {
         );
         assert_eq!(texts(&placed), ["Upper"]);
         // Without padding they fit.
-        let none = rustgis_tiles::Collide { text_padding: 0.0, ..Default::default() };
+        let none = powergis_tiles::Collide { text_padding: 0.0, ..Default::default() };
         let (a, b) = (PlacedLabel { collide: none, ..a }, PlacedLabel { collide: none, ..b });
         let placed = place_labels(vec![(a, 2.0, (u32::MAX, 0, 0, 0)), (b, 1.0, (u32::MAX, 1, 0, 0))], Vec::new(), 200.0, 80.0, false);
         assert_eq!(texts(&placed), ["Upper", "Lower"]);
@@ -4969,7 +4969,7 @@ mod tests {
 
     #[test]
     fn optional_text_and_icons_drop_alone() {
-        use rustgis_tiles::Collide;
+        use powergis_tiles::Collide;
         // A word in the way of a station's name, not of its icon (to the left of it).
         let blocker = || (label("Blocker", 100.0, None, 0.0), 9.0, (u32::MAX, 0, 0, 0));
         let station =
@@ -5094,7 +5094,7 @@ mod tests {
         let camera = Camera { center: lonlat_to_merc(Coord::new(0.0, 0.0)), res: 5000.0, bearing: 0.0, pitch: 30.0 };
         let view = View { width: 400.0, height: 300.0, pixels_per_point: 1.0, camera, sky: false };
         let (a, b) = (label("Capitals", 100.0, None, 0.0), label("Default", 300.0, None, 0.0));
-        let texts = |c: Vec<(PlacedLabel, f64, rustgis_map::LabelKey)>| -> Vec<String> {
+        let texts = |c: Vec<(PlacedLabel, f64, powergis_map::LabelKey)>| -> Vec<String> {
             place_tilted_labels(&map, &view, c.into_iter().map(Candidate::from).collect(), None)
                 .labels
                 .into_iter()
@@ -5135,7 +5135,7 @@ mod tests {
 
     #[test]
     fn tile_labels_are_sized_and_wrapped_as_maplibre() {
-        let l = rustgis_tiles::Label {
+        let l = powergis_tiles::Label {
             text: "West 42nd Street & Avenue of the Americas\nOuest".into(),
             x: 100.0,
             y: 100.0,
@@ -5168,7 +5168,7 @@ mod tests {
         }
         // Along a line, never wrapped; turned with it.
         let along =
-            rustgis_tiles::Label { max_width: 0.0, angle: Some(0.5), text: "West 42nd Street & Avenue of the Americas".into(), ..l };
+            powergis_tiles::Label { max_width: 0.0, angle: Some(0.5), text: "West 42nd Street & Avenue of the Americas".into(), ..l };
         let (p, _) = tiles::tile_label(along).unwrap();
         assert_eq!((text::line_count(&p.text), p.angle), (1, Some(0.5)));
     }
@@ -5250,7 +5250,7 @@ mod tests {
     }
 
     use super::*;
-    use rustgis_data::{Field, FieldType, Value};
+    use powergis_data::{Field, FieldType, Value};
 
     #[test]
     fn worldview_detection_and_data() {
@@ -5269,7 +5269,7 @@ mod tests {
         assert_eq!(sample_data::Worldview::from_code("default"), Some(Default));
         assert_eq!(sample_data::Worldview::from_code("auto"), None);
         // Both files have the same fields; in China's view Taiwan is part of China.
-        let read = |text| rustgis_data::io::read_geojson(text, "Countries").unwrap().0;
+        let read = |text| powergis_data::io::read_geojson(text, "Countries").unwrap().0;
         let (def, chn) = (read(sample_data::COUNTRIES), read(sample_data::COUNTRIES_CHN));
         let fields = |d: &Dataset| d.fields.iter().map(|f| f.name.clone()).collect::<Vec<_>>();
         assert_eq!(fields(&def), fields(&chn));
@@ -5291,7 +5291,7 @@ mod tests {
         let mut d = Dataset::new("pts", GeometryType::Point, vec![Field::new("name", FieldType::Text)]);
         d.push(Some(Geometry::Point(Coord::new(2.35, 48.85))), vec![Value::Text("Paris".into())]);
         m.add_dataset(d);
-        m.projection = rustgis_map::Projection::Globe;
+        m.projection = powergis_map::Projection::Globe;
         let paris = lonlat_to_merc(Coord::new(2.35, 48.85));
         let camera = Camera { center: paris, res: 2_000.0, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 400.0, height: 300.0, pixels_per_point: 1.0, camera, sky: false };
@@ -5306,7 +5306,7 @@ mod tests {
         let px = |pm: &Pixmap, x: f64, y: f64| pm.pixel(x as u32, y as u32).map(|c| (c.red(), c.green(), c.blue()));
         let res = p.merc.width() / f64::from(p.pixmap.width());
         let at = px(&p.pixmap, (paris.x - p.merc.min_x) / res, (p.merc.max_y - paris.y) / res);
-        m.projection = rustgis_map::Projection::WebMercator;
+        m.projection = powergis_map::Projection::WebMercator;
         let flat = render(&mut m, &View { camera: Camera { center: paris, res, bearing: 0.0, pitch: 0.0 }, ..view }).unwrap();
         assert_eq!(at, px(&flat.pixmap, 200.0, 150.0));
         // Too big a box is drawn coarser, within the limit; junk draws nothing.
@@ -5314,11 +5314,11 @@ mod tests {
         assert!(big.iter().all(|p| p.pixmap.width() <= 512 && p.pixmap.height() <= 512));
         // A box at the Web Mercator limit stays exactly there however coarse the picture, so its
         // mesh still reaches the pole.
-        let lim = rustgis_geom::MAX_LAT;
+        let lim = powergis_geom::MAX_LAT;
         // (30 km points leave a remainder: the picture is 1335 points tall, 0.8 of a point short.)
         let coarse = View { camera: Camera { center: paris, res: 30_000.0, bearing: 0.0, pitch: 0.0 }, ..view };
         let world = render_globe_drape(&mut m, &coarse, &[Extent::new(-180.0, -lim, 180.0, lim)], 4096);
-        let edge = std::f64::consts::PI * rustgis_geom::MERCATOR_R * 0.9999;
+        let edge = std::f64::consts::PI * powergis_geom::MERCATOR_R * 0.9999;
         assert!(
             world.iter().all(|p| p.merc.max_y >= edge && p.merc.min_y <= -edge),
             "{:?}",
@@ -5335,15 +5335,15 @@ mod tests {
         );
         assert!(render_globe_drape(&mut m, &view, &[Extent::EMPTY], 4096).is_empty());
         // The sprites: a square around the disc, or nothing for a junk radius.
-        let (under, over) = globe_sprites(rustgis_map::Basemap::Paper.palette().0, true, 100.0).unwrap();
+        let (under, over) = globe_sprites(powergis_map::Basemap::Paper.palette().0, true, 100.0).unwrap();
         assert_eq!((under.width(), over.height()), (214, 214));
         assert_eq!(under.pixel(107, 107).map(|c| c.alpha()), Some(255));
         // Off the Earth no atmosphere glows past the limb (#223).
         assert!(under.pixel(107 + 103, 107).is_some_and(|c| c.alpha() > 0));
-        let (airless, _) = globe_sprites(rustgis_map::Basemap::Paper.palette().0, false, 100.0).unwrap();
+        let (airless, _) = globe_sprites(powergis_map::Basemap::Paper.palette().0, false, 100.0).unwrap();
         assert_eq!(airless.pixel(107 + 103, 107).map(|c| c.alpha()), Some(0));
         assert_eq!(airless.pixel(107, 107).map(|c| c.alpha()), Some(255));
-        assert!(globe_sprites(rustgis_map::Basemap::Paper.palette().0, true, f32::NAN).is_none());
+        assert!(globe_sprites(powergis_map::Basemap::Paper.palette().0, true, f32::NAN).is_none());
     }
 
     #[test]
@@ -5370,9 +5370,9 @@ mod tests {
         d.push(Some(Geometry::Point(Coord::new(2.35, 48.85))), vec![Value::Text("Paris".into()), Value::Int(1)]);
         d.push(Some(Geometry::Point(Coord::new(4.83, 45.76))), vec![Value::Text("Lyon".into()), Value::Int(0)]);
         let id = m.add_dataset(d);
-        let capitals = |l: &mut rustgis_map::Layer, w: &str| {
+        let capitals = |l: &mut powergis_map::Layer, w: &str| {
             let base = l.labels.default.clone();
-            l.labels.classes = vec![rustgis_map::LabelClass { name: "Capitals".into(), where_: Some(w.into()), size: 20.0, ..base }];
+            l.labels.classes = vec![powergis_map::LabelClass { name: "Capitals".into(), where_: Some(w.into()), size: 20.0, ..base }];
         };
         if let Some(l) = m.layer_mut(id) {
             l.labels.enabled = true;
@@ -5392,19 +5392,19 @@ mod tests {
         // first, is placed and Default's collides.
         assert_eq!(sizes(&mut m), [("Lyon".to_string(), default), ("Paris".to_string(), 20.0)], "Paris is a capital");
         // Default below, Capitals above: both of Paris's labels fit.
-        m.layer_mut(id).unwrap().labels.default.placement = rustgis_map::LabelPlacement::Below;
-        m.layer_mut(id).unwrap().labels.classes[0].placement = rustgis_map::LabelPlacement::Above;
+        m.layer_mut(id).unwrap().labels.default.placement = powergis_map::LabelPlacement::Below;
+        m.layer_mut(id).unwrap().labels.classes[0].placement = powergis_map::LabelPlacement::Above;
         assert_eq!(
             sizes(&mut m),
             [("Lyon".to_string(), default), ("Paris".to_string(), default), ("Paris".to_string(), 20.0)],
             "a feature two classes take gets a label from each"
         );
         // Locked with one of Paris's labels placed, it keeps that one only.
-        m.layer_mut(id).unwrap().labels.default.placement = rustgis_map::LabelPlacement::Above;
+        m.layer_mut(id).unwrap().labels.default.placement = powergis_map::LabelPlacement::Above;
         m.label_display.locked = true;
         let placed = sizes(&mut m);
         assert_eq!(m.label_lock.as_ref().map(Vec::len), Some(2));
-        m.layer_mut(id).unwrap().labels.default.placement = rustgis_map::LabelPlacement::Below;
+        m.layer_mut(id).unwrap().labels.default.placement = powergis_map::LabelPlacement::Below;
         assert_eq!(sizes(&mut m), placed, "Default's label of Paris wasn't placed when locked");
         m.label_display.locked = false;
         m.label_lock = None;
@@ -5430,11 +5430,11 @@ mod tests {
         // marker keeps the labels round it well apart: a tilted view draws their distance from
         // the point on the ground, shortened up and down, while the labels stay their size.
         if let Some(l) = m.layer_mut(id) {
-            l.renderer = rustgis_map::Renderer::Single(Symbol { size: 20.0, ..l.symbol(0) });
+            l.renderer = powergis_map::Renderer::Single(Symbol { size: 20.0, ..l.symbol(0) });
             l.labels.enabled = true;
-            l.labels.default.placement = rustgis_map::LabelPlacement::Above;
+            l.labels.default.placement = powergis_map::LabelPlacement::Above;
             let base = l.labels.default.clone();
-            l.labels.classes = vec![rustgis_map::LabelClass { name: "Capitals".into(), size: 20.0, ..base }];
+            l.labels.classes = vec![powergis_map::LabelClass { name: "Capitals".into(), size: 20.0, ..base }];
         }
         let view = |pitch: f64, bearing: f64, center: Coord| {
             let camera = Camera { center: lonlat_to_merc(center), res: 2000.0, bearing, pitch };
@@ -5791,7 +5791,7 @@ mod tests {
         let b = square_layer(&mut m, "b", 20.0, 0.0, 10.0);
         square_layer(&mut m, "c", 40.0, 0.0, 10.0);
         if let Some(l) = m.layer_mut(b) {
-            l.blend = rustgis_map::effects::Blend::Multiply;
+            l.blend = powergis_map::effects::Blend::Multiply;
         }
         let view = View { width: 400.0, height: 300.0, pixels_per_point: 1.0, camera: Camera::world(), sky: false };
         let Some(RenderOutput::Gpu(scene)) = render_backend(&mut m, &view, Backend::Gpu) else { panic!("gpu scene") };
@@ -5808,7 +5808,7 @@ mod tests {
         m.graticule = false;
         let below = square_layer(&mut m, "below", 0.0, 0.0, 10.0);
         square_layer(&mut m, "above", 20.0, 0.0, 10.0);
-        let mut t = rustgis_map::TileLayer::new("tiles", rustgis_map::TileKind::Raster, "https://example.invalid/{z}/{x}/{y}.png");
+        let mut t = powergis_map::TileLayer::new("tiles", powergis_map::TileKind::Raster, "https://example.invalid/{z}/{x}/{y}.png");
         t.over = Some(below);
         m.tiles.push(t);
         let view = View { width: 400.0, height: 300.0, pixels_per_point: 1.0, camera: Camera::world(), sky: false };
@@ -5821,7 +5821,7 @@ mod tests {
     #[test]
     fn gpu_backend_skips_the_spurious_image_for_hidden_tile_layers() {
         let mut m = sample_world();
-        m.tiles.push(rustgis_map::TileLayer::new("hidden", rustgis_map::TileKind::Raster, "https://example.invalid/{z}/{x}/{y}.png"));
+        m.tiles.push(powergis_map::TileLayer::new("hidden", powergis_map::TileKind::Raster, "https://example.invalid/{z}/{x}/{y}.png"));
         for t in &mut m.tiles {
             t.visible = false;
         }
@@ -5877,11 +5877,11 @@ mod tests {
         // from the mesh's origin, which f32 can't hold to a pixel at a tenth of a millimetre per
         // pixel, so the layer is drawn on the CPU, with the edge through the middle of the view.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         square_layer(&mut m, "s", 0.0, 40.0, 10.0);
         let mut camera = Camera::world();
-        camera.center = rustgis_geom::lonlat_to_merc(Coord::new(0.0, 45.0));
-        camera.res = rustgis_map::camera::MIN_RES;
+        camera.center = powergis_geom::lonlat_to_merc(Coord::new(0.0, 45.0));
+        camera.res = powergis_map::camera::MIN_RES;
         let view = View { width: 400.0, height: 300.0, pixels_per_point: 1.0, camera, sky: false };
         let Some(RenderOutput::Gpu(scene)) = render_backend(&mut m, &view, Backend::Gpu) else { panic!("gpu scene") };
         let kinds = cmd_kinds(&scene);
@@ -5902,7 +5902,7 @@ mod tests {
         let view = View { camera, ..view };
         let Some(RenderOutput::Gpu(scene)) = render_backend(&mut m, &view, Backend::Gpu) else { panic!("gpu scene") };
         assert!(cmd_kinds(&scene).contains(&"mesh"));
-        let half = (rustgis_geom::lonlat_to_merc(Coord::new(10.0, 50.0)).y - rustgis_geom::lonlat_to_merc(Coord::new(0.0, 40.0)).y) / 2.0;
+        let half = (powergis_geom::lonlat_to_merc(Coord::new(10.0, 50.0)).y - powergis_geom::lonlat_to_merc(Coord::new(0.0, 40.0)).y) / 2.0;
         assert!((gpu_scene::reach(&scene.cmds) - half).abs() < 1.0, "reach {} vs {half}", gpu_scene::reach(&scene.cmds));
     }
 
@@ -5926,17 +5926,17 @@ mod tests {
         // points covers as much ground as in a full-density drape, so it doesn't grow on the
         // globe while it moves.
         let mut m = Map::new("Map");
-        m.projection = rustgis_map::Projection::Globe;
+        m.projection = powergis_map::Projection::Globe;
         let mut d = Dataset::new("pts", GeometryType::Point, vec![]);
         d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![]);
         let id = m.add_dataset(d);
         if let Some(l) = m.layer_mut(id) {
-            l.renderer = rustgis_map::Renderer::Single(rustgis_map::Symbol {
+            l.renderer = powergis_map::Renderer::Single(powergis_map::Symbol {
                 fill: Rgba::rgb(0, 255, 0),
                 stroke: Rgba::rgb(0, 255, 0),
                 stroke_width: 0.0,
                 size: 20.0,
-                marker: rustgis_map::Marker::Circle,
+                marker: powergis_map::Marker::Circle,
             });
         }
         let camera = Camera { center: Coord::new(0.0, 0.0), res: 20_000.0, bearing: 0.0, pitch: 0.0 };
@@ -5954,7 +5954,7 @@ mod tests {
         let (coarse, px) = width(128);
         assert!(px > 4.0 * 20_000.0, "the size limit should coarsen the picture ({px} m per pixel)");
         assert!(sharp > 0.0 && (coarse - sharp).abs() <= 2.0 * px, "a coarse drape drew the marker {coarse} m wide, not {sharp} m");
-        assert_eq!(m.projection, rustgis_map::Projection::Globe);
+        assert_eq!(m.projection, powergis_map::Projection::Globe);
     }
 
     #[test]
@@ -5966,12 +5966,12 @@ mod tests {
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-50.0, 0.0), Coord::new(50.0, 0.0)]])), vec![]);
         let id = m.add_dataset(d);
         if let Some(l) = m.layer_mut(id) {
-            l.renderer = rustgis_map::Renderer::Single(rustgis_map::Symbol {
-                fill: rustgis_map::Rgba::rgb(0, 0, 200),
-                stroke: rustgis_map::Rgba::rgb(0, 0, 200),
+            l.renderer = powergis_map::Renderer::Single(powergis_map::Symbol {
+                fill: powergis_map::Rgba::rgb(0, 0, 200),
+                stroke: powergis_map::Rgba::rgb(0, 0, 200),
                 stroke_width: f32::NAN,
                 size: 0.0,
-                marker: rustgis_map::Marker::Circle,
+                marker: powergis_map::Marker::Circle,
             });
         }
         let view = View { width: 400.0, height: 300.0, pixels_per_point: 1.0, camera: Camera::world(), sky: false };
@@ -6016,9 +6016,9 @@ mod tests {
     fn gpu_backend_falls_back_for_globe_and_effects() {
         let mut m = sample_world();
         let view = View { width: 400.0, height: 300.0, pixels_per_point: 1.0, camera: Camera::world(), sky: false };
-        m.projection = rustgis_map::Projection::Globe;
+        m.projection = powergis_map::Projection::Globe;
         assert!(matches!(render_backend(&mut m, &view, Backend::Gpu), Some(RenderOutput::Cpu(_))), "globe stays on the CPU renderer");
-        m.projection = rustgis_map::Projection::WebMercator;
+        m.projection = powergis_map::Projection::WebMercator;
         m.view.effects.vignette = true;
         assert!(matches!(render_backend(&mut m, &view, Backend::Gpu), Some(RenderOutput::Cpu(_))), "view effects stay on the CPU renderer");
     }
@@ -6095,7 +6095,7 @@ mod tests {
     #[test]
     fn a_turned_view_turns_the_map_and_keeps_labels_upright() {
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("pts", GeometryType::Point, vec![Field::new("name", FieldType::Text)]);
         // 80 px east of the centre.
         d.push(Some(Geometry::Point(Coord::new(80.0 * 1000.0 / 111_319.49, 0.0))), vec![Value::Text("East".into())]);
@@ -6143,9 +6143,9 @@ mod tests {
 
     /// A hill of a DEM 3000 m high in the middle of a 2° square around (0, 0).
     fn hill_map() -> Map {
-        use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+        use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let n = 64usize;
         let heights: Vec<f32> = (0..n * n)
             .map(|i| {
@@ -6155,7 +6155,7 @@ mod tests {
             .collect();
         let gt = GeoTransform { origin_x: -1.0, origin_y: 1.0, pixel_width: 2.0 / n as f64, pixel_height: -2.0 / n as f64 };
         let dem = Raster::new("dem", n as u32, n as u32, vec![heights], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
-        let id = m.add_raster("dem", rustgis_map::RasterLayer::from_path(dem, "dem.tif"));
+        let id = m.add_raster("dem", powergis_map::RasterLayer::from_path(dem, "dem.tif"));
         if let Some(l) = m.layer_mut(id) {
             l.visible = false;
         }
@@ -6169,15 +6169,15 @@ mod tests {
     fn a_raster_at_the_closest_zoom_is_drawn_where_it_is() {
         // At the deepest zoom (#902) the raster's far corners lie billions of pixels from the
         // view: its west edge still runs through the middle, with the raster east of it.
-        use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+        use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let n = 16usize;
         let values: Vec<f32> = (0..n * n).map(|i| (i % n) as f32).collect();
         let gt = GeoTransform { origin_x: -1.0, origin_y: 1.0, pixel_width: 2.0 / n as f64, pixel_height: -2.0 / n as f64 };
         let r = Raster::new("r", n as u32, n as u32, vec![values], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
-        m.add_raster("r", rustgis_map::RasterLayer::from_path(r, "r.tif"));
-        let camera = Camera { center: lonlat_to_merc(Coord::new(-1.0, 0.0)), res: rustgis_map::camera::MIN_RES, bearing: 0.0, pitch: 0.0 };
+        m.add_raster("r", powergis_map::RasterLayer::from_path(r, "r.tif"));
+        let camera = Camera { center: lonlat_to_merc(Coord::new(-1.0, 0.0)), res: powergis_map::camera::MIN_RES, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 400.0, height: 300.0, pixels_per_point: 1.0, camera, sky: false };
         let Some(out) = render(&mut m, &view) else { panic!("cpu frame") };
         let px = |x: u32| out.pixmap.pixel(x, 150).map(|p| (p.red(), p.green(), p.blue(), p.alpha()));
@@ -6195,7 +6195,7 @@ mod tests {
         let mut map = hill_map();
         assert!(gpu_may_turn(&map, &view));
         for l in &mut map.layers {
-            l.renderer.map_symbols(|s| s.marker = Marker::Char(rustgis_map::Glyph::new('L', "")));
+            l.renderer.map_symbols(|s| s.marker = Marker::Char(powergis_map::Glyph::new('L', "")));
         }
         // The GPU has no template for a character: standing up, it would be a circle.
         assert!(!gpu_may_turn(&map, &view));
@@ -6211,7 +6211,7 @@ mod tests {
         let mut flat = hill_map();
         let mut hilly = hill_map();
         hilly.view.terrain =
-            Some(rustgis_map::view::Terrain { source: rustgis_map::view::TerrainSource::Layer("dem".into()), exaggeration: 2.0 });
+            Some(powergis_map::view::Terrain { source: powergis_map::view::TerrainSource::Layer("dem".into()), exaggeration: 2.0 });
         // The ground's height is read from the DEM (exaggerated), and nothing off it.
         let g = terrain::Ground::of(&hilly, &camera).expect("terrain");
         let top = g.height(lonlat_to_merc(Coord::new(0.0, 0.0))).unwrap();
@@ -6235,7 +6235,7 @@ mod tests {
         assert!(b.pixmap.pixels().iter().all(|p| p.alpha() == 255));
         // A DEM layer gone (renamed or removed) leaves the ground flat.
         hilly.view.terrain =
-            Some(rustgis_map::view::Terrain { source: rustgis_map::view::TerrainSource::Layer("none".into()), exaggeration: 1.0 });
+            Some(powergis_map::view::Terrain { source: powergis_map::view::TerrainSource::Layer("none".into()), exaggeration: 1.0 });
         assert!(terrain::Ground::of(&hilly, &camera).is_none());
         assert!(render(&mut hilly, &view).is_some());
     }
@@ -6243,7 +6243,7 @@ mod tests {
     #[test]
     fn a_tilted_view_draws_the_ground_in_perspective_under_a_sky() {
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("pts", GeometryType::Point, vec![Field::new("name", FieldType::Text)]);
         // 100 px north of the centre at its scale.
         d.push(Some(Geometry::Point(Coord::new(0.0, 100.0 * 1000.0 / 111_319.49))), vec![Value::Text("Ahead".into())]);
@@ -6288,7 +6288,7 @@ mod tests {
     #[test]
     fn point_markers_stand_upright_in_a_tilted_view() {
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("pts", GeometryType::Point, vec![]);
         // At the centre, and 150 px ahead of it at its scale.
         let ahead = 150.0 * 1000.0 / 111_319.49;
@@ -6298,7 +6298,7 @@ mod tests {
         let red = Rgba::rgb(255, 0, 0);
         if let Some(l) = m.layer_mut(id) {
             l.renderer =
-                rustgis_map::Renderer::Single(Symbol { fill: red, stroke: red, stroke_width: 0.0, size: 20.0, marker: Marker::Circle });
+                powergis_map::Renderer::Single(Symbol { fill: red, stroke: red, stroke_width: 0.0, size: 20.0, marker: Marker::Circle });
             l.selection = vec![1];
         }
         let camera = Camera { center: Coord::new(0.0, 0.0), res: 1000.0, bearing: 30.0, pitch: 70.0 };
@@ -6333,14 +6333,14 @@ mod tests {
         assert!(up.first().is_some_and(|u| u.selected) && up.get(1).is_some_and(|u| !u.selected));
         // With a reference scale twice the view's, they stand twice the size.
         let size = up.first().map(|u| u.symbol.size).unwrap_or_default();
-        let scale = m.ground_res_at(&view.camera) / rustgis_geom::PIXEL_M;
+        let scale = m.ground_res_at(&view.camera) / powergis_geom::PIXEL_M;
         m.layer_mut(id).unwrap().reference_scale = Some(scale * 2.0);
         let up = upright_markers(&mut m, &view, 0.3);
         assert!(up.iter().all(|u| (u.symbol.size - size * 2.0).abs() < 1e-3), "{size}");
         m.layer_mut(id).unwrap().reference_scale = None;
         // A point layer seen flat draws as before, and an aggregation stays on the ground.
         if let Some(l) = m.layer_mut(id) {
-            l.aggregation = Some(rustgis_map::effects::Aggregation { hexagons: true, size: 20.0 });
+            l.aggregation = Some(powergis_map::effects::Aggregation { hexagons: true, size: 20.0 });
         }
         assert!(upright_markers(&mut m, &view, 0.3).is_empty());
     }
@@ -6348,7 +6348,7 @@ mod tests {
     #[test]
     fn extrusions_stand_up_in_a_tilted_view() {
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("blocks", GeometryType::Polygon, vec![Field::new("name", FieldType::Text)]);
         // A square about 200 km a side at the centre.
         let s = 0.9;
@@ -6357,7 +6357,7 @@ mod tests {
         let id = m.add_dataset(d);
         if let Some(l) = m.layer_mut(id) {
             l.labels.enabled = true;
-            l.extrusion = Some(rustgis_map::effects::Extrusion {
+            l.extrusion = Some(powergis_map::effects::Extrusion {
                 field: None,
                 height: 100_000.0,
                 factor: 1.0,
@@ -6436,7 +6436,7 @@ mod tests {
         // The first one deleted: the tall one (id 2) is row 0 and the low one (id 3) row 1.
         d.features.remove(0);
         let id = m.add_dataset(d);
-        m.layer_mut(id).unwrap().extrusion = Some(rustgis_map::effects::Extrusion {
+        m.layer_mut(id).unwrap().extrusion = Some(powergis_map::effects::Extrusion {
             field: Some("h".into()),
             height: 0.0,
             factor: 1.0,
@@ -6487,7 +6487,7 @@ mod tests {
     #[test]
     fn a_globe_turns_and_tilts() {
         let mut m = Map::new("Map");
-        m.projection = rustgis_map::Projection::Globe;
+        m.projection = powergis_map::Projection::Globe;
         let camera = Camera { center: lonlat_to_merc(Coord::new(10.0, 40.0)), res: 20_000.0, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 300.0, height: 200.0, pixels_per_point: 1.0, camera, sky: false };
         let plain = render(&mut m, &view).unwrap();
@@ -6500,7 +6500,7 @@ mod tests {
     #[test]
     fn an_extruded_ring_with_a_hole_is_open_over_it() {
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("yard", GeometryType::Polygon, vec![]);
         let outer =
             vec![Coord::new(-2.0, -2.0), Coord::new(2.0, -2.0), Coord::new(2.0, 2.0), Coord::new(-2.0, 2.0), Coord::new(-2.0, -2.0)];
@@ -6508,7 +6508,7 @@ mod tests {
         d.push(Some(Geometry::Polygon(vec![vec![outer, hole]])), vec![]);
         let id = m.add_dataset(d);
         if let Some(l) = m.layer_mut(id) {
-            l.extrusion = Some(rustgis_map::effects::Extrusion {
+            l.extrusion = Some(powergis_map::effects::Extrusion {
                 field: None,
                 height: 20_000.0,
                 factor: 1.0,
@@ -6529,7 +6529,7 @@ mod tests {
         let far = View { camera: Camera { center: Coord::new(5e6, 5e6), ..camera }, ..view };
         assert!(extruded_shapes(&mut m, &far).is_empty());
         // In a hidden group, the layer stands up nowhere.
-        let mut g = rustgis_map::LayerGroup::new("hidden");
+        let mut g = powergis_map::LayerGroup::new("hidden");
         g.visible = false;
         g.children = vec![id];
         m.groups.push(g);
@@ -6823,7 +6823,7 @@ mod tests {
                     };
                     let original = Geometry::Polygon(vec![vec![ring]]);
                     let extent = original.extent();
-                    let geometry = if thinned { rustgis_map::lod::thin(&original, 0.25) } else { original };
+                    let geometry = if thinned { powergis_map::lod::thin(&original, 0.25) } else { original };
                     (geometry, extent, symbol)
                 })
                 .collect();
@@ -6891,7 +6891,7 @@ mod tests {
             }
         }
         let mut map = Map::new("Map");
-        map.basemap = rustgis_map::Basemap::Blank;
+        map.basemap = powergis_map::Basemap::Blank;
         map.graticule = false;
         let id = map.add_dataset(ds);
         let sym = Symbol {
@@ -6901,7 +6901,7 @@ mod tests {
             size: 10.0,
             marker: Marker::Circle,
         };
-        map.layer_mut(id).unwrap().renderer = rustgis_map::Renderer::Single(sym);
+        map.layer_mut(id).unwrap().renderer = powergis_map::Renderer::Single(sym);
         let mut baseline = map.clone();
         baseline.layer_mut(id).unwrap().graphics = true; // The same symbol, but no splat shortcut.
         assert_eq!(baseline.layer(id).unwrap().symbol(0), sym);
@@ -6918,9 +6918,9 @@ mod tests {
         let layer = map.layer(id).unwrap();
         // Plain layers draw from this cache and leave the full projection unallocated.
         let (drawn, extents) = layer.display_cache().unwrap();
-        let vertices = |geometries: &[Option<Geometry>]| geometries.iter().flatten().map(rustgis_map::lod::vertices).sum::<usize>();
+        let vertices = |geometries: &[Option<Geometry>]| geometries.iter().flatten().map(powergis_map::lod::vertices).sum::<usize>();
         let original_vertices =
-            layer.dataset.features.iter().filter_map(|f| f.geometry.as_ref()).map(rustgis_map::lod::vertices).sum::<usize>();
+            layer.dataset.features.iter().filter_map(|f| f.geometry.as_ref()).map(powergis_map::lod::vertices).sum::<usize>();
         assert!(vertices(drawn) < original_vertices, "the map should use simplified geometry");
         let ctx = Ctx {
             view: &view,
@@ -7064,9 +7064,9 @@ mod tests {
 
     #[test]
     fn stacked_fills_hatch_and_dot_polygons_anchored_to_the_map() {
-        use rustgis_map::fills::{FillLayer, FillPattern};
+        use powergis_map::fills::{FillLayer, FillPattern};
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("fields", GeometryType::Polygon, vec![Field::new("kind", FieldType::Text)]);
         let square = |x0: f64, x1: f64| {
             Geometry::Polygon(vec![vec![vec![
@@ -7114,7 +7114,7 @@ mod tests {
         assert!(cols >= 10 && clear, "vertical: {cols} columns");
         // Dots: blue markers on a grid, in the feature's colour when the fill has none.
         let dots = FillPattern::Dots {
-            marker: rustgis_map::Marker::Circle,
+            marker: powergis_map::Marker::Circle,
             size: 3.0,
             outline: None,
             outline_width: 0.0,
@@ -7127,16 +7127,16 @@ mod tests {
         let bluish = (60..140).flat_map(|y| (60..140).map(move |x| (x, y))).filter(|&(x, y)| rgb(&r, x, y) == (0, 0, 255)).count();
         assert!(bluish > 20, "dots: {bluish}");
         // A class's own fills over the layer's (Unique Values).
-        let base = rustgis_map::Symbol::default_for(GeometryType::Polygon, id);
+        let base = powergis_map::Symbol::default_for(GeometryType::Polygon, id);
         m.layer_mut(id).unwrap().renderer =
-            rustgis_map::Renderer::unique(&m.layer(id).unwrap().dataset, &[], "kind", rustgis_map::Ramp::default(), base).unwrap();
-        if let rustgis_map::Renderer::Unique { class_fills, .. } = &mut m.layer_mut(id).unwrap().renderer {
+            powergis_map::Renderer::unique(&m.layer(id).unwrap().dataset, &[], "kind", powergis_map::Ramp::default(), base).unwrap();
+        if let powergis_map::Renderer::Unique { class_fills, .. } = &mut m.layer_mut(id).unwrap().renderer {
             class_fills.insert("a".into(), vec![FillLayer { color: Some(red), pattern: FillPattern::Solid }]);
         }
         let r = render(&mut m, &view).unwrap();
         assert_eq!(rgb(&r, 100, 100), (255, 0, 0), "its class's fill");
         // None: the symbol's fill, as before.
-        m.layer_mut(id).unwrap().renderer = rustgis_map::Renderer::Single(rustgis_map::Symbol::default_for(GeometryType::Polygon, id));
+        m.layer_mut(id).unwrap().renderer = powergis_map::Renderer::Single(powergis_map::Symbol::default_for(GeometryType::Polygon, id));
         m.layer_mut(id).unwrap().fill_layers.clear();
         assert_eq!(rgb(&render(&mut m, &view).unwrap(), 100, 100), plain);
     }
@@ -7148,20 +7148,20 @@ mod tests {
     /// its distance), holes' edges shading too unless left out.
     #[test]
     fn gradient_and_shapeburst_fills_shade_as_qgis_does() {
-        use rustgis_map::fills::{FillLayer, FillPattern, GradientPoint, GradientShape, Spread, Stops};
+        use powergis_map::fills::{FillLayer, FillPattern, GradientPoint, GradientShape, Spread, Stops};
         let ring = |x0: f64, y0: f64, x1: f64, y1: f64| {
             vec![Coord::new(x0, y0), Coord::new(x1, y0), Coord::new(x1, y1), Coord::new(x0, y1), Coord::new(x0, y0)]
         };
         // A map of one polygon of `parts` (each its rings), unoutlined.
         let map_of = |parts: Vec<Vec<Vec<Coord>>>| {
             let mut m = Map::new("Map");
-            m.basemap = rustgis_map::Basemap::Blank;
+            m.basemap = powergis_map::Basemap::Blank;
             let mut d = Dataset::new("fields", GeometryType::Polygon, vec![]);
             d.push(Some(Geometry::Polygon(parts)), vec![]);
             let id = m.add_dataset(d);
-            m.layer_mut(id).unwrap().renderer = rustgis_map::Renderer::Single(rustgis_map::Symbol {
+            m.layer_mut(id).unwrap().renderer = powergis_map::Renderer::Single(powergis_map::Symbol {
                 stroke: Rgba::new(0, 0, 0, 0),
-                ..rustgis_map::Symbol::default_for(GeometryType::Polygon, id)
+                ..powergis_map::Symbol::default_for(GeometryType::Polygon, id)
             });
             (m, id)
         };
@@ -7268,7 +7268,7 @@ mod tests {
         // Held, not blended: each colour up to the next stop.
         let mut held = gradient(GradientShape::Linear, top, bottom, 0.0);
         if let FillPattern::Gradient { stops, discrete, .. } = &mut held {
-            *stops = Stops::new([rustgis_map::fills::Stop { at: 0.5, color: Rgba::rgb(0, 255, 0) }]);
+            *stops = Stops::new([powergis_map::fills::Stop { at: 0.5, color: Rgba::rgb(0, 255, 0) }]);
             *discrete = true;
         }
         let (mut m, _) = map_of(vec![vec![ring(-0.5, -0.5, 0.5, 0.5)]]);
@@ -7335,9 +7335,9 @@ mod tests {
     fn a_polygon_under_a_pixel_is_drawn_with_its_stacked_fills() {
         // Smaller than a pixel (about 0.7 across), it isn't blended in the symbol's fill colour:
         // its own solid fill shows.
-        use rustgis_map::fills::{FillLayer, FillPattern};
+        use powergis_map::fills::{FillLayer, FillPattern};
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("specks", GeometryType::Polygon, vec![]);
         let (x0, x1, y0, y1) = (-0.0045, 0.0045, -0.0045, 0.0045);
         let ring = vec![Coord::new(x0, y0), Coord::new(x1, y0), Coord::new(x1, y1), Coord::new(x0, y1), Coord::new(x0, y0)];
@@ -7345,12 +7345,12 @@ mod tests {
         let id = m.add_dataset(d);
         let camera = Camera { center: lonlat_to_merc(Coord::new(0.0, 0.0)), res: 1500.0, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 20.0, height: 20.0, pixels_per_point: 1.0, camera, sky: false };
-        let symbol = rustgis_map::Symbol {
+        let symbol = powergis_map::Symbol {
             fill: Rgba::rgb(0, 0, 255),
             stroke_width: 0.0,
-            ..rustgis_map::Symbol::default_for(GeometryType::Polygon, id)
+            ..powergis_map::Symbol::default_for(GeometryType::Polygon, id)
         };
-        m.layer_mut(id).unwrap().renderer = rustgis_map::Renderer::Single(symbol);
+        m.layer_mut(id).unwrap().renderer = powergis_map::Renderer::Single(symbol);
         let ink = |m: &mut Map| {
             let r = render(m, &view).unwrap();
             r.pixmap
@@ -7367,14 +7367,14 @@ mod tests {
         assert!(!filled.is_empty() && filled.iter().all(|(r, b)| r > b), "its red fill: {filled:?}");
         // Far smaller (0.15 across), still blended in, not lost as a path of no area.
         let mut small = Map::new("Map");
-        small.basemap = rustgis_map::Basemap::Blank;
+        small.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("specks", GeometryType::Polygon, vec![]);
         let t = 0.0045 * 0.15 / 0.67;
         let ring = vec![Coord::new(-t, -t), Coord::new(t, -t), Coord::new(t, t), Coord::new(-t, t), Coord::new(-t, -t)];
         d.push(Some(Geometry::Polygon(vec![vec![ring]])), vec![]);
         let tiny = small.add_dataset(d);
         let l = small.layer_mut(tiny).unwrap();
-        l.renderer = rustgis_map::Renderer::Single(symbol);
+        l.renderer = powergis_map::Renderer::Single(symbol);
         l.fill_layers = vec![FillLayer { color: Some(Rgba::rgb(255, 0, 0)), pattern: FillPattern::Solid }];
         // (A faint speck: about 2 % of a pixel's area.)
         let r = render(&mut small, &view).unwrap();
@@ -7386,16 +7386,16 @@ mod tests {
     fn reference_scaled_hatch_stays_on_the_map_as_it_pans() {
         // With a reference scale twice the map's, a hatch 6 points apart is drawn 12 apart; panned
         // 3 points, its lines move 3 points with the polygons, not 6.
-        use rustgis_map::fills::{FillLayer, FillPattern};
+        use powergis_map::fills::{FillLayer, FillPattern};
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("fields", GeometryType::Polygon, vec![]);
         let ring = vec![Coord::new(-0.6, -0.5), Coord::new(0.6, -0.5), Coord::new(0.6, 0.5), Coord::new(-0.6, 0.5), Coord::new(-0.6, -0.5)];
         d.push(Some(Geometry::Polygon(vec![vec![ring]])), vec![]);
         let id = m.add_dataset(d);
         let camera = Camera { center: lonlat_to_merc(Coord::new(0.0, 0.0)), res: 1500.0, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 200.0, height: 200.0, pixels_per_point: 1.0, camera, sky: false };
-        let scale = m.ground_res_at(&camera) / rustgis_geom::PIXEL_M;
+        let scale = m.ground_res_at(&camera) / powergis_geom::PIXEL_M;
         let red = Rgba::rgb(255, 0, 0);
         let l = m.layer_mut(id).unwrap();
         l.reference_scale = Some(scale * 2.0);
@@ -7417,7 +7417,7 @@ mod tests {
         // Two copies of one line in opposite directions (#478): with a stroke offset to the right
         // they land on opposite sides, and nothing draws on the shared centreline.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("edges", GeometryType::Polyline, vec![]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.0, 0.0), Coord::new(1.0, 0.0)]])), vec![]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(1.0, 0.0), Coord::new(-1.0, 0.0)]])), vec![]);
@@ -7434,8 +7434,8 @@ mod tests {
         let blank = r.pixmap.pixel(100, 60).unwrap();
         assert_ne!(centre, blank, "the single stroke draws on the centreline");
         m.layer_mut(id).unwrap().line_strokes = vec![
-            rustgis_map::LineStroke { color: Some(Rgba::rgb(0, 0, 0)), width: Some(5.0), offset: 10.0, ..Default::default() },
-            rustgis_map::LineStroke { color: Some(red), width: Some(2.0), offset: 10.0, ..Default::default() },
+            powergis_map::LineStroke { color: Some(Rgba::rgb(0, 0, 0)), width: Some(5.0), offset: 10.0, ..Default::default() },
+            powergis_map::LineStroke { color: Some(red), width: Some(2.0), offset: 10.0, ..Default::default() },
         ];
         let r = render(&mut m, &view).unwrap();
         assert!(is_red(&r, 110) && is_red(&r, 90), "both copies, one on each side");
@@ -7444,7 +7444,7 @@ mod tests {
         let casing = r.pixmap.pixel(100, 111).unwrap();
         assert_eq!((casing.red(), casing.green(), casing.blue()), (0, 0, 0));
         // Selected, it still draws offset, with its halo; a hidden stroke gets no halo.
-        m.layer_mut(id).unwrap().line_strokes.push(rustgis_map::LineStroke { width: Some(0.0), offset: -20.0, ..Default::default() });
+        m.layer_mut(id).unwrap().line_strokes.push(powergis_map::LineStroke { width: Some(0.0), offset: -20.0, ..Default::default() });
         m.layer_mut(id).unwrap().selection = vec![0];
         let r = render(&mut m, &view).unwrap();
         assert!(is_red(&r, 110));
@@ -7456,7 +7456,7 @@ mod tests {
         let short = m.add_dataset(d);
         m.layer_mut(id).unwrap().visible = false;
         m.layer_mut(short).unwrap().line_strokes =
-            vec![rustgis_map::LineStroke { color: Some(red), width: Some(3.0), offset: 10.0, ..Default::default() }];
+            vec![powergis_map::LineStroke { color: Some(red), width: Some(3.0), offset: 10.0, ..Default::default() }];
         let r = render(&mut m, &view).unwrap();
         assert_ne!(r.pixmap.pixel(100, 110).unwrap(), blank, "drawn 10 pt to the right");
         assert_eq!(r.pixmap.pixel(100, 100).unwrap(), blank, "nothing on the centreline");
@@ -7464,12 +7464,12 @@ mod tests {
 
     #[test]
     fn a_points_marks_and_rotation_draw_on_the_cpu_and_old_layers_stay_on_the_gpu() {
-        use rustgis_map::{LineMark, LineMarkers, LineStroke, MarkerRotation};
+        use powergis_map::{LineMark, LineMarkers, LineStroke, MarkerRotation};
         // One point at the centre of a 200 px view, its angle 90 in field "a".
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
-        let mut d = Dataset::new("signs", GeometryType::Point, vec![rustgis_data::Field::new("a", rustgis_data::FieldType::Double)]);
-        d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![rustgis_data::Value::Float(90.0)]);
+        m.basemap = powergis_map::Basemap::Blank;
+        let mut d = Dataset::new("signs", GeometryType::Point, vec![powergis_data::Field::new("a", powergis_data::FieldType::Double)]);
+        d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![powergis_data::Value::Float(90.0)]);
         let id = m.add_dataset(d);
         let camera = Camera { center: lonlat_to_merc(Coord::new(0.0, 0.0)), res: 1500.0, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 200.0, height: 200.0, pixels_per_point: 1.0, camera, sky: false };
@@ -7490,7 +7490,7 @@ mod tests {
         assert!(is_red(&r, 10, 100), "a mark shifted into the view");
         // At twice its reference scale's size: the point 60 px left, its mark 60 px right of it.
         let far = View { camera: Camera { center: Coord::new(camera.center.x + 160.0 * camera.res, camera.center.y), ..camera }, ..view };
-        let scale = m.ground_res_at(&far.camera) / rustgis_geom::PIXEL_M;
+        let scale = m.ground_res_at(&far.camera) / powergis_geom::PIXEL_M;
         m.layer_mut(id).unwrap().reference_scale = Some(2.0 * scale);
         let r = render(&mut m, &far).unwrap();
         assert!(is_red(&r, 4, 100), "an enlarged mark shifted into the view");
@@ -7515,19 +7515,19 @@ mod tests {
 
     #[test]
     fn a_marker_sized_and_coloured_by_expression_draws_on_the_cpu() {
-        use rustgis_map::symbol_by::SymbolBy;
+        use powergis_map::symbol_by::SymbolBy;
         // One point at the centre of a 200 px view, 40 in field "a".
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
-        let mut d = Dataset::new("p", GeometryType::Point, vec![rustgis_data::Field::new("a", rustgis_data::FieldType::Double)]);
-        d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![rustgis_data::Value::Float(40.0)]);
+        m.basemap = powergis_map::Basemap::Blank;
+        let mut d = Dataset::new("p", GeometryType::Point, vec![powergis_data::Field::new("a", powergis_data::FieldType::Double)]);
+        d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![powergis_data::Value::Float(40.0)]);
         let id = m.add_dataset(d);
         let camera = Camera { center: lonlat_to_merc(Coord::new(0.0, 0.0)), res: 1500.0, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 200.0, height: 200.0, pixels_per_point: 1.0, camera, sky: false };
         let is_green = |r: &Rendered, x: u32, y: u32| r.pixmap.pixel(x, y).is_some_and(|p| (p.red(), p.green(), p.blue()) == (0, 255, 0));
         let r = render(&mut m, &view).unwrap();
         assert!(!is_green(&r, 115, 100), "a 7 pt marker");
-        let scale = m.ground_res_at(&camera) / rustgis_geom::PIXEL_M;
+        let scale = m.ground_res_at(&camera) / powergis_geom::PIXEL_M;
         m.layer_mut(id).unwrap().symbol_by = SymbolBy {
             size: Some("a".into()),
             fill: Some(format!("CASE WHEN @map_scale BETWEEN {} AND {} THEN '#00ff00' END", scale * 0.9, scale * 1.1)),
@@ -7547,17 +7547,17 @@ mod tests {
     #[test]
     fn a_character_marker_draws_its_character_where_qgis_does_and_on_the_cpu() {
         use ab_glyph::Font;
-        use rustgis_map::Glyph;
+        use powergis_map::Glyph;
         // A 60 pt "L" at the centre of a 200 px view: its advance centred, its baseline half the
         // font's ascent below the point.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("signs", GeometryType::Point, vec![]);
         d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![]);
         let id = m.add_dataset(d);
         let black = Rgba::rgb(0, 0, 0);
         let none = Rgba::new(0, 0, 0, 0);
-        m.layer_mut(id).unwrap().renderer = rustgis_map::Renderer::Single(Symbol {
+        m.layer_mut(id).unwrap().renderer = powergis_map::Renderer::Single(Symbol {
             fill: black,
             stroke: none,
             stroke_width: 0.0,
@@ -7587,7 +7587,7 @@ mod tests {
         let kinds = cmd_kinds(&scene);
         assert!(kinds.contains(&"image") && !kinds.contains(&"points"), "{kinds:?}");
         // A character no font here has still shows the point: a circle of its size.
-        if let rustgis_map::Renderer::Single(sym) = &mut m.layer_mut(id).unwrap().renderer {
+        if let powergis_map::Renderer::Single(sym) = &mut m.layer_mut(id).unwrap().renderer {
             sym.marker = Marker::Char(Glyph::new('\u{10FFFD}', ""));
         }
         let r = render(&mut m, &view).unwrap();
@@ -7597,14 +7597,14 @@ mod tests {
         let mut d = Dataset::new("rail", GeometryType::Polyline, vec![]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.0, 0.5), Coord::new(1.0, 0.5)]])), vec![]);
         let line = m.add_dataset(d);
-        let marks = rustgis_map::LineMarkers {
-            mark: rustgis_map::LineMark::Marker(Marker::Char(Glyph::new('L', ""))),
+        let marks = powergis_map::LineMarkers {
+            mark: powergis_map::LineMark::Marker(Marker::Char(Glyph::new('L', ""))),
             size: 20.0,
             interval: 40.0,
             ..Default::default()
         };
         m.layer_mut(line).unwrap().line_strokes =
-            vec![rustgis_map::LineStroke { color: Some(black), markers: Some(marks), ..Default::default() }];
+            vec![powergis_map::LineStroke { color: Some(black), markers: Some(marks), ..Default::default() }];
         m.layer_mut(id).unwrap().visible = false;
         let r = render(&mut m, &view).unwrap();
         let drawn = (0..200)
@@ -7616,10 +7616,10 @@ mod tests {
 
     #[test]
     fn markers_and_hash_marks_draw_along_a_line() {
-        use rustgis_map::{LineMark, LineMarkers, LineStroke, Placements};
+        use powergis_map::{LineMark, LineMarkers, LineStroke, Placements};
         // A line from lon -1 to 1 at 1,500 m a pixel: x 25.8 to 174.2, along y 100.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("rail", GeometryType::Polyline, vec![]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.0, 0.0), Coord::new(1.0, 0.0)]])), vec![]);
         let id = m.add_dataset(d);
@@ -7673,19 +7673,19 @@ mod tests {
 
     #[test]
     fn markers_on_the_globe_follow_the_line_up_to_the_horizon() {
-        use rustgis_map::{LineMarkers, LineStroke};
+        use powergis_map::{LineMarkers, LineStroke};
         // A line from lon -120 over lon 10 to lon 120, seen over lon 10: both its ends are behind
         // the globe, its middle vertex alone shows, yet the parts up to the horizon on either side
         // show too, so their marks do.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
-        m.projection = rustgis_map::Projection::Globe;
+        m.basemap = powergis_map::Basemap::Blank;
+        m.projection = powergis_map::Projection::Globe;
         let mut d = Dataset::new("rail", GeometryType::Polyline, vec![]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-120.0, 0.0), Coord::new(10.0, 0.0), Coord::new(120.0, 0.0)]])), vec![]);
         let id = m.add_dataset(d);
         let red = Rgba::rgb(255, 0, 0);
         let squares =
-            LineMarkers { mark: rustgis_map::LineMark::Marker(Marker::Square), size: 6.0, interval: 20.0, ..LineMarkers::default() };
+            LineMarkers { mark: powergis_map::LineMark::Marker(Marker::Square), size: 6.0, interval: 20.0, ..LineMarkers::default() };
         m.layer_mut(id).unwrap().line_strokes = vec![LineStroke { color: Some(red), markers: Some(squares), ..Default::default() }];
         let camera = Camera { center: lonlat_to_merc(Coord::new(10.0, 0.0)), res: 40_000.0, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 400.0, height: 400.0, pixels_per_point: 1.0, camera, sky: false };
@@ -7702,7 +7702,7 @@ mod tests {
         // Two lines of two Unique Values classes: "road" has a black casing and a red core of its
         // own, "path" takes the layer's single green stroke.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("lines", GeometryType::Polyline, vec![Field::new("kind", FieldType::Text)]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.0, 0.3), Coord::new(1.0, 0.3)]])), vec![Value::Text("road".into())]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.0, -0.3), Coord::new(1.0, -0.3)]])), vec![Value::Text("path".into())]);
@@ -7714,14 +7714,14 @@ mod tests {
             (p.red(), p.green(), p.blue())
         };
         let (black, red, green) = (Rgba::rgb(0, 0, 0), Rgba::rgb(255, 0, 0), Rgba::rgb(0, 160, 0));
-        let stroke = |c: Rgba, w: f32| rustgis_map::LineStroke { color: Some(c), width: Some(w), ..Default::default() };
+        let stroke = |c: Rgba, w: f32| powergis_map::LineStroke { color: Some(c), width: Some(w), ..Default::default() };
         let l = m.layer_mut(id).unwrap();
         let s = Symbol::default_for(GeometryType::Polyline, 0);
-        l.renderer = rustgis_map::Renderer::Unique {
+        l.renderer = powergis_map::Renderer::Unique {
             field: "kind".into(),
             classes: vec![("road".into(), s), ("path".into(), s)],
             other: s,
-            ramp: rustgis_map::Ramp::Ember,
+            ramp: powergis_map::Ramp::Ember,
             class_labels: Default::default(),
             other_label: None,
             class_strokes: [("road".to_string(), vec![stroke(black, 9.0), stroke(red, 3.0)])].into_iter().collect(),
@@ -7755,7 +7755,7 @@ mod tests {
         // a feature at a time, the second segment's round casing covers the end of the first's
         // core; in levels, every casing goes down first and the core runs through the joint.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("road", GeometryType::Polyline, vec![]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.0, 0.0), Coord::new(0.0, 0.0)]])), vec![]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(0.0, 0.0), Coord::new(1.0, 0.0)]])), vec![]);
@@ -7766,7 +7766,7 @@ mod tests {
             let p = r.pixmap.pixel(x, 100).unwrap();
             (p.red(), p.green(), p.blue())
         };
-        let stroke = |c: Rgba, w: f32| rustgis_map::LineStroke { color: Some(c), width: Some(w), ..Default::default() };
+        let stroke = |c: Rgba, w: f32| powergis_map::LineStroke { color: Some(c), width: Some(w), ..Default::default() };
         m.layer_mut(id).unwrap().line_strokes = vec![stroke(Rgba::rgb(0, 0, 0), 12.0), stroke(Rgba::rgb(255, 0, 0), 4.0)];
         let r = render(&mut m, &view).unwrap();
         assert_eq!(colour(&r, 96), (0, 0, 0), "the second casing cuts across the first core");
@@ -7809,8 +7809,8 @@ mod tests {
                 color: Some(Rgba::rgb(0, 0, 0)),
                 width: Some(2.0),
                 offset,
-                cap: rustgis_map::LineCap::Butt,
-                dash: rustgis_map::symbology::Dash::new(&[4.0, 3.0]),
+                cap: powergis_map::LineCap::Butt,
+                dash: powergis_map::symbology::Dash::new(&[4.0, 3.0]),
                 ..Default::default()
             };
             let s = Symbol::default_for(GeometryType::Polyline, 0);
@@ -7868,10 +7868,10 @@ mod tests {
             bursts: Default::default(),
         };
         // A 1-pixel period would cut it into 200,000 dashes: drawn solid. A 4-pixel one is fine.
-        assert!(ctx.dash(&rustgis_map::symbology::Dash::new(&[0.5, 0.5]).unwrap(), &zigzag).is_none());
-        assert!(ctx.dash(&rustgis_map::symbology::Dash::new(&[2.0, 2.0]).unwrap(), &zigzag).is_some());
+        assert!(ctx.dash(&powergis_map::symbology::Dash::new(&[0.5, 0.5]).unwrap(), &zigzag).is_none());
+        assert!(ctx.dash(&powergis_map::symbology::Dash::new(&[2.0, 2.0]).unwrap(), &zigzag).is_some());
         // Dashes count, not rounds of the pattern: four dashes a 4-pixel round is 200,000 too.
-        let four = rustgis_map::symbology::Dash::new(&[0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]).unwrap();
+        let four = powergis_map::symbology::Dash::new(&[0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5, 0.5]).unwrap();
         assert!(ctx.dash(&four, &zigzag).is_none());
     }
 
@@ -7880,16 +7880,16 @@ mod tests {
         // A line across the view, one 4-point black stroke: solid it covers the middle of the row;
         // dashed 10 on, 10 off (flat caps), about half of it, in runs about 10 pixels long.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("road", GeometryType::Polyline, vec![]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.0, 0.0), Coord::new(1.0, 0.0)]])), vec![]);
         let id = m.add_dataset(d);
         let camera = Camera { center: lonlat_to_merc(Coord::new(0.0, 0.0)), res: 1500.0, bearing: 0.0, pitch: 0.0 };
         let view = View { width: 200.0, height: 200.0, pixels_per_point: 1.0, camera, sky: false };
-        let stroke = rustgis_map::LineStroke {
+        let stroke = powergis_map::LineStroke {
             color: Some(Rgba::rgb(0, 0, 0)),
             width: Some(4.0),
-            cap: rustgis_map::LineCap::Butt,
+            cap: powergis_map::LineCap::Butt,
             ..Default::default()
         };
         let dark = |m: &mut Map| {
@@ -7898,16 +7898,16 @@ mod tests {
         };
         m.layer_mut(id).unwrap().line_strokes = vec![stroke];
         assert!(dark(&mut m).iter().all(|d| *d), "solid");
-        let dash = rustgis_map::symbology::Dash::new(&[10.0, 10.0]);
-        m.layer_mut(id).unwrap().line_strokes = vec![rustgis_map::LineStroke { dash, ..stroke }];
+        let dash = powergis_map::symbology::Dash::new(&[10.0, 10.0]);
+        m.layer_mut(id).unwrap().line_strokes = vec![powergis_map::LineStroke { dash, ..stroke }];
         let row = dark(&mut m);
         let on = row.iter().filter(|d| **d).count();
         assert!((50..=70).contains(&on), "{on} of 120 pixels dark");
         let runs = row.windows(2).filter(|w| w[0] != w[1]).count();
         assert!((10..=13).contains(&runs), "{runs} changes along the row");
         // A pattern under a pixel a round draws solid rather than cut into slivers.
-        let dash = rustgis_map::symbology::Dash::new(&[0.2, 0.2]);
-        m.layer_mut(id).unwrap().line_strokes = vec![rustgis_map::LineStroke { dash, ..stroke }];
+        let dash = powergis_map::symbology::Dash::new(&[0.2, 0.2]);
+        m.layer_mut(id).unwrap().line_strokes = vec![powergis_map::LineStroke { dash, ..stroke }];
         assert!(dark(&mut m).iter().all(|d| *d), "too fine: solid");
     }
 
@@ -7916,7 +7916,7 @@ mod tests {
         // A 4-point black line: as wide as set without a reference scale or at it, twice as wide
         // at half the reference scale (zoomed in), half as wide at twice it.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("road", GeometryType::Polyline, vec![]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.0, 0.0), Coord::new(1.0, 0.0)]])), vec![]);
         let id = m.add_dataset(d);
@@ -7924,7 +7924,7 @@ mod tests {
         m.camera = camera;
         let view = View { width: 200.0, height: 200.0, pixels_per_point: 1.0, camera, sky: false };
         let base = Symbol::default_for(GeometryType::Polyline, 0);
-        m.layer_mut(id).unwrap().renderer = rustgis_map::Renderer::Single(Symbol { stroke: Rgba::rgb(0, 0, 0), stroke_width: 4.0, ..base });
+        m.layer_mut(id).unwrap().renderer = powergis_map::Renderer::Single(Symbol { stroke: Rgba::rgb(0, 0, 0), stroke_width: 4.0, ..base });
         let width = |m: &mut Map| {
             let r = render(m, &view).unwrap();
             (0..200).filter(|&y| r.pixmap.pixel(100, y).unwrap().red() < 128).count()
@@ -7960,7 +7960,7 @@ mod tests {
         // A road rising to the right, labelled along it: straight and turned to it, or a
         // character at a time; drawn either way, and a too sharp bend leaves a curved label out.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("roads", GeometryType::Polyline, vec![Field::new("name", FieldType::Text)]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.0, -1.0), Coord::new(1.0, 1.0)]])), vec![Value::Text("Seestrasse".into())]);
         // A right angle at its middle.
@@ -7975,13 +7975,13 @@ mod tests {
         l.labels.enabled = true;
         l.labels.default.field = "name".into();
         l.labels.default.size = 12.0;
-        l.labels.default.placement = rustgis_map::LabelPlacement::Parallel;
+        l.labels.default.placement = powergis_map::LabelPlacement::Parallel;
         let r = render(&mut m, &view).unwrap();
         let along = r.labels.iter().find(|l| l.text == "Seestrasse").expect("placed");
         // Up and to the right on the screen: −45°, about the middle of the line.
         assert!(along.angle.is_some_and(|a| (a + std::f32::consts::FRAC_PI_4).abs() < 0.02), "{:?}", along.angle);
         assert!(along.glyphs.is_empty());
-        m.layer_mut(id).unwrap().labels.default.placement = rustgis_map::LabelPlacement::Curved;
+        m.layer_mut(id).unwrap().labels.default.placement = powergis_map::LabelPlacement::Curved;
         let r = render(&mut m, &view).unwrap();
         let curved = r.labels.iter().find(|l| l.text == "Seestrasse").expect("placed");
         assert_eq!(curved.glyphs.iter().map(|g| g.text.as_str()).collect::<String>(), "Seestrasse");
@@ -8001,7 +8001,7 @@ mod tests {
         // longer part is out of view too: both labelled on what is on the screen, and the
         // river's accent (a combining one) kept on its letter.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("rivers", GeometryType::Polyline, vec![Field::new("name", FieldType::Text)]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-1.5, 0.5), Coord::new(30.0, 0.5)]])), vec![Value::Text("Rho\u{302}ne".into())]);
         d.push(
@@ -8018,7 +8018,7 @@ mod tests {
         l.labels.enabled = true;
         l.labels.default.field = "name".into();
         l.labels.default.size = 12.0;
-        l.labels.default.placement = rustgis_map::LabelPlacement::Curved;
+        l.labels.default.placement = powergis_map::LabelPlacement::Curved;
         let r = render(&mut m, &view).unwrap();
         for name in ["Rho\u{302}ne", "Seestrasse"] {
             let l = r.labels.iter().find(|l| l.text == name).unwrap_or_else(|| panic!("{name} placed"));
@@ -8124,7 +8124,7 @@ mod tests {
         // A point labelled to its right: at twice the size, the label is twice as large and twice
         // as far from the point, the gap between them included.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("towns", GeometryType::Point, vec![Field::new("name", FieldType::Text)]);
         d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![Value::Text("Winterthur".into())]);
         let id = m.add_dataset(d);
@@ -8134,7 +8134,7 @@ mod tests {
         let l = m.layer_mut(id).unwrap();
         l.labels.enabled = true;
         l.labels.default.field = "name".into();
-        l.labels.default.placement = rustgis_map::LabelPlacement::Right;
+        l.labels.default.placement = powergis_map::LabelPlacement::Right;
         let label = |m: &mut Map| {
             let r = render(m, &view).unwrap();
             let l = r.labels.first().expect("placed");
@@ -8229,14 +8229,14 @@ mod tests {
 
     #[test]
     fn a_background_fills_behind_the_text_and_keeps_other_labels_off() {
-        let bg = rustgis_map::LabelBackground {
+        let bg = powergis_map::LabelBackground {
             fill: Some(Rgba::rgb(255, 255, 0)),
             stroke: Some(Rgba::rgb(0, 0, 255)),
             stroke_width: 1.5,
             padding: [6.0, 3.0],
             radius: 0.0,
         };
-        let label = |background: Option<rustgis_map::LabelBackground>| PlacedLabel {
+        let label = |background: Option<powergis_map::LabelBackground>| PlacedLabel {
             text: "HH".into(),
             x: 60.0,
             y: 50.0,
@@ -8280,7 +8280,7 @@ mod tests {
         // None, and one that draws nothing: the text alone, as before.
         let plain = drawn(&label(None));
         assert!(!plain.pixels().iter().any(|p| yellow(*p)));
-        let nothing = rustgis_map::LabelBackground { fill: None, stroke: None, ..bg.clone() };
+        let nothing = powergis_map::LabelBackground { fill: None, stroke: None, ..bg.clone() };
         assert_eq!(drawn(&label(Some(nothing.clone()))).data(), plain.data());
         assert_eq!(text::background_reach(&label(Some(nothing))), [0.0; 2]);
         // Turned along a line, it turns with the text.
@@ -8318,7 +8318,7 @@ mod tests {
     #[test]
     fn labels_repeat_along_lines_and_wrap_into_lines() {
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("rivers", GeometryType::Polyline, vec![Field::new("name", FieldType::Text)]);
         d.push(Some(Geometry::Line(vec![vec![Coord::new(-2.0, 0.0), Coord::new(2.0, 0.0)]])), vec![Value::Text("Töss".into())]);
         let line = m.add_dataset(d);
@@ -8328,7 +8328,7 @@ mod tests {
         let l = m.layer_mut(line).unwrap();
         l.labels.enabled = true;
         l.labels.default.field = "name".into();
-        l.labels.default.placement = rustgis_map::LabelPlacement::Parallel;
+        l.labels.default.placement = powergis_map::LabelPlacement::Parallel;
         let xs = |m: &mut Map, view: &View| {
             let mut xs: Vec<f32> = render(m, view).unwrap().labels.iter().filter(|l| l.text == "Töss").map(|l| l.x).collect();
             xs.sort_by(f32::total_cmp);
@@ -8358,7 +8358,7 @@ mod tests {
         m.label_display.locked = false;
         m.label_lock = None;
         // Wrapped at its spaces, centred; not curved character by character.
-        m.layer_mut(line).unwrap().dataset.features = vec![rustgis_data::Feature {
+        m.layer_mut(line).unwrap().dataset.features = vec![powergis_data::Feature {
             id: 0,
             geometry: Some(Geometry::Line(vec![vec![Coord::new(-2.0, 0.0), Coord::new(2.0, 0.0)]])),
             attrs: vec![Value::Text("Obere Töss".into())],
@@ -8370,7 +8370,7 @@ mod tests {
         let r = render(&mut m, &view).unwrap();
         let label = r.labels.iter().find(|l| l.text.contains("Töss")).unwrap();
         assert_eq!((label.text.as_str(), label.line_align), ("Obere\nTöss", TextAlign::Center));
-        m.layer_mut(line).unwrap().labels.default.placement = rustgis_map::LabelPlacement::Curved;
+        m.layer_mut(line).unwrap().labels.default.placement = powergis_map::LabelPlacement::Curved;
         let r = render(&mut m, &view).unwrap();
         assert!(r.labels.iter().any(|l| l.text == "Obere Töss" && !l.glyphs.is_empty()), "curved in one line");
     }
@@ -8378,7 +8378,7 @@ mod tests {
     #[test]
     fn an_offset_moves_a_point_label_but_not_one_along_a_line() {
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("towns", GeometryType::Point, vec![Field::new("name", FieldType::Text)]);
         d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![Value::Text("Winterthur".into())]);
         let id = m.add_dataset(d);
@@ -8388,7 +8388,7 @@ mod tests {
         let camera = Camera { center: lonlat_to_merc(Coord::new(0.0, 0.0)), res: 1500.0, bearing: 0.0, pitch: 0.0 };
         m.camera = camera;
         let view = View { width: 400.0, height: 200.0, pixels_per_point: 1.0, camera, sky: false };
-        for (layer, placement) in [(id, rustgis_map::LabelPlacement::Right), (line, rustgis_map::LabelPlacement::Parallel)] {
+        for (layer, placement) in [(id, powergis_map::LabelPlacement::Right), (line, powergis_map::LabelPlacement::Parallel)] {
             let l = m.layer_mut(layer).unwrap();
             l.labels.enabled = true;
             l.labels.default.field = "name".into();
@@ -8434,7 +8434,7 @@ mod tests {
         // A dense grid of tiny squares seen whole: each is splatted rather than filled as a path,
         // and the area still comes out the colour of their outlines.
         let mut m = Map::new("Map");
-        m.basemap = rustgis_map::Basemap::Blank;
+        m.basemap = powergis_map::Basemap::Blank;
         let mut d = Dataset::new("cells", GeometryType::Polygon, vec![]);
         for i in 0..100 {
             for j in 0..100 {
@@ -8470,7 +8470,7 @@ mod tests {
             let mut m = Map::new("Map");
             m.body = body.into();
             m.graticule = false;
-            m.projection = rustgis_map::Projection::Globe;
+            m.projection = powergis_map::Projection::Globe;
             let camera = Camera { center: Coord::new(0.0, 0.0), res: 60_000.0, bearing: 0.0, pitch: 0.0 };
             let view = View { width: 400.0, height: 400.0, pixels_per_point: 1.0, camera, sky: true };
             let g = Globe::new(&camera, 400.0, 400.0);

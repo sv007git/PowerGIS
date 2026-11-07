@@ -1,8 +1,8 @@
 //! Conversions between PowerGIS geometry and `geo` types (in Web Mercator metres).
 
 use geo::{Coord as GC, LineString, MultiLineString, MultiPoint, MultiPolygon, Point, Polygon};
-use rustgis_data::Geometry;
-use rustgis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
+use powergis_data::Geometry;
+use powergis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
 
 fn gc(c: Coord) -> GC<f64> {
     let m = lonlat_to_merc(c);

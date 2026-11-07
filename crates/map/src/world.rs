@@ -5,7 +5,7 @@
 //! method on the forward formula, which also rejects points outside the map's outline (no
 //! longitude/latitude maps to them).
 
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 
 /// A world projection (PROJ names: `robin`, `eqearth`, `natearth`, `wintri`, `eck4`).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -210,7 +210,7 @@ impl World {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_geom::MERCATOR_R;
+    use powergis_geom::MERCATOR_R;
 
     #[test]
     fn round_trips_and_outlines() {

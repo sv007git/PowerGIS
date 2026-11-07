@@ -1,5 +1,5 @@
 //! Whole-source LOD decisions survive disposable interaction windows and render snapshots.
-use rustgis_data::source::FeatureSource;
+use powergis_data::source::FeatureSource;
 use std::sync::{Arc, Weak};
 
 #[derive(Default)]
@@ -18,8 +18,8 @@ impl Decisions {
         source: &Arc<dyn FeatureSource>,
         projection: &str,
         level: i32,
-        calculate: impl FnOnce() -> rustgis_data::Result<bool>,
-    ) -> rustgis_data::Result<bool> {
+        calculate: impl FnOnce() -> powergis_data::Result<bool>,
+    ) -> powergis_data::Result<bool> {
         if !self.source.as_ref().and_then(Weak::upgrade).is_some_and(|old| Arc::ptr_eq(&old, source)) {
             self.entries.clear();
             self.source = Some(Arc::downgrade(source));

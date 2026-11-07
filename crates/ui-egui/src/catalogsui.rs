@@ -4,10 +4,10 @@
 //! address through `ui.addUrl` (read in place by range), the tiles through `overture.add`.
 
 use egui::vec2;
-use rustgis_engine::render::rustgis_tiles::{cache, overture, s3, sourcecoop};
+use powergis_engine::render::powergis_tiles::{cache, overture, s3, sourcecoop};
 use serde_json::{Value, json};
 
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -84,13 +84,13 @@ fn fetch(url: &str) -> Answer {
 /// Opens Overture's files (their headers, in the background); once every one is open, they are
 /// added together through `overture.add` (all or none), so a failure adds nothing and trying again
 /// adds nothing twice.
-fn open_files(app: &mut RustGisApp, urls: Vec<String>) {
+fn open_files(app: &mut powergisApp, urls: Vec<String>) {
     let slots = urls
         .iter()
         .map(|url| {
             let slot: Slot<Result<(), String>> = Slot::default();
             let land = slot.clone();
-            rustgis_engine::data::source::open_url(
+            powergis_engine::data::source::open_url(
                 url,
                 Box::new(move |r| {
                     *land.lock().unwrap_or_else(|e| e.into_inner()) = Some(r.map(|_| ()).map_err(|e| e.to_string()));
@@ -103,7 +103,7 @@ fn open_files(app: &mut RustGisApp, urls: Vec<String>) {
 }
 
 /// Adds Overture's files once every one is open.
-fn poll_opening(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll_opening(app: &mut powergisApp, ctx: &egui::Context) {
     let Some((_, slots)) = &app.ui.catalogs.opening else { return };
     let done: Vec<Option<Result<(), String>>> = slots.iter().map(|s| s.lock().unwrap_or_else(|e| e.into_inner()).clone()).collect();
     if done.iter().any(Option::is_none) {
@@ -130,7 +130,7 @@ fn poll_opening(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Lands the answers and moves Overture's steps along.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     poll_opening(app, ctx);
     let Some((_, slot)) = &app.ui.catalogs.waiting else { return };
     let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
@@ -200,7 +200,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Overture's next step once the release is known: the tiles, or the collection for the view.
-fn overture_next(app: &mut RustGisApp, tiles: bool) -> Result<(), String> {
+fn overture_next(app: &mut powergisApp, tiles: bool) -> Result<(), String> {
     let st = &app.ui.catalogs;
     let release = st.release.clone().ok_or("the release isn't known")?;
     let (theme, ty) = overture::theme_type(&st.theme, Some(&st.ty))?;
@@ -212,12 +212,12 @@ fn overture_next(app: &mut RustGisApp, tiles: bool) -> Result<(), String> {
         ));
         return Ok(());
     }
-    let area = rustgis_engine::cmd::catalogs::area(&app.session, &Value::Null)?;
+    let area = powergis_engine::cmd::catalogs::area(&app.session, &Value::Null)?;
     app.ui.catalogs.waiting = Some((Asked::Collection { area }, fetch(&overture::collection_url(&release, theme, ty))));
     Ok(())
 }
 
-fn status(app: &RustGisApp, ui: &mut egui::Ui) {
+fn status(app: &powergisApp, ui: &mut egui::Ui) {
     if app.ui.catalogs.waiting.is_some() || app.ui.catalogs.opening.is_some() {
         ui.horizontal(|ui| {
             ui.spinner();
@@ -235,7 +235,7 @@ fn status(app: &RustGisApp, ui: &mut egui::Ui) {
 
 /// Overture Maps: a theme's type where the map is (read in place from its GeoParquet files), or the
 /// whole theme as map tiles.
-pub fn overture(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn overture(app: &mut powergisApp, ui: &mut egui::Ui) {
     ui.label(egui::RichText::new(tl!("Overture Maps' open data: buildings, places, transportation, administrative divisions, base layers and addresses. Where the map is, its features are read in place from Overture's GeoParquet files (zoom to a city or smaller); the whole world comes as map tiles.")).weak());
     let busy = app.ui.catalogs.waiting.is_some() || app.ui.catalogs.opening.is_some();
     egui::Grid::new("overture").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
@@ -300,7 +300,7 @@ pub fn overture(app: &mut RustGisApp, ui: &mut egui::Ui) {
 
 /// Lists a level of the product browsed: from its start, or (`more`) its next page, added to what
 /// is shown.
-fn list(app: &mut RustGisApp, more: bool) {
+fn list(app: &mut powergisApp, more: bool) {
     let Some((account, product)) = app.ui.catalogs.product.clone() else { return };
     let token = if more { app.ui.catalogs.listing.next.clone() } else { None };
     if more && token.is_none() {
@@ -324,7 +324,7 @@ pub const NATURAL_EARTH: (&str, &str) = ("opengeos", "natural-earth");
 
 /// Opens the Source Cooperative browser locked to Natural Earth, in its PMTiles folder (each
 /// theme a tile layer read in place).
-pub fn natural_earth(app: &mut RustGisApp) {
+pub fn natural_earth(app: &mut powergisApp) {
     let c = &mut app.ui.catalogs;
     c.locked = true;
     c.product = Some((NATURAL_EARTH.0.into(), NATURAL_EARTH.1.into()));
@@ -335,7 +335,7 @@ pub fn natural_earth(app: &mut RustGisApp) {
 }
 
 /// Lets the Source Cooperative browser list products again, after Natural Earth.
-pub fn unlock(app: &mut RustGisApp) {
+pub fn unlock(app: &mut powergisApp) {
     let c = &mut app.ui.catalogs;
     c.locked = false;
     c.product = None;
@@ -355,7 +355,7 @@ fn size_text(n: u64) -> String {
 
 /// Source Cooperative: the featured products (or an account's), a product's folders and files; a
 /// file is added by its address.
-pub fn sourcecoop(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn sourcecoop(app: &mut powergisApp, ui: &mut egui::Ui) {
     let locked = app.ui.catalogs.locked;
     if locked {
         crate::i18n::paragraph(

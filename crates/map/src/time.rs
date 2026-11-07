@@ -3,8 +3,8 @@
 
 use std::sync::Arc;
 
-use rustgis_data::Dataset;
-use rustgis_data::time::{self, Unit};
+use powergis_data::Dataset;
+use powergis_data::time::{self, Unit};
 use serde::{Deserialize, Serialize};
 
 /// The most steps a slider lists (an hourly slider over centuries stops here).
@@ -190,16 +190,16 @@ pub struct TimeBinding {
 #[derive(Debug)]
 struct Shown {
     window: (f64, f64),
-    features: rustgis_data::Features,
-    fields: Vec<rustgis_data::Field>,
+    features: powergis_data::Features,
+    fields: Vec<powergis_data::Field>,
     rows: Arc<Vec<bool>>,
 }
 
 /// A binding's moments and what they were read from.
 #[derive(Debug)]
 struct Moments {
-    features: rustgis_data::Features,
-    fields: Vec<rustgis_data::Field>,
+    features: powergis_data::Features,
+    fields: Vec<powergis_data::Field>,
     field: String,
     moments: Option<Vec<Option<f64>>>,
 }

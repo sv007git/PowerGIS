@@ -1,7 +1,7 @@
 //! Presentations: pages shown one after another, each a map view, text, an image or a video,
 //! with a title, speaker notes and a duration.
 
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 use serde::{Deserialize, Serialize};
 
 use crate::Rgba;

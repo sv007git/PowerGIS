@@ -7,8 +7,8 @@ use tiny_skia::{Paint, Pixmap, Rect, Transform};
 
 use crate::fonts::CjkRegion;
 use crate::{PlacedLabel, View};
-use rustgis_map::Rgba;
-use rustgis_map::layout::TextAlign;
+use powergis_map::Rgba;
+use powergis_map::layout::TextAlign;
 
 mod widths;
 
@@ -764,8 +764,8 @@ fn draw_upright(pm: &mut Pixmap, l: &PlacedLabel, ppp: f32, ink: Ink) {
 }
 
 /// The widest halo a label class sets (points); a reference scale grows it up to
-/// [`rustgis_map::SIZE_FACTORS`] times.
-const MAX_HALO: f32 = *rustgis_map::symbology::HALO_WIDTH.end() as f32;
+/// [`powergis_map::SIZE_FACTORS`] times.
+const MAX_HALO: f32 = *powergis_map::symbology::HALO_WIDTH.end() as f32;
 
 /// How far past its letters a label's halo of its own width reaches (the label's units: points ×
 /// 1.33, as its text's size), none when no halo is drawn (turned off, or fully see-through). Labels
@@ -776,10 +776,10 @@ pub fn drawn_halo_reach(l: &PlacedLabel) -> f32 {
 }
 
 /// How far a label's halo of `width` reaches (points): at most [`MAX_HALO`] grown by the most a
-/// reference scale grows a label ([`rustgis_map::SIZE_FACTORS`]), so one grown with its label isn't
+/// reference scale grows a label ([`powergis_map::SIZE_FACTORS`]), so one grown with its label isn't
 /// cut back (its class's own width is already within [`MAX_HALO`]); none for a width of no number.
 pub fn halo_reach(width: f32) -> f32 {
-    let most = MAX_HALO * rustgis_map::SIZE_FACTORS.1 as f32;
+    let most = MAX_HALO * powergis_map::SIZE_FACTORS.1 as f32;
     if width.is_finite() { width.clamp(0.0, most) } else { 0.0 }
 }
 
@@ -899,7 +899,7 @@ fn frame(pm: &mut Pixmap, r: Rect, ppp: f32) {
 /// `ground_per_pt` is ground metres per logical pixel at the centre of view.
 pub fn scale_bar(pm: &mut Pixmap, view: &View, ground_per_pt: f64) {
     let ppp = view.pixels_per_point as f32;
-    let target = rustgis_geom::nice_distance(ground_per_pt * 120.0);
+    let target = powergis_geom::nice_distance(ground_per_pt * 120.0);
     if target <= 0.0 {
         return;
     }
@@ -922,7 +922,7 @@ pub fn scale_bar(pm: &mut Pixmap, view: &View, ground_per_pt: f64) {
         }
     }
     let label = PlacedLabel {
-        text: rustgis_geom::format_distance(target),
+        text: powergis_geom::format_distance(target),
         x: (x0 / ppp) + len / 2.0,
         y: y0 / ppp - 8.0,
         size: 8.0,
@@ -1069,7 +1069,7 @@ mod coverage_tests {
     #[test]
     fn slanted_letters_have_no_stripes() {
         use super::{Face, styled_at};
-        use rustgis_map::Rgba;
+        use powergis_map::Rgba;
         let mut pm = tiny_skia::Pixmap::new(200, 200).unwrap();
         pm.fill(tiny_skia::Color::WHITE);
         let face = Face { italic: true, ..Face::default() };
@@ -1105,7 +1105,7 @@ mod coverage_tests {
             40.0,
             20.0,
             24.0,
-            rustgis_map::Rgba::rgb(0, 0, 0),
+            powergis_map::Rgba::rgb(0, 0, 0),
             false,
             super::Align::Center,
             true,
@@ -1136,7 +1136,7 @@ mod coverage_tests {
             return;
         };
         let mut pm = tiny_skia::Pixmap::new(80, 40).unwrap();
-        super::text_at(&mut pm, &ch.to_string(), 40.0, 20.0, 24.0, rustgis_map::Rgba::rgb(0, 0, 0), false, super::Align::Center, false);
+        super::text_at(&mut pm, &ch.to_string(), 40.0, 20.0, 24.0, powergis_map::Rgba::rgb(0, 0, 0), false, super::Align::Center, false);
         assert!(pm.pixels().iter().any(|p| p.alpha() > 0), "the fallback glyph was not drawn");
     }
 
@@ -1227,7 +1227,7 @@ mod coverage_tests {
         // The same words in the serif and the sans draw differently.
         let draw = |face: Face| {
             let mut pm = tiny_skia::Pixmap::new(300, 40).unwrap();
-            super::styled_at(&mut pm, "Rio Amazonas", 2.0, 20.0, 24.0, rustgis_map::Rgba::rgb(0, 0, 0), face, 0.0);
+            super::styled_at(&mut pm, "Rio Amazonas", 2.0, 20.0, 24.0, powergis_map::Rgba::rgb(0, 0, 0), face, 0.0);
             pm.data().to_vec()
         };
         assert_ne!(draw(Face { serif: true, ..Face::default() }), draw(Face::default()));

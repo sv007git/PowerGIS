@@ -41,7 +41,7 @@ the configured model.
 ## Plugins and downloads
 
 Browsing the Plugin Manager fetches a registry and its blocklist; installing or updating a
-plugin downloads its package. The default registry is `plugins.rustgis.app`. The web app also
+plugin downloads its package. The default registry is `plugins.powergis.app`. The web app also
 checks the registry's blocklist at startup and may download packages saved by URL in an earlier
 visit. Preparing a Python process plugin can download uv from PyPI, Python and the plugin's
 dependencies.
@@ -53,20 +53,20 @@ programs. Review the permissions and publisher before installing; see [Plugins](
 
 On the desktop, **Help › Check for Updates** contacts GitHub's latest-release API only when
 you ask. It does not upload your project. The web app checks its own site for service-worker
-updates when it loads and returns to view, and fetches app icons from `assets.rustgis.app`.
+updates when it loads and returns to view, and fetches app icons from `assets.powergis.app`.
 It downloads language fonts from that asset server when needed. The web GeoLibre tools
 download their runner from jsDelivr when needed; the tool list is cached between visits.
 
 ## Website analytics
 
-The websites we host, the documentation at [rustgis.app](https://rustgis.app) and the web app at
-[web.rustgis.app](https://web.rustgis.app), use Google Analytics 4 to count page visits and see
+The websites we host, the documentation at [powergis.app](https://powergis.app) and the web app at
+[web.powergis.app](https://web.powergis.app), use Google Analytics 4 to count page visits and see
 which pages are used. Google receives your IP address, the page you are on, the referring page and
 general device and browser information, and sets its own cookies in your browser. It is governed
 by [Google's privacy policy](https://policies.google.com/privacy).
 
 PowerGIS does not send layer contents, files or projects to Google Analytics. The web app's
-page-view event reports its address trimmed to the site and path (`https://web.rustgis.app/`),
+page-view event reports its address trimmed to the site and path (`https://web.powergis.app/`),
 without the query string or map hash; its referring address is trimmed the same way. The
 documentation reports the standard page address, which can include a query string, such as the
 words of a site search.

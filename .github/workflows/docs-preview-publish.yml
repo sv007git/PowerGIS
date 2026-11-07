@@ -1,13 +1,13 @@
 # Publishes the site docs-preview.yml built for a pull request to GitHub Pages: the `gh-pages`
-# branch of opengeos/rustgis-preview, a folder per pull request
-# (https://preview.rustgis.app/pr-<N>/, the app under app/). The branch's CNAME file, kept by every
+# branch of opengeos/powergis-preview, a folder per pull request
+# (https://preview.powergis.app/pr-<N>/, the app under app/). The branch's CNAME file, kept by every
 # publish, holds the domain. GitHub Pages takes files up to 100 MB; Cloudflare Pages, used before,
 # stopped at 25 MiB, which the app's WebAssembly reaches. A closed pull request's preview is
 # removed.
 #
 # Required repository secret:
 #   PREVIEW_DEPLOY_KEY - private half of an SSH deploy key with write access to
-#                        opengeos/rustgis-preview
+#                        opengeos/powergis-preview
 #
 # `workflow_run` runs this file as it is on main, with the repository's secrets, for every pull
 # request's build, forks included. It runs no pull request code and treats the build's artifacts as
@@ -181,8 +181,8 @@ jobs:
         run: |
           set -euo pipefail
           install -d -m 700 "$HOME/.ssh"
-          printf '%s\n' "$PREVIEW_DEPLOY_KEY" > "$HOME/.ssh/rustgis-preview"
-          chmod 600 "$HOME/.ssh/rustgis-preview"
+          printf '%s\n' "$PREVIEW_DEPLOY_KEY" > "$HOME/.ssh/powergis-preview"
+          chmod 600 "$HOME/.ssh/powergis-preview"
           gh api meta --jq '.ssh_keys[] | "github.com " + .' > "$HOME/.ssh/known_hosts"
           chmod 600 "$HOME/.ssh/known_hosts"
 
@@ -193,7 +193,7 @@ jobs:
           MODE: ${{ steps.pr.outputs.mode }}
           PR: ${{ steps.pr.outputs.number }}
           HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          GIT_SSH_COMMAND: ssh -i ~/.ssh/rustgis-preview -o IdentitiesOnly=yes
+          GIT_SSH_COMMAND: ssh -i ~/.ssh/powergis-preview -o IdentitiesOnly=yes
         run: |
           set -euo pipefail
           dir="pr-${PR}"
@@ -204,7 +204,7 @@ jobs:
           for attempt in 1 2 3 4 5 6; do
             [ "$attempt" -gt 1 ] && sleep $(((attempt - 1) * 15))
             rm -rf pages
-            if ! git clone -q --depth 1 --branch gh-pages git@github.com:opengeos/rustgis-preview.git pages; then
+            if ! git clone -q --depth 1 --branch gh-pages git@github.com:opengeos/powergis-preview.git pages; then
               continue
             fi
             base=$(git -C pages rev-parse HEAD)
@@ -251,7 +251,7 @@ jobs:
             const marker = '<!-- docs-preview -->';
             const issue_number = Number(process.env.PR);
             const sha = process.env.HEAD_SHA.slice(0, 7);
-            const url = `https://preview.rustgis.app/pr-${issue_number}/`;
+            const url = `https://preview.powergis.app/pr-${issue_number}/`;
             const approve = 'a maintainer adds the `preview` label (once per commit).';
             const body = process.env.MODE === 'awaiting'
               ? `${marker}\n### 📖 Docs preview\n\nCommit \`${sha}\` from a fork built, but isn't published until ${approve}`

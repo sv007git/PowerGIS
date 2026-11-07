@@ -5,7 +5,7 @@ use egui::{Align2, CornerRadius, Rect, Response, Sense, Stroke, Ui, pos2, vec2};
 use serde_json::Value;
 
 use crate::theme::{Tokens, regular, semibold};
-use crate::{RustGisApp, icons};
+use crate::{powergisApp, icons};
 
 /// Height of the ribbon's control area (without group labels).
 pub const CONTENT_H: f32 = 72.0;
@@ -53,7 +53,7 @@ impl<T: Copy + Default + PartialEq + Send + Sync + 'static> Dragged<T> {
 /// pointer press making it: a number dragged, or a colour picked in its picker, is one step to
 /// undo however many changes it makes (#1194). A change from the keyboard is a step of its own.
 /// Called just before the command runs, so the merge can't reach another command.
-pub(crate) fn one_step_per_press(app: &mut RustGisApp, r: &Response) {
+pub(crate) fn one_step_per_press(app: &mut powergisApp, r: &Response) {
     if let Some(t) = r.ctx.input(|i| i.pointer.press_start_time()) {
         app.session.merge_undo(format!("press {:?} {t}", r.id));
     }
@@ -65,25 +65,25 @@ pub fn text_w(ui: &Ui, s: &str, font: egui::FontId) -> f32 {
 
 /// The shortcut of a command run without parameters (`⌘S` on a Mac, as egui reads the keys,
 /// `Ctrl+S` elsewhere), or empty for none.
-pub fn shortcut_text(ctx: &egui::Context, app: &RustGisApp, id: &str) -> String {
+pub fn shortcut_text(ctx: &egui::Context, app: &powergisApp, id: &str) -> String {
     crate::keymap::shortcut_text(ctx, app, id, &Value::Null)
 }
 
 /// Whether a command exists and is enabled now.
-pub fn enabled(app: &RustGisApp, id: &str) -> bool {
+pub fn enabled(app: &powergisApp, id: &str) -> bool {
     match app.session.registry.get(id) {
         Some(s) => (s.enabled)(&app.session).is_none(),
-        None => id.starts_with("ui.") || rustgis_engine::plugins::command(id).is_some(),
+        None => id.starts_with("ui.") || powergis_engine::plugins::command(id).is_some(),
     }
 }
 
-pub fn why_disabled(app: &RustGisApp, id: &str) -> Option<&'static str> {
+pub fn why_disabled(app: &powergisApp, id: &str) -> Option<&'static str> {
     app.session.registry.get(id).and_then(|s| (s.enabled)(&app.session))
 }
 
 /// A rich tooltip: title (with the shortcut of `id` with `params`), description and why it's
 /// disabled.
-pub fn tooltip(app: &RustGisApp, resp: Response, title: &str, desc: &str, id: &str, params: &Value) -> Response {
+pub fn tooltip(app: &powergisApp, resp: Response, title: &str, desc: &str, id: &str, params: &Value) -> Response {
     let sc = crate::keymap::shortcut_text(&resp.ctx, app, id, params);
     let why = why_disabled(app, id);
     let contents = |ui: &mut Ui| {
@@ -111,9 +111,9 @@ fn bg(ui: &Ui, r: Rect, resp: &Response, checked: bool, t: &Tokens) {
     } else {
         return;
     };
-    ui.painter().rect_filled(r, CornerRadius::same(6), fill);
+    ui.painter().rect_filled(r, CornerRadius::same(7), fill);
     if checked {
-        ui.painter().rect_stroke(r, CornerRadius::same(6), Stroke::new(1.0, t.accent.gamma_multiply(0.55)), egui::StrokeKind::Inside);
+        ui.painter().rect_stroke(r, CornerRadius::same(7), Stroke::new(1.0, t.accent.gamma_multiply(0.65)), egui::StrokeKind::Inside);
     }
 }
 
@@ -125,7 +125,7 @@ pub fn caret(p: &egui::Painter, c: egui::Pos2, col: egui::Color32) {
 /// A large button: 32 px icon over a one- or two-line label. Returns the response.
 pub fn big(
     ui: &mut Ui,
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     icon: &str,
     label: &str,
     desc: &str,
@@ -186,7 +186,7 @@ fn paint_big(ui: &Ui, r: Rect, icon: &str, label: &str, on: bool, menu: bool, t:
 /// positions in a dynamic list can change.
 pub fn big_split_menu(
     ui: &mut Ui,
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     icon: &str,
     label: &str,
     desc: &str,
@@ -196,7 +196,7 @@ pub fn big_split_menu(
     menu_label: &str,
     menu_desc: &str,
     menu_enabled: bool,
-    menu: impl FnOnce(&mut Ui, &mut RustGisApp),
+    menu: impl FnOnce(&mut Ui, &mut powergisApp),
 ) -> (Response, Response) {
     let (label, desc, menu_label, menu_desc) = (tl!(label), tl!(desc), tl!(menu_label), tl!(menu_desc));
     let t = Tokens::get(ui.ctx());
@@ -245,7 +245,7 @@ pub fn big_split_menu(
 }
 
 /// A small button: 18 px icon with an optional label.
-pub fn small(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, desc: &str, id: &str, params: Value, checked: bool) -> Response {
+pub fn small(ui: &mut Ui, app: &mut powergisApp, icon: &str, label: &str, desc: &str, id: &str, params: Value, checked: bool) -> Response {
     let (label, desc) = (tl!(label), tl!(desc));
     let t = Tokens::get(ui.ctx());
     let tw = if label.is_empty() { 0.0 } else { text_w(ui, label, regular(11.5)) + 8.0 };
@@ -275,7 +275,7 @@ pub fn small(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, desc: &
 }
 
 /// A large button that opens a menu.
-pub fn big_menu(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, desc: &str, menu: impl FnOnce(&mut Ui, &mut RustGisApp)) {
+pub fn big_menu(ui: &mut Ui, app: &mut powergisApp, icon: &str, label: &str, desc: &str, menu: impl FnOnce(&mut Ui, &mut powergisApp)) {
     let resp = big(ui, app, icon, label, desc, "ui.menu", Value::Null, false, true);
     egui::Popup::menu(&resp).show(|ui| {
         ui.set_min_width(200.0);
@@ -285,7 +285,7 @@ pub fn big_menu(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, desc
 
 /// A large button that opens a menu with editable controls (text boxes, checkboxes, sliders).
 /// Clicks inside keep it open; action buttons close it themselves (`ui.close()`).
-pub fn big_form_menu(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, desc: &str, menu: impl FnOnce(&mut Ui, &mut RustGisApp)) {
+pub fn big_form_menu(ui: &mut Ui, app: &mut powergisApp, icon: &str, label: &str, desc: &str, menu: impl FnOnce(&mut Ui, &mut powergisApp)) {
     let resp = big(ui, app, icon, label, desc, "ui.menu", Value::Null, false, true);
     egui::Popup::menu(&resp).close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside).show(|ui| {
         ui.set_min_width(200.0);
@@ -294,7 +294,7 @@ pub fn big_form_menu(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str,
 }
 
 /// A small button that opens a menu.
-pub fn small_menu(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, desc: &str, menu: impl FnOnce(&mut Ui, &mut RustGisApp)) {
+pub fn small_menu(ui: &mut Ui, app: &mut powergisApp, icon: &str, label: &str, desc: &str, menu: impl FnOnce(&mut Ui, &mut powergisApp)) {
     small_menu_with(ui, app, icon, label, desc, egui::PopupCloseBehavior::CloseOnClick, menu);
 }
 
@@ -302,23 +302,23 @@ pub fn small_menu(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, de
 /// [`big_form_menu`]).
 pub fn small_form_menu(
     ui: &mut Ui,
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     icon: &str,
     label: &str,
     desc: &str,
-    menu: impl FnOnce(&mut Ui, &mut RustGisApp),
+    menu: impl FnOnce(&mut Ui, &mut powergisApp),
 ) {
     small_menu_with(ui, app, icon, label, desc, egui::PopupCloseBehavior::CloseOnClickOutside, menu);
 }
 
 fn small_menu_with(
     ui: &mut Ui,
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     icon: &str,
     label: &str,
     desc: &str,
     close: egui::PopupCloseBehavior,
-    menu: impl FnOnce(&mut Ui, &mut RustGisApp),
+    menu: impl FnOnce(&mut Ui, &mut powergisApp),
 ) {
     let (label, desc) = (tl!(label), tl!(desc));
     let t = Tokens::get(ui.ctx());
@@ -344,7 +344,7 @@ pub fn row_button(ui: &mut Ui, on: bool, button: egui::Button<'_>, expand: f32) 
     if on && (resp.hovered() || resp.is_pointer_button_down_on()) {
         let t = Tokens::get(ui.ctx());
         let fill = if resp.is_pointer_button_down_on() { t.pressed } else { t.hover };
-        ui.painter().set(under, egui::Shape::rect_filled(resp.rect.expand2(vec2(expand, 0.0)), CornerRadius::same(5), fill));
+        ui.painter().set(under, egui::Shape::rect_filled(resp.rect.expand2(vec2(expand, 0.0)), CornerRadius::same(6), fill));
     }
     resp
 }
@@ -353,7 +353,7 @@ pub fn row_button(ui: &mut Ui, on: bool, button: egui::Button<'_>, expand: f32) 
 const MENU_ICON_W: f32 = 22.0;
 
 /// A menu row that runs a command (disabled when the command is).
-pub fn menu_item(ui: &mut Ui, app: &mut RustGisApp, icon: &str, label: &str, id: &str, params: Value) {
+pub fn menu_item(ui: &mut Ui, app: &mut powergisApp, icon: &str, label: &str, id: &str, params: Value) {
     let on = enabled(app, id);
     let shortcut = crate::keymap::shortcut_text(ui.ctx(), app, id, &params);
     if menu_row(ui, icon, tl!(label), &shortcut, on).clicked() {
@@ -486,34 +486,36 @@ pub fn primary_button(ui: &mut Ui, label: &str, enabled: bool, min_size: egui::V
     // Screen readers (and UI tests) find it by its label.
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, enabled, label));
     let fill = if !enabled {
-        t.green.gamma_multiply(0.45)
+        t.accent.gamma_multiply(0.35)
     } else if resp.is_pointer_button_down_on() {
-        t.green.gamma_multiply(0.8)
+        t.accent.gamma_multiply(0.85)
     } else if resp.hovered() {
-        t.green.gamma_multiply(0.9)
+        t.accent.gamma_multiply(1.08)
     } else {
-        t.green
+        t.accent
     };
-    ui.painter().rect_filled(r, CornerRadius::same(6), fill);
-    centred_label(ui, r, label, font, egui::Color32::WHITE);
+    ui.painter().rect_filled(r, CornerRadius::same(7), fill);
+    centred_label(ui, r, label, font, t.on_accent);
     if enabled { resp.on_hover_cursor(egui::CursorIcon::PointingHand) } else { resp }
 }
 
 /// A dialog button (OK, Cancel…): `fill` paints it as the default action, otherwise it takes the
 /// theme's button look. Painted like [`primary_button`] so the label sits in the middle.
 pub fn dialog_button(ui: &mut Ui, label: &str, fill: Option<egui::Color32>, min_size: egui::Vec2) -> Response {
+    let t = Tokens::get(ui.ctx());
     let font = if fill.is_some() { semibold(12.5) } else { regular(12.5) };
-    let size = vec2(min_size.x.max(text_w(ui, label, font.clone()) + 24.0), min_size.y);
+    let size = vec2(min_size.x.max(text_w(ui, label, font.clone()) + 24.0), min_size.y.max(28.0));
     let (r, resp) = ui.allocate_exact_size(size, Sense::click());
     resp.widget_info(|| egui::WidgetInfo::labeled(egui::Role::Button, true, label));
     let v = *ui.style().interact(&resp);
-    let (bg, text) = match fill {
-        Some(c) if resp.is_pointer_button_down_on() => (c.gamma_multiply(0.8), egui::Color32::WHITE),
-        Some(c) if resp.hovered() => (c.gamma_multiply(0.9), egui::Color32::WHITE),
-        Some(c) => (c, egui::Color32::WHITE),
-        None => (v.weak_bg_fill, v.text_color()),
+    let (bg, text, stroke) = match fill {
+        Some(c) if resp.is_pointer_button_down_on() => (c.gamma_multiply(0.85), t.on_accent, Stroke::NONE),
+        Some(c) if resp.hovered() => (c.gamma_multiply(1.08), t.on_accent, Stroke::NONE),
+        Some(c) => (c, t.on_accent, Stroke::NONE),
+        None if resp.hovered() => (t.hover, t.text, Stroke::new(1.0, t.border_strong)),
+        None => (v.weak_bg_fill, v.text_color(), Stroke::new(1.0, t.border)),
     };
-    ui.painter().rect(r, v.corner_radius, bg, if fill.is_some() { Stroke::NONE } else { v.bg_stroke }, egui::StrokeKind::Inside);
+    ui.painter().rect(r, CornerRadius::same(7), bg, stroke, egui::StrokeKind::Inside);
     centred_label(ui, r, label, font, text);
     resp
 }

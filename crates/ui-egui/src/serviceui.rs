@@ -1,8 +1,8 @@
 //! Background group import/refresh for both desktop and browser. Discovery and updates live in
 //! engine commands; this state machine only supplies their downloaded documents.
 
-use crate::{RustGisApp, Slot, fetch_into, fetch_into_limited, i18n};
-use rustgis_engine::data::ogc::{self, Pages, Step};
+use crate::{powergisApp, Slot, fetch_into, fetch_into_limited, i18n};
+use powergis_engine::data::ogc::{self, Pages, Step};
 use serde_json::{Value, json};
 use std::collections::VecDeque;
 
@@ -50,7 +50,7 @@ pub(crate) fn kind_of(t: &str) -> &'static str {
 /// features crossing `area` (longitude/latitude) when given, whole otherwise. `dialog` tells where
 /// the result is reported.
 pub(crate) fn add_layer(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     src: &ServiceSource,
     l: &Value,
     time: &str,
@@ -64,7 +64,7 @@ pub(crate) fn add_layer(
 /// layer is added, now or when its document or download lands, Recent shows its source under that
 /// name. An add that fails or is dropped is not renamed.
 pub(crate) fn add_layer_from(
-    app: &mut RustGisApp,
+    app: &mut powergisApp,
     src: &ServiceSource,
     l: &Value,
     time: &str,
@@ -127,7 +127,7 @@ pub(crate) fn add_layer_from(
     }
 }
 
-pub fn start(app: &mut RustGisApp, p: &Value, refresh: bool) -> Result<(), String> {
+pub fn start(app: &mut powergisApp, p: &Value, refresh: bool) -> Result<(), String> {
     if !p.is_object() {
         return Err(tl!("Give the service's web address").into());
     }
@@ -168,7 +168,7 @@ pub fn start(app: &mut RustGisApp, p: &Value, refresh: bool) -> Result<(), Strin
     } else {
         let url = task.params.get("url").and_then(Value::as_str).unwrap_or_default();
         let kind = task.params.get("type").and_then(Value::as_str);
-        let caps = rustgis_engine::data::ogc::capabilities_url(url, kind);
+        let caps = powergis_engine::data::ogc::capabilities_url(url, kind);
         task.slot = fetch_into(&caps);
         task.document = Some(caps);
     }
@@ -178,7 +178,7 @@ pub fn start(app: &mut RustGisApp, p: &Value, refresh: bool) -> Result<(), Strin
 }
 
 impl Import {
-    fn discover(&mut self, app: &mut RustGisApp) -> Result<(), String> {
+    fn discover(&mut self, app: &mut powergisApp) -> Result<(), String> {
         let listing = app.session.run("service.groupPlan", &self.params)?;
         if let Some(next) = listing.get("next").and_then(Value::as_str) {
             self.document = Some(next.into());
@@ -199,11 +199,11 @@ impl Import {
     fn next(&mut self) {
         self.current = self.remaining.pop_front();
         if let Some(url) = &self.current {
-            self.slot = fetch_into_limited(url, rustgis_engine::cmd::service::MAX_GROUP_BYTES.saturating_sub(self.bytes));
+            self.slot = fetch_into_limited(url, powergis_engine::cmd::service::MAX_GROUP_BYTES.saturating_sub(self.bytes));
         }
     }
 
-    fn landed(&mut self, app: &mut RustGisApp, bytes: Vec<u8>) -> Result<(), String> {
+    fn landed(&mut self, app: &mut powergisApp, bytes: Vec<u8>) -> Result<(), String> {
         if let Some(document) = self.document.take() {
             let text = crate::service_text(bytes).map_err(|_| tl!("The service's answer isn't UTF-8 text").to_string())?;
             if self.params.get("text").is_none() {
@@ -217,7 +217,7 @@ impl Import {
             self.discover(app)
         } else {
             self.bytes = self.bytes.saturating_add(bytes.len());
-            if self.bytes > rustgis_engine::cmd::service::MAX_GROUP_BYTES {
+            if self.bytes > powergis_engine::cmd::service::MAX_GROUP_BYTES {
                 return Err(tl!("Service group data exceeds 64 MB.").into());
             }
             let text = String::from_utf8(bytes).map_err(|_| tl!("The service's answer isn't UTF-8 text").to_string())?;
@@ -228,12 +228,12 @@ impl Import {
     }
 }
 
-fn active_map(app: &RustGisApp) -> (usize, String) {
+fn active_map(app: &powergisApp) -> (usize, String) {
     let i = app.session.project.active_map;
     (i, app.session.project.maps.get(i).map(|m| m.name.clone()).unwrap_or_default())
 }
 
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(mut task) = app.ui.service_import.take() else { return };
     if !app.session.download_is_pending(task.token) || active_map(app) != task.map {
         app.session.download_failed(task.token);
@@ -295,8 +295,8 @@ pub struct PageRead {
 
 /// Starts reading a service's features past their first page (`first`, landed): added now when it
 /// leads nowhere, else read on in the background ([`poll_pages`]).
-pub(crate) fn read_pages(app: &mut RustGisApp, landed: Landed, first: Vec<u8>) {
-    let left = rustgis_engine::render::rustgis_tiles::cache::MAX_DOWNLOAD.saturating_sub(first.len());
+pub(crate) fn read_pages(app: &mut powergisApp, landed: Landed, first: Vec<u8>) {
+    let left = powergis_engine::render::powergis_tiles::cache::MAX_DOWNLOAD.saturating_sub(first.len());
     let step = ogc::read_pages(&landed.url, first, ogc::MAX_PAGED_FEATURES);
     if matches!(step, Step::Fetch(_)) {
         app.session.notify(i18n::fmt("Reading {url} page by page…", &[("url", &landed.url)]), false);
@@ -306,7 +306,7 @@ pub(crate) fn read_pages(app: &mut RustGisApp, landed: Landed, first: Vec<u8>) {
 
 /// Hands each page that landed to its read, and adds the layers whose features are all read. A
 /// read whose project was closed meanwhile is dropped.
-pub fn poll_pages(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll_pages(app: &mut powergisApp, ctx: &egui::Context) {
     if app.ui.service_pages.is_empty() {
         return;
     }
@@ -333,10 +333,10 @@ pub fn poll_pages(app: &mut RustGisApp, ctx: &egui::Context) {
 
 /// The next answer fetched, or the collection added (with a note when some features were left
 /// unread).
-fn go_on(app: &mut RustGisApp, landed: Landed, left: usize, step: Step) {
+fn go_on(app: &mut powergisApp, landed: Landed, left: usize, step: Step) {
     match step {
         Step::Fetch(pages) => {
-            let slot = match rustgis_engine::render::rustgis_tiles::address::check(pages.next_url(), Some(pages.referrer())) {
+            let slot = match powergis_engine::render::powergis_tiles::address::check(pages.next_url(), Some(pages.referrer())) {
                 Ok(()) => fetch_into_limited(pages.next_url(), left),
                 Err(e) => Slot::new(std::sync::Mutex::new(Some(Err(e)))),
             };

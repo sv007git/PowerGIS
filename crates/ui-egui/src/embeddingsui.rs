@@ -6,11 +6,11 @@
 //! `embeddings.*` commands, so the change is undoable like any other.
 
 use egui::vec2;
-use rustgis_engine::render::rustgis_tiles::embeddings::{self as emb, EmbeddingDataset, Found, Tile, tessera};
-use rustgis_engine::render::rustgis_tiles::{cache, cog};
+use powergis_engine::render::powergis_tiles::embeddings::{self as emb, EmbeddingDataset, Found, Tile, tessera};
+use powergis_engine::render::powergis_tiles::{cache, cog};
 use serde_json::json;
 
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 /// A read under way: a search, or a tile's data for the map.
 enum Read {
@@ -79,7 +79,7 @@ fn picked(st: &State) -> &'static EmbeddingDataset {
 }
 
 /// Picks a dataset (`ui.dialog {"name": "embeddings", "dataset": …}`).
-pub fn pick(app: &mut RustGisApp, id: &str) -> Result<(), String> {
+pub fn pick(app: &mut powergisApp, id: &str) -> Result<(), String> {
     let d = emb::dataset(id).ok_or_else(|| format!("unknown dataset '{id}' (embeddings.datasets lists them)"))?;
     app.ui.embeddings.select(d);
     Ok(())
@@ -102,8 +102,8 @@ impl State {
 }
 
 /// The map's extent, in longitude/latitude.
-fn view_bbox(app: &RustGisApp) -> Result<[f64; 4], String> {
-    let e = rustgis_engine::cmd::workspace::view_extent(&app.session);
+fn view_bbox(app: &powergisApp) -> Result<[f64; 4], String> {
+    let e = powergis_engine::cmd::workspace::view_extent(&app.session);
     if e.is_empty() {
         return Err(tl!("The map's extent isn't known yet").to_string());
     }
@@ -111,7 +111,7 @@ fn view_bbox(app: &RustGisApp) -> Result<[f64; 4], String> {
 }
 
 /// Lands a search or a read.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let landed = match &app.ui.embeddings.reading {
         None => return,
         Some(Read::Search(slot)) => slot.lock().unwrap_or_else(|e| e.into_inner()).take().map(Ok),
@@ -181,7 +181,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Replaces the last search's footprints with this one's.
-fn show_footprints(app: &mut RustGisApp) {
+fn show_footprints(app: &mut powergisApp) {
     if let Some((old, opened)) = app.ui.embeddings.footprints.take()
         && opened == app.session.opened
         && app.session.map().layer(old).is_some()
@@ -207,7 +207,7 @@ fn show_footprints(app: &mut RustGisApp) {
 }
 
 /// Starts a search where the map is.
-fn search(app: &mut RustGisApp) {
+fn search(app: &mut powergisApp) {
     let bbox = match view_bbox(app) {
         Ok(b) => b,
         Err(e) => {
@@ -235,7 +235,7 @@ fn search(app: &mut RustGisApp) {
 
 /// Shows a tile on the map: AlphaEarth's at once (read in place as the map needs it), the others
 /// read for the view first.
-fn add(app: &mut RustGisApp, i: usize) {
+fn add(app: &mut powergisApp, i: usize) {
     let Some(tile) = app.ui.embeddings.found.get(i).cloned() else { return };
     app.ui.embeddings.error = None;
     match tile.dataset {
@@ -263,7 +263,7 @@ fn add(app: &mut RustGisApp, i: usize) {
                         if v.points.is_empty() {
                             return Err(tl!("Earth Index has no points in the view").to_string());
                         }
-                        Ok(rustgis_engine::data::io::to_geojson(&emb::points_dataset(&n, &v, dim)).to_string().into_bytes())
+                        Ok(powergis_engine::data::io::to_geojson(&emb::points_dataset(&n, &v, dim)).to_string().into_bytes())
                     });
                     land(r);
                 }),
@@ -296,7 +296,7 @@ fn add(app: &mut RustGisApp, i: usize) {
                                 bands,
                                 Box::new(move |r| {
                                     land(r.and_then(|raster| {
-                                        rustgis_engine::data::raster::geotiff::write(&raster, 0).map_err(|e| e.to_string())
+                                        powergis_engine::data::raster::geotiff::write(&raster, 0).map_err(|e| e.to_string())
                                     }))
                                 }),
                             )
@@ -326,7 +326,7 @@ fn data_slot() -> (Slot<Result<Vec<u8>, String>>, Land) {
 }
 
 /// Shows the bands and stretch picked on the AlphaEarth layers on the map.
-fn restyle(app: &mut RustGisApp) {
+fn restyle(app: &mut powergisApp) {
     let st = &app.ui.embeddings;
     let (bands, s) = (st.aef_bands.map(|b| b + 1), st.stretch);
     // AlphaEarth's layers: COGs shown dequantised as AlphaEarth's, by their place in the stack
@@ -337,7 +337,7 @@ fn restyle(app: &mut RustGisApp) {
         .tiles
         .iter()
         .enumerate()
-        .filter(|(_, t)| t.kind == rustgis_engine::map::TileKind::Cog && cog::split(&t.url).1.aef)
+        .filter(|(_, t)| t.kind == powergis_engine::map::TileKind::Cog && cog::split(&t.url).1.aef)
         .map(|(i, _)| i)
         .collect();
     if shown.is_empty() {
@@ -367,7 +367,7 @@ fn band_row(ui: &mut egui::Ui, bands: &mut [usize; 3], max: usize) {
 }
 
 /// The pane.
-pub fn pane(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn pane(app: &mut powergisApp, ui: &mut egui::Ui) {
     let t = crate::theme::Tokens::get(ui.ctx());
     ui.label(
         egui::RichText::new(tl!(

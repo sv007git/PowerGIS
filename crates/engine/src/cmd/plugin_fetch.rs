@@ -2,7 +2,7 @@
 //! from a web address (an API's answer, a service's index).
 //!
 //! The address must be `http(s)://` and on the internet: never this computer, the local network
-//! or a forbidden address (see `rustgis_tiles::address`), and no redirect may lead there. It is
+//! or a forbidden address (see `powergis_tiles::address`), and no redirect may lead there. It is
 //! read anonymously (never signed with an S3 connection's credentials), at most
 //! [`MAX_BYTES`], and must be UTF-8. Answers are kept for a while ([`TTL`]) in a small cache,
 //! so a plugin walking the same chain of documents again doesn't fetch them again.
@@ -19,7 +19,7 @@ use std::sync::Mutex;
 use serde_json::{Value, json};
 use web_time::{Duration, Instant};
 
-use crate::render::rustgis_tiles::{address, s3};
+use crate::render::powergis_tiles::{address, s3};
 use crate::{CmdResult, Session};
 
 /// The most bytes a fetched document may have.
@@ -192,7 +192,7 @@ fn start(key: &str, url: &str) {
         c.in_flight.push((key.to_string(), Instant::now()));
     }
     let (key, url) = (key.to_string(), url.to_string());
-    crate::render::rustgis_tiles::cache::download_limited(
+    crate::render::powergis_tiles::cache::download_limited(
         &s3::anonymous(&url),
         MAX_BYTES,
         Box::new(move |r| {
@@ -254,9 +254,9 @@ impl Calls {
         // (or a redirect to one) is refused there. Tests fetch from a server on this computer.
         let (fetched, within) = (&s3::anonymous(url), TIMEOUT.min(left));
         let bytes = if allow_local() {
-            crate::render::rustgis_tiles::cache::download_blocking_within(fetched, MAX_BYTES, within)
+            crate::render::powergis_tiles::cache::download_blocking_within(fetched, MAX_BYTES, within)
         } else {
-            crate::render::rustgis_tiles::cache::download_public_within(fetched, MAX_BYTES, within)
+            crate::render::powergis_tiles::cache::download_public_within(fetched, MAX_BYTES, within)
         };
         // Errors are kept too (for `ERROR_TTL`), so a plugin run again and again on an address
         // that doesn't answer doesn't wait for it each time.
@@ -346,7 +346,7 @@ mod tests {
             "file:///etc/passwd",
             "s3://bucket/key",
             "ftp://example.com/x",
-            "rustgis-anonymous:https://example.com/",
+            "powergis-anonymous:https://example.com/",
             "http://localhost:8080/",
             "http://127.0.0.1/",
             "http://10.0.0.1/",

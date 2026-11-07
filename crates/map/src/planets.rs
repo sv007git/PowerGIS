@@ -15,7 +15,7 @@
 pub struct PlanetBasemap {
     /// Its id, the tile layer's catalog id.
     pub id: &'static str,
-    /// The [`rustgis_geom::Body`] it shows.
+    /// The [`powergis_geom::Body`] it shows.
     pub body: &'static str,
     pub name: &'static str,
     pub url: &'static str,
@@ -117,11 +117,11 @@ mod tests {
 
     #[test]
     fn every_body_but_the_earth_has_basemaps() {
-        for body in rustgis_geom::BODIES {
+        for body in powergis_geom::BODIES {
             assert_eq!(basemaps_of(body.id).next().is_some(), !body.is_earth(), "{}", body.id);
         }
         for (i, b) in BASEMAPS.iter().enumerate() {
-            assert!(rustgis_geom::Body::find(b.body).is_some(), "{}", b.id);
+            assert!(powergis_geom::Body::find(b.body).is_some(), "{}", b.id);
             assert!(b.url.starts_with("https://") && b.url.contains("{z}/{x}/{y}"), "{}", b.url);
             assert!(BASEMAPS.iter().skip(i + 1).all(|o| o.id != b.id), "{}", b.id);
             // The mosaics passed through are TMS; the warped WMS layers and CARTO's are XYZ.

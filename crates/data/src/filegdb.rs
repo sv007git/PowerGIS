@@ -19,7 +19,7 @@
 
 use crate::raster::{Crs, Transformer};
 use crate::{DataError, Dataset, Field, FieldType, Geometry, GeometryType, ReadReport, Result, Value};
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 use std::path::Path;
 
 /// The largest table read (its `.gdbtable` is read whole).

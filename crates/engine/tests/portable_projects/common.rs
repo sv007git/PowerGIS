@@ -1,4 +1,4 @@
-use rustgis_engine::{Project, Session};
+use powergis_engine::{Project, Session};
 use serde_json::{Value, json};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -12,7 +12,7 @@ impl Fixture {
         static NEXT: AtomicU64 = AtomicU64::new(0);
         let nonce = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
         let root = std::env::temp_dir().join(format!(
-            "rustgis-portable-{label}-{}-{nonce}-{}",
+            "powergis-portable-{label}-{}-{nonce}-{}",
             std::process::id(),
             NEXT.fetch_add(1, Ordering::Relaxed)
         ));
@@ -50,7 +50,7 @@ pub fn sample_file(path: &Path, layer: &str) {
 }
 
 pub fn raster_file(path: &Path, bands: usize) {
-    use rustgis_engine::data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_engine::data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     assert!(matches!(bands, 1 | 3 | 4));
     let transform = GeoTransform { origin_x: 10.0, origin_y: 45.04, pixel_width: 0.01, pixel_height: -0.01 };
     let values = (0..bands).map(|band| (0..16).map(|i| (i + band * 20) as f32).collect()).collect();
@@ -60,7 +60,7 @@ pub fn raster_file(path: &Path, bands: usize) {
 }
 
 pub fn archive_file(path: &Path) {
-    use rustgis_engine::render::rustgis_tiles::{mvt, pmtiles};
+    use powergis_engine::render::powergis_tiles::{mvt, pmtiles};
     let feature = mvt::Feature {
         id: Some(1),
         kind: mvt::GeomKind::Point,
@@ -88,7 +88,7 @@ pub fn gpkg_file(path: &Path, tables: &[&str]) {
     .unwrap();
     let mut blob = b"GP\x00\x01".to_vec();
     blob.extend_from_slice(&4326i32.to_le_bytes());
-    blob.extend(rustgis_engine::data::wkb::encode(&rustgis_engine::data::Geometry::Point(rustgis_engine::data::Coord::new(2.35, 48.85))));
+    blob.extend(powergis_engine::data::wkb::encode(&powergis_engine::data::Geometry::Point(powergis_engine::data::Coord::new(2.35, 48.85))));
     for table in tables {
         assert!(!table.is_empty() && table.bytes().all(|b| b.is_ascii_alphanumeric() || b == b'_'));
         c.execute_batch(&format!(

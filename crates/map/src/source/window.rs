@@ -1,7 +1,7 @@
 //! A view is decoded and projected on the source worker. The UI installs Arc-backed caches.
-use rustgis_data::source::{Batch, FeatureSource, Request, memory};
-use rustgis_data::{DataError, Geometry, Result};
-use rustgis_geom::Extent;
+use powergis_data::source::{Batch, FeatureSource, Request, memory};
+use powergis_data::{DataError, Geometry, Result};
+use powergis_geom::Extent;
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -89,8 +89,8 @@ fn read_with_fields(
     let pad = |batch: &mut Batch| -> Result<()> {
         if let Some(fields) = fields {
             let row = fields
-                .saturating_mul(std::mem::size_of::<rustgis_data::Value>())
-                .saturating_add(std::mem::size_of::<rustgis_data::Feature>());
+                .saturating_mul(std::mem::size_of::<powergis_data::Value>())
+                .saturating_add(std::mem::size_of::<powergis_data::Feature>());
             let kept = bytes / row;
             if !batch.features.is_empty() && kept == 0 {
                 return Err(DataError::Format(
@@ -102,14 +102,14 @@ fn read_with_fields(
                 batch.complete = false;
             }
             for feature in &mut batch.features {
-                feature.attrs.resize(fields, rustgis_data::Value::Null);
+                feature.attrs.resize(fields, powergis_data::Value::Null);
             }
         }
         Ok(())
     };
     let mut batch = if estimate == 0 || req.limit == 0 { source.read_budgeted(&request, bytes)? } else { source.read(&request)? };
     // Trusted row sizes avoid a second probe, but never exempt a newly oversized row.
-    if batch.features.iter().any(|f| std::mem::size_of::<rustgis_data::Feature>().saturating_add(memory::feature_bytes(f)) > bytes) {
+    if batch.features.iter().any(|f| std::mem::size_of::<powergis_data::Feature>().saturating_add(memory::feature_bytes(f)) > bytes) {
         return Err(DataError::Format("one feature exceeds the view memory budget; load it explicitly for full processing".into()));
     }
     pad(&mut batch)?;
@@ -122,7 +122,7 @@ fn read_with_fields(
         // An initial sample may hit only deleted/unreadable rows. It is not proof that
         // the matching extent is empty; let the bounded provider try a wider sample.
         let mean = if batch.features.is_empty() {
-            std::mem::size_of::<rustgis_data::Feature>().saturating_mul(4)
+            std::mem::size_of::<powergis_data::Feature>().saturating_mul(4)
         } else {
             base_bytes(&batch, &projected).div_ceil(batch.features.len())
         };
@@ -170,8 +170,8 @@ fn read_with_fields(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Dataset, Field, FieldType, GeometryType, Value};
-    use rustgis_geom::Coord;
+    use powergis_data::{Dataset, Field, FieldType, GeometryType, Value};
+    use powergis_geom::Coord;
 
     fn source() -> Box<dyn FeatureSource> {
         let mut ds = Dataset::new("complex", GeometryType::Polyline, vec![Field::new("text", FieldType::Text)]);
@@ -181,8 +181,8 @@ mod tests {
                 vec![Value::Text("x".repeat(300))],
             );
         }
-        let (bytes, _) = rustgis_data::io::write_bytes(&ds, "fgb").unwrap();
-        rustgis_data::source::open_bytes("complex.fgb", bytes, None).unwrap()
+        let (bytes, _) = powergis_data::io::write_bytes(&ds, "fgb").unwrap();
+        powergis_data::source::open_bytes("complex.fgb", bytes, None).unwrap()
     }
 
     #[test]
@@ -341,7 +341,7 @@ mod tests {
             fail: Arc<AtomicBool>,
         }
         impl FeatureSource for Failing {
-            fn info(&self) -> &rustgis_data::source::SourceInfo {
+            fn info(&self) -> &powergis_data::source::SourceInfo {
                 self.inner.info()
             }
             fn read(&self, req: &Request) -> Result<Batch> {
@@ -377,7 +377,7 @@ mod tests {
     fn an_empty_incomplete_probe_does_not_hide_the_source() {
         struct Sparse(Box<dyn FeatureSource>);
         impl FeatureSource for Sparse {
-            fn info(&self) -> &rustgis_data::source::SourceInfo {
+            fn info(&self) -> &powergis_data::source::SourceInfo {
                 self.0.info()
             }
             fn read(&self, req: &Request) -> Result<Batch> {
@@ -422,7 +422,7 @@ mod tests {
             large: AtomicBool,
         }
         impl FeatureSource for Counted {
-            fn info(&self) -> &rustgis_data::source::SourceInfo {
+            fn info(&self) -> &powergis_data::source::SourceInfo {
                 self.inner.info()
             }
             fn read(&self, req: &Request) -> Result<Batch> {
@@ -440,9 +440,9 @@ mod tests {
         for i in 0..1000 {
             ds.push(Some(Geometry::Point(Coord::new(i as f64 * 0.01, 0.0))), vec![]);
         }
-        let (bytes, _) = rustgis_data::io::write_bytes(&ds, "fgb").unwrap();
+        let (bytes, _) = powergis_data::io::write_bytes(&ds, "fgb").unwrap();
         let source = Counted {
-            inner: rustgis_data::source::open_bytes("points.fgb", bytes, None).unwrap(),
+            inner: powergis_data::source::open_bytes("points.fgb", bytes, None).unwrap(),
             limits: Mutex::new(vec![]),
             large: AtomicBool::new(false),
         };

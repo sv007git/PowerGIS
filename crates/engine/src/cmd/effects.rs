@@ -1,8 +1,8 @@
 //! Style tab effects: blending, masking, swipe, raster rotation, display
 //! filters, point aggregation, and extrusion with face culling, lighting and shadows.
 
-use rustgis_data::GeometryType;
-use rustgis_map::effects::{Aggregation, Blend, DisplayFilter, Extrusion};
+use powergis_data::GeometryType;
+use powergis_map::effects::{Aggregation, Blend, DisplayFilter, Extrusion};
 use serde_json::{Value, json};
 
 use super::layer::with;
@@ -140,7 +140,7 @@ fn display_filters(s: &mut Session, p: &Value) -> CmdResult {
     let mut filters = Vec::new();
     for v in list.iter().take(50) {
         let w = v.get("where").and_then(Value::as_str).map(str::trim).filter(|w| !w.is_empty()).ok_or("each filter has a where clause")?;
-        rustgis_data::query::parse(w, ds)?;
+        powergis_data::query::parse(w, ds)?;
         let scale = |k: &str| v.get(k).and_then(Value::as_f64).filter(|x| x.is_finite() && *x > 0.0);
         filters.push(DisplayFilter {
             name: v.get("name").and_then(Value::as_str).unwrap_or("Filter").chars().take(100).collect(),

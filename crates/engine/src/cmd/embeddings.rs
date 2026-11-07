@@ -6,12 +6,12 @@
 //! On the desktop and the command line these commands read what they need, waiting for it; the
 //! web app reads it off the frame and hands it over (`ran`).
 
-use rustgis_data::raster;
-use rustgis_map::raster::RasterLayer;
+use powergis_data::raster;
+use powergis_map::raster::RasterLayer;
 use serde_json::{Value, json};
 
 use super::{f, ps};
-use crate::render::rustgis_tiles::embeddings::{self as emb, tessera};
+use crate::render::powergis_tiles::embeddings::{self as emb, tessera};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -139,7 +139,7 @@ fn add(s: &mut Session, p: &Value) -> CmdResult {
                 return Err("stretch is a number above 0, at most 1".into());
             }
             let look = emb::aef_look(b, stretch);
-            let file = crate::render::rustgis_tiles::cog::split(url).0;
+            let file = crate::render::powergis_tiles::cog::split(url).0;
             // The year from the tile's address (…/annual/2024/10N/…), when it has one.
             let year = file.split('/').find(|s| s.len() == 4 && s.parse::<i32>().is_ok());
             let name = name.unwrap_or_else(|| {
@@ -149,10 +149,10 @@ fn add(s: &mut Session, p: &Value) -> CmdResult {
             // Its header read first (as layer.addUrl does), so the layer is framed and its bands
             // known; in the browser nothing may wait, and it is read as the map draws.
             #[cfg(not(target_arch = "wasm32"))]
-            if !crate::render::rustgis_tiles::cog::probe_blocking(file)? {
+            if !crate::render::powergis_tiles::cog::probe_blocking(file)? {
                 return Err(format!("{file}: not a cloud-optimised GeoTIFF"));
             }
-            super::layer::add_cog(s, &json!({"name": name}), &crate::render::rustgis_tiles::cog::with_look(file, &look))
+            super::layer::add_cog(s, &json!({"name": name}), &crate::render::powergis_tiles::cog::with_look(file, &look))
         }
         "earth-index" => add_points(s, p, name),
         _ => add_tessera(s, p, d, name),
@@ -173,7 +173,7 @@ fn add_points(s: &mut Session, p: &Value, name: Option<String>) -> CmdResult {
         Some((_, bytes)) => {
             let read = std::str::from_utf8(&bytes)
                 .map_err(|_| "the points aren't UTF-8 text".to_string())
-                .and_then(|text| rustgis_data::io::read_geojson(text, name.as_deref().unwrap_or("Earth Index")).map_err(|e| e.to_string()));
+                .and_then(|text| powergis_data::io::read_geojson(text, name.as_deref().unwrap_or("Earth Index")).map_err(|e| e.to_string()));
             // A read handed over is used once, added or not (the pane reads again), so a failed
             // one doesn't stay in the session.
             read?.0
@@ -215,7 +215,7 @@ fn add_points(s: &mut Session, p: &Value, name: Option<String>) -> CmdResult {
 /// Colours a points layer by its `color` field (its principal components, 64 colours), as small
 /// squares.
 pub(crate) fn style_points(s: &mut Session, id: u32) {
-    use rustgis_map::{Marker, Renderer, Rgba, Symbol};
+    use powergis_map::{Marker, Renderer, Rgba, Symbol};
     let Some(l) = s.map_mut().layer_mut(id) else { return };
     let Some(fi) = l.dataset.field_index("color") else { return };
     let mut colors: Vec<String> = l.dataset.features.iter().filter_map(|f| f.attrs.get(fi)).map(|v| v.to_string()).collect();
@@ -313,19 +313,19 @@ mod tests {
     #[test]
     fn points_coloured_by_their_components() {
         let mut s = Session::new(Project::default());
-        let v = rustgis_data::source::parquet::Vectors {
+        let v = powergis_data::source::parquet::Vectors {
             points: vec![(1.0, 2.0), (1.1, 2.0), (1.2, 2.1)],
             dims: 2,
             values: vec![0.0, 1.0, 5.0, 3.0, 9.0, 0.0],
         };
         let ds = emb::points_dataset("ei", &v, None);
-        let text = rustgis_data::io::to_geojson(&ds).to_string();
+        let text = powergis_data::io::to_geojson(&ds).to_string();
         let id = s.download_started();
         assert!(s.download_landed(id, text.into_bytes()));
         let r = s.run("embeddings.add", &json!({"dataset": "earth-index", "ran": id, "name": "EI"})).unwrap();
         assert_eq!(r["features"], 3);
         let l = s.map().layers.iter().find(|l| l.dataset.name == "EI").unwrap();
-        assert!(matches!(&l.renderer, rustgis_map::Renderer::Unique { field, classes, .. } if field == "color" && !classes.is_empty()));
+        assert!(matches!(&l.renderer, powergis_map::Renderer::Unique { field, classes, .. } if field == "color" && !classes.is_empty()));
         // Bytes that can't be added are dropped, not kept in the session.
         let id = s.download_started();
         assert!(s.download_landed(id, vec![0xff, 0xfe]));

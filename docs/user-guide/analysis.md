@@ -29,7 +29,7 @@ ignoring letter case. The toolbar opens Select By Attributes and zooms to, switc
 deletes the selection, adds or calculates a field, and calculates geometry attributes.
 
 <figure markdown="span">
-  ![The attribute table docked under the map: the 14 African countries of more than 30 million people, selected by attributes, highlighted on the map and in the table](https://assets.rustgis.app/images/attribute-table.webp)
+  ![The attribute table docked under the map: the 14 African countries of more than 30 million people, selected by attributes, highlighted on the map and in the table](https://assets.powergis.app/images/attribute-table.webp)
   <figcaption>The attribute table, with a selection highlighted on the map and in the table.</figcaption>
 </figure>
 
@@ -47,7 +47,7 @@ gdp_md IS NULL
 ## Geoprocessing tools
 
 <figure markdown="span">
-  ![The Analyze tab's tool gallery and the Tools pane with Buffer open; 300 km dissolved buffers around African cities](https://assets.rustgis.app/images/buffer-history.webp)
+  ![The Analyze tab's tool gallery and the Tools pane with Buffer open; 300 km dissolved buffers around African cities](https://assets.powergis.app/images/buffer-history.webp)
   <figcaption>The Analyze tab's tool gallery and the Tools pane running Buffer.</figcaption>
 </figure>
 
@@ -63,8 +63,8 @@ Buffer and Select Layer By Location accept **Kilometers**, **Meters**, **Miles**
 
 The History pane lists each run with when it ran (in UTC). Its **⋯** menu, or a right-click on
 the tool's name, copies a run as code, with the parameters it ran with: **Copy as Python** (a
-call for the [`rustgis` package](../python.md), one parameter a line), **Copy as Command** (a
-line for the Script pane) and **Copy as CLI Command** (`rustgis-cli run --project … --cmd …`,
+call for the [`powergis` package](../python.md), one parameter a line), **Copy as Command** (a
+line for the Script pane) and **Copy as CLI Command** (`powergis-cli run --project … --cmd …`,
 quoted for a POSIX shell: macOS, Linux, WSL or Git Bash; on Windows' own shells, use the Python
 or the Script line). **Open in Tool** opens the tool's form with those values, to change and run
 again. **Save as Python Script…** writes the whole history as a script that opens the project
@@ -533,7 +533,7 @@ The AI Assistant uses Pivot Table for questions such as "mean household income b
 it runs the tool with `county` as the row field, `year` as the pivot field and `MEAN`, then reads
 the table it names with `read_features`, a row per county.
 <figure markdown="span">
-  ![Tissot's indicatrix on the Robinson projection: circles of 800 km every 30°, stretched and sheared toward the poles](https://assets.rustgis.app/images/tissot.webp)
+  ![Tissot's indicatrix on the Robinson projection: circles of 800 km every 30°, stretched and sheared toward the poles](https://assets.powergis.app/images/tissot.webp)
   <figcaption>Tissot's indicatrix on Robinson: equal circles, stretched and sheared by the projection.</figcaption>
 </figure>
 
@@ -582,8 +582,8 @@ single `geolibre` program (about 20 MB to download). In the Tools pane, click
 platform from the [geolibre-rust releases](https://github.com/opengeos/geolibre-rust/releases/latest),
 checks it against its published SHA-256 checksum (which catches a corrupted download; the
 release itself is trusted as when you download it by hand) and installs it in its data folder
-(by default `~/.local/share/rustgis/geolibre` on Linux, `~/Library/Application Support/PowerGIS/geolibre`
-on macOS, `%LOCALAPPDATA%\PowerGIS\geolibre` on Windows). `RUSTGIS_APP_DATA_DIR` overrides the
+(by default `~/.local/share/powergis/geolibre` on Linux, `~/Library/Application Support/PowerGIS/geolibre`
+on macOS, `%LOCALAPPDATA%\PowerGIS\geolibre` on Windows). `powergis_APP_DATA_DIR` overrides the
 data folder; Linux also honours `XDG_DATA_HOME`. From the command line, `gp.installGeolibre`
 does the same.
 
@@ -599,7 +599,7 @@ To install it yourself instead, download the archive for your platform
 **Locate…** to pick the `geolibre` program; PowerGIS remembers it.
 
 PowerGIS also finds the runner without asking when it is next to the PowerGIS program (or in a
-`geolibre` folder beside it), on your `PATH`, or named by the `RUSTGIS_GEOLIBRE` environment
+`geolibre` folder beside it), on your `PATH`, or named by the `powergis_GEOLIBRE` environment
 variable (the command line uses these). The tools then appear under **GeoLibre** in the Tools
 pane and the Browser's toolboxes, grouped by the category and subcategory the runner gives
 each tool (Conversion, Hydrology, LiDAR, Projection, Raster, Remote Sensing, Terrain, Vector,
@@ -716,7 +716,7 @@ itself, and accepting keeps that quote. Pasting adds nothing.
 ## ModelBuilder
 
 <figure markdown="span">
-  ![ModelBuilder after a run: Cities buffered by 300 km clip the Rivers into "Rivers near cities", and Countries are dissolved by continent; every node is ticked and the results are on the map](https://assets.rustgis.app/images/modelbuilder.webp)
+  ![ModelBuilder after a run: Cities buffered by 300 km clip the Rivers into "Rivers near cities", and Countries are dissolved by continent; every node is ticked and the results are on the map](https://assets.powergis.app/images/modelbuilder.webp)
   <figcaption>A model after its run: each node is ticked, and its outputs are layers on the map.</figcaption>
 </figure>
 
@@ -915,16 +915,16 @@ and a **Mann–Kendall** test of whether the trend is significant.
   It runs in the background with progress and Cancel.
 - **Long runs:** in the app, a trend run from the Script pane or the assistant waits with no
   Cancel, so it takes a tenth of the panes' limit on pairs compared (2 billion), as Python does.
-  `rustgis-cli run`, where nothing but a shell waits on it, takes the panes' limit (20 billion):
+  `powergis-cli run`, where nothing but a shell waits on it, takes the panes' limit (20 billion):
   Piauí's 576 composites at about 1 km with the seasonal test (about 4.4 billion pairs)
-  run in one call there, and `rustgis-cli run` prints its progress (`cube.trend: 42%`). There, a
+  run in one call there, and `powergis-cli run` prints its progress (`cube.trend: 42%`). There, a
   STAC collection's search also takes up to 10,000 items for a trend or a summary (a state's four
   MODIS tiles over 25 years are 2,304). In the app, whose Script pane and assistant wait for the
   search with no Cancel, and in Python, it takes 2,000, as a data cube on the time slider does.
 
 ```sh
-rustgis-cli run --cmd 'cube.trend={"layers":["ndvi_2015","ndvi_2016","ndvi_2017","ndvi_2018"],"per":"decade"}'
-rustgis-cli run --cmd 'cube.trend={"url":"https://data.inpe.br/bdc/stac/v1","collection":"mod13q1-6.1","asset":"NDVI","bbox":[-46,-10.95,-40.35,-2.7],"start":"2001","end":"2025","cellSize":1000,"test":"seasonal","seasons":23,"per":"decade"}' --save piaui.rgis
+powergis-cli run --cmd 'cube.trend={"layers":["ndvi_2015","ndvi_2016","ndvi_2017","ndvi_2018"],"per":"decade"}'
+powergis-cli run --cmd 'cube.trend={"url":"https://data.inpe.br/bdc/stac/v1","collection":"mod13q1-6.1","asset":"NDVI","bbox":[-46,-10.95,-40.35,-2.7],"start":"2001","end":"2025","cellSize":1000,"test":"seasonal","seasons":23,"per":"decade"}' --save piaui.rgis
 ```
 
 ### Summarising a data cube over time
@@ -976,16 +976,16 @@ over time does for a Zarr variable (see [Data](data.md)).
   outputs hold up to 32 million values (cells times groups; 8 million in the web app). A summary by
   month keeps every month's totals while it reads, up to five times the outputs' memory for
   **std** (three for mean, min, max, sum and countAbove), so a large area by month may need a
-  coarser cell size or a smaller area. `rustgis-cli run` takes a STAC collection's search up to
+  coarser cell size or a smaller area. `powergis-cli run` takes a STAC collection's search up to
   10,000 items, as for a trend (the app and Python 2,000), and prints a summary's progress
   (`cube.reduce: 42%`). The layers
   are named after what they hold (`NDVI mean 2001`, `NDVI mean 2001–2025 month 03`, or the
   `"name"` given and the group) and kept in the project as GeoTIFFs.
 
 ```sh
-rustgis-cli run --cmd 'cube.reduce={"layers":["ndvi_2015","ndvi_2016","ndvi_2017","ndvi_2018"],"stat":"max"}'
-rustgis-cli run --data cobertura_1985.tif --data cobertura_1986.tif --data cobertura_1987.tif --cmd 'cube.reduce={"layers":["cobertura_1985","cobertura_1986","cobertura_1987"],"stat":"changes"}'
-rustgis-cli run --cmd 'cube.reduce={"url":"https://data.inpe.br/bdc/stac/v1","collection":"mod13q1-6.1","asset":"NDVI","bbox":[-44.8,-7.5,-44.3,-7.0],"start":"2001","end":"2025","cellSize":1000,"stat":"mean","by":"year","minValid":0.5,"name":"NDVI"}' --save urucui.rgis
+powergis-cli run --cmd 'cube.reduce={"layers":["ndvi_2015","ndvi_2016","ndvi_2017","ndvi_2018"],"stat":"max"}'
+powergis-cli run --data cobertura_1985.tif --data cobertura_1986.tif --data cobertura_1987.tif --cmd 'cube.reduce={"layers":["cobertura_1985","cobertura_1986","cobertura_1987"],"stat":"changes"}'
+powergis-cli run --cmd 'cube.reduce={"url":"https://data.inpe.br/bdc/stac/v1","collection":"mod13q1-6.1","asset":"NDVI","bbox":[-44.8,-7.5,-44.3,-7.0],"start":"2001","end":"2025","cellSize":1000,"stat":"mean","by":"year","minValid":0.5,"name":"NDVI"}' --save urucui.rgis
 ```
 
 ## Zonal statistics and polygon clipping

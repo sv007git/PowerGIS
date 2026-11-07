@@ -3,8 +3,8 @@
 //! to the other side of the map, so it isn't drawn as a band across the whole map (#209).
 //! Edges stay straight in longitude/latitude, as everywhere else in the map.
 
-use rustgis_data::Geometry;
-use rustgis_geom::Coord;
+use powergis_data::Geometry;
+use powergis_geom::Coord;
 
 /// How far inside the edge the pieces of a cut geometry are kept, in degrees (about 0.1 mm on the
 /// ground), so each projects onto its own side of the map even when the projection normalises

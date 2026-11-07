@@ -7,8 +7,8 @@
 //! found in an azimuthal equidistant plane, centred first between the features and then between
 //! the points found, and measured along the geodesic between them.
 
-use rustgis_data::{Coord, Dataset, FieldType, Geometry, Value};
-use rustgis_geom::{Aeqd, Extent, WGS84_MIN_RADIUS_M, geodesic_interpolate, geodesic_length_m, geodesic_ring_area_m2, wgs84_distance_m};
+use powergis_data::{Coord, Dataset, FieldType, Geometry, Value};
+use powergis_geom::{Aeqd, Extent, WGS84_MIN_RADIUS_M, geodesic_interpolate, geodesic_length_m, geodesic_ring_area_m2, wgs84_distance_m};
 use serde_json::Value as Json;
 
 /// Whether a coordinate is a place on the Earth in lon/lat: finite, with a latitude of ±90° at most
@@ -360,7 +360,7 @@ pub fn parse_merge(join: &Dataset, v: Option<&Json>) -> Result<Vec<Merge>, Strin
 mod tests {
     use super::*;
 
-    use rustgis_geom::haversine_m;
+    use powergis_geom::haversine_m;
 
     /// The ground distance from `p` to a line, by sampling each edge finely along its great circle.
     /// Only the samples within 1.2% of the nearest on the sphere are measured on the ellipsoid,

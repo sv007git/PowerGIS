@@ -7,7 +7,7 @@
 use super::{Batch, Family, FeatureSource, Reproject, Request, SourceInfo, clamp_limit, in_request, stride};
 use crate::raster::Crs;
 use crate::{DataError, Feature, Field, FieldType, Geometry, GeometryType, Result, Value, wkb};
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 use std::sync::{Arc, LazyLock, Mutex, Weak};
@@ -573,7 +573,7 @@ fn projection(geometry: &str, columns: impl IntoIterator<Item = (String, String)
     }
     let numbered = pk.is_none();
     let order = pk.as_ref().map(|(name, _)| format!("ORDER BY t.{name}")).unwrap_or_else(|| "ORDER BY (SELECT NULL)".into());
-    let id = pk.map(|(_, alias)| format!("CAST({alias} AS BIGINT)")).unwrap_or_else(|| "[rustgis rn]".into());
+    let id = pk.map(|(_, alias)| format!("CAST({alias} AS BIGINT)")).unwrap_or_else(|| "[powergis rn]".into());
     let mut select = vec![id, "i0.STCurveToLine().STAsBinary()".into()];
     select.extend(casts);
     (fields, Projection { select, numbered, order, raw: raw.join(", ") })
@@ -748,14 +748,14 @@ impl SqlServerSource {
         let cols = self.projection.select.iter().enumerate().map(|(i, e)| format!("{e} AS c{i}")).collect::<Vec<_>>().join(", ");
         let numbered = |every: &str| {
             format!(
-                "SELECT TOP ({limit}) {cols}, [rustgis total] FROM (SELECT {}, ROW_NUMBER() OVER ({}) AS [rustgis rn], {} AS [rustgis total] FROM {from} t WHERE {filter}) s WHERE ([rustgis rn] - 1) % {every} = 0 ORDER BY [rustgis rn]",
+                "SELECT TOP ({limit}) {cols}, [powergis total] FROM (SELECT {}, ROW_NUMBER() OVER ({}) AS [powergis rn], {} AS [powergis total] FROM {from} t WHERE {filter}) s WHERE ([powergis rn] - 1) % {every} = 0 ORDER BY [powergis rn]",
                 self.projection.raw,
                 self.projection.order,
                 if window.is_some() { "COUNT_BIG(*) OVER ()" } else { "0" }
             )
         };
         let (matched, rows) = if window.is_some() {
-            let rows = query(&numbered(&format!("CAST(CEILING([rustgis total] / {limit}.0) AS BIGINT)")))?;
+            let rows = query(&numbered(&format!("CAST(CEILING([powergis total] / {limit}.0) AS BIGINT)")))?;
             let matched =
                 rows.first().and_then(|r| int_of(at(r, self.projection.select.len()))).and_then(|n| u64::try_from(n).ok()).unwrap_or(0);
             (matched, rows)
@@ -848,15 +848,15 @@ mod tests {
         // The projection and window syntax is shared with SQLite; exercise real name resolution
         // locally without needing a SQL Server or evaluating its spatial methods.
         let db = rusqlite::Connection::open_in_memory().unwrap();
-        let columns = [("rustgis rn", "geometry"), ("rustgis total", "int"), ("i0", "int"), ("c0", "int")]
+        let columns = [("powergis rn", "geometry"), ("powergis total", "int"), ("i0", "int"), ("c0", "int")]
             .map(|(name, ty)| (name.to_string(), ty.to_string()));
-        let (_, projection) = projection("rustgis rn", columns, Some("rustgis total"));
+        let (_, projection) = projection("powergis rn", columns, Some("powergis total"));
         let id = projection.select.first().unwrap();
         let sql = format!(
-            "SELECT {id}, i0, i1, i2, i3, [rustgis rn], [rustgis total] FROM \
-             (SELECT {}, ROW_NUMBER() OVER ({}) AS [rustgis rn], COUNT(*) OVER () AS [rustgis total] \
-             FROM (SELECT 101 AS [rustgis rn], 37 AS [rustgis total], 55 AS i0, 77 AS c0 \
-                   UNION ALL SELECT 202, 19, 66, 88) t) s ORDER BY [rustgis rn]",
+            "SELECT {id}, i0, i1, i2, i3, [powergis rn], [powergis total] FROM \
+             (SELECT {}, ROW_NUMBER() OVER ({}) AS [powergis rn], COUNT(*) OVER () AS [powergis total] \
+             FROM (SELECT 101 AS [powergis rn], 37 AS [powergis total], 55 AS i0, 77 AS c0 \
+                   UNION ALL SELECT 202, 19, 66, 88) t) s ORDER BY [powergis rn]",
             projection.raw, projection.order
         );
         let mut statement = db.prepare(&sql).unwrap();
@@ -984,11 +984,11 @@ mod tests {
         assert!(auth_method(&Login::Integrated, None).is_err());
     }
 
-    /// `RUSTGIS_TEST_MSSQL=mssql://user:password@host/database?... cargo test -- --ignored sqlserver_live --nocapture`.
+    /// `powergis_TEST_MSSQL=mssql://user:password@host/database?... cargo test -- --ignored sqlserver_live --nocapture`.
     #[test]
     #[ignore]
     fn sqlserver_live() {
-        let Ok(address) = std::env::var("RUSTGIS_TEST_MSSQL") else { return };
+        let Ok(address) = std::env::var("powergis_TEST_MSSQL") else { return };
         let super::super::duckdb::Database::Sqlserver(address) = super::super::duckdb::Database::parse(&address) else {
             panic!("not a connection")
         };

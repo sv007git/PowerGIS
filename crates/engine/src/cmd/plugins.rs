@@ -8,7 +8,7 @@
 
 use std::sync::Arc;
 
-use rustgis_plugins::{Host, Permission, Plugin};
+use powergis_plugins::{Host, Permission, Plugin};
 use serde_json::{Value, json};
 
 use super::{b, ps, uint};
@@ -27,7 +27,7 @@ pub fn commands() -> Vec<C> {
         C::new("plugin.enable", "Enable Plugin", "Plugins › Manage", enable).view().params(r#"{"id": plugin id, "enabled"?: bool}"#),
         C::new("plugin.registry", "Browse Plugins", "Plugins › Manage", browse)
             .view()
-            .params(r#"{"url"?: "registry.json (default: https://plugins.rustgis.app/registry.json)"}"#),
+            .params(r#"{"url"?: "registry.json (default: https://plugins.powergis.app/registry.json)"}"#),
         C::new("plugin.installFromRegistry", "Install Plugin From Registry", "Plugins › Manage", install_from_registry)
             .view()
             .params(r#"{"id": plugin id, "url"?: registry.json}"#),
@@ -45,7 +45,7 @@ pub fn commands() -> Vec<C> {
 /// end uses it to open the panel and for widgets that run no command.
 fn panel(s: &mut Session, p: &Value) -> CmdResult {
     let id = ps(p, "id").ok_or("id is required")?;
-    let plugin = rustgis_plugins::get(id).ok_or_else(|| format!("no plugin '{id}'"))?;
+    let plugin = powergis_plugins::get(id).ok_or_else(|| format!("no plugin '{id}'"))?;
     if !plugin.enabled {
         return Err(format!("the plugin {} is disabled", plugin.manifest.name));
     }
@@ -56,7 +56,7 @@ fn panel(s: &mut Session, p: &Value) -> CmdResult {
     }
     if b(p, "refresh").unwrap_or(false) && !decl.state.is_empty() {
         // A failed refresh leaves the values as they were, as a failed command does.
-        if let Err(e) = s.run_plugin(&rustgis_plugins::command_id(id, &decl.state), &json!({})) {
+        if let Err(e) = s.run_plugin(&powergis_plugins::command_id(id, &decl.state), &json!({})) {
             *s.panel_state(id, &decl) = before;
             return Err(e);
         }
@@ -70,12 +70,12 @@ fn prepare(_: &mut Session, p: &Value) -> CmdResult {
     let id = ps(p, "id").ok_or("id is required")?;
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let python = rustgis_plugins::pyenv::prepare(id, &mut |line| log::info!("plugin {id}: {line}"))?;
+        let python = powergis_plugins::pyenv::prepare(id, &mut |line| log::info!("plugin {id}: {line}"))?;
         Ok(json!({"id": id, "python": python.display().to_string()}))
     }
     #[cfg(target_arch = "wasm32")]
     {
-        Err(format!("{id}: Python environments need the desktop app or rustgis-cli"))
+        Err(format!("{id}: Python environments need the desktop app or powergis-cli"))
     }
 }
 
@@ -83,7 +83,7 @@ fn prepare(_: &mut Session, p: &Value) -> CmdResult {
 pub fn load_installed() -> Vec<String> {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        rustgis_plugins::store::load_installed()
+        powergis_plugins::store::load_installed()
     }
     #[cfg(target_arch = "wasm32")]
     {
@@ -96,28 +96,28 @@ pub fn load_installed() -> Vec<String> {
 pub fn install_bytes(bytes: &[u8]) -> Result<Arc<Plugin>, String> {
     #[cfg(not(target_arch = "wasm32"))]
     {
-        rustgis_plugins::store::install_bytes(bytes)
+        powergis_plugins::store::install_bytes(bytes)
     }
     #[cfg(target_arch = "wasm32")]
     {
-        let pkg = rustgis_plugins::Package::from_zip(bytes)?;
-        rustgis_plugins::load(pkg, "browser")
+        let pkg = powergis_plugins::Package::from_zip(bytes)?;
+        powergis_plugins::load(pkg, "browser")
     }
 }
 
 fn list(_: &mut Session, _: &Value) -> CmdResult {
     #[cfg(not(target_arch = "wasm32"))]
-    let folder = rustgis_plugins::store::dir().map(|d| d.display().to_string());
+    let folder = powergis_plugins::store::dir().map(|d| d.display().to_string());
     #[cfg(target_arch = "wasm32")]
     let folder: Option<String> = None;
-    Ok(json!({"plugins": rustgis_plugins::list().iter().map(|p| p.info()).collect::<Vec<_>>(), "folder": folder}))
+    Ok(json!({"plugins": powergis_plugins::list().iter().map(|p| p.info()).collect::<Vec<_>>(), "folder": folder}))
 }
 
 fn install(_: &mut Session, p: &Value) -> CmdResult {
     let path = ps(p, "path").map(str::trim).filter(|s| !s.is_empty()).ok_or("path is required")?;
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let plugin = rustgis_plugins::store::install_path(std::path::Path::new(path))?;
+        let plugin = powergis_plugins::store::install_path(std::path::Path::new(path))?;
         Ok(plugin.info())
     }
     #[cfg(target_arch = "wasm32")]
@@ -130,9 +130,9 @@ fn install(_: &mut Session, p: &Value) -> CmdResult {
 fn uninstall(_: &mut Session, p: &Value) -> CmdResult {
     let id = ps(p, "id").ok_or("id is required")?;
     #[cfg(not(target_arch = "wasm32"))]
-    rustgis_plugins::store::uninstall(id)?;
+    powergis_plugins::store::uninstall(id)?;
     #[cfg(target_arch = "wasm32")]
-    if !rustgis_plugins::unload(id) {
+    if !powergis_plugins::unload(id) {
         return Err(format!("no plugin '{id}'"));
     }
     Ok(json!({"uninstalled": id}))
@@ -142,35 +142,35 @@ fn enable(_: &mut Session, p: &Value) -> CmdResult {
     let id = ps(p, "id").ok_or("id is required")?;
     let on = b(p, "enabled").unwrap_or(true);
     #[cfg(not(target_arch = "wasm32"))]
-    rustgis_plugins::store::set_enabled(id, on)?;
+    powergis_plugins::store::set_enabled(id, on)?;
     #[cfg(target_arch = "wasm32")]
-    rustgis_plugins::set_enabled(id, on)?;
+    powergis_plugins::set_enabled(id, on)?;
     Ok(json!({"id": id, "enabled": on}))
 }
 
 /// The registry at `url` with each plugin's installed version. Applies its blocklist.
 #[cfg(not(target_arch = "wasm32"))]
-fn fetch_registry(url: &str) -> Result<Vec<rustgis_plugins::registry::Entry>, String> {
-    use rustgis_plugins::registry;
+fn fetch_registry(url: &str) -> Result<Vec<powergis_plugins::registry::Entry>, String> {
+    use powergis_plugins::registry;
     let text = registry::fetch(url, registry::MAX_REGISTRY_BYTES)?;
     let entries = registry::parse(&String::from_utf8_lossy(&text), url)?;
     // A registry without a blocklist blocks nothing; one that can't be fetched leaves the
     // cached list in place.
     if let Ok(b) = registry::fetch(&registry::blocklist_url(url), 4 * 1024 * 1024) {
-        let _ = rustgis_plugins::store::save_blocklist(url, &String::from_utf8_lossy(&b));
+        let _ = powergis_plugins::store::save_blocklist(url, &String::from_utf8_lossy(&b));
     }
     Ok(entries)
 }
 
 /// A registry entry with what's installed, for the Plugin Manager and the command line.
-pub fn entry_status(e: &rustgis_plugins::registry::Entry) -> Value {
-    let installed = rustgis_plugins::get(&e.id).map(|p| p.manifest.version.clone());
-    let update = installed.as_deref().is_some_and(|v| rustgis_plugins::manifest::version_cmp(&e.version, v).is_gt());
+pub fn entry_status(e: &powergis_plugins::registry::Entry) -> Value {
+    let installed = powergis_plugins::get(&e.id).map(|p| p.manifest.version.clone());
+    let update = installed.as_deref().is_some_and(|v| powergis_plugins::manifest::version_cmp(&e.version, v).is_gt());
     let mut v = serde_json::to_value(e).unwrap_or(Value::Null);
     if let Some(o) = v.as_object_mut() {
         o.insert("installed".into(), json!(installed));
         o.insert("update".into(), json!(update));
-        o.insert("blocked".into(), json!(rustgis_plugins::blocked(&e.id, &e.sha256).map(|b| b.reason)));
+        o.insert("blocked".into(), json!(powergis_plugins::blocked(&e.id, &e.sha256).map(|b| b.reason)));
         // Said for every plugin (the registry leaves it out for WebAssembly ones): a process
         // plugin isn't sandboxed.
         o.insert("runtime".into(), json!(e.runtime));
@@ -179,7 +179,7 @@ pub fn entry_status(e: &rustgis_plugins::registry::Entry) -> Value {
 }
 
 fn browse(_: &mut Session, p: &Value) -> CmdResult {
-    let url = ps(p, "url").map(str::trim).filter(|s| !s.is_empty()).unwrap_or(rustgis_plugins::registry::DEFAULT_URL);
+    let url = ps(p, "url").map(str::trim).filter(|s| !s.is_empty()).unwrap_or(powergis_plugins::registry::DEFAULT_URL);
     #[cfg(not(target_arch = "wasm32"))]
     {
         Ok(Value::Array(fetch_registry(url)?.iter().map(entry_status).collect()))
@@ -192,19 +192,19 @@ fn browse(_: &mut Session, p: &Value) -> CmdResult {
 }
 
 /// Checks a downloaded package against its registry entry, then installs it.
-pub fn install_checked(e: &rustgis_plugins::registry::Entry, bytes: &[u8]) -> Result<Arc<Plugin>, String> {
-    let got = rustgis_plugins::package::sha256_hex(bytes);
+pub fn install_checked(e: &powergis_plugins::registry::Entry, bytes: &[u8]) -> Result<Arc<Plugin>, String> {
+    let got = powergis_plugins::package::sha256_hex(bytes);
     if !got.eq_ignore_ascii_case(&e.sha256) {
         return Err(format!("{}: the download doesn't match the registry (SHA-256 {got}); it wasn't installed", e.name));
     }
-    let pkg = rustgis_plugins::Package::from_zip(bytes)?;
+    let pkg = powergis_plugins::Package::from_zip(bytes)?;
     if pkg.manifest.id != e.id {
         return Err(format!("{}: the package is '{}', not '{}'", e.name, pkg.manifest.id, e.id));
     }
     // A registry that called a program sandboxed (or the other way round) is out of date: what
     // the user was shown before installing must be what runs.
     if pkg.manifest.runtime != e.runtime {
-        use rustgis_plugins::manifest::Runtime;
+        use powergis_plugins::manifest::Runtime;
         let runtime = |r| match r {
             Runtime::Wasm => "WebAssembly",
             Runtime::Process => "process",
@@ -222,12 +222,12 @@ pub fn install_checked(e: &rustgis_plugins::registry::Entry, bytes: &[u8]) -> Re
 
 fn install_from_registry(_: &mut Session, p: &Value) -> CmdResult {
     let id = ps(p, "id").ok_or("id is required")?;
-    let url = ps(p, "url").map(str::trim).filter(|s| !s.is_empty()).unwrap_or(rustgis_plugins::registry::DEFAULT_URL);
+    let url = ps(p, "url").map(str::trim).filter(|s| !s.is_empty()).unwrap_or(powergis_plugins::registry::DEFAULT_URL);
     #[cfg(not(target_arch = "wasm32"))]
     {
         let entries = fetch_registry(url)?;
         let e = entries.iter().find(|e| e.id == id).ok_or_else(|| format!("the registry has no plugin '{id}'"))?;
-        let bytes = rustgis_plugins::registry::fetch(&e.package, rustgis_plugins::package::MAX_PACKAGE)?;
+        let bytes = powergis_plugins::registry::fetch(&e.package, powergis_plugins::package::MAX_PACKAGE)?;
         Ok(install_checked(e, &bytes)?.info())
     }
     #[cfg(target_arch = "wasm32")]
@@ -354,17 +354,17 @@ pub fn user_only(id: &str) -> bool {
 pub fn reaches(spec: &C, params: &Value) -> Option<Reach> {
     // External tools (the GeoLibre suite) run a native program that reads files a parameter
     // names, including bare file names.
-    if spec.id == "gp.run" && ps(params, "tool").and_then(rustgis_analysis::tool).is_some_and(super::gp::is_geolibre_tool) {
+    if spec.id == "gp.run" && ps(params, "tool").and_then(powergis_analysis::tool).is_some_and(super::gp::is_geolibre_tool) {
         return Some(Reach::Files);
     }
     // So do tools with a file parameter (a plugin's `file`): they're handed the file.
     if spec.id == "gp.run"
-        && ps(params, "tool").and_then(super::gp::tool_id).and_then(rustgis_analysis::tool).is_some_and(super::gp::reads_files)
+        && ps(params, "tool").and_then(super::gp::tool_id).and_then(powergis_analysis::tool).is_some_and(super::gp::reads_files)
     {
         return Some(Reach::Files);
     }
     if spec.id == "gp.run"
-        && ps(params, "tool").and_then(super::gp::tool_id).and_then(rustgis_analysis::tool).is_some_and(super::gp::writes_files)
+        && ps(params, "tool").and_then(super::gp::tool_id).and_then(powergis_analysis::tool).is_some_and(super::gp::writes_files)
     {
         return Some(Reach::Files);
     }
@@ -408,7 +408,7 @@ fn refused(plugin: &Plugin, spec: &C, params: &Value) -> Option<String> {
         Some(Reach::Files)
             if spec.id == "gp.run"
                 && !m.has(Permission::Files)
-                && ps(params, "tool").and_then(rustgis_analysis::tool).is_some_and(super::gp::is_geolibre_tool) =>
+                && ps(params, "tool").and_then(powergis_analysis::tool).is_some_and(super::gp::is_geolibre_tool) =>
         {
             return Some(format!("{} needs the 'files' permission to run GeoLibre tools", m.name));
         }
@@ -477,7 +477,7 @@ impl Bridge<'_> {
         }
         let limit = uint(p, "limit").and_then(|n| usize::try_from(n).ok()).unwrap_or(usize::MAX);
         let rows: Vec<usize> = if b(p, "selected") == Some(true) { l.selection.clone() } else { (0..l.dataset.features.len()).collect() };
-        let ds = rustgis_data::Dataset {
+        let ds = powergis_data::Dataset {
             name: l.name.clone(),
             geometry_type: l.dataset.geometry_type,
             fields: l.dataset.fields.clone(),
@@ -487,7 +487,7 @@ impl Bridge<'_> {
             crs_incomplete: false,
             windowed: false,
         };
-        let mut gj = rustgis_data::io::to_geojson(&ds);
+        let mut gj = powergis_data::io::to_geojson(&ds);
         // The row of each feature, for selecting or editing it afterwards.
         if let Some(fs) = gj.get_mut("features").and_then(Value::as_array_mut) {
             for (f, row) in fs.iter_mut().zip(rows.iter()) {
@@ -503,14 +503,14 @@ impl Bridge<'_> {
         self.need(Permission::Edit, "add layers")?;
         let name = ps(p, "name").map(str::trim).filter(|n| !n.is_empty()).unwrap_or(&self.plugin.manifest.name).to_string();
         let gj = p.get("geojson").ok_or("geojson is required")?;
-        let (ds, report) = rustgis_data::io::read_geojson(&gj.to_string(), &name).map_err(|e| e.to_string())?;
+        let (ds, report) = powergis_data::io::read_geojson(&gj.to_string(), &name).map_err(|e| e.to_string())?;
         self.changed = true;
         let id = super::layer::add_dataset(self.s, ds);
         Ok(json!({"layer": id, "skipped": report.skipped}))
     }
 
     fn command(&mut self, id: &str, params: &Value) -> CmdResult {
-        if id.starts_with(rustgis_plugins::PREFIX) {
+        if id.starts_with(powergis_plugins::PREFIX) {
             return Err("plugins can't run other plugins' commands".into());
         }
         let spec = self.s.registry.get(id).ok_or_else(|| format!("unknown command '{id}'"))?;
@@ -533,7 +533,7 @@ impl Bridge<'_> {
         // layer is taken out again. Where a layer fetches from is decided by its address, kind,
         // subdomains and row order. Its name, attribution and opacity never reach a server, and
         // its tile size reaches one only as `{width}`/`{height}` (256 or 512).
-        let fetched = |t: &rustgis_map::TileLayer| (t.url.clone(), t.kind, t.subdomains.clone(), t.tms);
+        let fetched = |t: &powergis_map::TileLayer| (t.url.clone(), t.kind, t.subdomains.clone(), t.tms);
         let tile_sources =
             |s: &Session| -> std::collections::HashSet<_> { s.project.maps.iter().flat_map(|m| &m.tiles).map(fetched).collect() };
         let before = (!self.plugin.manifest.has(Permission::Network)).then(|| tile_sources(self.s));
@@ -565,7 +565,7 @@ impl Bridge<'_> {
 impl Host for Bridge<'_> {
     fn call(&mut self, op: &str, params: &Value) -> Result<Value, String> {
         match op {
-            "host.info" => Ok(json!({"rustgis": rustgis_plugins::manifest::RUSTGIS_VERSION, "abi": rustgis_plugins::manifest::ABI,
+            "host.info" => Ok(json!({"powergis": powergis_plugins::manifest::POWERGIS_VERSION, "abi": powergis_plugins::manifest::ABI,
                 "plugin": self.plugin.manifest.id, "permissions": self.plugin.manifest.permissions})),
             "host.layers" => Ok(self.layers()),
             "host.features" => self.features(params),
@@ -599,8 +599,8 @@ impl Host for Bridge<'_> {
 impl Session {
     /// Runs a plugin command (`plugin:<plugin>/<command>`) as one undoable step.
     pub(crate) fn run_plugin(&mut self, id: &str, params: &Value) -> CmdResult {
-        let Some(cmd) = rustgis_plugins::command(id) else {
-            return Err(match rustgis_plugins::split_id(id).and_then(|(p, _)| rustgis_plugins::get(p)) {
+        let Some(cmd) = powergis_plugins::command(id) else {
+            return Err(match powergis_plugins::split_id(id).and_then(|(p, _)| powergis_plugins::get(p)) {
                 Some(p) if !p.enabled => format!("the plugin {} is disabled", p.manifest.name),
                 _ => format!("unknown command '{id}'"),
             });
@@ -640,7 +640,7 @@ impl Session {
         let res = self.guarded(label, mutates, |s| {
             let fetches = fetch::Calls::for_plugin(&plugin.manifest.id);
             let mut bridge = Bridge { s, plugin, fetches, changed: false, requested: false };
-            let res = rustgis_plugins::run_command_with_panel(&cmd, &mut bridge, params, request);
+            let res = powergis_plugins::run_command_with_panel(&cmd, &mut bridge, params, request);
             if !bridge.fetches.pending.is_empty() {
                 // Waiting for a fetch (the browser): whatever the call did is undone, quietly,
                 // and the command runs again from the start once the answers are in.
@@ -680,9 +680,9 @@ impl Session {
     }
 
     /// A plugin's panel state, made from its manifest the first time.
-    pub fn plugin_panel(&mut self, plugin: &str) -> Option<&rustgis_plugins::PanelState> {
+    pub fn plugin_panel(&mut self, plugin: &str) -> Option<&powergis_plugins::PanelState> {
         // A plugin uninstalled, disabled or updated without a panel leaves no state behind.
-        let Some(p) = rustgis_plugins::get(plugin).filter(|p| p.enabled && p.manifest.panel.is_some()) else {
+        let Some(p) = powergis_plugins::get(plugin).filter(|p| p.enabled && p.manifest.panel.is_some()) else {
             self.plugin_panels.remove(plugin);
             return None;
         };
@@ -692,10 +692,10 @@ impl Session {
 
     /// The kept state of `plugin`'s panel `decl`: made from the declaration the first time, and
     /// made again when the plugin was updated with other widgets since.
-    fn panel_state(&mut self, plugin: &str, decl: &rustgis_plugins::PanelDecl) -> &mut rustgis_plugins::PanelState {
-        let state = self.plugin_panels.entry(plugin.to_string()).or_insert_with(|| rustgis_plugins::PanelState::new(decl));
+    fn panel_state(&mut self, plugin: &str, decl: &powergis_plugins::PanelDecl) -> &mut powergis_plugins::PanelState {
+        let state = self.plugin_panels.entry(plugin.to_string()).or_insert_with(|| powergis_plugins::PanelState::new(decl));
         if !state.matches(decl) {
-            *state = rustgis_plugins::PanelState::new(decl);
+            *state = powergis_plugins::PanelState::new(decl);
         }
         state
     }
@@ -709,9 +709,9 @@ mod tests {
     /// doesn't hide an earlier edit: the plugin's command keeps its undo step.
     #[test]
     fn a_request_after_an_edit_keeps_the_edit() {
-        let pkg = rustgis_plugins::Package::from_zip(&rustgis_plugins::testing::package("eng-bridge", &["edit", "network"])).unwrap();
-        rustgis_plugins::load(pkg, "test").unwrap();
-        let plugin = rustgis_plugins::get("eng-bridge").unwrap();
+        let pkg = powergis_plugins::Package::from_zip(&powergis_plugins::testing::package("eng-bridge", &["edit", "network"])).unwrap();
+        powergis_plugins::load(pkg, "test").unwrap();
+        let plugin = powergis_plugins::get("eng-bridge").unwrap();
         let mut s = Session::new(crate::Project::default());
         s.leave_downloads = true;
         let fetches = fetch::Calls::for_plugin("eng-bridge");
@@ -723,6 +723,6 @@ mod tests {
         assert!(bridge.requested && bridge.changed, "the edit is still one");
         assert!(!bridge.s.request_only, "the bridge took the flag");
         assert_eq!(s.take_url_requests().len(), 2);
-        rustgis_plugins::unload("eng-bridge");
+        powergis_plugins::unload("eng-bridge");
     }
 }

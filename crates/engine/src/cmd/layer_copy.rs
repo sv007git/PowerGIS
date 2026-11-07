@@ -7,8 +7,8 @@
 
 use std::collections::HashMap;
 
-use rustgis_data::GeometryType;
-use rustgis_map::{Layer, LayerGroup, MAX_GROUP_DEPTH, MAX_GROUPS, Map};
+use powergis_data::GeometryType;
+use powergis_map::{Layer, LayerGroup, MAX_GROUP_DEPTH, MAX_GROUPS, Map};
 use serde_json::{Value, json};
 
 use super::{copy_name, uint};

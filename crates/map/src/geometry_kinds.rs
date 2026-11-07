@@ -3,7 +3,7 @@
 
 use std::sync::{Arc, Mutex, Weak};
 
-use rustgis_data::{Feature, Features, GeometryType};
+use powergis_data::{Feature, Features, GeometryType};
 
 #[derive(Debug, Default)]
 struct State {
@@ -39,8 +39,8 @@ impl Cache {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Dataset, Geometry};
-    use rustgis_geom::Coord;
+    use powergis_data::{Dataset, Geometry};
+    use powergis_geom::Coord;
 
     #[test]
     fn geometry_kinds_follow_edits_replacements_and_snapshots() {

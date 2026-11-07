@@ -5,11 +5,11 @@ use egui_kittest::{
     Harness,
     kittest::{NodeT, Queryable},
 };
-use rustgis_engine::Tool;
+use powergis_engine::Tool;
 use serde_json::{Value, json};
 
 use super::{big_split_menu, menu_item};
-use crate::RustGisApp;
+use crate::powergisApp;
 
 #[derive(Clone, Copy)]
 struct Options {
@@ -26,12 +26,12 @@ impl Default for Options {
 }
 
 /// Draws only the controls: no app.logic, map frame, networking, or global Escape shortcut.
-fn harness(options: Options) -> Harness<'static, RustGisApp> {
-    let mut app = RustGisApp::with_sample();
+fn harness(options: Options) -> Harness<'static, powergisApp> {
+    let mut app = powergisApp::with_sample();
     app.run("tool.set", json!({"tool": "measure"})).unwrap();
     let mut fonts = false;
     let mut h = Harness::builder().with_size(vec2(700.0, 420.0)).build_ui_state(
-        move |ui, app: &mut RustGisApp| {
+        move |ui, app: &mut powergisApp| {
             if !fonts {
                 crate::theme::install_fonts(ui.ctx(), &[], None);
                 fonts = true;
@@ -86,12 +86,12 @@ fn harness(options: Options) -> Harness<'static, RustGisApp> {
     h
 }
 
-fn assert_menu(h: &Harness<'_, RustGisApp>, visible: bool) {
+fn assert_menu(h: &Harness<'_, powergisApp>, visible: bool) {
     assert_eq!(egui::Popup::is_any_open(&h.ctx), visible);
 }
 
 /// The popup opens immediately below the arrow in this fixed-size widget harness.
-fn click_menu_row(h: &mut Harness<'_, RustGisApp>, anchor: &str, row: usize) {
+fn click_menu_row(h: &mut Harness<'_, powergisApp>, anchor: &str, row: usize) {
     let rect = h.get_by_label(anchor).rect();
     let at = pos2(rect.min.x + 42.0, rect.max.y + 11.0 + row as f32 * 24.0);
     h.hover_at(at);

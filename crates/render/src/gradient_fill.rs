@@ -10,8 +10,8 @@
 
 use std::cell::Cell;
 
-use rustgis_map::Rgba;
-use rustgis_map::fills::{self, FillPattern, GradientPoint, GradientShape, Spread, Stop, Stops};
+use powergis_map::Rgba;
+use powergis_map::fills::{self, FillPattern, GradientPoint, GradientShape, Spread, Stop, Stops};
 use tiny_skia::{
     Color, FillRule, GradientStop, LinearGradient, Mask, Paint, Path, Pixmap, Point, RadialGradient, Rect, Shader, SpreadMode,
     SweepGradient, Transform,
@@ -553,7 +553,7 @@ pub(crate) fn average(first: Rgba, last: Rgba, stops: &Stops, discrete: bool) ->
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use rustgis_map::fills::Stop;
+    use powergis_map::fills::Stop;
 
     /// The distance transform gives each cell its exact distance to the nearest zero.
     #[test]

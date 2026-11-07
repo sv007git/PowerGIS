@@ -34,8 +34,8 @@ around one of them is a security problem:
   or exports, or stored outside the OS keychain where the docs say they're kept there.
 - **Files and links**: opening a data file, project, style, package or URL that runs code,
   writes or reads files the user didn't choose, or sends local data somewhere.
-- **The web app**: script injection or reading another site's data at `web.rustgis.app` or the
-  other `rustgis.app` sites.
+- **The web app**: script injection or reading another site's data at `web.powergis.app` or the
+  other `powergis.app` sites.
 - **Releases**: anything that could put untrusted code into a published build or package.
 
 ## What doesn't

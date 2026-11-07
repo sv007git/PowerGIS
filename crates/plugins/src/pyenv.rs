@@ -10,7 +10,7 @@
 //! <plugins>/tools/uv-<version>/uv    uv
 //! <plugins>/tools/python/            the Pythons uv installed
 //! <plugins>/tools/cache/             uv's download cache
-//! <plugins>/envs/<id>/               a plugin's environment (`.rustgis-env` names what it holds)
+//! <plugins>/envs/<id>/               a plugin's environment (`.powergis-env` names what it holds)
 //! ```
 //!
 //! An environment is made again when the plugin's Python version or requirements change.
@@ -40,10 +40,10 @@ const UV_WHEELS: &[(&str, &str, &str, &str)] = &[
 
 /// The environment variable naming a uv to use instead of downloading one (offline or managed
 /// installs).
-pub const UV_ENV: &str = "RUSTGIS_UV";
+pub const UV_ENV: &str = "powergis_UV";
 
 /// The file in an environment naming what it was made for.
-const MADE_FOR: &str = ".rustgis-env";
+const MADE_FOR: &str = ".powergis-env";
 
 /// The largest uv wheel accepted (they are about 17 MB).
 const MAX_WHEEL: u64 = 100 * 1024 * 1024;
@@ -169,7 +169,7 @@ pub fn uv(progress: &mut dyn FnMut(&str)) -> Result<PathBuf, String> {
         .read_to_end(&mut program)
         .map_err(|e| format!("{name}: {e}"))?;
     std::fs::create_dir_all(&dir).map_err(|e| format!("{}: {e}", dir.display()))?;
-    rustgis_data::io::write_atomic(&exe, &program).map_err(|e| format!("{}: {e}", exe.display()))?;
+    powergis_data::io::write_atomic(&exe, &program).map_err(|e| format!("{}: {e}", exe.display()))?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
@@ -240,7 +240,7 @@ pub fn prepare(id: &str, progress: &mut dyn FnMut(&str)) -> Result<PathBuf, Stri
     }
     let parent = check.env.parent().ok_or("there is no folder for plugins")?;
     std::fs::create_dir_all(parent).map_err(|e| format!("{}: {e}", parent.display()))?;
-    // One at a time per plugin, across processes too (the app and rustgis-cli): an OS file
+    // One at a time per plugin, across processes too (the app and powergis-cli): an OS file
     // lock, which the OS releases if its holder dies. Whoever waited finds the environment the
     // other made, and is done.
     let lock_path = parent.join(format!(".{id}.lock"));
@@ -276,7 +276,7 @@ pub fn prepare(id: &str, progress: &mut dyn FnMut(&str)) -> Result<PathBuf, Stri
                 progress,
             )?;
         }
-        rustgis_data::io::write_atomic(&tmp.join(MADE_FOR), want.as_bytes()).map_err(|e| e.to_string())?;
+        powergis_data::io::write_atomic(&tmp.join(MADE_FOR), want.as_bytes()).map_err(|e| e.to_string())?;
         let old = parent.join(format!(".{id}-{nanos}-old"));
         let had_old = check.env.exists();
         if had_old {

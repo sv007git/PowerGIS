@@ -98,8 +98,8 @@ jobs:
       - name: Run the workflow tests on them
         if: steps.data.outputs.ok == 'true'
         env:
-          RUSTGIS_WORKFLOW_DATA: ${{ github.workspace }}/workflow-data
-        run: cargo test --locked -p rustgis-engine --test workflows -- --ignored
+          powergis_WORKFLOW_DATA: ${{ github.workspace }}/workflow-data
+        run: cargo test --locked -p powergis-engine --test workflows -- --ignored
 
   report:
     name: Report

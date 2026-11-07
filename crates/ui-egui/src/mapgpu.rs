@@ -1,11 +1,11 @@
-//! The GPU map backend: plays a [`rustgis_engine::render::gpu_scene::GpuScene`] inside egui's
+//! The GPU map backend: plays a [`powergis_engine::render::gpu_scene::GpuScene`] inside egui's
 //! wgpu render pass (the pattern SpatialOS ships as `VectorCallback`). This module starts
 //! with the pure camera/marker math; pipelines and the paint callback land next.
 //!
 //! `view_proj` maps origin-relative map-unit vertices to clip space and is golden-tested
 //! against `Camera::to_screen` — the CPU path's own transform — to 1/100 px.
 
-use rustgis_engine::map::Camera;
+use powergis_engine::map::Camera;
 
 /// Clip-space transform for one draw command: vertices are f32 offsets from the command's
 /// `origin` (map units), so the f64 `(origin - center)` subtraction happens on the CPU where
@@ -24,12 +24,12 @@ pub(crate) fn view_proj(cam: &Camera, w: f64, h: f64, origin: [f64; 2]) -> [[f32
     let u = [a * cb, -a * sb, 0.0, a * (cb * dx - sb * dy)];
     let v = [-a * sb, -a * cb, 0.0, -a * (sb * dx + cb * dy)];
     let up = [0.0, 0.0, a, 0.0];
-    let pitch = rustgis_engine::map::camera::normalize_pitch(cam.pitch);
+    let pitch = powergis_engine::map::camera::normalize_pitch(cam.pitch);
     let (sp, cp, inv_d) = if pitch == 0.0 {
         (0.0, 1.0, 0.0)
     } else {
         let (s, c) = pitch.to_radians().sin_cos();
-        (s, c, 2.0 * rustgis_engine::map::camera::TAN_HALF_FOV / h.max(1e-9))
+        (s, c, 2.0 * powergis_engine::map::camera::TAN_HALF_FOV / h.max(1e-9))
     };
     let row = |f: &dyn Fn(usize) -> f64| -> [f64; 4] { std::array::from_fn(f) };
     let x = row(&|i| 2.0 / w.max(1e-9) * u[i]);
@@ -42,7 +42,7 @@ pub(crate) fn view_proj(cam: &Camera, w: f64, h: f64, origin: [f64; 2]) -> [[f32
 
 /// The nearest depth drawn (a fraction of the eye's distance from the centre), as
 /// `Camera::try_to_screen` leaves out what is nearer.
-const NEAR_DEPTH: f64 = rustgis_engine::map::camera::NEAR;
+const NEAR_DEPTH: f64 = powergis_engine::map::camera::NEAR;
 
 /// Host-side mirror of the marker vertex shader's displacement: a unit-space template point
 /// becomes a pixel offset, then a clip offset. Templates are defined y-down (screen), clip y
@@ -59,9 +59,9 @@ use std::sync::Arc;
 use egui_wgpu::{CallbackResources, CallbackTrait, RenderState, wgpu};
 use wgpu::util::DeviceExt;
 
-use rustgis_engine::render::gpu_scene::{self, CmdClip, DrawCmd, GpuScene, MeshTile, SceneTilt, TileMeshVertex, TileQuad};
-use rustgis_engine::render::rustgis_tiles::cache::Payload;
-use rustgis_engine::render::tile_mesh::TileMesh;
+use powergis_engine::render::gpu_scene::{self, CmdClip, DrawCmd, GpuScene, MeshTile, SceneTilt, TileMeshVertex, TileQuad};
+use powergis_engine::render::powergis_tiles::cache::Payload;
+use powergis_engine::render::tile_mesh::TileMesh;
 
 /// Vertices per marker shape slot in the template bank (the circle's 24 fan triangles fill it
 /// exactly; smaller shapes pad with centre points — zero-area triangles are discarded).
@@ -139,8 +139,8 @@ impl CmdUniforms {
             viewport: [
                 (w * f64::from(ppp)) as f32,
                 (h * f64::from(ppp)) as f32,
-                if rustgis_engine::map::camera::normalize_pitch(cam.pitch) != 0.0 { 1.0 } else { 0.0 },
-                rustgis_engine::map::camera::FAR as f32,
+                if powergis_engine::map::camera::normalize_pitch(cam.pitch) != 0.0 { 1.0 } else { 0.0 },
+                powergis_engine::map::camera::FAR as f32,
             ],
             light: extrusion_light(cam),
         }
@@ -169,13 +169,13 @@ impl TileMeshUniforms {
 
 /// A camera's zoom as a style takes it (MapLibre's, for 512-pixel tiles).
 fn camera_zoom(cam: &Camera) -> f32 {
-    rustgis_engine::render::rustgis_tiles::template::style_zoom(cam.res)
+    powergis_engine::render::powergis_tiles::template::style_zoom(cam.res)
 }
 
 /// The extrusions' light for a camera turned to its bearing (see [`CmdUniforms::light`]):
 /// `render::EXTRUSION_LIGHT` is given in the view's ground frame, x right and y down.
 fn extrusion_light(cam: &Camera) -> [f32; 4] {
-    let (l0, l1, l2) = rustgis_engine::render::EXTRUSION_LIGHT;
+    let (l0, l1, l2) = powergis_engine::render::EXTRUSION_LIGHT;
     let (s, c) = if cam.bearing.is_finite() { cam.bearing.to_radians().sin_cos() } else { (0.0, 1.0) };
     // The view's frame to the map's (as `Camera::unrotate`, then y up).
     let to_map = |u: f64, v: f64| (u * c - v * s, -(u * s + v * c));
@@ -203,12 +203,12 @@ struct BackdropUniforms {
 impl BackdropUniforms {
     fn new(cam: &Camera, logical_size: [f64; 2], ppp: f32, water: [f32; 4], t: &SceneTilt) -> Self {
         let h = logical_size[1];
-        let pitch = rustgis_engine::map::camera::normalize_pitch(cam.pitch).to_radians();
-        let d = h / 2.0 / rustgis_engine::map::camera::TAN_HALF_FOV;
+        let pitch = powergis_engine::map::camera::normalize_pitch(cam.pitch).to_radians();
+        let d = h / 2.0 / powergis_engine::map::camera::TAN_HALF_FOV;
         let sky_y = cam.sky_y(h).unwrap_or(0.0).max(1e-9);
         BackdropUniforms {
             tilt: [h as f32, d as f32, pitch.cos() as f32, pitch.sin() as f32],
-            params: [ppp, sky_y as f32, rustgis_engine::map::camera::FAR as f32, 0.0],
+            params: [ppp, sky_y as f32, powergis_engine::map::camera::FAR as f32, 0.0],
             water,
             fog: t.fog,
             sky: t.sky,
@@ -400,7 +400,7 @@ impl GpuMapRenderer {
             ],
         }];
         let extrude_buffers = [wgpu::VertexBufferLayout {
-            array_stride: std::mem::size_of::<rustgis_engine::render::gpu_scene::ExtrudeVertex>() as u64,
+            array_stride: std::mem::size_of::<powergis_engine::render::gpu_scene::ExtrudeVertex>() as u64,
             step_mode: wgpu::VertexStepMode::Vertex,
             attributes: &[
                 wgpu::VertexAttribute { format: wgpu::VertexFormat::Float32x3, offset: 0, shader_location: 0 },
@@ -1011,7 +1011,7 @@ pub(crate) struct SceneBuffers {
     /// A turned or tilted scene: the camera it was drawn for, its sky and fog.
     pub tilt: Option<SceneTilt>,
     /// Its live raster tile layers, in order, placed for each frame shown ([`LiveFrame`]).
-    pub live: Vec<(rustgis_engine::render::rustgis_tiles::Spec, f32)>,
+    pub live: Vec<(powergis_engine::render::powergis_tiles::Spec, f32)>,
     /// Every tile layer of the scene is live: a tile arriving needs no new scene.
     pub tiles_live: bool,
     /// The farthest a vertex lies from its origin (map units, [`gpu_scene::reach`]): zoomed in
@@ -1034,7 +1034,7 @@ impl SceneBuffers {
         if self.live.is_empty() {
             return None;
         }
-        let view = rustgis_engine::render::View {
+        let view = powergis_engine::render::View {
             width: self.size[0],
             height: self.size[1],
             pixels_per_point: f64::from(self.ppp),
@@ -1045,7 +1045,7 @@ impl SceneBuffers {
         let layers = self
             .live
             .iter()
-            .map(|(spec, opacity)| match rustgis_engine::render::live_tiles(spec, *opacity, &view) {
+            .map(|(spec, opacity)| match powergis_engine::render::live_tiles(spec, *opacity, &view) {
                 Some(l) => {
                     pending |= l.pending;
                     l.quads
@@ -1067,13 +1067,13 @@ impl SceneBuffers {
     /// box, a tilted view's bands out to its reach), and not zoomed in past what f32 holds of its
     /// vertices; else it is drawn again.
     pub(crate) fn fits(&self, cam: &Camera) -> bool {
-        let pitch = rustgis_engine::map::camera::normalize_pitch(cam.pitch);
+        let pitch = powergis_engine::map::camera::normalize_pitch(cam.pitch);
         let precise = gpu_scene::f32_holds(self.reach, cam.res / f64::from(self.ppp.max(0.1)));
         precise
             && match &self.tilt {
                 None => cam.bearing == 0.0 && pitch == 0.0,
                 Some(t) => {
-                    let turn = rustgis_engine::map::camera::normalize_bearing(cam.bearing - t.camera.bearing).abs();
+                    let turn = powergis_engine::map::camera::normalize_bearing(cam.bearing - t.camera.bearing).abs();
                     let zoom = cam.res / t.camera.res.max(1e-12);
                     (t.camera.bearing != 0.0) == (cam.bearing != 0.0)
                     && (t.camera.pitch != 0.0) == (pitch != 0.0)
@@ -1600,8 +1600,8 @@ impl CallbackTrait for SceneCallback {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_engine::geom::Coord;
-    use rustgis_engine::render::gpu_scene::{MeshVertex, PointInstance};
+    use powergis_engine::geom::Coord;
+    use powergis_engine::render::gpu_scene::{MeshVertex, PointInstance};
 
     fn assert_matches_to_screen(cam: Camera, w: f64, h: f64, p: Coord, origin: [f64; 2]) {
         let m = view_proj(&cam, w, h, origin);
@@ -1667,7 +1667,7 @@ mod tests {
         headless_render_state_on(wgpu::Backends::all())
     }
 
-    /// `backends` selects the wgpu backends; the web app is GL-forced (`apps/rustgis-web`),
+    /// `backends` selects the wgpu backends; the web app is GL-forced (`apps/powergis-web`),
     /// so the suite also runs the world sample over GL.
     fn headless_render_state_on(backends: wgpu::Backends) -> Option<RenderState> {
         let setup = egui_wgpu::WgpuSetup::CreateNew({
@@ -1697,13 +1697,13 @@ mod tests {
         assert!(!cmd_fits(&limits, &mesh(100, 6)), "a vertex buffer over max_buffer_size declines");
         assert!(!cmd_fits(&limits, &mesh(4, 300)), "an index buffer over max_buffer_size declines");
         assert!(
-            !cmd_fits(&limits, &DrawCmd::Image { pixmap: rustgis_engine::render::Pixmap::new(2049, 2).expect("pixmap") }),
+            !cmd_fits(&limits, &DrawCmd::Image { pixmap: powergis_engine::render::Pixmap::new(2049, 2).expect("pixmap") }),
             "an image over max_texture_dimension_2d declines"
         );
         // 0x0 and size-mismatched images are now unconstructible (Pixmap always holds w*h*4):
         // the type does the work.
         assert!(
-            cmd_fits(&limits, &DrawCmd::Image { pixmap: rustgis_engine::render::Pixmap::new(2, 2).expect("pixmap") }),
+            cmd_fits(&limits, &DrawCmd::Image { pixmap: powergis_engine::render::Pixmap::new(2, 2).expect("pixmap") }),
             "a valid 2x2 image fits"
         );
     }
@@ -1724,7 +1724,7 @@ mod tests {
                     origin: [0.0, 0.0],
                     instances: vec![PointInstance { position: [10.0, 10.0], color: [0.0, 1.0, 0.0, 1.0], radius_px: 4.0, shape: 0 }],
                 },
-                DrawCmd::Image { pixmap: rustgis_engine::render::Pixmap::new(1, 1).expect("pixmap") },
+                DrawCmd::Image { pixmap: powergis_engine::render::Pixmap::new(1, 1).expect("pixmap") },
             ],
             labels: vec![],
             unplaced: vec![],
@@ -1742,9 +1742,9 @@ mod tests {
 
     // ---- CPU↔GPU pixel parity: render the same map through both backends and compare ----
 
-    use rustgis_engine::data::{Dataset, Geometry, GeometryType};
-    use rustgis_engine::map::{Map, Marker, Renderer, Rgba, Symbol};
-    use rustgis_engine::render::{self, Backend, RenderOutput, View};
+    use powergis_engine::data::{Dataset, Geometry, GeometryType};
+    use powergis_engine::map::{Map, Marker, Renderer, Rgba, Symbol};
+    use powergis_engine::render::{self, Backend, RenderOutput, View};
 
     fn world_view() -> View {
         View { width: 640.0, height: 400.0, pixels_per_point: 1.0, camera: Camera::world(), sky: false }
@@ -2000,7 +2000,7 @@ mod tests {
     /// Blocks standing apart, lit, casting shadows, in a tilted view: the GPU's depth-tested
     /// roofs and walls match the CPU's far-to-near ones.
     fn blocks_map() -> Map {
-        use rustgis_engine::data::{Dataset, Geometry, GeometryType};
+        use powergis_engine::data::{Dataset, Geometry, GeometryType};
         let mut m = Map::new("Map");
         let mut ds = Dataset::new("blocks", GeometryType::Polygon, vec![]);
         for (x, y) in [(9.0, 47.0), (11.5, 47.5), (10.0, 49.5), (12.5, 50.0), (8.0, 50.5)] {
@@ -2010,7 +2010,7 @@ mod tests {
         }
         let id = m.add_dataset(ds);
         if let Some(l) = m.layer_mut(id) {
-            l.extrusion = Some(rustgis_engine::map::effects::Extrusion {
+            l.extrusion = Some(powergis_engine::map::effects::Extrusion {
                 field: None,
                 height: 60_000.0,
                 factor: 1.0,
@@ -2025,7 +2025,7 @@ mod tests {
     #[test]
     fn parity_tilted_extrusions() {
         let camera =
-            Camera { center: rustgis_engine::geom::lonlat_to_merc(Coord::new(10.5, 47.0)), res: 2_500.0, bearing: 25.0, pitch: 60.0 };
+            Camera { center: powergis_engine::geom::lonlat_to_merc(Coord::new(10.5, 47.0)), res: 2_500.0, bearing: 25.0, pitch: 60.0 };
         let view = View { camera, ..world_view() };
         let mut m = blocks_map();
         let Some(RenderOutput::Gpu(scene)) = render::render_backend(&mut m, &view, Backend::Gpu) else { panic!("a GPU scene") };
@@ -2059,7 +2059,7 @@ mod tests {
             "polar projection",
             || {
                 let mut m = world_map();
-                m.projection = rustgis_engine::map::Projection::Custom("northPolar".into());
+                m.projection = powergis_engine::map::Projection::Custom("northPolar".into());
                 m
             },
             &View {
@@ -2080,7 +2080,7 @@ mod tests {
 
     fn world_map_midnight() -> Map {
         let mut m = world_map();
-        m.basemap = rustgis_engine::map::Basemap::Midnight;
+        m.basemap = powergis_engine::map::Basemap::Midnight;
         m
     }
 
@@ -2156,10 +2156,10 @@ mod tests {
     /// clipped to its square.
     #[test]
     fn parity_vector_tile_meshes() {
-        use rustgis_engine::geom::lonlat_to_merc;
-        use rustgis_engine::map::{TileKind, TileLayer};
-        use rustgis_engine::render::rustgis_tiles::mvt::{Feature, GeomKind, Layer, Tile, Value, encode};
-        use rustgis_engine::render::rustgis_tiles::pmtiles::{NewArchive, TileType, write};
+        use powergis_engine::geom::lonlat_to_merc;
+        use powergis_engine::map::{TileKind, TileLayer};
+        use powergis_engine::render::powergis_tiles::mvt::{Feature, GeomKind, Layer, Tile, Value, encode};
+        use powergis_engine::render::powergis_tiles::pmtiles::{NewArchive, TileType, write};
         // Zoom 1: each tile's park, see-through, reaching past the tile into its buffer (as real
         // tiles do; drawn twice where tiles overlap unless each is clipped to its square), a road
         // and a dashed path in it.
@@ -2198,7 +2198,7 @@ mod tests {
                 ],
             }
         };
-        let dir = std::env::temp_dir().join(format!("rustgis-parity-meshes-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-parity-meshes-{}", std::process::id()));
         std::fs::create_dir_all(&dir).expect("temp dir");
         let path = dir.join("t.pmtiles");
         let new = NewArchive {
@@ -2256,12 +2256,12 @@ mod tests {
     /// what the CPU draws, at a tile's own size and zoomed between levels, and see-through.
     #[test]
     fn parity_raster_tiles() {
-        use rustgis_engine::geom::lonlat_to_merc;
-        use rustgis_engine::map::{TileKind, TileLayer};
-        use rustgis_engine::render::rustgis_tiles;
+        use powergis_engine::geom::lonlat_to_merc;
+        use powergis_engine::map::{TileKind, TileLayer};
+        use powergis_engine::render::powergis_tiles;
         let _turn = crate::fetching::turn();
         // A tile of soft gradients, so a tile drawn at the wrong place or scale shows.
-        rustgis_tiles::cache::set_fetcher(|url, done| {
+        powergis_tiles::cache::set_fetcher(|url, done| {
             if !url.starts_with("https://parity.test/") {
                 done(Err("404".into()));
                 return;
@@ -2333,7 +2333,7 @@ mod tests {
         let _serial = one_at_a_time();
         let Some(rs) = headless_render_state() else { return };
         let r = GpuMapRenderer::new(&rs);
-        let mut pm = rustgis_engine::render::Pixmap::new(4, 4).expect("pixmap");
+        let mut pm = powergis_engine::render::Pixmap::new(4, 4).expect("pixmap");
         pm.data_mut().chunks_mut(4).for_each(|p| p.copy_from_slice(&[200, 30, 30, 255]));
         let picture = Arc::new(Payload::Image(pm));
         let quad = TileQuad { picture: picture.clone(), rect: [0.0, 0.0, 100.0, 100.0], uv: [0.0, 0.0, 1.0, 1.0], opacity: 1.0 };
@@ -2358,7 +2358,7 @@ mod tests {
         drop(textures);
         // Once the tile cache lets the picture go, so does the GPU.
         drop((quad, picture, first, _second));
-        let other = rustgis_engine::render::Pixmap::new(4, 4).expect("pixmap");
+        let other = powergis_engine::render::Pixmap::new(4, 4).expect("pixmap");
         let q = TileQuad { picture: Arc::new(Payload::Image(other)), rect: [0.0, 0.0, 1.0, 1.0], uv: [0.0, 0.0, 1.0, 1.0], opacity: 1.0 };
         let _third = upload(&scene(&q)).expect("fits");
         assert_eq!(r.tile_textures.lock().expect("textures").by_picture.len(), 1);
@@ -2372,7 +2372,7 @@ mod tests {
         let _serial = one_at_a_time();
         let Some(rs) = headless_render_state() else { return };
         let picture = |c: u8| {
-            let mut pm = rustgis_engine::render::Pixmap::new(256, 256).expect("pixmap");
+            let mut pm = powergis_engine::render::Pixmap::new(256, 256).expect("pixmap");
             pm.data_mut().chunks_mut(4).for_each(|p| p.copy_from_slice(&[c, 30, 30, 255]));
             Arc::new(Payload::Image(pm))
         };
@@ -2426,7 +2426,7 @@ mod tests {
         let _serial = one_at_a_time();
         let Some(rs) = headless_render_state() else { return };
         let picture = |side: u32, c: u8| {
-            let mut pm = rustgis_engine::render::Pixmap::new(side, side).expect("pixmap");
+            let mut pm = powergis_engine::render::Pixmap::new(side, side).expect("pixmap");
             pm.data_mut().chunks_mut(4).for_each(|p| p.copy_from_slice(&[c, 30, 30, 255]));
             Arc::new(Payload::Image(pm))
         };

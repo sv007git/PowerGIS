@@ -265,7 +265,7 @@ fn proj4_of_keys(keys: &[u16], doubles: &[f64], ascii: &str) -> Result<(String, 
         }
         Some(16) => format!("+proj=sterea +lat_0={lat0} +lon_0={lon0} +k_0={k0} +x_0={x0} +y_0={y0}"),
         Some(17) => format!("+proj=eqc +lat_ts={lat1} +lon_0={lon0} +x_0={x0} +y_0={y0}"),
-        // MODIS's grid; PowerGIS computes it (`rustgis_geom::Sinusoidal`).
+        // MODIS's grid; PowerGIS computes it (`powergis_geom::Sinusoidal`).
         Some(24) => format!("+proj=sinu +lon_0={lon0} +x_0={x0} +y_0={y0}"),
         Some(28) => format!("+proj=cea +lat_ts={lat1} +lon_0={lon0} +x_0={x0} +y_0={y0}"),
         Some(c) => return Err(err(format!("the file's own projection (coordinate transformation {c}) isn't supported"))),
@@ -291,11 +291,11 @@ fn proj4_of_keys(keys: &[u16], doubles: &[f64], ascii: &str) -> Result<(String, 
 fn same_projection(a: &str, b: &str) -> bool {
     let offsets = [(0.0, 0.0), (100_000.0, 50_000.0), (-250_000.0, 150_000.0), (300_000.0, -200_000.0), (-50_000.0, -400_000.0)];
     // Sinusoidal, which proj4rs lacks, by its own inverse; one sinusoidal and one not differ.
-    match (rustgis_geom::Sinusoidal::from_proj4(a), rustgis_geom::Sinusoidal::from_proj4(b)) {
+    match (powergis_geom::Sinusoidal::from_proj4(a), powergis_geom::Sinusoidal::from_proj4(b)) {
         (Some(Ok(sa)), Some(Ok(sb))) => {
             return offsets.iter().all(|(dx, dy)| {
                 // The same map point in both, so a different false origin is a different projection.
-                let m = rustgis_geom::Coord::new(sa.x0 + dx, sa.y0 + dy);
+                let m = powergis_geom::Coord::new(sa.x0 + dx, sa.y0 + dy);
                 // Degrees: 1e-7 is about a centimetre.
                 matches!((sa.inverse(m), sb.inverse(m)), (Some(p), Some(q)) if (p.x - q.x).abs() < 1e-7 && (p.y - q.y).abs() < 1e-7)
             });
@@ -1314,7 +1314,7 @@ mod tests {
         assert!((4_999_700.0 - cell..=4_999_700.0).contains(&bottom), "{bottom}");
         // The pixels sit where the matrix puts them; the box's corners outside the image are empty.
         let at = |x: f64, y: f64| {
-            let (c, row) = gt.to_pixel(rustgis_geom::Coord::new(x, y));
+            let (c, row) = gt.to_pixel(powergis_geom::Coord::new(x, y));
             r.value(0, c.floor() as i64, row.floor() as i64)
         };
         let world = |c: f64, row: f64| (400_000.0 + 30.0 * c + 5.0 * row, 5_000_000.0 + 3.0 * c - 30.0 * row);
@@ -1374,7 +1374,7 @@ mod tests {
         let back = read(std::io::Cursor::new(write(&r, 0).unwrap()), "back").unwrap();
         assert_eq!(back.crs.epsg(), 27707);
         // Brasília is in it: about 8,609 km east and 5,356 km north of the grid's corner.
-        let at = back.crs.transformer().unwrap().to_lonlat(rustgis_geom::Coord::new(8608845.8731, 5356292.7056)).unwrap();
+        let at = back.crs.transformer().unwrap().to_lonlat(powergis_geom::Coord::new(8608845.8731, 5356292.7056)).unwrap();
         assert!((at.x + 47.88).abs() < 1e-6 && (at.y + 15.79).abs() < 1e-6, "{at:?}");
     }
 
@@ -1404,7 +1404,7 @@ mod tests {
         let p = back.crs.custom_def().unwrap().proj4.clone();
         assert!(p.contains("+proj=lcc") && p.contains("+lon_0=-97.5") && p.contains("+a=6371229"), "{p}");
         // The same place either way.
-        let c = rustgis_geom::Coord { x: 0.0, y: 0.0 };
+        let c = powergis_geom::Coord { x: 0.0, y: 0.0 };
         let (a, b) = (r.crs.transformer().unwrap().to_lonlat(c).unwrap(), back.crs.transformer().unwrap().to_lonlat(c).unwrap());
         assert!((a.x - b.x).abs() < 1e-9 && (a.y - b.y).abs() < 1e-9 && (a.x + 97.5).abs() < 1e-6, "{a:?} {b:?}");
         // One the keys can't say is refused, as before.
@@ -1966,7 +1966,7 @@ mod tests {
         assert!(matches!(r.crs, Crs::Custom(_)), "{:?}", r.crs);
         assert!(r.crs.custom_def().unwrap().proj4.contains("+proj=aea"));
         // The projection's origin is at 96° W, 23° N.
-        let ll = r.crs.transformer().unwrap().to_lonlat(rustgis_geom::Coord::new(0.0, 0.0)).unwrap();
+        let ll = r.crs.transformer().unwrap().to_lonlat(powergis_geom::Coord::new(0.0, 0.0)).unwrap();
         assert!((ll.x + 96.0).abs() < 1e-6 && (ll.y - 23.0).abs() < 1e-6, "{ll:?}");
         // Written and read again, the same system.
         let back = read(std::io::Cursor::new(write(&r, 0).unwrap()), "back").unwrap();
@@ -2018,7 +2018,7 @@ mod tests {
         let p = r.crs.custom_def().unwrap().proj4.clone();
         assert!(p.contains("+proj=sinu") && p.contains("+a=6371007.181 +b=6371007.181"), "{p}");
         let t = r.crs.transformer().unwrap();
-        let ll = t.to_lonlat(rustgis_geom::Coord::new(-6_671_703.118, -1_111_950.519_667)).unwrap();
+        let ll = t.to_lonlat(powergis_geom::Coord::new(-6_671_703.118, -1_111_950.519_667)).unwrap();
         assert!((ll.x + 60.925_597).abs() < 1e-6 && (ll.y + 10.0).abs() < 1e-9, "{ll:?}");
         let m = t.from_lonlat(ll).unwrap();
         assert!((m.x + 6_671_703.118).abs() < 1e-3 && (m.y + 1_111_950.519_667).abs() < 1e-3, "{m:?}");
@@ -2378,7 +2378,7 @@ mod tests {
         assert!(def.proj4.contains("+proj=tmerc"), "{}", def.proj4);
         assert!(def.proj4.contains("+lon_0=105"), "{}", def.proj4);
         let tr = back.crs.transformer().expect("transformer available");
-        let pt = rustgis_geom::Coord::new(105.5, 21.0);
+        let pt = powergis_geom::Coord::new(105.5, 21.0);
         let projected = tr.from_lonlat(pt).unwrap();
         let back_pt = tr.to_lonlat(projected).unwrap();
         assert!((back_pt.x - pt.x).abs() < 1e-6 && (back_pt.y - pt.y).abs() < 1e-6);

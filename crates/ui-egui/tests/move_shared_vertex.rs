@@ -1,12 +1,12 @@
 //! Real Ribbon and pointer events for the opt-in shared polygon move command.
 use egui::{Event, Modifiers, PointerButton, Pos2};
 use egui_kittest::{Harness, kittest::Queryable};
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{Dataset, Feature, Geometry, GeometryType, VertexId},
     geom::{Coord, merc_to_lonlat},
 };
-use rustgis_ui_egui::RustGisApp;
+use powergis_ui_egui::powergisApp;
 use serde_json::json;
 
 /// Stores metre-based test geometry in longitude/latitude without import rounding.
@@ -15,7 +15,7 @@ fn c(x: f64, y: f64) -> Coord {
 }
 
 /// Four parcels meet at zero, but only the north-east parcel is selected.
-fn harness() -> Harness<'static, RustGisApp> {
+fn harness() -> Harness<'static, powergisApp> {
     let mut session = Session::new(Project::new("Shared polygon vertices"));
     let mut data = Dataset::new("Parcels", GeometryType::Polygon, vec![]);
     data.features = [(0., 0., 160., 160.), (-160., 0., 0., 160.), (-160., -160., 0., 0.), (0., -160., 160., 0.)]
@@ -35,12 +35,12 @@ fn harness() -> Harness<'static, RustGisApp> {
     session.map_mut().camera.res = 0.8;
     session.map_mut().camera.set_bearing(17.);
     session.map_mut().editing.snapping.enabled = false;
-    let mut app = RustGisApp::new(session);
+    let mut app = powergisApp::new(session);
     app.run("tool.set", json!({"tool":"editVertices"})).unwrap();
     app.ui.tab = "Edit".into();
     app.session.clear_history();
     let mut h = Harness::builder().with_accessibility_check(false).with_size(egui::vec2(1366., 900.)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -54,12 +54,12 @@ fn harness() -> Harness<'static, RustGisApp> {
 }
 
 /// Returns each parcel's complete geometry, independent of selected vertex handles.
-fn geometries(h: &Harness<'_, RustGisApp>) -> Vec<Geometry> {
+fn geometries(h: &Harness<'_, powergisApp>) -> Vec<Geometry> {
     h.state().session.map().layers[0].dataset.features.iter().map(|f| f.geometry.clone().unwrap()).collect()
 }
 
 /// Projects a test point with the actual map rectangle and rotated camera.
-fn screen(h: &Harness<'_, RustGisApp>, at: Coord) -> Pos2 {
+fn screen(h: &Harness<'_, powergisApp>, at: Coord) -> Pos2 {
     let rect = h.state().map.view_rect.unwrap().0;
     let map = h.state().session.map();
     let (x, y) = map.camera.to_screen(map.to_map(at).unwrap(), rect.width() as f64, rect.height() as f64);
@@ -67,7 +67,7 @@ fn screen(h: &Harness<'_, RustGisApp>, at: Coord) -> Pos2 {
 }
 
 /// Starts and holds a real drag; the caller can inspect preview purity or change ownership.
-fn drag(h: &mut Harness<'_, RustGisApp>, from: Coord, to: Coord) -> Pos2 {
+fn drag(h: &mut Harness<'_, powergisApp>, from: Coord, to: Coord) -> Pos2 {
     let from = screen(h, from);
     let to = screen(h, to);
     h.event(Event::PointerMoved(from));
@@ -82,7 +82,7 @@ fn drag(h: &mut Harness<'_, RustGisApp>, from: Coord, to: Coord) -> Pos2 {
 }
 
 /// Releases the primary pointer through the same production path as a desktop or browser gesture.
-fn release(h: &mut Harness<'_, RustGisApp>, to: Pos2) {
+fn release(h: &mut Harness<'_, powergisApp>, to: Pos2) {
     h.event(Event::PointerButton { pos: to, button: PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
     for _ in 0..3 {
         h.step();
@@ -116,7 +116,7 @@ fn ribbon_toggle_routes_polygon_drag_and_undoes_all_neighbours() {
     h.state_mut().run("edit.redo", json!(null)).unwrap();
     assert_eq!(geometries(&h), after);
     let project = serde_json::to_string(&h.state().session.project).unwrap();
-    let fresh = RustGisApp::new(Session::new(Project::from_json(&project).unwrap()));
+    let fresh = powergisApp::new(Session::new(Project::from_json(&project).unwrap()));
     assert!(!fresh.map.move_shared_vertices);
 }
 

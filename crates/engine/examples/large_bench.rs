@@ -1,13 +1,13 @@
 //! Times map renders of large data files, zoomed to the whole layer and in a few steps:
-//! `cargo run --release -p rustgis-engine --example large_bench -- file.tif [file.gpkg …]`.
+//! `cargo run --release -p powergis-engine --example large_bench -- file.tif [file.gpkg …]`.
 //!
 //! Each file is added on its own (streamed sources are loaded in place first), then rendered at
 //! 1600 × 1000, from its full extent down eight halvings of the resolution (streamed layers
 //! settle at each first). `--ppp 2` renders as a high-density screen.
-use rustgis_engine::render::{View, render};
-use rustgis_engine::{Project, Session};
-use rustgis_geom::{Coord, extent_to_merc};
-use rustgis_map::Camera;
+use powergis_engine::render::{View, render};
+use powergis_engine::{Project, Session};
+use powergis_geom::{Coord, extent_to_merc};
+use powergis_map::Camera;
 use serde_json::json;
 use std::time::Instant;
 

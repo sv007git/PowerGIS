@@ -1,6 +1,6 @@
 //! Integration tests for GridSense electrical distribution grid intelligence in PowerGIS.
 
-use rustgis_engine::{Project, Session};
+use powergis_engine::{Project, Session};
 use serde_json::json;
 
 fn session() -> Session {

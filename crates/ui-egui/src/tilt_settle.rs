@@ -4,10 +4,10 @@
 //! caches, so it costs pointers), while the drape (see `tilt_drape`) stays on screen until the
 //! frame is ready. GPU scenes are composed here too, then uploaded on the UI thread. In the
 //! browser there are no threads: the frame is drawn at once, its tile pictures a frame's worth at
-//! a time (see `rustgis_tiles::Pace`), the frame drawn again until they all are.
+//! a time (see `powergis_tiles::Pace`), the frame drawn again until they all are.
 
-use rustgis_engine::map::Map;
-use rustgis_engine::render::{self, Backend, RenderOutput, View};
+use powergis_engine::map::Map;
+use powergis_engine::render::{self, Backend, RenderOutput, View};
 
 /// A finished frame.
 pub(crate) struct Done {
@@ -52,7 +52,7 @@ fn draw(mut map: Map, view: View, backend: Backend) -> Done {
     #[cfg(target_arch = "wasm32")]
     let (rendered, incomplete) = {
         let (r, lacks) =
-            render::rustgis_tiles::paced(render::rustgis_tiles::Pace::Settling, || render::render_backend(&mut map, &view, backend));
+            render::powergis_tiles::paced(render::powergis_tiles::Pace::Settling, || render::render_backend(&mut map, &view, backend));
         (r, lacks.is_some())
     };
     #[cfg(not(target_arch = "wasm32"))]
@@ -100,7 +100,7 @@ impl<K: Copy + PartialEq> TiltSettle<K> {
         {
             let (tx, rx) = std::sync::mpsc::channel();
             let ctx = ctx.clone();
-            let spawned = std::thread::Builder::new().name("rustgis-map-frame".into()).spawn(move || {
+            let spawned = std::thread::Builder::new().name("powergis-map-frame".into()).spawn(move || {
                 // Without an answer (a panic) `take` finds the channel closed. It is closed before
                 // the frame is woken, so the woken frame finds the job over, not still running.
                 if let Ok(done) = std::panic::catch_unwind(work) {
@@ -153,7 +153,7 @@ impl<K: Copy + PartialEq> TiltSettle<K> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_engine::map::Camera;
+    use powergis_engine::map::Camera;
 
     #[test]
     fn draws_a_tilted_frame_and_hands_it_back_once() {

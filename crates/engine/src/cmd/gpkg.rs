@@ -4,9 +4,9 @@
 use super::{f, ps};
 use crate::{CmdResult, CommandSpec as C, Session};
 #[cfg(not(target_arch = "wasm32"))]
-use rustgis_data::source::gpkg::edit::{EditTable, MAX_EDITABLE};
+use powergis_data::source::gpkg::edit::{EditTable, MAX_EDITABLE};
 #[cfg(not(target_arch = "wasm32"))]
-use rustgis_map::source::versions_of;
+use powergis_map::source::versions_of;
 use serde_json::{Value, json};
 
 pub fn commands() -> Vec<C> {
@@ -23,7 +23,7 @@ pub fn commands() -> Vec<C> {
     ]
 }
 
-fn gpkg_layer(s: &Session, p: &Value) -> Result<(u32, String, rustgis_map::source::GpkgEdit), String> {
+fn gpkg_layer(s: &Session, p: &Value) -> Result<(u32, String, powergis_map::source::GpkgEdit), String> {
     let id = s.layer_id(p)?;
     let l = s.map().layer(id).ok_or("no such layer")?;
     let edit = l
@@ -60,11 +60,11 @@ fn add_layer(s: &mut Session, p: &Value) -> CmdResult {
         }
         let path = std::path::absolute(path).map_err(|e| format!("{}: {e}", path.display()))?;
         let file = path.file_name().unwrap_or_default().to_string_lossy();
-        let err = |e: rustgis_data::DataError| format!("{file}: {e}");
+        let err = |e: powergis_data::DataError| format!("{file}: {e}");
         let table = match ps(p, "table").map(str::trim).filter(|t| !t.is_empty()) {
             Some(t) => t.to_string(),
             None => {
-                let tables = rustgis_data::source::layers(&path).map_err(err)?;
+                let tables = powergis_data::source::layers(&path).map_err(err)?;
                 if tables.len() != 1 {
                     return Err(format!("{file}: {} feature tables ({}); choose one with table", tables.len(), tables.join(", ")));
                 }
@@ -76,7 +76,7 @@ fn add_layer(s: &mut Session, p: &Value) -> CmdResult {
         let editable = src.read_editable(limit).map_err(err)?;
         let name = ps(p, "name").map(str::trim).filter(|v| !v.is_empty()).unwrap_or(src.table()).to_string();
         let info = src.info();
-        let mut ds = rustgis_data::Dataset::new(name.clone(), info.geometry_type, info.fields.clone());
+        let mut ds = powergis_data::Dataset::new(name.clone(), info.geometry_type, info.fields.clone());
         ds.crs = src.crs();
         let path = path.to_string_lossy().into_owned();
         ds.source = Some(path.clone());
@@ -109,7 +109,7 @@ fn add_layer(s: &mut Session, p: &Value) -> CmdResult {
         let id = super::layer::add_dataset(s, ds);
         if let Some(l) = s.map_mut().layer_mut(id) {
             let (geometry_type, z, m) = src.declaration();
-            l.gpkg = Some(rustgis_map::source::GpkgEdit {
+            l.gpkg = Some(powergis_map::source::GpkgEdit {
                 path,
                 table: src.table().to_string(),
                 key: src.key().to_string(),
@@ -161,7 +161,7 @@ fn save_edits(s: &mut Session, p: &Value) -> CmdResult {
         if std::fs::metadata(path).is_ok_and(|m| m.permissions().readonly()) {
             return Err(format!("{name}: {} is read-only, so nothing was saved", edit.path));
         }
-        let err = |e: rustgis_data::DataError| format!("{name}: nothing was saved to {table}: {e}");
+        let err = |e: powergis_data::DataError| format!("{name}: nothing was saved to {table}: {e}");
         let src = EditTable::open(path, table).map_err(err)?;
         // `src` is opened just now, so its declaration is compared with the one loaded; the save
         // transaction then compares `src` with the table again before writing.
@@ -176,7 +176,7 @@ fn save_edits(s: &mut Session, p: &Value) -> CmdResult {
             return Err(format!("{name}: {table} changed shape since it was loaded, so nothing was saved. Discard Edits loads it again"));
         }
         let rows = changes.insert_rows;
-        let edits = rustgis_data::source::edits::Edits { updates: changes.updates, deletes: changes.deletes, inserts: changes.inserts };
+        let edits = powergis_data::source::edits::Edits { updates: changes.updates, deletes: changes.deletes, inserts: changes.inserts };
         let saved_rows = match src.save(&edits, &fields, edit.versions.iter().map(|(key, _)| key), &edit.revision).map_err(err)? {
             Ok(saved) => saved,
             Err(conflicts) => {
@@ -239,7 +239,7 @@ fn save_edits(s: &mut Session, p: &Value) -> CmdResult {
                 g.revision = saved_rows.revision;
             }
         }
-        s.saved_over.retain(rustgis_map::source::Versions::held_elsewhere);
+        s.saved_over.retain(powergis_map::source::Versions::held_elsewhere);
         s.saved_over.push(edit.versions);
         let canonical = std::fs::canonicalize(path).ok();
         for map in &mut s.project.maps {
@@ -282,7 +282,7 @@ fn discard_edits(s: &mut Session, p: &Value) -> CmdResult {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let (id, name, edit) = gpkg_layer(s, p)?;
-        let err = |e: rustgis_data::DataError| format!("{name}: {e}");
+        let err = |e: powergis_data::DataError| format!("{name}: {e}");
         let src = EditTable::open(std::path::Path::new(&edit.path), &edit.table).map_err(err)?;
         let editable = src.read_editable(if edit.limit == 0 { MAX_EDITABLE } else { edit.limit }).map_err(err)?;
         let read = editable.versions.iter().copied().collect();
@@ -290,7 +290,7 @@ fn discard_edits(s: &mut Session, p: &Value) -> CmdResult {
         let l = s.map_mut().layer_mut(id).ok_or("no such layer")?;
         let geometry_type = src.info().geometry_type;
         if l.dataset.geometry_type != geometry_type {
-            l.renderer = rustgis_map::Renderer::Single(rustgis_map::Symbol::default_for(geometry_type, id));
+            l.renderer = powergis_map::Renderer::Single(powergis_map::Symbol::default_for(geometry_type, id));
         }
         l.dataset.geometry_type = geometry_type;
         l.dataset.crs = src.crs();

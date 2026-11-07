@@ -6,7 +6,7 @@ use std::collections::VecDeque;
 
 use crate::provider::{self, Config, HttpRequest, HttpResponse, Note, ToolCall, ToolResult, Turn};
 use crate::{acp, compact, skills, tools};
-use rustgis_engine::Session;
+use powergis_engine::Session;
 
 /// Model requests per user message before the agent stops and reports back.
 pub const MAX_STEPS: u32 = 16;

@@ -1,5 +1,5 @@
 //! Agent threads on this computer (desktop). The assistant hands tasks to coding agents through
-//! ACP ([`rustgis_assistant::acp`]); each task starts a thread that works in the background while
+//! ACP ([`powergis_assistant::acp`]); each task starts a thread that works in the background while
 //! the conversation goes on, with a small window showing what it does and asking the user what it
 //! asks. When it finishes, its report goes to the assistant, and the thread waits for follow-ups
 //! with what it did in its context. Several threads can work at once.
@@ -10,9 +10,9 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use egui::{Align, Layout, RichText, Ui, vec2};
-use rustgis_assistant::acp::{Choice, Event, Permission};
+use powergis_assistant::acp::{Choice, Event, Permission};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::localagents::Run;
 use crate::theme::{Tokens, semibold};
 
@@ -71,15 +71,15 @@ impl Drop for Threads {
     }
 }
 
-/// `rustgis-cli` beside the app.
+/// `powergis-cli` beside the app.
 fn cli() -> Option<PathBuf> {
-    let name = if cfg!(windows) { "rustgis-cli.exe" } else { "rustgis-cli" };
+    let name = if cfg!(windows) { "powergis-cli.exe" } else { "powergis-cli" };
     std::env::current_exe().ok().map(|p| p.with_file_name(name)).filter(|p| p.is_file())
 }
 
 /// Starts the tasks the assistant handed out, passes on what threads did, asked and reported,
 /// and gives the assistant the reports once it's free.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let delegations = app.assistant.agent.as_mut().map(|a| a.take_delegations()).unwrap_or_default();
     for d in delegations {
         start(app, d, ctx);
@@ -139,7 +139,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// The threads' reports, to the assistant once it's free.
-fn deliver(app: &mut RustGisApp, ctx: &egui::Context) {
+fn deliver(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(mut agent) = app.assistant.agent.take() else { return };
     let step = agent.deliver(&app.session);
     app.assistant.agent = Some(agent);
@@ -149,7 +149,7 @@ fn deliver(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Starts a thread on a task, or sends a follow-up to one.
-fn start(app: &mut RustGisApp, d: rustgis_assistant::agent::Delegation, ctx: &egui::Context) {
+fn start(app: &mut powergisApp, d: powergis_assistant::agent::Delegation, ctx: &egui::Context) {
     if d.follow_up {
         let sent = app.assistant.threads.runs.iter_mut().find(|t| t.id == d.thread).is_some_and(|t| {
             let sent = !t.working && t.run.follow_up(&d.task);
@@ -171,12 +171,12 @@ fn start(app: &mut RustGisApp, d: rustgis_assistant::agent::Delegation, ctx: &eg
         app.assistant.threads.relay_ours = app.run("ui.mcpRelay", serde_json::json!({})).is_ok() && app.relay.is_some();
     }
     let auto = app.assistant.agents_auto;
-    let started = match (app.relay.as_ref(), rustgis_assistant::acp::command(d.agent), cli()) {
+    let started = match (app.relay.as_ref(), powergis_assistant::acp::command(d.agent), cli()) {
         (Some(relay), Some(command), Some(cli)) => crate::localagents::work_folder(d.agent.id)
             .and_then(|work| Run::start(d.agent, &command, &d.task, relay, &cli, work, auto, ctx.clone())),
         (None, _, _) => Err("the MCP relay couldn't start".to_string()),
         (_, None, _) => Err(format!("{} can't be started here (it, or Node.js for its ACP adapter, wasn't found)", d.agent.label)),
-        (_, _, None) => Err("rustgis-cli wasn't found beside PowerGIS".to_string()),
+        (_, _, None) => Err("powergis-cli wasn't found beside PowerGIS".to_string()),
     };
     match started {
         Ok(run) => app.assistant.threads.runs.push(ThreadRun {
@@ -195,7 +195,7 @@ fn start(app: &mut RustGisApp, d: rustgis_assistant::agent::Delegation, ctx: &eg
 }
 
 /// A thread that couldn't do its task: the assistant hears why, and the thread is gone.
-fn fail(app: &mut RustGisApp, id: &str, why: String) {
+fn fail(app: &mut powergisApp, id: &str, why: String) {
     if let Some(agent) = app.assistant.agent.as_mut() {
         agent.thread_report(id, why, true);
     }
@@ -203,7 +203,7 @@ fn fail(app: &mut RustGisApp, id: &str, why: String) {
 }
 
 /// Ends a thread (stopping its agent and everything it started).
-fn close(app: &mut RustGisApp, id: &str) {
+fn close(app: &mut powergisApp, id: &str) {
     app.assistant.threads.runs.retain(|t| t.id != id);
     if let Some(agent) = app.assistant.agent.as_mut() {
         agent.thread_closed(id);
@@ -212,7 +212,7 @@ fn close(app: &mut RustGisApp, id: &str) {
 }
 
 /// Stops a working thread at the user's word: the assistant hears that, and the thread ends.
-fn stop(app: &mut RustGisApp, id: &str) {
+fn stop(app: &mut powergisApp, id: &str) {
     let label = app.assistant.threads.runs.iter().find(|t| t.id == id).map(|t| t.label).unwrap_or_default();
     let working = app.assistant.threads.runs.iter().any(|t| t.id == id && t.working);
     if working && let Some(agent) = app.assistant.agent.as_mut() {
@@ -221,14 +221,14 @@ fn stop(app: &mut RustGisApp, id: &str) {
     close(app, id);
 }
 
-fn stop_relay_if_unused(app: &mut RustGisApp) {
+fn stop_relay_if_unused(app: &mut powergisApp) {
     if app.assistant.threads.runs.is_empty() && std::mem::take(&mut app.assistant.threads.relay_ours) && !crate::connectui::enabled(app) {
         let _ = app.run("ui.mcpRelay", serde_json::json!({"stop": true}));
     }
 }
 
 /// Ends every thread (a new conversation).
-pub fn end_all(app: &mut RustGisApp) {
+pub fn end_all(app: &mut powergisApp) {
     app.assistant.threads.runs.clear();
     stop_relay_if_unused(app);
 }
@@ -239,7 +239,7 @@ fn clock(since: web_time::Instant) -> String {
 }
 
 /// The threads in the assistant pane: each one's state, Show or Hide its window, and Close.
-pub fn list(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn list(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     if app.assistant.threads.runs.is_empty() {
         return;
     }
@@ -279,7 +279,7 @@ pub fn list(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// A small window for each working thread: what its agent says and does, what it asks, and Stop.
-pub fn windows(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn windows(app: &mut powergisApp, ctx: &egui::Context) {
     if app.assistant.threads.runs.is_empty() {
         return;
     }

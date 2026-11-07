@@ -4,7 +4,7 @@
 //! ([`FIELDS`]), so every graphic can differ. Text graphics are drawn by the label engine (centred
 //! on their point), and dynamic text expands tokens such as `{scale}` when drawn.
 
-use rustgis_data::{Dataset, Field, FieldType, GeometryType, Value};
+use powergis_data::{Dataset, Field, FieldType, GeometryType, Value};
 
 use crate::layout::{MAX_LETTER_SPACING, MIN_LETTER_SPACING, TextAlign};
 use crate::{Marker, Rgba, Symbol};
@@ -132,7 +132,7 @@ pub struct TokenValues {
     pub scale: f64,
     pub crs: String,
     pub layers: usize,
-    pub center: rustgis_geom::Coord,
+    pub center: powergis_geom::Coord,
     /// Seconds since the Unix epoch.
     pub now: u64,
 }
@@ -171,7 +171,7 @@ pub fn expand(text: &str, v: &TokenValues) -> String {
             "{time}" => Some(time.clone()),
             "{crs}" => Some(v.crs.clone()),
             "{layers}" => Some(v.layers.to_string()),
-            "{center}" => Some(rustgis_geom::format_lonlat(v.center)),
+            "{center}" => Some(powergis_geom::format_lonlat(v.center)),
             _ => None,
         };
         match value {
@@ -242,7 +242,7 @@ mod tests {
             scale: 25_000_000.0,
             crs: "Web Mercator".into(),
             layers: 4,
-            center: rustgis_geom::Coord::new(0.0, 0.0),
+            center: powergis_geom::Coord::new(0.0, 0.0),
             now: 1_760_140_800, // 2025-10-11 00:00 UTC
         };
         assert_eq!(expand("{map} at {scale}", &v), "World at 1:25,000,000");

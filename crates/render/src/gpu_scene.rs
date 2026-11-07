@@ -8,8 +8,8 @@
 use std::sync::Arc;
 
 use crate::PlacedLabel;
-use rustgis_map::Camera;
-use rustgis_tiles::cache::Payload;
+use powergis_map::Camera;
+use powergis_tiles::cache::Payload;
 
 /// How many physical pixels from its origin a vertex may lie: an f32 holds 24 bits, and
 /// rounding the vertex and the shader's sum each cost up to half a unit in the last place, so
@@ -113,7 +113,7 @@ pub enum DrawCmd {
     /// One raster tile layer the GPU map places again for every frame it shows, from the tile
     /// cache, for the camera of that frame (see [`crate::tiles::live`]): the scene holds only
     /// which layer, so panning and zooming never draw the scene again for its tiles (#635).
-    LiveTiles { spec: rustgis_tiles::Spec, opacity: f32 },
+    LiveTiles { spec: powergis_tiles::Spec, opacity: f32 },
     /// One vector tile layer's tiles as meshes (see `tile_mesh`): the GPU keeps each mesh's
     /// buffers across frames, shows the layers of its runs that show at the camera's zoom and
     /// clips each tile to its square, as MapLibre draws its tiles.
@@ -228,7 +228,7 @@ pub struct PointInstance {
     pub color: [f32; 4],
     /// Shape radius in physical pixels.
     pub radius_px: f32,
-    /// `rustgis_map::Marker` as u32 (0 Circle, 1 Square, 2 Triangle, 3 Diamond, 4 Star).
+    /// `powergis_map::Marker` as u32 (0 Circle, 1 Square, 2 Triangle, 3 Diamond, 4 Star).
     pub shape: u32,
 }
 

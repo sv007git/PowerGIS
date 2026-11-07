@@ -1,14 +1,14 @@
 //! A layer's symbol set per feature by expressions ([`crate::Layer::symbol_by`]): its size,
 //! fill and outline colour, outline width and marker angle, each from an expression in the
-//! language of [`rustgis_data::query`] (`"pop" / 1e6 + 4`, `CASE WHEN … END`,
+//! language of [`powergis_data::query`] (`"pop" / 1e6 + 4`, `CASE WHEN … END`,
 //! `scale_linear(…)`). The text is stored; it is compiled against the layer's fields once per
 //! drawing ([`Layer::styler`]), so a project never holds a parsed tree.
 
 use crate::fills::FillLayer;
 use crate::symbology::{LineStroke, Symbol};
 use crate::{Layer, Rgba};
-use rustgis_data::query::{self, Env, Expr};
-use rustgis_data::{Dataset, Value};
+use powergis_data::query::{self, Env, Expr};
+use powergis_data::{Dataset, Value};
 use serde::{Deserialize, Serialize};
 
 /// The largest marker size an expression gives, in points.
@@ -100,12 +100,12 @@ impl Compiled {
 
     fn color(&self, e: &Option<Expr>, slot: usize, ds: &Dataset, row: usize) -> Option<Rgba> {
         let Value::Text(t) = query::value(e.as_ref()?, ds, row, &self.env) else { return None };
-        let Some(seen) = self.seen.get(slot) else { return rustgis_data::color::parse_value(&t).map(Rgba) };
-        let Ok(mut seen) = seen.try_borrow_mut() else { return rustgis_data::color::parse_value(&t).map(Rgba) };
+        let Some(seen) = self.seen.get(slot) else { return powergis_data::color::parse_value(&t).map(Rgba) };
+        let Ok(mut seen) = seen.try_borrow_mut() else { return powergis_data::color::parse_value(&t).map(Rgba) };
         match &*seen {
             Some((had, c)) if *had == t => *c,
             _ => {
-                let c = rustgis_data::color::parse_value(&t).map(Rgba);
+                let c = powergis_data::color::parse_value(&t).map(Rgba);
                 *seen = Some((t, c));
                 c
             }
@@ -156,7 +156,7 @@ impl<'a> Styler<'a> {
             None
         } else {
             let env = Env { map_scale: map_scale.filter(|s| s.is_finite() && *s > 0.0) };
-            Compiled::new(&layer.symbol_by, &layer.dataset, env, layer.geometry_type() == rustgis_data::GeometryType::Point)
+            Compiled::new(&layer.symbol_by, &layer.dataset, env, layer.geometry_type() == powergis_data::GeometryType::Point)
         };
         Styler { layer, by }
     }
@@ -236,8 +236,8 @@ impl<'a> Styler<'a> {
 mod tests {
     use super::*;
     use crate::symbology::MarkerRotation;
-    use rustgis_data::{Field, FieldType, Geometry, GeometryType};
-    use rustgis_geom::Coord;
+    use powergis_data::{Field, FieldType, Geometry, GeometryType};
+    use powergis_geom::Coord;
 
     fn points() -> Layer {
         let fields = vec![Field::new("pop", FieldType::Double), Field::new("kind", FieldType::Text), Field::new("deg", FieldType::Double)];

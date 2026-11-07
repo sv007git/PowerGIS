@@ -4,8 +4,8 @@ This page lists the data formats PowerGIS reads and writes, how to add each one,
 limits. [Data](data.md) covers adding data, large files and rasters in more detail; [Maps and
 Basemaps](maps.md#basemaps) covers web tile layers.
 
-Most native readers work in the desktop app and the [web app](https://web.rustgis.app).
-Formats read through external GDAL or DuckDB programs need the desktop app or `rustgis-cli`;
+Most native readers work in the desktop app and the [web app](https://web.powergis.app).
+Formats read through external GDAL or DuckDB programs need the desktop app or `powergis-cli`;
 they aren't available in the web app. Database connections and folder-based File Geodatabases
 are desktop-only too. Browser files are uploaded rather than opened by path; GeoPackages use a
 pure-Rust SQLite file reader there. Reprojection supports the coordinate systems PowerGIS knows,
@@ -229,7 +229,7 @@ the whole layer, as is an area across the antimeridian; a note says so. When a w
 longer than `service.add` waits (a minute), the error suggests `"bbox"`:
 
 ```sh
-rustgis-cli run --cmd 'service.add={"url":"https://geoservicos.ibge.gov.br/geoserver/wfs","layer":"CGMAT:qg_2024_030_munic","bbox":[-45.99,-10.93,-40.37,-2.74]}'
+powergis-cli run --cmd 'service.add={"url":"https://geoservicos.ibge.gov.br/geoserver/wfs","layer":"CGMAT:qg_2024_030_munic","bbox":[-45.99,-10.93,-40.37,-2.74]}'
 ```
 
 The layer holds the features of the area it was added for: moving the map doesn't ask for more.
@@ -320,7 +320,7 @@ A layer offered in no system PowerGIS can transform (an `AUTO:` system, a planet
 out, and the dialog says how many were.
 
 ```sh
-rustgis-cli run --cmd 'service.add={"url":"https://wmts.geo.admin.ch/EPSG/2056/1.0.0/WMTSCapabilities.xml","layer":"ch.swisstopo.pixelkarte-farbe"}' --cmd 'map.projection={"type":"EPSG:2056"}' --cmd 'map.goToXY={"lon":7.4474,"lat":46.948,"scale":20000}' --cmd 'share.exportMap={"path":"bern-lv95.png"}'
+powergis-cli run --cmd 'service.add={"url":"https://wmts.geo.admin.ch/EPSG/2056/1.0.0/WMTSCapabilities.xml","layer":"ch.swisstopo.pixelkarte-farbe"}' --cmd 'map.projection={"type":"EPSG:2056"}' --cmd 'map.goToXY={"lon":7.4474,"lat":46.948,"scale":20000}' --cmd 'share.exportMap={"path":"bern-lv95.png"}'
 ```
 
 ### Secured ArcGIS services
@@ -337,7 +337,7 @@ A secured ArcGIS service answers error 499, "Token Required". There are two ways
   `http://127.0.0.1:7290/arcgis/callback` for the desktop app and the command line (give
   `"port"` to `arcgis.signIn` for another port, and register that address instead), and
   `oauth-callback.html` next to the web app's page for the browser (for example
-  `https://web.rustgis.app/oauth-callback.html`), where the sign-in opens in a pop-up window.
+  `https://web.powergis.app/oauth-callback.html`), where the sign-in opens in a pop-up window.
   ArcGIS accepts only an address the app registers, port and path included. The portal and
   client ID are remembered; the session is not.
 - **A token with the address**: a service address given with `?token=…` (from the portal, or

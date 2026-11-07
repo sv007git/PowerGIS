@@ -11,7 +11,7 @@
 //! runs a single SELECT: it can't end the statement, run other statements (`COPY`, `ATTACH`,
 //! `INSTALL`) or the shell's dot commands. It can still read any file and web address, as it is
 //! meant to: the AI Assistant asks before running a query, and plugins need both the files and
-//! network permissions (`rustgis_engine::cmd::plugins::SQL`).
+//! network permissions (`powergis_engine::cmd::plugins::SQL`).
 
 use super::Family;
 use super::external::{self, TempFile, fnv1a, output, stamp, touch};
@@ -40,7 +40,7 @@ const LIST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(5 * 60)
 const KEEP: std::time::Duration = std::time::Duration::from_secs(30 * 24 * 3600);
 
 /// The column added to sort rows into geometry families; never in a result.
-const DIM: &str = "__rustgis_dim";
+const DIM: &str = "__powergis_dim";
 
 /// A database named by commands: DuckDB files, PostgreSQL connections (also queryable through
 /// DuckDB's `postgres` extension), or live-only MySQL, MariaDB and SQL Server connections.
@@ -258,9 +258,9 @@ pub fn is_duckdb_name(name: &str) -> bool {
     EXTENSIONS.contains(&ext.as_str())
 }
 
-/// The `duckdb` program: in the folder `RUSTGIS_DUCKDB_BIN` names, else on the `PATH`.
+/// The `duckdb` program: in the folder `powergis_DUCKDB_BIN` names, else on the `PATH`.
 pub fn program() -> Option<PathBuf> {
-    external::program("RUSTGIS_DUCKDB_BIN", "duckdb")
+    external::program("powergis_DUCKDB_BIN", "duckdb")
 }
 
 /// Whether DuckDB is installed.
@@ -277,14 +277,14 @@ fn live_not_here() -> DataError {
 
 fn missing() -> DataError {
     DataError::Unsupported(
-        "SQL queries and DuckDB databases need DuckDB: install it (the duckdb program on the PATH, or RUSTGIS_DUCKDB_BIN naming its folder) and try again"
+        "SQL queries and DuckDB databases need DuckDB: install it (the duckdb program on the PATH, or powergis_DUCKDB_BIN naming its folder) and try again"
             .into(),
     )
 }
 
-/// Where results are kept: the platform's cache folder, or `RUSTGIS_DUCKDB_CACHE`.
+/// Where results are kept: the platform's cache folder, or `powergis_DUCKDB_CACHE`.
 pub fn cache_dir() -> Option<PathBuf> {
-    external::cache_dir("RUSTGIS_DUCKDB_CACHE", "duckdb")
+    external::cache_dir("powergis_DUCKDB_CACHE", "duckdb")
 }
 
 /// A query to run.
@@ -1073,7 +1073,7 @@ mod tests {
         if !available() {
             return;
         }
-        let dir = std::env::temp_dir().join(format!("rustgis-duckdb-preview-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-duckdb-preview-{}", std::process::id()));
         let sql = "SELECT i AS n, i AS n, 'x' || i AS label, DATE '2020-01-02' AS day, ST_Point(i, 2) AS geom FROM range(5) t(i)";
         let p = preview_in(&dir, &Query { sql, ..Query::default() }, 3).unwrap();
         let names: Vec<&str> = p.columns.iter().map(|(n, _)| n.as_str()).collect();
@@ -1110,7 +1110,7 @@ mod tests {
         if !available() {
             return;
         }
-        let dir = std::env::temp_dir().join(format!("rustgis-duckdb-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-duckdb-test-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         let cache = dir.join("cache");
@@ -1131,7 +1131,7 @@ mod tests {
         assert!(info.indexed, "the bbox covering is found");
         assert_eq!(info.fields.iter().map(|f| f.name.as_str()).collect::<Vec<_>>(), vec!["id", "name", "day"]);
         assert_eq!(info.fields[2].ty, crate::FieldType::Text);
-        let b = pts.read(&crate::source::Request { extent: Some(rustgis_geom::Extent::new(10.5, 20.5, 12.0, 22.0)), limit: 10 }).unwrap();
+        let b = pts.read(&crate::source::Request { extent: Some(powergis_geom::Extent::new(10.5, 20.5, 12.0, 22.0)), limit: 10 }).unwrap();
         assert_eq!(b.features.len(), 1, "the extent query reads the covering");
         // No temporary files are left.
         let names: Vec<String> =

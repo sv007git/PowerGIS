@@ -4,7 +4,7 @@
 //! Element positions are in millimetres from the page's top-left corner. A map frame shows a map
 //! of the project at its own centre and scale, independent of the map view.
 
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 use serde::{Deserialize, Serialize};
 
 use crate::raster::{Colorizer, Normalizer, RasterLayer, RasterMask, RasterRenderer, RasterStyle};
@@ -1390,12 +1390,12 @@ pub fn frame_camera(map: &Map, center: Coord, scale: f64, bearing: f64, pitch: f
 }
 
 /// The scale that fits a lon/lat extent into a frame `w_mm`×`h_mm` with a margin, and its centre.
-pub fn fit_scale(map: &Map, e: &rustgis_geom::Extent, w_mm: f64, h_mm: f64) -> Option<(Coord, f64)> {
+pub fn fit_scale(map: &Map, e: &powergis_geom::Extent, w_mm: f64, h_mm: f64) -> Option<(Coord, f64)> {
     if e.is_empty() || w_mm <= 0.0 || h_mm <= 0.0 {
         return None;
     }
     let flat = map.flat();
-    let mut ext = rustgis_geom::Extent::EMPTY;
+    let mut ext = powergis_geom::Extent::EMPTY;
     for c in
         [Coord::new(e.min_x, e.min_y), Coord::new(e.max_x, e.min_y), Coord::new(e.max_x, e.max_y), Coord::new(e.min_x, e.max_y), e.center()]
     {
@@ -1649,13 +1649,13 @@ mod tests {
         let cam = frame_camera(&map, Coord::new(0.0, 0.0), 1_000_000.0, 0.0, 0.0);
         // At the equator one logical point of paper (0.2646 mm) covers 264.6 m at 1:1,000,000.
         assert!((cam.res - 264.583).abs() < 0.5, "{}", cam.res);
-        let (c, s) = fit_scale(&map, &rustgis_geom::Extent::new(-10.0, -10.0, 10.0, 10.0), 200.0, 200.0).unwrap_or_default();
+        let (c, s) = fit_scale(&map, &powergis_geom::Extent::new(-10.0, -10.0, 10.0, 10.0), 200.0, 200.0).unwrap_or_default();
         assert!(c.x.abs() < 1e-6 && s > 1e7 && s < 2e7, "{c:?} {s}");
         // A finds drawing at 2:1 on the equator, where a frame's camera is closest (#902).
         let cam = frame_camera(&map, Coord::new(0.0, 0.0), MIN_FRAME_SCALE, 0.0, 0.0);
         assert!((cam.res / (MIN_FRAME_SCALE * PAPER_M_PER_PT) - 1.0).abs() < 1e-9, "{}", cam.res);
         // A 2 cm find fitted into a 100 mm frame would print at about 4.5:1: held at 2:1.
-        let find = rustgis_geom::Extent::new(0.0, 0.0, 0.02 / 111_320.0, 0.02 / 111_320.0);
+        let find = powergis_geom::Extent::new(0.0, 0.0, 0.02 / 111_320.0, 0.02 / 111_320.0);
         assert_eq!(fit_scale(&map, &find, 100.0, 100.0).map(|(_, s)| s), Some(MIN_FRAME_SCALE));
     }
 

@@ -15,7 +15,7 @@ use serde_json::Value;
 pub const DOWNLOAD_URL: &str = "https://github.com/opengeos/geolibre-rust/releases/latest";
 
 /// The environment variable that names the runner, ahead of every other place.
-pub const ENV: &str = "RUSTGIS_GEOLIBRE";
+pub const ENV: &str = "powergis_GEOLIBRE";
 
 pub(crate) fn exe_name() -> &'static str {
     if cfg!(windows) { "geolibre.exe" } else { "geolibre" }

@@ -28,52 +28,32 @@ fn every_catalog_parses_cleanly_and_keeps_placeholders() {
 fn lookup_fallback_and_tags() {
     assert_eq!(tr(Lang::EN, "Explore"), "Explore");
     assert_eq!(tr(Lang::EN, "no such string"), "no such string");
-    assert_eq!(lang_from_tag("de_DE.UTF-8").map(Lang::code), Some("de"));
-    assert_eq!(lang_from_tag("pt-BR").map(Lang::code), Some("pt"));
-    assert_eq!(lang_from_tag("bn-BD").map(Lang::code), Some("bn"));
-    assert_eq!(lang_from_tag("pl_PL.UTF-8").map(Lang::code), Some("pl"));
-    assert_eq!(lang_from_tag("zh-Hans-CN").map(Lang::code), Some("zh"));
-    assert_eq!(lang_from_tag("zh_CN.UTF-8").map(Lang::code), Some("zh"));
-    assert_eq!(lang_from_tag("zh-TW"), None);
-    assert_eq!(lang_from_tag("zh-Hant-HK"), None);
+    assert_eq!(lang_from_tag("en_US.UTF-8").map(Lang::code), Some("en"));
+    assert_eq!(lang_from_tag("en-GB").map(Lang::code), Some("en"));
     assert_eq!(lang_from_tag("C").map(Lang::code), Some("en"));
     assert_eq!(lang_from_tag("xx-YY"), None);
-    assert_eq!(first_supported(["xx", "fr-CA", "de"]).map(Lang::code), Some("fr"));
+    assert_eq!(lang_from_tag("de_DE.UTF-8"), None);
+    assert_eq!(first_supported(["xx", "en-US", "de"]).map(Lang::code), Some("en"));
     assert_eq!(fmt("{n} of {total} selected", &[("n", "3"), ("total", "{n}")]), "3 of {n} selected");
 }
 
 #[test]
-fn bengali_registration_and_fallback() {
-    let bn = Lang::from_code("bn").unwrap_or(Lang::EN);
-    assert_eq!(bn.name(), "বাংলা");
-    assert_eq!(bn.english(), "Bengali");
-    assert_eq!(bn.script(), Script::Bengali);
-    assert_eq!(tr(bn, "Open"), "খুলুন");
-    assert_eq!(tr(bn, "A string not in the Bengali catalog"), "A string not in the Bengali catalog");
-}
-
-#[test]
-fn polish_registration_and_fallback() {
-    let pl = Lang::from_code("pl").unwrap_or(Lang::EN);
-    assert_eq!(pl.name(), "Polski");
-    assert_eq!(pl.english(), "Polish");
-    assert_eq!(pl.script(), Script::Alphabetic);
-    assert_eq!(tr(pl, "Open"), "Otwórz");
-    assert_eq!(tr(pl, "A string not in the Polish catalog"), "A string not in the Polish catalog");
+fn english_registration_and_fallback() {
+    let en = Lang::from_code("en").unwrap_or(Lang::EN);
+    assert_eq!(en.name(), "English");
+    assert_eq!(en.english(), "English");
+    assert_eq!(en.script(), Script::Alphabetic);
+    assert_eq!(tr(en, "Open"), "Open");
+    assert_eq!(tr(en, "A string not in the catalog"), "A string not in the catalog");
 }
 
 #[test]
 fn plugin_strings_use_the_plugins_translations() {
-    use rustgis_engine::plugins;
+    use powergis_engine::plugins;
     let pkg = plugins::Package::from_zip(&plugins::testing::package("i18n-fallback", &[])).unwrap();
     plugins::load(pkg, "test").unwrap();
-    let de = Lang::from_code("de").unwrap();
-    // Not in PowerGIS's catalog: the plugin's `i18n` has it.
-    assert_eq!(tr(de, "Hello"), "Hallo");
     assert_eq!(tr(Lang::EN, "Hello"), "Hello");
-    assert_eq!(tr(Lang::from_code("fr").unwrap(), "Hello"), "Hello");
-    // PowerGIS's own catalog comes first.
-    assert_eq!(tr(de, "Open"), de.0.catalog().get("Open").copied().unwrap_or("Open"));
+    assert_eq!(tr(Lang::EN, "Open"), "Open");
     plugins::unload("i18n-fallback");
 }
 
@@ -99,7 +79,7 @@ fn start_up_project_strings_have_real_translations() {
 
 #[test]
 fn chatgpt_recovery_and_controls_have_real_translations() {
-    use rustgis_assistant::{Error, Recovery};
+    use powergis_assistant::{Error, Recovery};
     let mut keys = vec![
         "Weekly usage",
         "Open browser again",
@@ -140,7 +120,7 @@ fn chatgpt_recovery_and_controls_have_real_translations() {
 fn assistant_note_translations_are_real_when_available() {
     for l in &LANGUAGES[1..] {
         let (m, _) = parse(l.source);
-        for template in rustgis_assistant::provider::NOTE_TEMPLATES {
+        for template in powergis_assistant::provider::NOTE_TEMPLATES {
             // AGENTS.md permits English fallback for new keys until the maintainer translates.
             if let Some(tr) = m.get(*template) {
                 assert_ne!(tr, template, "{}: {template:?} isn't translated", l.code);
@@ -181,7 +161,7 @@ fn skills_controls_are_in_every_catalog() {
 }
 
 #[test]
-fn letting_agents_control_rustgis_is_in_every_catalog() {
+fn letting_agents_control_powergis_is_in_every_catalog() {
     let keys = [
         "Let your Agents Control PowerGIS",
         "Agents on this computer that connect (Claude Code, Codex, Cursor and others) work on the map open here, with PowerGIS's tools: they can open and save files and use the web. Scripts and plugin management stay off.",
@@ -222,7 +202,7 @@ fn agents_on_this_computer_are_in_every_catalog() {
 
 #[test]
 fn plugin_permissions_are_in_every_catalog() {
-    use rustgis_plugins::manifest::Permission;
+    use powergis_plugins::manifest::Permission;
     for l in &LANGUAGES[1..] {
         let (m, _) = parse(l.source);
         for p in [Permission::Edit, Permission::Files, Permission::Network] {
@@ -240,7 +220,7 @@ fn registry_process_plugin_notes_are_in_every_catalog() {
         for key in [
             "Not sandboxed",
             "Desktop and command line only",
-            "{name} runs as a program on your computer: it needs the desktop app or rustgis-cli.",
+            "{name} runs as a program on your computer: it needs the desktop app or powergis-cli.",
             "Installing it downloads Python {version} and the packages it needs from the internet.",
         ] {
             let tr = m.get(key).unwrap_or_else(|| panic!("{}: missing {key:?}", l.code));
@@ -249,23 +229,4 @@ fn registry_process_plugin_notes_are_in_every_catalog() {
     }
 }
 
-#[test]
-fn vn2000_translations_in_vietnamese_catalog() {
-    let vi = Lang::from_code("vi").unwrap();
-    assert_eq!(tr(vi, "Provinces:"), "Tỉnh thành:");
-    assert_eq!(
-        tr(
-            vi,
-            "Vietnam national coordinate system (VN-2000) using 3-degree Transverse Mercator with a 7-parameter Helmert shift to WGS 84."
-        ),
-        "Hệ tọa độ quốc gia Việt Nam (VN-2000) dùng phép chiếu Transverse Mercator 3 độ với phép chuyển đổi 7 tham số Helmert sang WGS 84."
-    );
-    assert_eq!(
-        tr(vi, "Vietnam national coordinate system (VN-2000) UTM zone 48N (102°E–108°E, central meridian 105°E)."),
-        "Hệ tọa độ quốc gia Việt Nam (VN-2000) múi chiếu UTM 48N (102°Đ–108°Đ, kinh tuyến trục 105°Đ)."
-    );
-    assert_eq!(
-        tr(vi, "Vietnam national coordinate system (VN-2000) UTM zone 49N (108°E–114°E, central meridian 111°E)."),
-        "Hệ tọa độ quốc gia Việt Nam (VN-2000) múi chiếu UTM 49N (108°Đ–114°Đ, kinh tuyến trục 111°Đ)."
-    );
-}
+

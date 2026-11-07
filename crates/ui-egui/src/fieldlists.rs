@@ -2,7 +2,7 @@
 use std::collections::HashMap;
 
 use egui::Ui;
-use rustgis_engine::{
+use powergis_engine::{
     analysis::{ParamKind, StatisticList},
     data::{Field, FieldType},
 };

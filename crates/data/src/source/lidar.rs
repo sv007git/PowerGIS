@@ -5,7 +5,7 @@
 use super::{Batch, FeatureSource, Request, SourceInfo};
 use crate::Result;
 use crate::{Dataset, Feature, Geometry};
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use std::path::Path;
 
 pub struct LidarSource {

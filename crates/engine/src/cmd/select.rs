@@ -1,11 +1,11 @@
 //! Home › Selection.
 
-use rustgis_analysis::{
+use powergis_analysis::{
     network,
     selection::{MAX_POINTS, PolygonMask},
 };
-use rustgis_geom::{Coord, Extent};
-use rustgis_map::PopupMode;
+use powergis_geom::{Coord, Extent};
+use powergis_map::PopupMode;
 use serde_json::{Value, json};
 
 use super::{f, need_layer, need_layers, need_selection, ps};
@@ -73,7 +73,7 @@ pub fn commands() -> Vec<C> {
             if l.selection.is_empty() {
                 return Err("nothing is selected in this layer".into());
             }
-            let mut ds = rustgis_data::Dataset::new(format!("{} selection", l.name), l.geometry_type(), l.dataset.fields.clone());
+            let mut ds = powergis_data::Dataset::new(format!("{} selection", l.name), l.geometry_type(), l.dataset.fields.clone());
             for r in &l.selection {
                 if let Some(f) = l.dataset.features.get(*r) {
                     ds.push(f.geometry.clone(), f.attrs.clone());
@@ -148,7 +148,7 @@ pub fn set(s: &mut Session, id: u32, rows: Vec<usize>, m: Mode) {
 fn by_attributes(s: &mut Session, p: &Value) -> CmdResult {
     let id = s.layer_id(p)?;
     let w = ps(p, "where").ok_or("where is required")?;
-    let rows = rustgis_data::query::select(w, &s.map().layer(id).ok_or("no layer")?.dataset)?;
+    let rows = powergis_data::query::select(w, &s.map().layer(id).ok_or("no layer")?.dataset)?;
     let n = rows.len();
     set(s, id, rows, mode(p));
     s.notify(format!("{n} features selected"), false);
@@ -165,7 +165,7 @@ fn by_rect(s: &mut Session, p: &Value) -> CmdResult {
     let mut hits = s.map_mut().hits_in(&e, scale);
     // In curved projections the map-space box is larger than the lon/lat one: keep only features
     // that reach into the requested rectangle.
-    if !matches!(s.map().flat(), rustgis_map::projection::Flat::Mercator) {
+    if !matches!(s.map().flat(), powergis_map::projection::Flat::Mercator) {
         for (id, rows) in &mut hits {
             if let Some(l) = s.map().layer(*id) {
                 rows.retain(|r| l.dataset.features.get(*r).and_then(|f| f.geometry.as_ref()).is_some_and(|g| g.extent().intersects(&ll)));
@@ -222,7 +222,7 @@ fn by_radius(s: &mut Session, p: &Value) -> CmdResult {
     let lon = f(p, "lon").ok_or("lon is required")?;
     let lat = f(p, "lat").ok_or("lat is required")?;
     let radius = f(p, "radius").ok_or("radius is required in metres")?;
-    if !lon.is_finite() || !lat.is_finite() || !(-180.0..=180.0).contains(&lon) || lat.abs() > rustgis_geom::MAX_LAT {
+    if !lon.is_finite() || !lat.is_finite() || !(-180.0..=180.0).contains(&lon) || lat.abs() > powergis_geom::MAX_LAT {
         return Err("Radius selection centre must be inside the Web Mercator longitude and latitude range.".into());
     }
     if !radius.is_finite() || radius <= 0.0 || radius > 5_000_000.0 {
@@ -307,7 +307,7 @@ fn identify(s: &mut Session, p: &Value) -> CmdResult {
     let tol = tol_px * s.map().camera.res;
     let scale = s.scale();
     let active = s.active_layer;
-    let keep = |l: &rustgis_map::Layer| match mode {
+    let keep = |l: &powergis_map::Layer| match mode {
         PopupMode::Selectable => l.selectable,
         PopupMode::SelectedInContents => Some(l.id) == active,
         _ => true,
@@ -322,10 +322,10 @@ fn identify(s: &mut Session, p: &Value) -> CmdResult {
     // Features and the vector tile layers' features (tiles are never selectable), in the drawing
     // order of all the map's layers (#808): topmost takes the layer drawn on top of those with any.
     let order = map.stack();
-    let place = |d: rustgis_map::Drawn| order.iter().position(|o| *o == d).unwrap_or(usize::MAX);
+    let place = |d: powergis_map::Drawn| order.iter().position(|o| *o == d).unwrap_or(usize::MAX);
     let mut ranked: Vec<(usize, Value)> = hits
         .iter()
-        .filter_map(|(id, row)| Some((place(rustgis_map::Drawn::Layer(map.layer_index(*id)?)), feature_json(map, *id, *row)?)))
+        .filter_map(|(id, row)| Some((place(powergis_map::Drawn::Layer(map.layer_index(*id)?)), feature_json(map, *id, *row)?)))
         .collect();
     // A tile layer picked in the Layers pane is the one Selected in Layers asks (no map layer is
     // active then, so none of theirs was found).
@@ -334,9 +334,9 @@ fn identify(s: &mut Session, p: &Value) -> CmdResult {
     if web {
         // Topmost reads only those drawn over the feature found, up to the first with any.
         let found = ranked.iter().map(|(at, _)| *at).min().unwrap_or(usize::MAX);
-        let keep = |i: usize| !first_layer || place(rustgis_map::Drawn::Tile(i)) < found;
+        let keep = |i: usize| !first_layer || place(powergis_map::Drawn::Tile(i)) < found;
         let tiles = tile_features(s, lon, lat, tol_px, MAX_IDENTIFIED, first_layer, picked, keep);
-        ranked.extend(tiles.into_iter().map(|(i, v)| (place(rustgis_map::Drawn::Tile(i)), v)));
+        ranked.extend(tiles.into_iter().map(|(i, v)| (place(powergis_map::Drawn::Tile(i)), v)));
     }
     ranked.sort_by_key(|(at, _)| *at);
     let top = ranked.first().map(|(at, _)| *at);
@@ -349,7 +349,7 @@ fn identify(s: &mut Session, p: &Value) -> CmdResult {
     // nothing was found, or the topmost one there has a place over what was (a tile layer under
     // all the map's layers, as all were before #808, isn't asked over what they found).
     let over_top =
-        |i: usize| map.tiles.get(i).is_some_and(|t| t.over.is_some()) && top.is_some_and(|top| place(rustgis_map::Drawn::Tile(i)) < top);
+        |i: usize| map.tiles.get(i).is_some_and(|t| t.over.is_some()) && top.is_some_and(|top| place(powergis_map::Drawn::Tile(i)) < top);
     let asks = if web && (!first_layer || results.is_empty() || info::topmost(s, lon, lat).is_some_and(over_top)) {
         info::requests(s, lon, lat, first_layer, picked)
     } else {
@@ -384,8 +384,8 @@ fn identify(s: &mut Session, p: &Value) -> CmdResult {
 /// Whether identify lists a tile layer's features: archives, vector tiles and overlays added as
 /// data, not basemaps from the catalog or MapLibre styles, so a click on empty map doesn't list a
 /// basemap's roads; one `picked` in the Layers pane whichever it is, a style too.
-fn lists_features(t: &rustgis_map::tiles::TileLayer, picked: bool) -> bool {
-    use rustgis_map::tiles::TileKind;
+fn lists_features(t: &powergis_map::tiles::TileLayer, picked: bool) -> bool {
+    use powergis_map::tiles::TileKind;
     match t.kind {
         TileKind::PmTiles | TileKind::MbTiles | TileKind::Vector => picked || t.id.is_empty() || t.overlay,
         TileKind::Style => picked,
@@ -407,7 +407,7 @@ fn tile_features(
     picked: Option<usize>,
     keep: impl Fn(usize) -> bool,
 ) -> Vec<(usize, Value)> {
-    use rustgis_render::rustgis_tiles::{draw, mvt};
+    use powergis_render::powergis_tiles::{draw, mvt};
     let map = s.map();
     let Some((at, m_per_px)) = info::merc_at(s, lon, lat).filter(|_| limit > 0) else { return Vec::new() };
     let mut out = Vec::new();
@@ -416,7 +416,7 @@ fn tile_features(
         if !data || !t.draws() || t.opacity <= 0.0 || !keep(i) {
             continue;
         }
-        let picked = draw::pick(&rustgis_render::tile_spec(t), at.x, at.y, m_per_px, tol_px as f32, limit - out.len());
+        let picked = draw::pick(&powergis_render::tile_spec(t), at.x, at.y, m_per_px, tol_px as f32, limit - out.len());
         for p in &picked {
             let attrs: serde_json::Map<String, Value> = p
                 .props
@@ -447,7 +447,7 @@ fn popup_mode(s: &mut Session, p: &Value) -> CmdResult {
     Ok(json!({"mode": mode.code()}))
 }
 
-fn feature_json(map: &rustgis_map::Map, id: u32, row: usize) -> Option<Value> {
+fn feature_json(map: &powergis_map::Map, id: u32, row: usize) -> Option<Value> {
     let l = map.layer(id)?;
     let mut attrs = serde_json::Map::new();
     for (i, fd) in l.dataset.fields.iter().enumerate() {
@@ -462,8 +462,8 @@ fn feature_json(map: &rustgis_map::Map, id: u32, row: usize) -> Option<Value> {
 mod tests {
     use super::*;
     use crate::{Project, Tool};
-    use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as DataValue};
-    use rustgis_geom::{lonlat_to_merc, merc_to_lonlat};
+    use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as DataValue};
+    use powergis_geom::{lonlat_to_merc, merc_to_lonlat};
 
     fn fixture() -> (Session, u32, u32) {
         let mut s = Session::new(Project::default());
@@ -601,7 +601,7 @@ mod tests {
                     4..=6 => {}
                     7 => l.definition_query = Some("n = 2".into()),
                     8 => {
-                        l.display_filters = vec![rustgis_map::effects::DisplayFilter {
+                        l.display_filters = vec![powergis_map::effects::DisplayFilter {
                             name: "Only 2".into(),
                             min_scale: None,
                             max_scale: None,
@@ -609,15 +609,15 @@ mod tests {
                         }]
                     }
                     9 => {
-                        let instant = rustgis_map::time::instants(&l.dataset, "date")[2].unwrap();
-                        let mut binding = rustgis_map::time::TimeBinding::new("date");
+                        let instant = powergis_map::time::instants(&l.dataset, "date")[2].unwrap();
+                        let mut binding = powergis_map::time::TimeBinding::new("date");
                         binding.window = Some((instant, instant));
                         l.time = Some(binding);
                     }
                     _ => {}
                 }
                 if (4..=6).contains(&restriction) {
-                    let mut group = rustgis_map::LayerGroup::new("Limited");
+                    let mut group = powergis_map::LayerGroup::new("Limited");
                     group.children.push(first);
                     match restriction {
                         4 => group.visible = false,
@@ -719,7 +719,7 @@ mod tests {
     /// unless picked in the Layers pane; raster tiles have none.
     #[test]
     fn identify_lists_tile_features_of_data_and_of_the_layer_picked() {
-        use rustgis_map::tiles::{TileKind, TileLayer};
+        use powergis_map::tiles::{TileKind, TileLayer};
         let tile = |kind, id: &str, overlay| TileLayer { id: id.into(), overlay, ..TileLayer::new("t", kind, "https://example.com/t") };
         for kind in [TileKind::PmTiles, TileKind::MbTiles, TileKind::Vector] {
             assert!(lists_features(&tile(kind, "", false), false), "{kind:?} added as data");

@@ -5,17 +5,17 @@ engine scriptable and the front end swappable.
 
 | Layer | Crate | Job |
 | --- | --- | --- |
-| L0 | `rustgis-geom` | Coordinates, extents, Web Mercator, geodesic distance/area, scale |
-| L1 | `rustgis-data` | Features, typed attributes, vector and spreadsheet I/O, SQL where clauses, LiDAR, rasters and EPSG reprojection; indexed file and remote data providers; live PostGIS, MySQL/MariaDB and SQL Server providers on the desktop; optional GDAL and DuckDB programs (see [Data formats](user-guide/data-formats.md)) |
-| L2 | `rustgis-map`, `rustgis-analysis` | Layers, symbology, labeling, camera, basemaps and web tile layers; geoprocessing tools |
-| L2 | `rustgis-tiles` | Web map tiles: XYZ/TMS/WMS raster tiles, Mapbox Vector Tiles, PMTiles and MBTiles archives and a subset of MapLibre styles; a cache that fetches in the background (worker threads natively, the browser's `fetch` on the web) |
-| L3 | `rustgis-render` | tiny-skia renderer, label placement, font discovery, map and layout export, and UI-independent GPU scene preparation |
-| L3 | `rustgis-geolibre` | The [GeoLibre tools](user-guide/analysis.md#geolibre-tools) as geoprocessing tools: run by the optional `geolibre` program natively, by geolibre-rust's WASI runner in the browser |
-| L3 | `rustgis-plugins` | [Plugins](plugins.md): sandboxed WebAssembly modules, desktop process plugins and assistant skills packages; `.rgplugin` packages and the plugin registry |
-| L4 | `rustgis-engine` | Session, undo, command registry, projects, sample project |
-| L5 | `rustgis-assistant` | The [AI Assistant](user-guide/assistant.md): provider request/response formats, conversation loop, command tools, skills and agent integration; native HTTP transport and local agent/MCP connections, with browser I/O supplied by the web app |
-| L6 | `rustgis-ui-egui` | Ribbon, panes, map view, dialogs and the optional wgpu map backend |
-| apps | `rustgis`, `rustgis-cli`, `rustgis-web`, `rustgis-python` | Desktop app, command line, browser (WebAssembly), and the PyO3-backed `rustgis` Python package |
+| L0 | `powergis-geom` | Coordinates, extents, Web Mercator, geodesic distance/area, scale |
+| L1 | `powergis-data` | Features, typed attributes, vector and spreadsheet I/O, SQL where clauses, LiDAR, rasters and EPSG reprojection; indexed file and remote data providers; live PostGIS, MySQL/MariaDB and SQL Server providers on the desktop; optional GDAL and DuckDB programs (see [Data formats](user-guide/data-formats.md)) |
+| L2 | `powergis-map`, `powergis-analysis` | Layers, symbology, labeling, camera, basemaps and web tile layers; geoprocessing tools |
+| L2 | `powergis-tiles` | Web map tiles: XYZ/TMS/WMS raster tiles, Mapbox Vector Tiles, PMTiles and MBTiles archives and a subset of MapLibre styles; a cache that fetches in the background (worker threads natively, the browser's `fetch` on the web) |
+| L3 | `powergis-render` | tiny-skia renderer, label placement, font discovery, map and layout export, and UI-independent GPU scene preparation |
+| L3 | `powergis-geolibre` | The [GeoLibre tools](user-guide/analysis.md#geolibre-tools) as geoprocessing tools: run by the optional `geolibre` program natively, by geolibre-rust's WASI runner in the browser |
+| L3 | `powergis-plugins` | [Plugins](plugins.md): sandboxed WebAssembly modules, desktop process plugins and assistant skills packages; `.rgplugin` packages and the plugin registry |
+| L4 | `powergis-engine` | Session, undo, command registry, projects, sample project |
+| L5 | `powergis-assistant` | The [AI Assistant](user-guide/assistant.md): provider request/response formats, conversation loop, command tools, skills and agent integration; native HTTP transport and local agent/MCP connections, with browser I/O supplied by the web app |
+| L6 | `powergis-ui-egui` | Ribbon, panes, map view, dialogs and the optional wgpu map backend |
+| apps | `powergis`, `powergis-cli`, `powergis-web`, `powergis-python` | Desktop app, command line, browser (WebAssembly), and the PyO3-backed `powergis` Python package |
 | tooling | `xtask` | Workspace checks, third-party licence notices and web service-worker generation |
 
 ## Everything is a command
@@ -78,10 +78,10 @@ compiler; building the web app needs clang for Zstandard.
 Windows Credential Manager (persistence Local), and the Secret Service (GNOME Keyring, KWallet)
 over pure-Rust D-Bus on Linux and the BSDs. It is `None` in the browser, and the session's store
 is `None` on the command line and in Python unless `--use-saved-secrets` / `use_saved_secrets`
-asks for it. Only `rustgis-keychain` uses an OS API; other crates use only the
-`rustgis_data::secrets` trait. CLI and Python call `rustgis_engine::prefs::opt_in` once to read
+asks for it. Only `powergis-keychain` uses an OS API; other crates use only the
+`powergis_data::secrets` trait. CLI and Python call `powergis_engine::prefs::opt_in` once to read
 the desktop's preferences, load its saved connections without writing changes back, and install
-the lazy store. The generic `rustgis_data::secrets::Reporting` wrapper warns once on failure and
+the lazy store. The generic `powergis_data::secrets::Reporting` wrapper warns once on failure and
 stops retrying an unavailable backend. The preferences module also owns desktop writes, refuses
 to overwrite unreadable or malformed preferences, and returns read errors for callers to report
 without preference values. Assistant API keys additionally require the desktop's Remember
@@ -102,7 +102,7 @@ model listing.
   Python releases the GIL for commands, rendering, data reads and lock waits. A process-wide
   native-operation gate preserves serialization across Python sessions because driver
   activations are process-global; a per-session mutex protects each session's state. Diagnostics
-  are logged only after both locks are released. Non-throwing `rustgis` logging cannot replace
+  are logged only after both locks are released. Non-throwing `powergis` logging cannot replace
   an operation's result or original error.
   The Assistant queues legacy API-key migrations once at startup and serializes its keychain
   reads, writes and deletions on a worker. An existing keychain key takes precedence over a
@@ -112,8 +112,8 @@ model listing.
   the requested bucket's explicit-grant status. Copy only that login and grant boolean, not
   the grant list; parse and validate addresses and prepare signatures outside the lock.
   Keychain calls and network I/O never run under the registry lock.
-- **Earthdata Login token.** `rustgis_tiles::earthdata::set_secret_store` gets `Services::secrets`
-  from `RustGisApp::with_services`, and `prefs::opt_in`'s store for the command line and Python. `earthdata.login` with
+- **Earthdata Login token.** `powergis_tiles::earthdata::set_secret_store` gets `Services::secrets`
+  from `powergisApp::with_services`, and `prefs::opt_in`'s store for the command line and Python. `earthdata.login` with
   `remember` keeps the token at `earthdata/token`, and without it (or when the store refuses
   it) deletes the remembered one; `earthdata.logout` always deletes it. The token is read back
   once per store given, on the first
@@ -141,7 +141,7 @@ model listing.
   happens with unsigned or re-signed builds.
 - **Tests.** Use `MemorySecrets`, and `MemorySecrets::failing(..)` for error paths. The shared
   backend's smoke test is `#[ignore]`d:
-  `cargo test -p rustgis-keychain keychain_round_trip -- --ignored`.
+  `cargo test -p powergis-keychain keychain_round_trip -- --ignored`.
 
 ## Quality gates
 
@@ -154,7 +154,7 @@ below L6 do not directly depend on UI crates such as egui, eframe, rfd, wgpu or 
 The browser build is a separate CI gate:
 
 ```sh
-cargo build --locked --target wasm32-unknown-unknown -p rustgis-web
+cargo build --locked --target wasm32-unknown-unknown -p powergis-web
 ```
 
 Keep platform-specific I/O behind native target gates or the UI's `Services` callbacks. The web

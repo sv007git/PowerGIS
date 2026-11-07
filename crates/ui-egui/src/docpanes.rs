@@ -6,9 +6,9 @@ use std::collections::HashMap;
 use egui::{Color32, Ui, vec2};
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, semibold};
-use rustgis_engine::cmd::notebook::{Cell, CellKind};
+use powergis_engine::cmd::notebook::{Cell, CellKind};
 
 /// A notebook cell's image output in the pane.
 pub enum NotebookImage {
@@ -56,7 +56,7 @@ fn heading(ui: &mut Ui, text: &str) {
     ui.add_space(2.0);
 }
 
-fn run(app: &mut RustGisApp, id: &str, p: Value) -> Option<Value> {
+fn run(app: &mut powergisApp, id: &str, p: Value) -> Option<Value> {
     match app.run(id, p) {
         Ok(v) => {
             app.docs.message = None;
@@ -69,14 +69,14 @@ fn run(app: &mut RustGisApp, id: &str, p: Value) -> Option<Value> {
     }
 }
 
-fn message(app: &RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn message(app: &powergisApp, ui: &mut Ui, t: &Tokens) {
     if let Some((m, err)) = &app.docs.message {
         let c = if *err { Color32::from_rgb(0xC0, 0x30, 0x30) } else { t.text_dim };
         ui.label(egui::RichText::new(m.as_str()).small().color(c));
     }
 }
 
-pub fn presentation(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn presentation(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     message(app, ui, t);
     if app.session.project.presentations.is_empty() {
         ui.label(egui::RichText::new(tl!("No presentations yet. Publish › New Presentation starts one.")).weak());
@@ -85,7 +85,7 @@ pub fn presentation(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         }
         return;
     }
-    let Ok(i) = rustgis_engine::cmd::presentation::index(&app.session, &Value::Null) else { return };
+    let Ok(i) = powergis_engine::cmd::presentation::index(&app.session, &Value::Null) else { return };
     let names: Vec<String> = app.session.project.presentations.iter().map(|r| r.name.clone()).collect();
     ui.horizontal(|ui| {
         egui::ComboBox::from_id_salt("pres_pick")
@@ -142,7 +142,7 @@ pub fn presentation(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     // The current page's text only, without its picture.
     let current = app.session.project.presentations.get(i).and_then(|p| p.pages.get(app.docs.page)).map(|p| {
         let body = match &p.kind {
-            rustgis_engine::map::presentation::PageKind::Blank { text, .. } => Some(text.clone()),
+            powergis_engine::map::presentation::PageKind::Blank { text, .. } => Some(text.clone()),
             _ => None,
         };
         (p.title.clone(), p.notes.clone(), p.seconds, body)
@@ -160,7 +160,7 @@ pub fn presentation(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             app.docs.body = body_now.clone().unwrap_or_default();
         }
         // One text field: saved under `key` when it loses focus, refreshed from `now` otherwise.
-        let field = |app: &mut RustGisApp, resp: egui::Response, key: &str, value: String, now: &str| -> Option<String> {
+        let field = |app: &mut powergisApp, resp: egui::Response, key: &str, value: String, now: &str| -> Option<String> {
             if resp.lost_focus() {
                 if value != now {
                     run(app, "presentation.updatePage", json!({"presentation": i, "page": k, key: value}));
@@ -271,12 +271,12 @@ struct PageText {
     seconds: f64,
 }
 
-fn preview(app: &mut RustGisApp, ui: &mut Ui, i: usize, t: &Tokens) {
+fn preview(app: &mut powergisApp, ui: &mut Ui, i: usize, t: &Tokens) {
     let key = format!("{i}#{}#{}", app.docs.page, app.session.revision);
     if app.docs.preview.as_ref().is_none_or(|p| p.0 != key) {
         let (s, page) = (&mut app.session, app.docs.page);
         let drawn =
-            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| rustgis_engine::cmd::presentation::draw_page(s, i, page, 30.0)))
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| powergis_engine::cmd::presentation::draw_page(s, i, page, 30.0)))
                 .unwrap_or_else(|_| Err("the preview failed unexpectedly".into()));
         let tex = drawn.map(|pm| {
             let img = egui::ColorImage::from_rgba_premultiplied([pm.width() as usize, pm.height() as usize], pm.data());
@@ -301,7 +301,7 @@ fn preview(app: &mut RustGisApp, ui: &mut Ui, i: usize, t: &Tokens) {
     });
 }
 
-pub fn notebook(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn notebook(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     message(app, ui, t);
     if app.session.project.notebooks.is_empty() {
         // No notebook left to show the images of.
@@ -314,7 +314,7 @@ pub fn notebook(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         }
         return;
     }
-    let Ok(i) = rustgis_engine::cmd::notebook::index(&app.session, &Value::Null) else { return };
+    let Ok(i) = powergis_engine::cmd::notebook::index(&app.session, &Value::Null) else { return };
     let names: Vec<String> = app.session.project.notebooks.iter().map(|r| r.name.clone()).collect();
     // A Python (or other language) notebook from Jupyter: its code cells are shown, not run.
     let language = app.session.project.notebooks.get(i).and_then(|nb| nb.language_label());
@@ -541,7 +541,7 @@ fn decode_png(png: &[u8], max_side: u32) -> Option<egui::ColorImage> {
 }
 
 /// Shared items (Publish › Share As › Jobs) with their Manage tools, and the data stores.
-pub fn shares(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn shares(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     message(app, ui, t);
     let items = app.session.project.shared.clone();
     if items.is_empty() {
@@ -552,7 +552,7 @@ pub fn shares(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     for it in items.iter().rev() {
         egui::Frame::NONE.stroke(egui::Stroke::new(1.0, t.border)).corner_radius(4).inner_margin(egui::Margin::same(6)).show(ui, |ui| {
             ui.set_width(ui.available_width());
-            let label = rustgis_engine::cmd::sharing::KINDS.iter().find(|k| k.0 == it.kind).map_or("File", |k| k.2);
+            let label = powergis_engine::cmd::sharing::KINDS.iter().find(|k| k.0 == it.kind).map_or("File", |k| k.2);
             ui.label(egui::RichText::new(format!("{} · {}", it.name, tl!(label))).font(semibold(12.0)));
             ui.label(egui::RichText::new(&it.path).small().color(t.text_dim));
             let manage = match it.kind.as_str() {

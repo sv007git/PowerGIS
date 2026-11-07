@@ -6,9 +6,9 @@
 //! A layer added from the service knows its request from the capabilities; one from a project
 //! (which doesn't keep it) is asked for its service's capabilities first.
 
-use rustgis_data::ogc::{self, FeatureInfo, InfoFeature};
-use rustgis_geom::Coord;
-use rustgis_map::tiles::TileKind;
+use powergis_data::ogc::{self, FeatureInfo, InfoFeature};
+use powergis_geom::Coord;
+use powergis_map::tiles::TileKind;
 use serde_json::{Value, json};
 
 use super::super::{b, f, ps};
@@ -35,12 +35,12 @@ pub(super) fn merc_at(s: &Session, lon: f64, lat: f64) -> Option<(Coord, f64)> {
     if !(lon.is_finite() && lat.is_finite()) {
         return None;
     }
-    let at = rustgis_geom::lonlat_to_merc(Coord::new(lon, lat.clamp(-85.06, 85.06)));
+    let at = powergis_geom::lonlat_to_merc(Coord::new(lon, lat.clamp(-85.06, 85.06)));
     let res = map.camera.res;
     let m_per_px = map
         .to_map(Coord::new(lon, lat))
         .and_then(|m| map.to_lonlat(Coord::new(m.x + res, m.y)))
-        .map(|c| rustgis_geom::lonlat_to_merc(Coord::new(c.x, c.y.clamp(-85.06, 85.06))))
+        .map(|c| powergis_geom::lonlat_to_merc(Coord::new(c.x, c.y.clamp(-85.06, 85.06))))
         .map(|b| (b.x - at.x).hypot(b.y - at.y))
         .filter(|d| d.is_finite() && *d > 0.0)
         .unwrap_or(res);
@@ -49,7 +49,7 @@ pub(super) fn merc_at(s: &Session, lon: f64, lat: f64) -> Option<(Coord, f64)> {
 
 /// Whether a tile layer is a WMS layer that can be asked: drawn, and queryable or not known yet.
 /// One `picked` in the Layers pane is asked whichever it is.
-fn askable(t: &rustgis_map::tiles::TileLayer, picked: bool) -> bool {
+fn askable(t: &powergis_map::tiles::TileLayer, picked: bool) -> bool {
     // As for vector tiles' features: a basemap (one from the catalog) isn't asked, an added layer is.
     t.kind == TileKind::Raster
         && (picked || t.id.is_empty() || t.overlay)
@@ -63,7 +63,7 @@ fn askable(t: &rustgis_map::tiles::TileLayer, picked: bool) -> bool {
 
 /// What to fetch to ask a WMS tile layer about a point: the GetFeatureInfo request, or the
 /// service's capabilities when the layer doesn't know it. `None` when it can't be asked there.
-fn next_fetch(t: &rustgis_map::tiles::TileLayer, lon: f64, lat: f64, at: Coord, m_per_px: f64) -> Option<Value> {
+fn next_fetch(t: &powergis_map::tiles::TileLayer, lon: f64, lat: f64, at: Coord, m_per_px: f64) -> Option<Value> {
     if t.bounds.is_some_and(|[w, s, e, n]| !(w <= lon && lon <= e && s <= lat && lat <= n)) {
         return None;
     }
@@ -71,19 +71,19 @@ fn next_fetch(t: &rustgis_map::tiles::TileLayer, lon: f64, lat: f64, at: Coord, 
         Some(fi) => ask(t, fi, at, m_per_px),
         // The capabilities address comes from the layer's template (a project's, untrusted too).
         None => ogc::wms_layer_of(&t.url)
-            .filter(|(caps, _)| crate::render::rustgis_tiles::address::check(caps, Some(&t.url)).is_ok())
+            .filter(|(caps, _)| crate::render::powergis_tiles::address::check(caps, Some(&t.url)).is_ok())
             .map(|(caps, _)| json!({"tileLayer": t.name, "capabilities": caps})),
     }
 }
 
 /// A WMS tile layer's GetFeatureInfo request for a point, in `fi`'s terms.
-fn ask(t: &rustgis_map::tiles::TileLayer, fi: &FeatureInfo, at: Coord, m_per_px: f64) -> Option<Value> {
+fn ask(t: &powergis_map::tiles::TileLayer, fi: &FeatureInfo, at: Coord, m_per_px: f64) -> Option<Value> {
     // The request's address comes from the capabilities (hostile input): it must not reach into
     // the local network from a service on the web.
     // At the time the layer draws (a WMS layer with a time dimension).
     fi.request(at.x, at.y, m_per_px)
         .map(|url| ogc::at_map_time(url, &t.url))
-        .filter(|url| crate::render::rustgis_tiles::address::check(url, Some(&t.url)).is_ok())
+        .filter(|url| crate::render::powergis_tiles::address::check(url, Some(&t.url)).is_ok())
         .map(|url| json!({"tileLayer": t.name, "url": url}))
 }
 
@@ -214,7 +214,7 @@ fn feature_info(s: &mut Session, p: &Value) -> CmdResult {
     #[cfg(not(target_arch = "wasm32"))]
     {
         let fetch = |url: &str| {
-            crate::render::rustgis_tiles::cache::download_blocking_limited(url, ogc::MAX_INFO_BYTES).map_err(|e| format!("{name}: {e}"))
+            crate::render::powergis_tiles::cache::download_blocking_limited(url, ogc::MAX_INFO_BYTES).map_err(|e| format!("{name}: {e}"))
         };
         let mut step = next(s);
         if let Some(caps) = step.as_ref().and_then(|v| v["capabilities"].as_str()).map(str::to_string) {

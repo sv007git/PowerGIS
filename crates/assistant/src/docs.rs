@@ -4,7 +4,7 @@
 use serde_json::{Value, json};
 
 /// Where the published documentation lives.
-pub const SITE: &str = "https://rustgis.app/";
+pub const SITE: &str = "https://powergis.app/";
 
 /// One documentation page: its path under `docs/` and its Markdown.
 pub struct Page {
@@ -72,7 +72,7 @@ impl Page {
 
 /// A page by its path (`cli.md`, `user-guide/maps`, `/user-guide/maps.md`, or its site URL).
 pub fn page(path: &str) -> Option<&'static Page> {
-    let p = path.trim().trim_start_matches(SITE).trim_start_matches("rustgis://docs/").trim_matches('/');
+    let p = path.trim().trim_start_matches(SITE).trim_start_matches("powergis://docs/").trim_matches('/');
     let p = p.strip_prefix("docs/").unwrap_or(p);
     let with_md = if p.ends_with(".md") {
         p.to_string()

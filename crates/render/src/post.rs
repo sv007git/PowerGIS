@@ -1,8 +1,8 @@
 //! Post-processing of the drawn map: day and night shading, weather, vignette, edges, tilt-shift,
 //! grain, colour adjustments and colour vision simulation.
 
-use rustgis_geom::Coord;
-use rustgis_map::view::{ColorVision, ViewEffects, Weather};
+use powergis_geom::Coord;
+use powergis_map::view::{ColorVision, ViewEffects, Weather};
 use tiny_skia::{Pixmap, PremultipliedColorU8};
 
 /// Applies the effects (and the colour vision simulation, when given) to a drawn map.

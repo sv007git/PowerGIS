@@ -55,12 +55,12 @@ Every action in GridSense is a scriptable PowerGIS command:
 
 ## Python SDK & Scripting Examples
 
-You can script GridSense workflows directly from Python or Jupyter notebooks using the `powergis` / `rustgis` Python package:
+You can script GridSense workflows directly from Python or Jupyter notebooks using the `powergis` / `powergis` Python package:
 
 ```python
-import rustgis
+import powergis
 
-session = rustgis.Session()
+session = powergis.Session()
 
 # 1. Load the electrical grid and render layers on the map
 session.run("grid.sample", {})

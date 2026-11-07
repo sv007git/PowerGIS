@@ -8,12 +8,12 @@
 //! browser, for now) has no autosave.
 
 use egui::vec2;
-use rustgis_engine::Project;
+use powergis_engine::Project;
 use serde::{Deserialize, Serialize};
 use serde_json::{Value, json};
 use web_time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, semibold};
 
 /// The preference the interval is kept under, in minutes (`0` is off).
@@ -129,13 +129,13 @@ fn now_secs() -> u64 {
 /// A file name that isn't Unicode (legal on Unix) can't be kept exactly in the copy's description:
 /// the project is described as untitled then, so Save asks where to write rather than writing to
 /// a lossy spelling of the name.
-fn about(app: &RustGisApp) -> Recovery {
+fn about(app: &powergisApp) -> Recovery {
     let path = app.session.path.as_ref().and_then(|p| std::path::absolute(p).unwrap_or_else(|_| p.clone()).to_str().map(str::to_string));
     Recovery { name: app.session.project.name.clone(), path, time: now_secs(), quit: false }
 }
 
-/// Reads the interval preference and the copy an earlier run left (from [`RustGisApp::with_services`]).
-pub(crate) fn load(app: &mut RustGisApp) {
+/// Reads the interval preference and the copy an earlier run left (from [`powergisApp::with_services`]).
+pub(crate) fn load(app: &mut powergisApp) {
     let minutes = app.services.load_pref.as_ref().and_then(|load| load(MINUTES_PREF)).and_then(|v| v.trim().parse::<u32>().ok());
     // A stored value out of range (edited by hand) means the default.
     app.autosave.minutes = minutes.filter(|m| u64::from(*m) <= MAX_MINUTES).unwrap_or(DEFAULT_MINUTES);
@@ -143,12 +143,12 @@ pub(crate) fn load(app: &mut RustGisApp) {
 }
 
 /// How many copies wait to be offered, the one offered now included.
-fn waiting(app: &RustGisApp) -> usize {
+fn waiting(app: &powergisApp) -> usize {
     app.autosave.offer.as_ref().map_or(0, |_| app.autosave.more + 1)
 }
 
 /// Offers the next copy waiting in the store, if any.
-fn next_offer(app: &mut RustGisApp) {
+fn next_offer(app: &mut powergisApp) {
     let store = app.services.recovery.as_ref();
     let pending = store.and_then(|s| s.pending());
     app.autosave.more = store.map_or(0, |s| s.waiting()).saturating_sub(1);
@@ -175,7 +175,7 @@ fn changed_since(r: &Recovery) -> bool {
 /// Each frame: keeps the recovery copy in step with the project. A copy is made when the project
 /// has unsaved changes it doesn't hold yet and the interval has passed since the last one; it is
 /// removed once the project has none (saved, or another one started).
-pub(crate) fn tick(app: &mut RustGisApp, ctx: &egui::Context) {
+pub(crate) fn tick(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(store) = &app.services.recovery else { return };
     if !app.autosave.wake_set {
         let ctx = ctx.clone();
@@ -225,7 +225,7 @@ pub(crate) fn tick(app: &mut RustGisApp, ctx: &egui::Context) {
 /// save prompt never answered (macOS's Quit, which ends the app without asking the window to
 /// close). Then a last copy is written and kept, and the next start offers it back. With
 /// autosave off there is no copy to keep.
-pub(crate) fn end(app: &mut RustGisApp) {
+pub(crate) fn end(app: &mut powergisApp) {
     if let Some(store) = &app.services.recovery {
         if app.autosave.minutes > 0 && crate::saveprompt::unanswered(app) {
             store.write(app.session.project.clone(), Recovery { quit: true, ..about(app) });
@@ -239,7 +239,7 @@ pub(crate) fn end(app: &mut RustGisApp) {
 
 /// `ui.autosave`: sets the interval (`minutes`, 0 to 60; `0` is off) and says what autosave
 /// does: the interval, and the copy waiting to be recovered.
-pub(crate) fn command(app: &mut RustGisApp, p: &Value) -> Result<Value, String> {
+pub(crate) fn command(app: &mut powergisApp, p: &Value) -> Result<Value, String> {
     if let Some(m) = p.get("minutes") {
         if app.services.recovery.is_none() {
             return Err("autosave needs the desktop app".into());
@@ -259,7 +259,7 @@ pub(crate) fn command(app: &mut RustGisApp, p: &Value) -> Result<Value, String> 
 
 /// `ui.recover`: opens the copy an earlier run left as the project, unsaved, with its original
 /// file (so Save writes there); `{"discard": true}` deletes it instead.
-pub(crate) fn recover(app: &mut RustGisApp, p: &Value) -> Result<Value, String> {
+pub(crate) fn recover(app: &mut powergisApp, p: &Value) -> Result<Value, String> {
     let discard = match p.get("discard") {
         None | Some(Value::Null) => false,
         Some(Value::Bool(b)) => *b,
@@ -317,7 +317,7 @@ fn kept_line(name: &str, then: u64) -> String {
 
 /// The recovery dialog, at start while a copy an earlier run left is waiting: Recover, Discard,
 /// or Later (it is offered again at the next start).
-pub(crate) fn offer(app: &mut RustGisApp, ctx: &egui::Context) {
+pub(crate) fn offer(app: &mut powergisApp, ctx: &egui::Context) {
     if app.autosave.later {
         return;
     }
@@ -413,7 +413,7 @@ mod folder {
     use std::sync::{Arc, Mutex};
     use std::time::Duration;
 
-    use rustgis_engine::Project;
+    use powergis_engine::Project;
 
     use super::{Recovery, RecoveryStore};
 
@@ -673,7 +673,7 @@ mod folder {
         bytes.extend_from_slice(header.as_bytes());
         bytes.push(b'\n');
         bytes.extend_from_slice(text.as_bytes());
-        rustgis_engine::data::io::write_atomic(&dir.join(LIVE), &bytes).map_err(|e| e.to_string())
+        powergis_engine::data::io::write_atomic(&dir.join(LIVE), &bytes).map_err(|e| e.to_string())
     }
 
     /// Removes a copy; one already gone is no error.
@@ -722,9 +722,9 @@ mod folder {
             let path = self.list().first().map(|(p, _)| p.clone()).ok_or("there is no unsaved work to recover")?;
             let mut bytes = Vec::new();
             std::fs::File::open(&path)
-                .and_then(|f| f.take(rustgis_engine::project::MAX_BYTES + MAX_HEADER + 1).read_to_end(&mut bytes))
+                .and_then(|f| f.take(powergis_engine::project::MAX_BYTES + MAX_HEADER + 1).read_to_end(&mut bytes))
                 .map_err(|e| format!("{}: {e}", path.display()))?;
-            if bytes.len() as u64 > rustgis_engine::project::MAX_BYTES + MAX_HEADER {
+            if bytes.len() as u64 > powergis_engine::project::MAX_BYTES + MAX_HEADER {
                 return Err("the recovery copy is too large".into());
             }
             // The description line goes in place: a copy near the size limit isn't held twice.
@@ -762,7 +762,7 @@ mod folder {
         use std::sync::mpsc::channel;
         use std::sync::{Arc, Mutex};
 
-        use rustgis_engine::Project;
+        use powergis_engine::Project;
 
         use super::{Job, LIVE, Recovery, work_with};
 
@@ -800,7 +800,7 @@ mod folder {
         /// autosave doesn't stop without a word.
         #[test]
         fn a_panicking_copy_is_told_and_the_next_one_still_written() {
-            let dir = std::env::temp_dir().join(format!("rustgis-autosave-panic-{}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!("powergis-autosave-panic-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&dir);
             std::fs::create_dir_all(&dir).unwrap();
             let copy = |name: &str| Job::Write(Box::new(Project::new(name)), Recovery { name: name.into(), ..Recovery::default() });
@@ -833,7 +833,7 @@ mod folder {
         /// by a clear isn't made at all.
         #[test]
         fn a_copy_that_could_not_be_adopted_is_cleared_and_a_doomed_write_skipped() {
-            let dir = std::env::temp_dir().join(format!("rustgis-autosave-adopt-{}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!("powergis-autosave-adopt-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&dir);
             std::fs::create_dir_all(&dir).unwrap();
             let pending = dir.join("recovered-1.recovery");
@@ -856,7 +856,7 @@ mod folder {
         /// still in order: a removal queued after both removes it.
         #[test]
         fn a_skipped_copy_stands_in_for_a_newer_one_that_failed() {
-            let dir = std::env::temp_dir().join(format!("rustgis-autosave-skip-{}", std::process::id()));
+            let dir = std::env::temp_dir().join(format!("powergis-autosave-skip-{}", std::process::id()));
             let _ = std::fs::remove_dir_all(&dir);
             std::fs::create_dir_all(&dir).unwrap();
             let copy = |name: &str| Job::Write(Box::new(Project::new(name)), Recovery { name: name.into(), ..Recovery::default() });
@@ -880,11 +880,11 @@ mod tests {
     use std::cell::RefCell;
     use std::rc::Rc;
 
-    use rustgis_engine::{Project, Session};
+    use powergis_engine::{Project, Session};
     use serde_json::json;
 
     use super::{Recovery, RecoveryStore, kept_line, now_secs, tick};
-    use crate::{RustGisApp, Services};
+    use crate::{powergisApp, Services};
 
     /// A store that counts the copies and removals asked of it and fails the next copy when
     /// told to.
@@ -929,7 +929,7 @@ mod tests {
     #[test]
     fn a_failed_copy_is_retried() {
         let store = Counting::default();
-        let mut app = RustGisApp::new(Session::new(Project::default()))
+        let mut app = powergisApp::new(Session::new(Project::default()))
             .with_services(Services { recovery: Some(Box::new(store.clone())), ..Default::default() });
         let ctx = egui::Context::default();
         app.run("layer.template", json!({"template": "points", "name": "Unsaved"})).unwrap();
@@ -955,12 +955,12 @@ mod tests {
         // Saved after a failure: the copy an earlier write left is still removed.
         app.run(
             "project.saveAs",
-            json!({"path": std::env::temp_dir().join(format!("rustgis-retry-{}.rgis", std::process::id())).display().to_string()}),
+            json!({"path": std::env::temp_dir().join(format!("powergis-retry-{}.rgis", std::process::id())).display().to_string()}),
         )
         .unwrap();
         tick(&mut app, &ctx);
         assert_eq!(store.0.borrow().2, 1, "removed once saved");
-        let _ = std::fs::remove_file(std::env::temp_dir().join(format!("rustgis-retry-{}.rgis", std::process::id())));
+        let _ = std::fs::remove_file(std::env::temp_dir().join(format!("powergis-retry-{}.rgis", std::process::id())));
     }
 
     /// The dialog's age reads as a whole sentence in every range: never "1 minutes ago".

@@ -5,10 +5,10 @@
 use std::fmt::Write as _;
 use std::path::Path;
 
-use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType};
-use rustgis_map::color::RampKind;
-use rustgis_map::palette::{RampFormat, read_ramps};
-use rustgis_map::{Layer, Map, Ramp};
+use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType};
+use powergis_map::color::RampKind;
+use powergis_map::palette::{RampFormat, read_ramps};
+use powergis_map::{Layer, Map, Ramp};
 use serde_json::{Value, json};
 
 use super::{b, f, need_feature_layer, need_layer, ps};
@@ -388,7 +388,7 @@ pub(crate) fn read_text(p: &Value) -> Result<String, String> {
 
 /// The project JSON inside a package.
 pub fn package_text(bytes: &[u8]) -> Result<String, String> {
-    let entries = rustgis_data::zip::read_matching(bytes, |n| crate::project::is_project_file(n) || n.ends_with(".rgismap"))?;
+    let entries = powergis_data::zip::read_matching(bytes, |n| crate::project::is_project_file(n) || n.ends_with(".rgismap"))?;
     let (_, data) = entries
         .into_iter()
         .find(|(n, _)| crate::project::is_project_file(n) || n.ends_with(".rgismap"))
@@ -399,7 +399,7 @@ pub fn package_text(bytes: &[u8]) -> Result<String, String> {
 /// Most raster bytes embedded in one map, layer or package file, all rasters together. They're
 /// base64'd into JSON (a third larger), which must stay within what packages can be read back
 /// with (`zip::MAX_TOTAL`).
-const MAX_EMBED: u64 = rustgis_data::zip::MAX_TOTAL as u64 / 2;
+const MAX_EMBED: u64 = powergis_data::zip::MAX_TOTAL as u64 / 2;
 
 /// A raster layer with its file embedded (so the copy stands alone), within what's left of
 /// `budget`. A file that doesn't fit stays linked by its path.
@@ -560,7 +560,7 @@ fn package_project(s: &Session) -> Result<Vec<u8>, String> {
     let text = serde_json::to_string(&p).map_err(|e| e.to_string())?;
     let readme =
         format!("{} — a PowerGIS project package.\nOpen it with PowerGIS (Project › Open), or unzip it for {}.rgis.\n", p.name, p.name);
-    rustgis_data::zip::write(&[
+    powergis_data::zip::write(&[
         (format!("{}.{}", safe(&p.name), crate::project::EXTENSION), text.into_bytes()),
         ("README.txt".into(), readme.into_bytes()),
     ])
@@ -586,7 +586,7 @@ fn package_map(s: &Session, mobile: bool, tol: f64) -> Result<Vec<u8>, String> {
             }
             for f in &mut l.dataset.features {
                 if let Some(g) = &f.geometry {
-                    f.geometry = Some(rustgis_analysis::simplify_geometry(g, tol * 111_320.0));
+                    f.geometry = Some(powergis_analysis::simplify_geometry(g, tol * 111_320.0));
                 }
             }
             l.touch_geometry();
@@ -597,7 +597,7 @@ fn package_map(s: &Session, mobile: bool, tol: f64) -> Result<Vec<u8>, String> {
     let text = serde_json::to_string(&m).map_err(|e| e.to_string())?;
     let kind = if mobile { "mobile map package" } else { "map package" };
     let readme = format!("{} — a PowerGIS {kind}.\nAdd it to a project with Data › Import.\n", m.name);
-    rustgis_data::zip::write(&[(format!("{}.rgismap", safe(&m.name)), text.into_bytes()), ("README.txt".into(), readme.into_bytes())])
+    powergis_data::zip::write(&[(format!("{}.rgismap", safe(&m.name)), text.into_bytes()), ("README.txt".into(), readme.into_bytes())])
 }
 
 /// The geoprocessing history with the layers its runs made, as GeoJSON.
@@ -622,11 +622,11 @@ fn package_gp(s: &Session) -> Result<Vec<u8>, String> {
                     k += 1;
                     file = format!("results/{base}_{k}.geojson");
                 }
-                entries.push((file, rustgis_data::io::to_geojson(&l.dataset).to_string().into_bytes()));
+                entries.push((file, powergis_data::io::to_geojson(&l.dataset).to_string().into_bytes()));
             }
         }
     }
-    rustgis_data::zip::write(&entries)
+    powergis_data::zip::write(&entries)
 }
 
 fn layer_template(s: &mut Session, p: &Value) -> CmdResult {
@@ -759,13 +759,13 @@ pub(crate) fn touches_files(command: &str, params: &Value) -> bool {
         // Its inputs may be bare file names, which don't look like paths.
         || id == "raster.mosaic"
         || (id == "gp.run" && params.get("tool").and_then(Value::as_str).and_then(super::gp::tool_id)
-            .and_then(rustgis_analysis::tool).is_some_and(super::gp::writes_files))
+            .and_then(powergis_analysis::tool).is_some_and(super::gp::writes_files))
         || reaches(params)
 }
 
 /// Parameters without a built-in tool's output layer name, which stays in the session, so a task
 /// (or a model, or a notebook) from a file may set it: only `gp.run`'s `{"tool", "params"}` shape,
-/// only `params.output`, only for the tools in `rustgis_analysis::TOOLS`, which name their output
+/// only `params.output`, only for the tools in `powergis_analysis::TOOLS`, which name their output
 /// layer and never a file through it (see `out_name` there), not GeoLibre or plugin tools, which may
 /// write theirs as files, and only a plain name, with no `/`, `\`, `.` or `:`. Anything else stays
 /// a place.
@@ -777,8 +777,8 @@ fn layer_name_left_out<'a>(command: &str, params: &'a Value) -> std::borrow::Cow
         params
             .get("tool")
             .and_then(Value::as_str)
-            .and_then(rustgis_analysis::tool)
-            .is_some_and(|spec| !super::gp::writes_files(spec) && rustgis_analysis::TOOLS.iter().any(|b| std::ptr::eq(b, spec)))
+            .and_then(powergis_analysis::tool)
+            .is_some_and(|spec| !super::gp::writes_files(spec) && powergis_analysis::TOOLS.iter().any(|b| std::ptr::eq(b, spec)))
     };
     let plain = |t: &str| !t.trim().is_empty() && !t.contains(['/', '\\', '.', ':']) && !looks_like_path(t);
     let named = || params.pointer("/params/output").and_then(Value::as_str).is_some_and(plain);
@@ -826,7 +826,7 @@ pub(crate) fn names_place(v: &Value, keys: &[&str], depth: usize) -> bool {
 fn export_3d(s: &mut Session, p: &Value) -> CmdResult {
     let path = ps(p, "path").ok_or("path is required")?.to_string();
     let obj = obj_text(s, p)?;
-    rustgis_data::io::write_atomic(Path::new(&path), obj.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
+    powergis_data::io::write_atomic(Path::new(&path), obj.as_bytes()).map_err(|e| format!("{path}: {e}"))?;
     s.notify(format!("Exported {path}"), false);
     Ok(json!({"path": path, "bytes": obj.len()}))
 }
@@ -845,11 +845,11 @@ fn obj_text(s: &Session, p: &Value) -> Result<String, String> {
     if e.is_empty() {
         return Err("the layer has no geometry".into());
     }
-    let origin = rustgis_geom::lonlat_to_merc(rustgis_geom::Coord::new(e.min_x, e.min_y));
+    let origin = powergis_geom::lonlat_to_merc(powergis_geom::Coord::new(e.min_x, e.min_y));
     // Web Mercator stretches distances by 1/cos(latitude); shrink back at the layer's centre.
     let k = e.center().y.to_radians().cos().abs().max(0.01);
-    let xy = |c: rustgis_geom::Coord| {
-        let m = rustgis_geom::lonlat_to_merc(c);
+    let xy = |c: powergis_geom::Coord| {
+        let m = powergis_geom::lonlat_to_merc(c);
         ((m.x - origin.x) * k, (m.y - origin.y) * k)
     };
     let name = l.name.replace(char::is_whitespace, "_");
@@ -902,7 +902,7 @@ fn obj_text(s: &Session, p: &Value) -> Result<String, String> {
                         first += m;
                     }
                     // Caps as triangles (concave shapes and holes would fan wrongly as n-gons).
-                    match rustgis_geom::triangulate::triangulate(outer, open.get(1..).unwrap_or(&[])) {
+                    match powergis_geom::triangulate::triangulate(outer, open.get(1..).unwrap_or(&[])) {
                         Some(tris) => {
                             for [a, b, c] in tris {
                                 let _ = writeln!(obj, "f {} {} {}", v + n + a + 1, v + n + b + 1, v + n + c + 1);
@@ -939,7 +939,7 @@ fn obj_text(s: &Session, p: &Value) -> Result<String, String> {
                 }
             }
             Some(g @ (Geometry::Point(_) | Geometry::MultiPoint(_))) => {
-                let pts: Vec<rustgis_geom::Coord> = match g {
+                let pts: Vec<powergis_geom::Coord> = match g {
                     Geometry::Point(c) => vec![*c],
                     Geometry::MultiPoint(c) => c.clone(),
                     _ => Vec::new(),
@@ -1103,6 +1103,6 @@ pub fn item_bytes(s: &mut Session, kind: &str, p: &Value) -> Result<(String, Vec
 pub(crate) fn save_item(s: &mut Session, kind: &str, p: &Value) -> CmdResult {
     let path = ps(p, "path").ok_or("path is required")?.to_string();
     let (_, bytes) = item_bytes(s, kind, p)?;
-    rustgis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
+    powergis_data::io::write_atomic(Path::new(&path), &bytes).map_err(|e| format!("{path}: {e}"))?;
     Ok(json!({"path": path, "bytes": bytes.len()}))
 }

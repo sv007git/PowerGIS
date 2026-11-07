@@ -5,7 +5,7 @@
 //! Answers are asked for in OSRM's form, whose steps carry a maneuver (its type and direction),
 //! an instruction, the street, and spoken announcements.
 
-use rustgis_geom::{Coord, haversine_m};
+use powergis_geom::{Coord, haversine_m};
 use serde_json::{Value, json};
 
 /// The public Valhalla server (FOSSGIS), the default.
@@ -227,7 +227,7 @@ fn route(r: &Value) -> Option<Route> {
             let pts = s
                 .get("geometry")
                 .and_then(Value::as_str)
-                .and_then(|g| rustgis_data::interop::decode_polyline(g, 6).ok())
+                .and_then(|g| powergis_data::interop::decode_polyline(g, 6).ok())
                 .unwrap_or_default();
             let at_m = along.last().copied().unwrap_or(0.0);
             for p in pts {

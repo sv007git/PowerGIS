@@ -17,8 +17,8 @@ mod remembered_database_packets;
 fn isolate_plugins() {
     static ONCE: std::sync::Once = std::sync::Once::new();
     ONCE.call_once(|| {
-        let dir = std::env::temp_dir().join(format!("rustgis-test-plugins-{}", std::process::id()));
-        rustgis_plugins::store::set_dir(Some(dir));
+        let dir = std::env::temp_dir().join(format!("powergis-test-plugins-{}", std::process::id()));
+        powergis_plugins::store::set_dir(Some(dir));
     });
 }
 
@@ -187,7 +187,7 @@ fn standalone_tables_keep_their_ids_in_the_project_file() {
         p.tables.iter().map(|t| (t.id, t.name.clone(), t.features.len())).collect::<Vec<_>>(),
         [(ids[0], "sites".to_string(), 1), (ids[1], "notes".to_string(), 1)]
     );
-    let next = p.add_table(rustgis_data::Dataset::new("more", rustgis_data::GeometryType::None, Vec::new()));
+    let next = p.add_table(powergis_data::Dataset::new("more", powergis_data::GeometryType::None, Vec::new()));
     assert!(next > ids[1], "{next} after {ids:?}");
     // A file from before tables had ids, and one with an id repeated by hand: every table gets
     // an id of its own, and those that had a good one keep it.
@@ -225,7 +225,7 @@ fn standalone_tables_keep_their_ids_in_the_project_file() {
         s.run("gp.run", &json!({"tool": "summaryStatistics", "params": {"input": input, "field": "v"}})).unwrap();
         // The run's table is the last: put again under its name, or added.
         let out = s.project.tables.last().unwrap();
-        assert_eq!(out.value(0, out.field_index("SUM_v").unwrap()), &rustgis_data::Value::Float(sum), "{input}");
+        assert_eq!(out.value(0, out.field_index("SUM_v").unwrap()), &powergis_data::Value::Float(sum), "{input}");
     }
     // A table named as another's id: the text finds it by its name, and a number is the id.
     s.run("layer.addDataText", &json!({"fileName": format!("{}.csv", counts[1]), "text": "k,v\na,1\n"})).unwrap();
@@ -233,12 +233,12 @@ fn standalone_tables_keep_their_ids_in_the_project_file() {
     for (input, sum) in [(json!(counts[1].to_string()), 1.0), (json!(counts[1]), 99.0)] {
         s.run("gp.run", &json!({"tool": "summaryStatistics", "params": {"input": input, "field": "v"}})).unwrap();
         let out = s.project.tables.last().unwrap();
-        assert_eq!(out.value(0, out.field_index("SUM_v").unwrap()), &rustgis_data::Value::Float(sum), "{input}");
+        assert_eq!(out.value(0, out.field_index("SUM_v").unwrap()), &powergis_data::Value::Float(sum), "{input}");
     }
     for input in [json!(9999), json!(-1), json!(1.5)] {
         assert!(s.run("gp.run", &json!({"tool": "summaryStatistics", "params": {"input": input, "field": "v"}})).is_err());
     }
-    let dir = std::env::temp_dir().join(format!("rustgis-table-ids-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-table-ids-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("counts.csv");
     s.run("share.exportTable", &json!({"table": counts[1], "path": path})).unwrap();
@@ -392,8 +392,8 @@ fn editing_features_and_fields() {
 /// project keeps them (a layer without them saves as before).
 #[test]
 fn fill_layers_stack_and_survive_save_and_undo() {
-    use rustgis_map::Rgba;
-    use rustgis_map::fills::{FillLayer, FillPattern, MAX_FILLS};
+    use powergis_map::Rgba;
+    use powergis_map::fills::{FillLayer, FillPattern, MAX_FILLS};
     let mut s = world();
     let before = serde_json::to_string(&s.project).unwrap();
     assert!(!before.contains("fill_layers") && !before.contains("class_fills"), "nothing written for layers without them");
@@ -410,7 +410,7 @@ fn fill_layers_stack_and_survive_save_and_undo() {
     assert_eq!(f[0], FillLayer { color: Some(Rgba::rgb(0xE8, 0xF0, 0xD0)), pattern: FillPattern::Solid });
     assert_eq!(f[1].pattern, FillPattern::Hatch { angle: 45.0, spacing: 6.0, width: 0.75, offset: 0.0 });
     let FillPattern::Dots { marker, spacing, outline, .. } = f[2].pattern else { panic!("{f:?}") };
-    assert_eq!((marker, spacing, outline, f[2].color), (rustgis_map::Marker::Square, [8.0, 6.0], Some(Rgba::rgb(0, 0, 0)), None));
+    assert_eq!((marker, spacing, outline, f[2].color), (powergis_map::Marker::Square, [8.0, 6.0], Some(Rgba::rgb(0, 0, 0)), None));
     // Kept with the project, and undone.
     let text = serde_json::to_string(&s.project).unwrap();
     let reopened = Session::new(serde_json::from_str(&text).unwrap());
@@ -426,7 +426,7 @@ fn fill_layers_stack_and_survive_save_and_undo() {
     // A character of a font as the dots (a QGIS font marker's), kept with its family; not with a
     // shape too.
     s.run("layer.fillLayers", &json!({"layer": "Countries", "fills": [{"pattern": "dots", "char": "★", "font": "Noto Sans"}]})).unwrap();
-    let FillPattern::Dots { marker: rustgis_map::Marker::Char(g), .. } = got(&s)[0].pattern else { panic!("{:?}", got(&s)) };
+    let FillPattern::Dots { marker: powergis_map::Marker::Char(g), .. } = got(&s)[0].pattern else { panic!("{:?}", got(&s)) };
     assert_eq!((g.ch, g.font.as_str()), ('★', "Noto Sans"));
     assert!(
         s.run("layer.fillLayers", &json!({"layer": "Countries", "fills": [{"pattern": "dots", "marker": "square", "char": "x"}]})).is_err()
@@ -434,12 +434,12 @@ fn fill_layers_stack_and_survive_save_and_undo() {
     // A class's own (Unique Values), then back to the layer's.
     s.run("layer.symbology", &json!({"layer": "Countries", "type": "unique", "field": "continent"})).unwrap();
     let value = match &s.map().layer_by_name("Countries").unwrap().renderer {
-        rustgis_map::Renderer::Unique { classes, .. } => classes[0].0.clone(),
+        powergis_map::Renderer::Unique { classes, .. } => classes[0].0.clone(),
         r => panic!("{r:?}"),
     };
     s.run("layer.fillLayers", &json!({"layer": "Countries", "value": value, "fills": [{"pattern": "hatch"}]})).unwrap();
     let class_fills = |s: &Session| match &s.map().layer_by_name("Countries").unwrap().renderer {
-        rustgis_map::Renderer::Unique { class_fills, .. } => class_fills.clone(),
+        powergis_map::Renderer::Unique { class_fills, .. } => class_fills.clone(),
         _ => Default::default(),
     };
     assert_eq!(class_fills(&s).get(&value).map(Vec::len), Some(1));
@@ -468,8 +468,8 @@ fn fill_layers_stack_and_survive_save_and_undo() {
 /// junk refused, numbers held within range.
 #[test]
 fn gradient_and_shapeburst_fills_are_set_and_kept() {
-    use rustgis_map::Rgba;
-    use rustgis_map::fills::{FillPattern, GradientPoint, GradientShape, MAX_GRADIENT_POINT, Spread, Stop};
+    use powergis_map::Rgba;
+    use powergis_map::fills::{FillPattern, GradientPoint, GradientShape, MAX_GRADIENT_POINT, Spread, Stop};
     let mut s = world();
     let fills = json!([
         {"color": "#FF0000", "pattern": "gradient", "color2": "#0000FF", "shape": "radial", "from": "centroid", "to": [1, 0.5], "spread": "reflect", "angle": 30, "stops": [[0.5, "#00FF00"]]},
@@ -540,7 +540,7 @@ fn gradient_and_shapeburst_fills_are_set_and_kept() {
 
 #[test]
 fn line_strokes_stack_and_survive_save_and_undo() {
-    use rustgis_map::{LineCap, LineJoin, LineStroke, Rgba};
+    use powergis_map::{LineCap, LineJoin, LineStroke, Rgba};
     let mut s = world();
     let depth = s.undo_depth();
     // A black casing under an orange core, both shifted 8.5 pt right (#478).
@@ -576,7 +576,7 @@ fn line_strokes_stack_and_survive_save_and_undo() {
     assert_eq!(s.map().layer_by_name("Rivers").unwrap().line_strokes, want);
     assert_eq!(s.undo_depth(), depth + 1);
     // Kept in the project file, and drawn in an export.
-    let dir = std::env::temp_dir().join(format!("rustgis-strokes-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-strokes-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("strokes.rgis");
     s.run("project.saveAs", &json!({"path": path.display().to_string()})).unwrap();
@@ -621,7 +621,7 @@ fn line_strokes_stack_and_survive_save_and_undo() {
 
 #[test]
 fn line_strokes_take_markers_and_hash_marks_along_the_line() {
-    use rustgis_map::{LineMark, LineMarkers, Marker, Placements, Rgba};
+    use powergis_map::{LineMark, LineMarkers, Marker, Placements, Rgba};
     let mut s = world();
     // A river: its line, triangles at both ends turned with it, and ticks across it.
     let strokes = json!([
@@ -648,7 +648,7 @@ fn line_strokes_take_markers_and_hash_marks_along_the_line() {
     let m = s.map().layer_by_name("Rivers").unwrap().line_strokes[0].markers.unwrap();
     assert_eq!((m.at, m.size, m.interval, m.angle), (Placements::MIDDLE, 100.0, 0.5, 90.0));
     // Drawn in an export.
-    let dir = std::env::temp_dir().join(format!("rustgis-markers-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-markers-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     s.run("layer.lineStrokes", &json!({"layer": "Rivers", "strokes": strokes})).unwrap();
     s.run("share.exportMap", &json!({"path": dir.join("map.png").display().to_string(), "width": 320, "height": 200})).unwrap();
@@ -674,7 +674,7 @@ fn line_strokes_take_markers_and_hash_marks_along_the_line() {
 
 #[test]
 fn a_character_of_a_font_is_a_marker_on_points_and_along_lines() {
-    use rustgis_map::{Glyph, LineMark, Marker};
+    use powergis_map::{Glyph, LineMark, Marker};
     let mut s = world();
     let marker = |s: &Session| s.map().layer_by_name("Cities").unwrap().symbol(0).marker;
     s.run("layer.marker", &json!({"layer": "Cities", "char": "★x", "font": "DejaVu Sans", "size": 14})).unwrap();
@@ -685,7 +685,7 @@ fn a_character_of_a_font_is_a_marker_on_points_and_along_lines() {
     s.run("layer.marker", &json!({"layer": "Cities", "font": ""})).unwrap();
     assert_eq!(marker(&s), Marker::Char(Glyph::new('A', "")));
     // Drawn in an export, a family this machine lacks in the label font.
-    let dir = std::env::temp_dir().join(format!("rustgis-chars-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-chars-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     s.run("layer.marker", &json!({"layer": "Cities", "font": "No Such Family"})).unwrap();
     let strokes =
@@ -720,7 +720,7 @@ fn a_character_of_a_font_is_a_marker_on_points_and_along_lines() {
 
 #[test]
 fn a_point_takes_stacked_marks_and_turns_by_a_field() {
-    use rustgis_map::{Glyph, LineMark, Marker};
+    use powergis_map::{Glyph, LineMark, Marker};
     let mut s = world();
     // A white disc under a black character, and a red square 6 pt right of the point.
     let marks = json!([
@@ -749,7 +749,7 @@ fn a_point_takes_stacked_marks_and_turns_by_a_field() {
     let v = l.dataset.value(0, fi).as_f64().unwrap();
     assert_eq!(l.marker_turn(0), -(v.rem_euclid(360.0) as f32));
     // Drawn in an export.
-    let dir = std::env::temp_dir().join(format!("rustgis-marks-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-marks-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     s.run("share.exportMap", &json!({"path": dir.join("map.png").display().to_string(), "width": 320, "height": 200})).unwrap();
     std::fs::remove_dir_all(&dir).ok();
@@ -780,11 +780,11 @@ fn a_symbol_is_set_by_expressions() {
     let fi = l.dataset.field_index("pop_max").unwrap();
     let big = (0..l.dataset.features.len()).find(|r| l.dataset.value(*r, fi).as_f64().is_some_and(|v| v > 1e7)).unwrap();
     let st = l.styler(None);
-    assert_eq!(st.symbol(big).fill, rustgis_map::Rgba::new(255, 0, 0, 255));
+    assert_eq!(st.symbol(big).fill, powergis_map::Rgba::new(255, 0, 0, 255));
     assert!(st.symbol(big).size > 4.0);
     assert_eq!(st.marker_turn(big), 45.0);
     // Drawn in an export.
-    let dir = std::env::temp_dir().join(format!("rustgis-symbol-by-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-symbol-by-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     s.run("share.exportMap", &json!({"path": dir.join("map.png").display().to_string(), "width": 320, "height": 200})).unwrap();
     std::fs::remove_dir_all(&dir).ok();
@@ -857,8 +857,8 @@ fn a_stroke_is_dashed_by_command() {
 
 #[test]
 fn a_class_stacks_strokes_of_its_own() {
-    use rustgis_map::symbology::ClassRef;
-    use rustgis_map::{LineStroke, Rgba};
+    use powergis_map::symbology::ClassRef;
+    use powergis_map::{LineStroke, Rgba};
     let mut s = world();
     s.run("layer.symbology", &json!({"layer": "Rivers", "type": "unique", "field": "scalerank"})).unwrap();
     // The layer's one stroke, a casing and core for rivers of rank 1, a thin line for
@@ -891,7 +891,7 @@ fn a_class_stacks_strokes_of_its_own() {
     s.run("layer.lineStrokes", &json!({"layer": "Rivers", "value": 1, "strokes": pair})).unwrap();
     check(&s);
     // Kept in the project file, and through applying the same symbology again.
-    let dir = std::env::temp_dir().join(format!("rustgis-class-strokes-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-class-strokes-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("strokes.rgis");
     s.run("project.saveAs", &json!({"path": path.display().to_string()})).unwrap();
@@ -951,7 +951,7 @@ fn strokes_draw_in_levels() {
         assert_eq!((l.line_strokes[0].level_at(0), l.line_strokes[1].level_at(1)), (2, 1));
     };
     check(&s);
-    let dir = std::env::temp_dir().join(format!("rustgis-stroke-levels-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-stroke-levels-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("levels.rgis");
     s.run("project.saveAs", &json!({"path": path.display().to_string()})).unwrap();
@@ -992,7 +992,7 @@ fn a_reference_scale_is_set_kept_and_undone() {
         assert_eq!((at("Rivers"), at("Cities"), at("Lakes")), (Some(25000.0), Some(now), None));
     };
     check(&s);
-    let dir = std::env::temp_dir().join(format!("rustgis-reference-scale-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-reference-scale-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("reference.rgis");
     s.run("project.saveAs", &json!({"path": path.display().to_string()})).unwrap();
@@ -1027,10 +1027,10 @@ fn rivers_are_labelled_along_their_lines_in_italics() {
     s.run("labels.style", &json!({"layer": "Rivers", "italic": true})).unwrap();
     let check = |s: &Session| {
         let c = &s.map().layer_by_name("Rivers").unwrap().labels.default;
-        assert_eq!((c.placement, c.italic), (rustgis_map::LabelPlacement::Curved, true));
+        assert_eq!((c.placement, c.italic), (powergis_map::LabelPlacement::Curved, true));
     };
     check(&s);
-    let dir = std::env::temp_dir().join(format!("rustgis-line-labels-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-line-labels-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("labels.rgis");
     s.run("project.saveAs", &json!({"path": path.display().to_string()})).unwrap();
@@ -1040,7 +1040,7 @@ fn rivers_are_labelled_along_their_lines_in_italics() {
     t.run("share.exportMap", &json!({"path": dir.join("map.png").display().to_string(), "width": 320, "height": 200})).unwrap();
     std::fs::remove_dir_all(&dir).ok();
     s.run("labels.placement", &json!({"layer": "Rivers", "position": "parallel"})).unwrap();
-    assert_eq!(s.map().layer_by_name("Rivers").unwrap().labels.default.placement, rustgis_map::LabelPlacement::Parallel);
+    assert_eq!(s.map().layer_by_name("Rivers").unwrap().labels.default.placement, powergis_map::LabelPlacement::Parallel);
     // Not slanted unless asked: a project from before reads as upright.
     s.run("labels.style", &json!({"layer": "Rivers", "italic": false})).unwrap();
     let text = serde_json::to_string(&s.map().layer_by_name("Rivers").unwrap().labels).unwrap();
@@ -1116,7 +1116,7 @@ fn a_qgis_project_with_a_geographic_proj_string_keeps_its_saved_view() {
 
 #[test]
 fn a_qgis_project_opens_as_a_map_and_a_qgis_style_styles_a_layer() {
-    let dir = std::env::temp_dir().join(format!("rustgis-qgis-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-qgis-{}", std::process::id()));
     std::fs::create_dir_all(dir.join("data")).unwrap();
     let roads = r#"{"type":"FeatureCollection","features":[
         {"type":"Feature","properties":{"class":"motorway","name":"A1","lanes":3},"geometry":{"type":"LineString","coordinates":[[8.70,47.49],[8.75,47.51]]}},
@@ -1148,20 +1148,20 @@ fn a_qgis_project_opens_as_a_map_and_a_qgis_style_styles_a_layer() {
     assert_eq!((s.project.maps.len(), s.map().name.as_str()), (maps + 1, "Winterthur"), "a map of its own");
     assert_eq!(s.undo_depth(), depth + 1, "one step");
     assert_eq!(s.map().projection.code(), "EPSG:2056");
-    assert_eq!(s.map().basemap, rustgis_map::Basemap::Blank);
+    assert_eq!(s.map().basemap, powergis_map::Basemap::Blank);
     let names: Vec<&str> = s.map().layers.iter().map(|l| l.name.as_str()).collect();
     assert_eq!(names, ["Towns", "Roads"], "top first; the database table isn't added");
     let roads = s.map().layer_by_name("Roads").unwrap();
     assert!(!roads.visible, "unchecked in the layer tree");
     assert_eq!(roads.definition_query.as_deref(), Some("\"lanes\" > 0"));
     assert!(roads.reference_scale.is_some());
-    let rustgis_map::Renderer::Unique { field, class_strokes, .. } = &roads.renderer else { panic!("{:?}", roads.renderer) };
+    let powergis_map::Renderer::Unique { field, class_strokes, .. } = &roads.renderer else { panic!("{:?}", roads.renderer) };
     assert_eq!((field.as_str(), class_strokes.get("motorway").map(Vec::len)), ("class", Some(2)));
     let classes: Vec<(&str, bool)> = roads.labels.classes.iter().map(|c| (c.name.as_str(), c.visible)).collect();
     assert_eq!(classes, [("Big", true), ("Broken", false)], "a clause the layer can't read is switched off");
-    assert_eq!(roads.labels.classes[0].placement, rustgis_map::LabelPlacement::Parallel);
+    assert_eq!(roads.labels.classes[0].placement, powergis_map::LabelPlacement::Parallel);
     let towns = s.map().layer_by_name("Towns").unwrap();
-    assert_eq!((towns.dataset.features.len(), towns.renderer.base_symbol().marker), (1, rustgis_map::Marker::Square));
+    assert_eq!((towns.dataset.features.len(), towns.renderer.base_symbol().marker), (1, powergis_map::Marker::Square));
     // What wasn't carried over: the database table, with no password in the note.
     let notes = out["notes"].as_array().unwrap();
     let text = serde_json::to_string(notes).unwrap();
@@ -1209,7 +1209,7 @@ fn a_qgis_project_opens_as_a_map_and_a_qgis_style_styles_a_layer() {
     // Web layers are overlays, so they stay in the tree's order, and take the layer's blending.
     let t = s.map().tiles.iter().find(|t| t.name == "Tiles").unwrap();
     assert!(t.overlay);
-    assert_eq!(t.blend, rustgis_map::effects::Blend::Multiply);
+    assert_eq!(t.blend, powergis_map::effects::Blend::Multiply);
     // A layer of no provider (QGIS's annotation layer) is noted by its kind.
     let qgs = r#"<qgis version="3.42.0"><title>Notes</title><projectlayers><maplayer type="annotation"><id>a</id><layername>Notes</layername></maplayer></projectlayers></qgis>"#;
     let out = s.run("project.importQgis", &json!({"text": qgs})).unwrap();
@@ -1235,15 +1235,15 @@ fn a_qgis_project_opens_as_a_map_and_a_qgis_style_styles_a_layer() {
     let web = r#"<qgis version="3.42.0"><layer-tree-group><layer-tree-layer id="w" checked="Qt::Unchecked"/></layer-tree-group><projectlayers>
         <maplayer type="raster" hasScaleBasedVisibilityFlag="1" minScale="100000" maxScale="1000"><id>w</id><datasource>url=https://wms.example/wms&amp;layers=a</datasource><layername>Web</layername><provider>wms</provider>
         <pipe><rasterrenderer opacity="0.5" type="singlebandcolordata"/></pipe><blendMode>13</blendMode></maplayer></projectlayers></qgis>"#;
-    let mut report = rustgis_map::qgis::Report::default();
-    let project = rustgis_map::qgis::read_project(web, "", &mut report).unwrap();
+    let mut report = powergis_map::qgis::Report::default();
+    let project = powergis_map::qgis::read_project(web, "", &mut report).unwrap();
     let mut w = world();
     let before = w.active_layer;
     w.active_layer = w.map().layers.iter().map(|l| l.id).find(|id| Some(*id) != before);
     crate::cmd::qgis::web_settings(&mut w, &json!({"name": "Web"}), before, &project.layers[0], &mut report);
     let l = w.map().layers.iter().find(|l| Some(l.id) == w.active_layer).unwrap();
     assert!(!l.visible);
-    assert_eq!((l.transparency, l.blend), (50.0, rustgis_map::effects::Blend::Multiply));
+    assert_eq!((l.transparency, l.blend), (50.0, powergis_map::effects::Blend::Multiply));
     assert!(l.min_scale.is_some() && l.max_scale.is_some());
     // Plugins can't run the import: a project names files and web addresses its layers come from.
     assert!(crate::cmd::plugins::user_only("project.importQgis"));
@@ -1253,7 +1253,7 @@ fn a_qgis_project_opens_as_a_map_and_a_qgis_style_styles_a_layer() {
 #[test]
 fn project_save_and_open_roundtrip() {
     let mut s = world();
-    let dir = std::env::temp_dir().join(format!("rustgis-test-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-test-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("atlas.rgis");
     s.run("project.saveAs", &json!({"path": path.display().to_string()})).unwrap();
@@ -1269,7 +1269,7 @@ fn project_save_and_open_roundtrip() {
 #[test]
 fn project_extension_is_rgis_and_legacy_rgisx_opens() {
     let mut s = world();
-    let dir = std::env::temp_dir().join(format!("rustgis-ext-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-ext-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     s.run("project.saveAs", &json!({"path": dir.join("atlas").display().to_string()})).unwrap();
     let saved = dir.join("atlas.rgis");
@@ -1294,13 +1294,13 @@ fn project_extension_is_rgis_and_legacy_rgisx_opens() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_file_inside_a_geodatabase_adds_the_geodatabase() {
-    let dir = std::env::temp_dir().join(format!("rustgis-gdb-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-gdb-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let gdb = dir.join("roads.gdb");
     let table = gdb.join("a00000001.gdbtable").display().to_string();
     let mut s = Session::new(Project::default());
-    if rustgis_data::source::gdal::available() {
+    if powergis_data::source::gdal::available() {
         let geojson = dir.join("cities.geojson");
         std::fs::write(
             &geojson,
@@ -1340,7 +1340,7 @@ fn save_clears_dirty_and_open_clears_history() {
     assert!(!s.dirty() && !s.can_undo(), "a fresh sample is clean");
     s.run("layer.color", &json!({"layer": "Countries", "color": "#336699"})).unwrap();
     assert!(s.dirty() && s.can_undo());
-    let dir = std::env::temp_dir().join(format!("rustgis-dirty-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-dirty-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("a.rgis");
     s.run("project.saveAs", &json!({"path": path.display().to_string()})).unwrap();
@@ -1402,7 +1402,7 @@ fn opened_project_is_named_after_its_file() {
     assert_eq!(s.project.name, "World Atlas", "without a file name the project keeps its own");
     s.run("project.openText", &json!({"text": text, "fileName": " .rgis"})).unwrap();
     assert_eq!(s.project.name, "World Atlas", "an empty file name doesn't rename it");
-    let dir = std::env::temp_dir().join(format!("rustgis-named-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-named-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("Trip plan.rgis");
     std::fs::write(&path, &text).unwrap();
@@ -1424,7 +1424,7 @@ fn command_ids_are_unique() {
 /// A 3-band 8×6 UTM 17N GeoTIFF near 81°W, 42°N, as base64.
 fn utm_tiff_b64() -> String {
     use base64::Engine;
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     let gt = GeoTransform { origin_x: 497_000.0, origin_y: 4_651_000.0, pixel_width: 500.0, pixel_height: -500.0 };
     let bands = (0..3).map(|b| (0..48).map(|i| ((i * 5 + b * 40) % 256) as f32).collect()).collect();
     let r = Raster::new("utm", 8, 6, bands, gt, Crs::from_epsg(32617).unwrap(), None, ColorHint::Rgb { alpha: false }, "UInt8").unwrap();
@@ -1457,7 +1457,7 @@ fn a_qgis_raster_style_colours_a_raster() {
     let st = &l.raster.as_ref().unwrap().style;
     assert_eq!(
         (&st.renderer, st.contrast, l.transparency),
-        (&rustgis_map::raster::RasterRenderer::Rgb { red: 2, green: 1, blue: 0 }, 25.0, 50.0)
+        (&powergis_map::raster::RasterRenderer::Rgb { red: 2, green: 1, blue: 0 }, 25.0, 50.0)
     );
     let before = st.clone();
     // A style that reads a band the raster hasn't leaves it as it was, its opacity too.
@@ -1478,8 +1478,8 @@ fn a_qgis_raster_style_colours_a_raster() {
 #[test]
 fn geotiff_parts_open_and_survive_a_saved_project() {
     use base64::Engine;
-    use rustgis_data::raster::cog::{self, Sparse};
-    use rustgis_data::raster::geotiff::{self, Partial};
+    use powergis_data::raster::cog::{self, Sparse};
+    use powergis_data::raster::geotiff::{self, Partial};
     let file = cog::example(1024, 256);
     let len = file.len() as u64;
     let mut parts = Sparse::default().with_len(len).with(0, file[..4096].to_vec());
@@ -1596,12 +1596,12 @@ fn tissot_indicatrix_reports_the_maps_own_distortion() {
         let col = |n: &str| ds.fields.iter().position(|f| f.name == n).unwrap();
         let row = (0..ds.features.len())
             .find(|&r| {
-                ds.value(r, col("lat")) == &rustgis_data::Value::Float(lat) && ds.value(r, col("lon")) == &rustgis_data::Value::Float(0.0)
+                ds.value(r, col("lat")) == &powergis_data::Value::Float(lat) && ds.value(r, col("lon")) == &powergis_data::Value::Float(0.0)
             })
             .unwrap();
         match ds.value(row, col(name)) {
-            rustgis_data::Value::Float(v) => json!(v),
-            rustgis_data::Value::Text(t) => json!(t),
+            powergis_data::Value::Float(v) => json!(v),
+            powergis_data::Value::Text(t) => json!(t),
             v => panic!("{name}: {v:?}"),
         }
     };
@@ -1653,20 +1653,20 @@ fn a5_grids_and_points_by_cell() {
 fn globe_projection_toggles_renders_and_saves() {
     let mut s = with_raster();
     assert_eq!(s.run("map.projection", &Value::Null).unwrap()["projection"], "globe");
-    assert_eq!(s.map().projection, rustgis_map::Projection::Globe);
+    assert_eq!(s.map().projection, powergis_map::Projection::Globe);
     // The globe draws vectors, rasters and labels, from any side.
     for (lon, lat, res) in [(-81.0, 42.0, 30_000.0), (100.0, -60.0, 60_000.0), (-81.0, 42.0, 50.0), (0.0, 89.0, 160_000.0)] {
         s.map_mut().camera =
-            rustgis_map::Camera { center: rustgis_geom::lonlat_to_merc(rustgis_geom::Coord::new(lon, lat)), res, bearing: 0.0, pitch: 0.0 };
+            powergis_map::Camera { center: powergis_geom::lonlat_to_merc(powergis_geom::Coord::new(lon, lat)), res, bearing: 0.0, pitch: 0.0 };
         let png = crate::cmd::share::map_png(&mut s, Some(400.0), Some(300.0), None).unwrap();
         assert!(png.len() > 1000);
     }
     assert!(s.run("map.projection", &json!({"type": "nope"})).is_err());
     s.run("map.projection", &json!({"type": "mercator"})).unwrap();
     s.run("edit.undo", &Value::Null).unwrap();
-    assert_eq!(s.map().projection, rustgis_map::Projection::Globe, "undo restores the globe");
+    assert_eq!(s.map().projection, powergis_map::Projection::Globe, "undo restores the globe");
     let json = serde_json::to_string(&s.project).unwrap();
-    assert!(Project::from_json(&json).unwrap().map().projection == rustgis_map::Projection::Globe);
+    assert!(Project::from_json(&json).unwrap().map().projection == powergis_map::Projection::Globe);
 }
 
 /// `map.projection` takes ESRI codes (#213): South America Albers, the issue's regional map.
@@ -1812,8 +1812,8 @@ fn custom_projections_switch_keep_scale_query_and_render() {
     // A project naming a projection this version can't use opens in Web Mercator.
     let broken = json.replace("EPSG:32617", "EPSG:9");
     let reopened = Project::from_json(&broken).unwrap();
-    assert_eq!(reopened.map().projection, rustgis_map::Projection::WebMercator);
-    assert_eq!(reopened.map().camera, rustgis_map::Camera::world(), "UTM metres aren't read as Mercator ones");
+    assert_eq!(reopened.map().projection, powergis_map::Projection::WebMercator);
+    assert_eq!(reopened.map().camera, powergis_map::Camera::world(), "UTM metres aren't read as Mercator ones");
     // Bookmarks follow a projection switch, and the extent history doesn't replay old cameras.
     s.run("map.projection", &json!({"type": "mercator"})).unwrap();
     s.run("map.goToXY", &json!({"lon": 10.0, "lat": 50.0, "scale": 5_000_000})).unwrap();
@@ -1829,7 +1829,7 @@ fn custom_projections_switch_keep_scale_query_and_render() {
     assert!((c.x - 10.0).abs() < 1e-6 && (c.y - 50.0).abs() < 1e-6, "{c:?}");
     assert!((s.scale() / 5_000_000.0 - 1.0).abs() < 0.02, "{}", s.scale());
     // An export at another size measures its scale bar with its own camera.
-    let wide = s.map().ground_res_at(&rustgis_map::Camera { res: s.map().camera.res * 3.0, ..s.map().camera });
+    let wide = s.map().ground_res_at(&powergis_map::Camera { res: s.map().camera.res * 3.0, ..s.map().camera });
     assert!((wide / s.map().ground_res() - 3.0).abs() < 1e-9);
     // The built-in world projections (and Equal Earth by its EPSG code) draw the whole world.
     for p in ["robinson", "equalEarth", "naturalEarth", "winkelTripel", "eckertIV", "EPSG:8857"] {
@@ -1875,7 +1875,7 @@ fn raster_layers_open_style_identify_and_round_trip() {
     s.run("raster.enhance", &json!({"brightness": 20, "contrast": -10, "gamma": 1.4})).unwrap();
     s.run("layer.ramp", &json!({"ramp": "Aurora"})).unwrap();
     let st = s.map().layers.first().unwrap().raster.as_ref().unwrap().style.clone();
-    assert_eq!(st.renderer, rustgis_map::RasterRenderer::Rgb { red: 2, green: 1, blue: 0 });
+    assert_eq!(st.renderer, powergis_map::RasterRenderer::Rgb { red: 2, green: 1, blue: 0 });
     assert!(st.dra && st.gamma == 1.4);
     // Feature-only commands are off for rasters, and layer conditions follow a named layer.
     assert!(s.run("table.open", &Value::Null).is_err());
@@ -1897,7 +1897,7 @@ fn raster_layers_open_style_identify_and_round_trip() {
     assert_eq!(info["crs"], "EPSG:32617");
     assert_eq!(info["bands"].as_array().map(Vec::len), Some(3));
     // Export, then reopen from the file.
-    let dir = std::env::temp_dir().join(format!("rustgis-raster-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-raster-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let tif = dir.join("out.tif");
     s.run("share.exportRaster", &json!({"path": tif.display().to_string()})).unwrap();
@@ -1953,7 +1953,7 @@ fn raster_masks_hide_values() {
     s.run("raster.mask", &json!({"clear": true, "min": lo, "max": (lo + hi) / 2.0})).unwrap();
     s.run("raster.symbology", &json!({"type": "classify", "classes": 4})).unwrap();
     let top = |s: &Session| match style(s).renderer {
-        rustgis_map::RasterRenderer::Classify { breaks, .. } => breaks.last().copied().unwrap_or_default(),
+        powergis_map::RasterRenderer::Classify { breaks, .. } => breaks.last().copied().unwrap_or_default(),
         _ => f64::NAN,
     };
     assert!(top(&s) <= (lo + hi) / 2.0, "{}", top(&s));
@@ -1961,7 +1961,7 @@ fn raster_masks_hide_values() {
     assert!(top(&s) > (lo + hi) / 2.0, "worked out again without the bound");
     // Masking down to one value collapses the classes; clearing the mask brings back the 4 asked for.
     let classes = |s: &Session| match style(s).renderer {
-        rustgis_map::RasterRenderer::Classify { breaks, .. } => breaks.len(),
+        powergis_map::RasterRenderer::Classify { breaks, .. } => breaks.len(),
         _ => 0,
     };
     s.run("raster.mask", &json!({"min": lo, "max": lo})).unwrap();
@@ -1973,7 +1973,7 @@ fn raster_masks_hide_values() {
     s.run("edit.undo", &Value::Null).unwrap();
     // Breaks edited by hand are kept.
     let mut edited = style(&s);
-    if let rustgis_map::RasterRenderer::Classify { breaks, .. } = &mut edited.renderer {
+    if let powergis_map::RasterRenderer::Classify { breaks, .. } = &mut edited.renderer {
         breaks[0] += 0.5;
     }
     let id = s.map().layer_by_name("scene").unwrap().id;
@@ -1985,7 +1985,7 @@ fn raster_masks_hide_values() {
     // Undo removing the max bound; then saved and drawn.
     s.run("edit.undo", &Value::Null).unwrap();
     assert_eq!(style(&s).mask.max, Some((lo + hi) / 2.0));
-    let dir = std::env::temp_dir().join(format!("rustgis-mask-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-mask-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let proj = dir.join("p.rgis");
     s.run("project.saveAs", &json!({"path": proj.display().to_string()})).unwrap();
@@ -2112,8 +2112,8 @@ fn hostile_params_never_panic(shard: usize) {
         // Saved S3 keys: junk remember flags, partial pairs, tokens, and a choice of nothing.
         json!({"id": "c1", "accessKeyId": "A", "secretAccessKey": "S", "sessionToken": "T", "remember": "yes"}),
         json!({"id": "c1", "accessKeyId": 7, "secretAccessKey": [], "remember": null}),
-        json!({"id": "c1", "remember": true, "source": "rustgis-s3:junk", "node": 5}),
-        json!({"source": "rustgis-s3::0::s3://bucket/key", "id": "c1", "remember": {"a": 1}}),
+        json!({"id": "c1", "remember": true, "source": "powergis-s3:junk", "node": 5}),
+        json!({"source": "powergis-s3::0::s3://bucket/key", "id": "c1", "remember": {"a": 1}}),
         json!({"source": 7, "id": ["c1"]}),
     ];
     let ids: Vec<&str> = Session::new(Project::default())
@@ -2191,7 +2191,7 @@ fn hostile_params_never_panic(shard: usize) {
 fn every_tool_survives_an_environment_extent() {
     // An extent holding some features, and one holding none, with every tool and junk params.
     for extent in [json!([0, 40, 20, 55]), json!([-179.9, -89, -179.8, -88.9])] {
-        for t in rustgis_analysis::tools().filter(|t| !rustgis_analysis::is_external(t)) {
+        for t in powergis_analysis::tools().filter(|t| !powergis_analysis::is_external(t)) {
             let mut s = world();
             s.run("gp.env", &json!({"extent": extent})).unwrap();
             for params in [json!({"input": "Countries"}), json!({"input": "Cities", "distance": 1e9, "clip": "Countries"})] {
@@ -2217,7 +2217,7 @@ fn geolibre_tools_run_on_layers_and_add_their_outputs() {
     s.run("gp.setGeolibre", &json!({"path": ""})).unwrap();
     assert_eq!(s.undo_label(), undo, "choosing a runner isn't an edit");
     if st["available"] != true {
-        eprintln!("skipped: no GeoLibre runner (set RUSTGIS_GEOLIBRE)");
+        eprintln!("skipped: no GeoLibre runner (set powergis_GEOLIBRE)");
         return;
     }
     let tools = s.run("gp.tools", &Value::Null).unwrap();
@@ -2254,7 +2254,7 @@ fn geolibre_runs_can_finish_asynchronously() {
     assert!(s.run("gp.finish", &json!({"id": 99})).is_err(), "nothing pending");
     assert!(external_complete(&mut s, 99, Ok((vec![], vec![]))).is_err(), "nothing started");
     if s.run("gp.geolibre", &Value::Null).unwrap()["available"] != true {
-        eprintln!("skipped: no GeoLibre runner (set RUSTGIS_GEOLIBRE)");
+        eprintln!("skipped: no GeoLibre runner (set powergis_GEOLIBRE)");
         return;
     }
     assert!(external_start(&mut s, "geolibre:slope", &json!({})).unwrap_err().contains("required"));
@@ -2337,10 +2337,10 @@ fn popup_modes_choose_what_identify_reports() {
 
 #[test]
 fn identify_reports_every_overlapping_feature() {
-    use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
+    use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
     let mut s = world();
     // Two buoys on one spot of the South Atlantic, far from any country, under a float.
-    let spot = || Some(Geometry::Point(rustgis_geom::Coord::new(-20.0, -30.0)));
+    let spot = || Some(Geometry::Point(powergis_geom::Coord::new(-20.0, -30.0)));
     let mut d = Dataset::new("Buoys", GeometryType::Point, vec![Field::new("n", FieldType::Integer)]);
     for n in [1, 2] {
         d.push(spot(), vec![V::Int(n)]);
@@ -2385,7 +2385,7 @@ fn label_size_stays_within_what_text_symbol_shows() {
         s.run("labels.style", &json!({"layer": "Countries", "size": given})).unwrap();
         assert_eq!(size(&s), Some(kept), "size {given}");
     }
-    let range = rustgis_map::symbology::LABEL_SIZE;
+    let range = powergis_map::symbology::LABEL_SIZE;
     assert_eq!((*range.start(), *range.end()), (4.0, 72.0));
 }
 
@@ -2479,7 +2479,7 @@ fn labels_take_a_font_by_family_name() {
 /// go back to the automatic colour and the thin halo, and other settings leave them.
 #[test]
 fn labels_take_a_halo_colour_and_width_and_letter_spacing() {
-    use rustgis_map::Rgba;
+    use powergis_map::Rgba;
     let mut s = world();
     let class = |s: &Session| {
         let c = &s.map().layer_by_name("Cities").unwrap().labels.default;
@@ -2518,7 +2518,7 @@ fn labels_take_a_halo_colour_and_width_and_letter_spacing() {
 /// and the project keeps them.
 #[test]
 fn labels_take_wrapping_and_a_repeat_along_lines() {
-    use rustgis_map::layout::TextAlign;
+    use powergis_map::layout::TextAlign;
     let mut s = world();
     let class = |s: &Session| {
         let c = &s.map().layer_by_name("Rivers").unwrap().labels.default;
@@ -2535,7 +2535,7 @@ fn labels_take_wrapping_and_a_repeat_along_lines() {
     s.run("labels.style", &json!({"layer": "Rivers", "wrapChar": "abcdefghijk", "wrapLength": 1e9})).unwrap();
     s.run("labels.placement", &json!({"layer": "Rivers", "repeat": 0.5})).unwrap();
     let c = class(&s);
-    assert_eq!((c.0.as_deref(), c.1, c.3), (Some("abcdefgh"), rustgis_map::symbology::MAX_WRAP_LENGTH, Some(10.0)));
+    assert_eq!((c.0.as_deref(), c.1, c.3), (Some("abcdefgh"), powergis_map::symbology::MAX_WRAP_LENGTH, Some(10.0)));
     s.run("labels.placement", &json!({"layer": "Rivers", "repeat": 1e9})).unwrap();
     assert_eq!(class(&s).3, Some(10_000.0));
     s.run("labels.style", &json!({"layer": "Rivers", "wrapChar": "", "wrapLength": 0})).unwrap();
@@ -2624,7 +2624,7 @@ fn labels_take_other_positions_round_points() {
 /// is refused, numbers kept within their ranges, and each change undoes.
 #[test]
 fn labels_take_an_offset_and_a_background() {
-    use rustgis_map::{LabelBackground, Rgba};
+    use powergis_map::{LabelBackground, Rgba};
     let mut s = world();
     let class = |s: &Session| {
         let c = &s.map().layer_by_name("Cities").unwrap().labels.default;
@@ -2638,11 +2638,11 @@ fn labels_take_an_offset_and_a_background() {
     assert!(s.notices_since(mark).iter().all(|n| !n.text.contains("ignores")), "every key is read");
     assert_eq!((class(&s).0, class(&s).1), (placement, [3.0, -2.5]));
     s.run("labels.placement", &json!({"layer": "Cities", "position": "right", "offset": [1e9, -1e9]})).unwrap();
-    assert_eq!((class(&s).0, class(&s).1), (rustgis_map::LabelPlacement::Right, [200.0, -200.0]));
+    assert_eq!((class(&s).0, class(&s).1), (powergis_map::LabelPlacement::Right, [200.0, -200.0]));
     s.run("labels.placement", &json!({"layer": "Cities", "position": "below"})).unwrap();
     assert_eq!(class(&s).1, [200.0, -200.0], "a position alone keeps the offset");
     s.run("edit.undo", &json!({})).unwrap();
-    assert_eq!(class(&s).0, rustgis_map::LabelPlacement::Right, "undoes");
+    assert_eq!(class(&s).0, powergis_map::LabelPlacement::Right, "undoes");
     for bad in [json!({}), json!({"offset": "far"}), json!({"offset": [1]}), json!({"offset": [1, "x"]}), json!({"offset": null})] {
         let mut p = bad.clone();
         p["layer"] = json!("Cities");
@@ -2733,12 +2733,12 @@ fn a_change_to_where_point_labels_go_locks_them_again() {
 #[test]
 fn locked_labels_stay_with_their_features_when_rows_move() {
     use crate::render::View;
-    use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
+    use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
     let mut s = world();
     // Three buoys on one spot of the South Atlantic: only the first one's label fits.
     let mut d = Dataset::new("Buoys", GeometryType::Point, vec![Field::new("name", FieldType::Text)]);
     for name in ["Alpha", "Beta", "Gamma"] {
-        d.push(Some(Geometry::Point(rustgis_geom::Coord::new(-20.0, -30.0))), vec![V::Text(name.into())]);
+        d.push(Some(Geometry::Point(powergis_geom::Coord::new(-20.0, -30.0))), vec![V::Text(name.into())]);
     }
     let id = s.map_mut().add_dataset(d);
     s.run("labels.enable", &json!({"layer": "Buoys", "on": true})).unwrap();
@@ -2889,14 +2889,14 @@ fn label_classes_convert_and_outlive_a_deleted_field() {
     s.run("labels.enable", &json!({"on": true})).unwrap();
     s.run("labels.class.add", &json!({"name": "Big's", "where": "pop_max > 5000000"})).unwrap();
     s.run("labels.style", &json!({"class": "Big's", "size": 18})).unwrap();
-    let big = rustgis_data::query::select("pop_max > 5000000", &s.map().layer(cities).unwrap().dataset).unwrap().len();
+    let big = powergis_data::query::select("pop_max > 5000000", &s.map().layer(cities).unwrap().dataset).unwrap().len();
     assert!(big > 0);
     let r = s.run("labels.convert", &json!({})).unwrap();
     let a = s.map().layer(u32::try_from(r["layer"].as_u64().unwrap()).unwrap()).unwrap();
     let classes: Vec<_> = a.labels.in_order().map(|c| (c.name.clone(), c.where_.clone(), c.field.clone(), c.size)).collect();
     assert_eq!(classes[0], ("Big's".to_string(), Some(r#""CLASS" = 'Big''s'"#.to_string()), "TEXT".to_string(), 18.0));
     assert_eq!((classes[1].1.as_deref(), classes[1].2.as_str()), (Some(r#""CLASS" = 'Default'"#), "TEXT"), "Default picks its own");
-    let picked = |w: &Option<String>| rustgis_data::query::select(w.as_deref().unwrap(), &a.dataset).unwrap().len();
+    let picked = |w: &Option<String>| powergis_data::query::select(w.as_deref().unwrap(), &a.dataset).unwrap().len();
     assert_eq!(picked(&classes[0].1), big, "the class's clause picks the points it labelled");
     // Default labels the big cities too (#732): each class gives them a point.
     assert_eq!(picked(&classes[1].1), a.dataset.features.len() - big);
@@ -2971,31 +2971,31 @@ fn graphics_draw_shapes_text_and_pictures() {
     assert!(s.run("graphics.add", &json!({"shape": "picture", "points": [[0, 45], [10, 55]], "image": "bm90IGFuIGltYWdl"})).is_err());
     let v = View { width: 800.0, height: 600.0, pixels_per_point: 1.0, camera: s.map().camera, sky: false };
     let r = crate::render::render(s.map_mut(), &v).unwrap();
-    let (x, y) = v.to_screen(rustgis_geom::lonlat_to_merc(rustgis_geom::Coord::new(5.0, 50.0)));
+    let (x, y) = v.to_screen(powergis_geom::lonlat_to_merc(powergis_geom::Coord::new(5.0, 50.0)));
     let px = r.pixmap.pixel(x as u32, y as u32).unwrap();
     assert!(px.red() > 200 && px.green() < 60, "the picture covers its rectangle: {px:?}");
     // Restyle the selection; keep the tool.
     s.run("select.rows", &json!({"layer": id, "rows": [0]})).unwrap();
     s.run("graphics.style", &json!({"fill": "#00FF00", "width": 3})).unwrap();
-    assert_eq!(rustgis_map::graphics::symbol(&s.map().layer(id).unwrap().dataset, 0).fill, rustgis_map::Rgba::rgb(0, 255, 0));
+    assert_eq!(powergis_map::graphics::symbol(&s.map().layer(id).unwrap().dataset, 0).fill, powergis_map::Rgba::rgb(0, 255, 0));
     assert!(s.run("graphics.style", &json!({})).is_err(), "nothing to change");
     s.run("graphics.style", &json!({"text": "not on a rectangle"})).unwrap();
-    assert!(rustgis_map::graphics::label(&s.map().layer(id).unwrap().dataset, 0).is_none(), "text only goes on text graphics");
+    assert!(powergis_map::graphics::label(&s.map().layer(id).unwrap().dataset, 0).is_none(), "text only goes on text graphics");
     // Edit one text graphic by layer and row (#420): the selected rectangle stays as it was, and
     // undo takes the edit back.
     s.run("graphics.edit", &json!({"layer": id, "row": text, "text": "Edited", "fontSize": 30})).unwrap();
     let row = text.as_u64().unwrap() as usize;
     let ds = &s.map().layer(id).unwrap().dataset;
-    assert_eq!((rustgis_map::graphics::label(ds, row), rustgis_map::graphics::font_size(ds, row)), (Some("Edited"), 30.0));
-    assert_eq!(rustgis_map::graphics::font_size(ds, 0), 14.0, "only the graphic named");
+    assert_eq!((powergis_map::graphics::label(ds, row), powergis_map::graphics::font_size(ds, row)), (Some("Edited"), 30.0));
+    assert_eq!(powergis_map::graphics::font_size(ds, 0), 14.0, "only the graphic named");
     // A size is kept within the range it is drawn at, so Edit Text shows what the map draws.
     s.run("graphics.edit", &json!({"layer": id, "row": text, "fontSize": 0})).unwrap();
     let ds = &s.map().layer(id).unwrap().dataset;
-    assert_eq!(ds.value(row, ds.field_index("font_size").unwrap()), &rustgis_data::Value::Float(*rustgis_map::graphics::FONT_SIZE.start()));
+    assert_eq!(ds.value(row, ds.field_index("font_size").unwrap()), &powergis_data::Value::Float(*powergis_map::graphics::FONT_SIZE.start()));
     s.run("edit.undo", &Value::Null).unwrap();
     s.run("edit.undo", &Value::Null).unwrap();
     let ds = &s.map().layer(id).unwrap().dataset;
-    assert_eq!((rustgis_map::graphics::label(ds, row), rustgis_map::graphics::font_size(ds, row)), (Some("{map} {scale}"), 20.0));
+    assert_eq!((powergis_map::graphics::label(ds, row), powergis_map::graphics::font_size(ds, row)), (Some("{map} {scale}"), 20.0));
     for bad in [
         json!({"layer": id, "row": text, "text": "  "}),
         json!({"layer": id, "row": 999, "text": "x"}),
@@ -3010,7 +3010,7 @@ fn graphics_draw_shapes_text_and_pictures() {
     ] {
         assert!(s.run("graphics.edit", &bad).is_err(), "{bad}");
     }
-    assert_eq!(rustgis_render::picture_size(&b64), Some((2, 2)));
+    assert_eq!(powergis_render::picture_size(&b64), Some((2, 2)));
     assert!(s.run("graphics.keepTool", &Value::Null).unwrap()["keepTool"].as_bool().unwrap());
     s.run("tool.set", &json!({"tool": "graphicRectangle"})).unwrap();
     assert_eq!(s.tool.code(), "graphicRectangle");
@@ -3058,10 +3058,10 @@ fn select_takes_only_drawn_features_of_selectable_layers() {
 fn map_area_selection_add(
     s: &mut Session,
     name: &str,
-    kind: rustgis_data::GeometryType,
-    geometries: &[Option<rustgis_data::Geometry>],
+    kind: powergis_data::GeometryType,
+    geometries: &[Option<powergis_data::Geometry>],
 ) -> u32 {
-    use rustgis_data::{Dataset, Field, FieldType, Value as V};
+    use powergis_data::{Dataset, Field, FieldType, Value as V};
     let mut dataset = Dataset::new(name, kind, vec![Field::new("n", FieldType::Integer)]);
     for (row, geometry) in geometries.iter().enumerate() {
         dataset.push(geometry.clone(), vec![V::Int(row as i64)]);
@@ -3070,8 +3070,8 @@ fn map_area_selection_add(
 }
 
 fn map_area_selection_fixture() -> (Session, u32, u32) {
-    use rustgis_data::{Geometry, GeometryType};
-    use rustgis_geom::Coord;
+    use powergis_data::{Geometry, GeometryType};
+    use powergis_geom::Coord;
     let mut s = Session::new(Project::default());
     let geometries: Vec<_> =
         [(0.5, 0.5), (2.0, 2.0), (3.0, 0.5), (4.0, 4.0)].into_iter().map(|(x, y)| Some(Geometry::Point(Coord::new(x, y)))).collect();
@@ -3147,8 +3147,8 @@ fn map_area_selection_ring_forms_and_even_odd_lasso_are_command_visible() {
         assert_eq!(map_area_selection_rows(&s, first), [0, 2]);
     }
 
-    use rustgis_data::{Geometry, GeometryType};
-    use rustgis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
+    use powergis_data::{Geometry, GeometryType};
+    use powergis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
     // Construct the bow-tie in the command's planar space, then invert it. Its crossing really
     // is (2,2), rather than the slightly different intersection of four Mercator-projected degrees.
     let origin = lonlat_to_merc(Coord::new(0.0, 0.0));
@@ -3188,7 +3188,7 @@ fn map_area_selection_rejected_inputs_preserve_exact_layer_selections() {
         // Only the closing edge crosses the Mercator seam.
         ("select.byPolygon", json!({"points": [[-170,0],[-10,1],[10,1],[170,0]]})),
         ("select.byPolygon", json!({"points": [[0,86],[1,86],[1,87]]})),
-        ("select.byPolygon", json!({"points": vec![[0.0,0.0]; rustgis_analysis::selection::MAX_POINTS + 1]})),
+        ("select.byPolygon", json!({"points": vec![[0.0,0.0]; powergis_analysis::selection::MAX_POINTS + 1]})),
         ("select.byRadius", json!({"lon": 0, "lat": 0})),
         ("select.byRadius", json!({"lon": null, "lat": 0, "radius": 1})),
         ("select.byRadius", json!({"lon": 181, "lat": 0, "radius": 1})),
@@ -3232,7 +3232,7 @@ fn map_area_selection_rejected_inputs_preserve_exact_layer_selections() {
 fn map_area_selection_detailed_low_crossing_outline_is_not_truncated() {
     let (mut s, first, _) = map_area_selection_fixture();
     let count = 12000;
-    assert!(count < rustgis_analysis::selection::MAX_POINTS);
+    assert!(count < powergis_analysis::selection::MAX_POINTS);
     let points: Vec<_> = (0..count)
         .map(|i| {
             let angle = i as f64 * std::f64::consts::TAU / count as f64;
@@ -3245,8 +3245,8 @@ fn map_area_selection_detailed_low_crossing_outline_is_not_truncated() {
 
 #[test]
 fn map_area_selection_drawn_row_policy_matches_rectangle_for_every_filter() {
-    use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
-    use rustgis_geom::Coord;
+    use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
+    use powergis_geom::Coord;
     let operations = [
         ("select.byRect", json!({"minLon": -1, "minLat": -1, "maxLon": 1, "maxLat": 1})),
         ("select.byPolygon", json!({"points": [[-1,-1],[1,-1],[1,1],[-1,1]]})),
@@ -3307,7 +3307,7 @@ fn map_area_selection_drawn_row_policy_matches_rectangle_for_every_filter() {
                 }
                 if restriction == "overlapping_groups" {
                     // held_by_group must win even when a second, visible membership exists.
-                    let mut visible = rustgis_map::LayerGroup::new("Also visible");
+                    let mut visible = powergis_map::LayerGroup::new("Also visible");
                     visible.id = 1000000;
                     visible.children.push(id);
                     s.map_mut().groups.push(visible);
@@ -3355,9 +3355,9 @@ fn map_area_selection_drawn_row_policy_matches_rectangle_for_every_filter() {
 
 #[test]
 fn map_area_selection_radius_typed_geometries_match_network_at_zero_and_sixty() {
-    use rustgis_analysis::network::{radius_boundary_point, radius_distance_m, within};
-    use rustgis_data::{Geometry, GeometryType};
-    use rustgis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
+    use powergis_analysis::network::{radius_boundary_point, radius_distance_m, within};
+    use powergis_data::{Geometry, GeometryType};
+    use powergis_geom::{Coord, lonlat_to_merc, merc_to_lonlat};
     for latitude in [0.0_f64, 60.0] {
         let center = Coord::new(3.0, latitude);
         let origin = lonlat_to_merc(center);
@@ -3457,9 +3457,9 @@ fn map_area_selection_radius_typed_geometries_match_network_at_zero_and_sixty() 
 
 #[test]
 fn map_area_selection_radius_retains_legacy_geographic_prefilter() {
-    use rustgis_analysis::network::{radius_distance_m, within};
-    use rustgis_data::{Geometry, GeometryType};
-    use rustgis_geom::Coord;
+    use powergis_analysis::network::{radius_distance_m, within};
+    use powergis_data::{Geometry, GeometryType};
+    use powergis_geom::Coord;
     let center = Coord::new(0.0, 60.0);
     let point = Coord::new(0.0, 59.1);
     let distance = radius_distance_m(center, point).unwrap();
@@ -3479,8 +3479,8 @@ fn map_area_selection_radius_retains_legacy_geographic_prefilter() {
 
 #[test]
 fn map_area_selection_polygon_uses_projected_crossings_holes_and_multipart_features() {
-    use rustgis_data::{Geometry, GeometryType};
-    use rustgis_geom::Coord;
+    use powergis_data::{Geometry, GeometryType};
+    use powergis_geom::Coord;
     for projection in ["mercator", "robinson", "EPSG:32631"] {
         let mut s = Session::new(Project::default());
         s.run("map.projection", &json!({"type": projection})).unwrap();
@@ -3550,11 +3550,11 @@ fn map_area_selection_polygon_uses_projected_crossings_holes_and_multipart_featu
 fn zooms_to_a_layer_follow_its_definition_query() {
     let mut s = world();
     s.run("layer.definitionQuery", &json!({"layer": "Countries", "where": "continent = 'South America'"})).unwrap();
-    let in_south_america = |c: rustgis_geom::Coord| (-85.0..-30.0).contains(&c.x) && (-60.0..15.0).contains(&c.y);
+    let in_south_america = |c: powergis_geom::Coord| (-85.0..-30.0).contains(&c.x) && (-60.0..15.0).contains(&c.y);
     // The frame zooms to the countries drawn, not the whole dataset (#206).
     s.run("layout.new", &json!({"page": "a4", "orientation": "portrait", "template": "map"})).unwrap();
     s.run("layout.frameZoom", &json!({"to": "layer", "layer": "Countries"})).unwrap();
-    let Some(rustgis_map::layout::ElementKind::MapFrame { center, scale, .. }) =
+    let Some(powergis_map::layout::ElementKind::MapFrame { center, scale, .. }) =
         s.project.layouts[0].first_frame().and_then(|id| s.project.layouts[0].element(id)).map(|e| e.kind.clone())
     else {
         panic!("no frame")
@@ -3573,7 +3573,7 @@ fn zooms_to_a_layer_follow_its_definition_query() {
 #[test]
 fn layout_frames_print_site_plans_and_finds() {
     // Excavation plans at 1:20, finds at 1:1 and larger (#902): no longer held at 1:100.
-    use rustgis_map::layout::{ElementKind, MIN_FRAME_SCALE};
+    use powergis_map::layout::{ElementKind, MIN_FRAME_SCALE};
     let mut s = world();
     s.run("layout.new", &json!({"page": "a4", "orientation": "landscape", "template": "map"})).unwrap();
     let scale_of = |s: &Session| {
@@ -3596,7 +3596,7 @@ fn layout_frames_print_site_plans_and_finds() {
 
 #[test]
 fn layout_frames_turn_and_tilt() {
-    use rustgis_map::layout::ElementKind;
+    use powergis_map::layout::ElementKind;
     let mut s = world();
     let frame_of = |s: &Session| {
         let l = &s.project.layouts[0];
@@ -3625,9 +3625,9 @@ fn layout_frames_turn_and_tilt() {
     let flat_json = serde_json::to_string(&s.project.layouts[0]).unwrap_or_default();
     assert!(!flat_json.contains("bearing") && !flat_json.contains("pitch"), "{flat_json}");
     s.run("layout.addElement", &json!({"kind": "northArrow", "frame": id})).unwrap();
-    let info = rustgis_render::layout::PageInfo::default();
+    let info = powergis_render::layout::PageInfo::default();
     let draw = |s: &mut Session| {
-        rustgis_render::layout::render(&s.project.layouts[0].clone(), &mut s.project.maps, 48.0, &info).map(|p| p.data().to_vec())
+        powergis_render::layout::render(&s.project.layouts[0].clone(), &mut s.project.maps, 48.0, &info).map(|p| p.data().to_vec())
     };
     let flat = draw(&mut s).expect("drawn");
     s.run("layout.update", &json!({"element": id, "bearing": 90, "pitch": 60})).unwrap();
@@ -3653,12 +3653,12 @@ fn terrain_is_set_from_a_dem_or_tiles() {
     assert_eq!(v["source"]["encoding"], "mapbox");
     assert_eq!(v["exaggeration"], 2.0);
     let v = s.run("map.terrain", &json!({"exaggeration": 400})).unwrap();
-    assert_eq!(v["exaggeration"], rustgis_map::view::MAX_EXAGGERATION);
+    assert_eq!(v["exaggeration"], powergis_map::view::MAX_EXAGGERATION);
     assert_eq!(v["source"]["tiles"], "https://e.com/{z}/{x}/{y}.png");
     assert!(s.run("map.terrain", &json!({"exaggeration": "steep"})).is_err());
     // Saved with the project.
     let saved = serde_json::to_string(&s.map().view).unwrap_or_default();
-    let back: rustgis_map::view::ViewSettings = serde_json::from_str(&saved).unwrap_or_default();
+    let back: powergis_map::view::ViewSettings = serde_json::from_str(&saved).unwrap_or_default();
     assert_eq!(back.terrain, s.map().view.terrain);
     s.run("map.terrain", &json!({"off": true})).unwrap();
     assert!(s.map().view.terrain.is_none());
@@ -3671,7 +3671,7 @@ fn graduated_symbology_skips_a_current_text_field() {
 
     s.run("layer.symbology", &json!({"layer": "Countries", "type": "graduated"})).unwrap();
     let layer = s.map().layer_by_name("Countries").unwrap();
-    let rustgis_map::Renderer::Graduated { field, .. } = &layer.renderer else { panic!("Graduated Colors renderer expected") };
+    let powergis_map::Renderer::Graduated { field, .. } = &layer.renderer else { panic!("Graduated Colors renderer expected") };
     assert_ne!(field, "income_grp", "the text field from the previous renderer is not reused");
     assert!(layer.dataset.field_index(field).and_then(|i| layer.dataset.fields.get(i)).is_some_and(|f| f.ty.is_numeric()));
 }
@@ -3692,7 +3692,7 @@ fn symbology_chooses_fields_by_renderer_requirements() {
     .unwrap();
 
     s.run("layer.symbology", &json!({"layer": "text-fields", "type": "unique"})).unwrap();
-    let rustgis_map::Renderer::Unique { field, classes, .. } = &s.map().layer_by_name("text-fields").unwrap().renderer else {
+    let powergis_map::Renderer::Unique { field, classes, .. } = &s.map().layer_by_name("text-fields").unwrap().renderer else {
         panic!("Unique Values renderer expected")
     };
     assert_eq!(field, "g_id");
@@ -3710,7 +3710,7 @@ fn symbology_chooses_fields_by_renderer_requirements() {
 fn symbology_classes_follow_the_definition_query() {
     let mut s = world();
     s.run("layer.definitionQuery", &json!({"layer": "Countries", "where": "continent = 'Europe'"})).unwrap();
-    let shown = |s: &Session, field: &str| -> Vec<rustgis_data::Value> {
+    let shown = |s: &Session, field: &str| -> Vec<powergis_data::Value> {
         let l = s.map().layer_by_name("Countries").unwrap();
         let fi = l.dataset.field_index(field).unwrap();
         l.visible_rows().iter().enumerate().filter(|(_, v)| **v).map(|(r, _)| l.dataset.value(r, fi).clone()).collect()
@@ -3718,7 +3718,7 @@ fn symbology_classes_follow_the_definition_query() {
     // The top class ends at the largest country drawn, not at China (#236).
     s.run("layer.symbology", &json!({"layer": "Countries", "type": "graduated", "field": "pop_est", "classes": 5})).unwrap();
     let top = shown(&s, "pop_est").iter().filter_map(|v| v.as_f64()).fold(f64::MIN, f64::max);
-    let rustgis_map::Renderer::Graduated { breaks, .. } = &s.map().layer_by_name("Countries").unwrap().renderer else {
+    let powergis_map::Renderer::Graduated { breaks, .. } = &s.map().layer_by_name("Countries").unwrap().renderer else {
         panic!("graduated renderer expected")
     };
     assert_eq!(breaks.last().copied(), Some(top));
@@ -3727,7 +3727,7 @@ fn symbology_classes_follow_the_definition_query() {
     let mut drawn: Vec<String> = shown(&s, "income_grp").iter().map(|v| v.to_string()).collect();
     drawn.sort();
     drawn.dedup();
-    let rustgis_map::Renderer::Unique { classes, .. } = &s.map().layer_by_name("Countries").unwrap().renderer else {
+    let powergis_map::Renderer::Unique { classes, .. } = &s.map().layer_by_name("Countries").unwrap().renderer else {
         panic!("unique renderer expected")
     };
     assert_eq!(classes.iter().map(|(k, _)| k.clone()).collect::<Vec<_>>(), drawn);
@@ -3752,7 +3752,7 @@ fn layer_class_style_edits_one_class() {
     // value, not its label, so an edit landing on another class can't pass.
     let class = |s: &Session| {
         let r = renderer(s);
-        let rustgis_map::Renderer::Unique { classes, .. } = &r else { panic!("unique renderer expected") };
+        let powergis_map::Renderer::Unique { classes, .. } = &r else { panic!("unique renderer expected") };
         let i = classes.iter().position(|(k, _)| *k == value).unwrap();
         let row = r.class_order().into_iter().position(|o| o == i).unwrap();
         r.legend().into_iter().nth(row).unwrap()
@@ -3812,12 +3812,12 @@ fn layer_class_style_edits_one_class() {
 }
 
 /// Read classes by their command identity, not their sorted legend position.
-fn class_style_rows(s: &Session, layer: &str) -> Vec<(Value, rustgis_map::Symbol)> {
+fn class_style_rows(s: &Session, layer: &str) -> Vec<(Value, powergis_map::Symbol)> {
     match &s.map().layer_by_name(layer).unwrap().renderer {
-        rustgis_map::Renderer::Graduated { symbols, .. } => {
+        powergis_map::Renderer::Graduated { symbols, .. } => {
             symbols.iter().enumerate().map(|(i, symbol)| (json!({"layer": layer, "index": i}), *symbol)).collect()
         }
-        rustgis_map::Renderer::Unique { classes, other, .. } => classes
+        powergis_map::Renderer::Unique { classes, other, .. } => classes
             .iter()
             .map(|(value, symbol)| (json!({"layer": layer, "value": value}), *symbol))
             .chain(std::iter::once((json!({"layer": layer, "other": true}), *other)))
@@ -3828,7 +3828,7 @@ fn class_style_rows(s: &Session, layer: &str) -> Vec<(Value, rustgis_map::Symbol
 
 #[test]
 fn layer_class_style_polygon_alpha_targets_only_the_named_class() {
-    use rustgis_map::Rgba;
+    use powergis_map::Rgba;
     for (kind, field) in [("graduated", "pop_est"), ("unique", "income_grp")] {
         let mut s = world();
         s.run("layer.symbology", &json!({"layer": "Countries", "type": kind, "field": field, "classes": 3})).unwrap();
@@ -3934,7 +3934,7 @@ fn layer_class_creation_keeps_explicit_layer_fill_alpha() {
 
 #[test]
 fn layer_class_style_point_and_line_colors_keep_their_supplied_alpha() {
-    use rustgis_map::Rgba;
+    use powergis_map::Rgba;
     let mut s = world();
     for layer in ["Cities", "Rivers"] {
         let field = s.map().layer_by_name(layer).unwrap().dataset.fields[0].name.clone();
@@ -3965,9 +3965,9 @@ fn layer_class_style_polygon_alpha_reaches_exported_pixels() {
         s.run("layer.addDataText", &json!({"fileName": "square.geojson", "text": fixture.to_string()})).unwrap();
         s.run("layer.symbology", &json!({"layer": "square", "type": kind, "field": "value", "classes": 1})).unwrap();
         s.view_size = (128.0, 128.0);
-        s.map_mut().basemap = rustgis_map::Basemap::Blank;
+        s.map_mut().basemap = powergis_map::Basemap::Blank;
         s.map_mut().graticule = false;
-        s.map_mut().camera = rustgis_map::Camera { center: rustgis_geom::Coord::new(0.0, 0.0), res: 1000.0, bearing: 0.0, pitch: 0.0 };
+        s.map_mut().camera = powergis_map::Camera { center: powergis_geom::Coord::new(0.0, 0.0), res: 1000.0, bearing: 0.0, pitch: 0.0 };
         let mut params = class_style_rows(&s, "square")[0].0.clone();
         for alpha in [255, 0, 64] {
             params["color"] = json!(format!("#FF0000{alpha:02X}"));
@@ -3994,7 +3994,7 @@ fn layout_legends_list_what_the_frame_draws() {
     s.run("layer.symbology", &json!({"layer": "Countries", "type": "unique", "field": "income_grp"})).unwrap();
     s.run("layer.definitionQuery", &json!({"layer": "Countries", "where": "continent = 'South America'"})).unwrap();
     let l = s.map().layer_by_name("Countries").unwrap();
-    let rustgis_map::Renderer::Unique { classes, .. } = &l.renderer else { panic!("unique renderer expected") };
+    let powergis_map::Renderer::Unique { classes, .. } = &l.renderer else { panic!("unique renderer expected") };
     assert!(classes.len() > 2, "{classes:?}");
     let shown: Vec<String> = l.shown_legend(4e7).unwrap().into_iter().map(|e| e.label).collect();
     let mut drawn: Vec<String> = {
@@ -4012,25 +4012,25 @@ fn layout_legends_list_what_the_frame_draws() {
     let legend =
         |s: &Session| s.project.layouts[0].elements.iter().find(|e| e.kind.code() == "legend").map(|e| (e.id, e.kind.clone())).unwrap();
     let (id, kind) = legend(&s);
-    assert!(matches!(kind, rustgis_map::layout::ElementKind::Legend { all_classes: false, .. }), "{kind:?}");
+    assert!(matches!(kind, powergis_map::layout::ElementKind::Legend { all_classes: false, .. }), "{kind:?}");
     s.run("layout.update", &json!({"element": id, "allClasses": true})).unwrap();
-    assert!(matches!(legend(&s).1, rustgis_map::layout::ElementKind::Legend { all_classes: true, hide_other: false, .. }));
+    assert!(matches!(legend(&s).1, powergis_map::layout::ElementKind::Legend { all_classes: true, hide_other: false, .. }));
     // <all other values> can be left out on its own, in either mode.
     s.run("layout.update", &json!({"element": id, "hideOther": true})).unwrap();
-    assert!(matches!(legend(&s).1, rustgis_map::layout::ElementKind::Legend { all_classes: true, hide_other: true, .. }));
+    assert!(matches!(legend(&s).1, powergis_map::layout::ElementKind::Legend { all_classes: true, hide_other: true, .. }));
     // Read like every other on/off parameter (`b`): a value that is neither a bool nor text keeps
     // the setting, and text other than true/yes/1/on turns it off.
     s.run("layout.update", &json!({"element": id, "hideOther": 5})).unwrap();
-    assert!(matches!(legend(&s).1, rustgis_map::layout::ElementKind::Legend { hide_other: true, .. }), "a number keeps the setting");
+    assert!(matches!(legend(&s).1, powergis_map::layout::ElementKind::Legend { hide_other: true, .. }), "a number keeps the setting");
     s.run("layout.update", &json!({"element": id, "hideOther": "off"})).unwrap();
-    assert!(matches!(legend(&s).1, rustgis_map::layout::ElementKind::Legend { hide_other: false, .. }));
+    assert!(matches!(legend(&s).1, powergis_map::layout::ElementKind::Legend { hide_other: false, .. }));
     let r = s.run("layout.addElement", &json!({"kind": "legend", "allClasses": true})).unwrap();
     let added = r["element"].as_u64().unwrap() as u32;
     let kind = s.project.layouts[0].element(added).map(|e| e.kind.clone()).unwrap();
-    assert!(matches!(kind, rustgis_map::layout::ElementKind::Legend { all_classes: true, .. }), "{kind:?}");
+    assert!(matches!(kind, powergis_map::layout::ElementKind::Legend { all_classes: true, .. }), "{kind:?}");
     // Layouts saved before the option open with it off.
-    let old: rustgis_map::layout::ElementKind = serde_json::from_str(r#"{"Legend":{"frame":1,"title":"L"}}"#).unwrap();
-    assert!(matches!(old, rustgis_map::layout::ElementKind::Legend { all_classes: false, hide_other: false, .. }));
+    let old: powergis_map::layout::ElementKind = serde_json::from_str(r#"{"Legend":{"frame":1,"title":"L"}}"#).unwrap();
+    assert!(matches!(old, powergis_map::layout::ElementKind::Legend { all_classes: false, hide_other: false, .. }));
 }
 
 /// A map frame's grid can be a measured grid (#1008): eastings and northings in a projected
@@ -4038,7 +4038,7 @@ fn layout_legends_list_what_the_frame_draws() {
 /// isn't one, is refused; a change of type starts its step afresh.
 #[test]
 fn a_frames_grid_can_be_a_measured_grid() {
-    use rustgis_map::layout::{ElementKind, GridKind};
+    use powergis_map::layout::{ElementKind, GridKind};
     let mut s = world();
     s.run("layout.new", &json!({"page": "a4", "template": "map"})).unwrap();
     let frame = s.project.layouts[0].elements.iter().find(|e| e.kind.code() == "mapFrame").unwrap().id;
@@ -4056,7 +4056,7 @@ fn a_frames_grid_can_be_a_measured_grid() {
     let g = grid(&s).unwrap();
     assert_eq!((g.step, g.short), (1000.0, true));
     // Steps in metres: from a metre to 10,000 km, 0 picks one; past 90 isn't a graticule's limit.
-    for (step, want) in [(0.25, 1.0), (1e12, rustgis_map::layout::MAX_MEASURED_STEP), (-5.0, 0.0), (250_000.0, 250_000.0)] {
+    for (step, want) in [(0.25, 1.0), (1e12, powergis_map::layout::MAX_MEASURED_STEP), (-5.0, 0.0), (250_000.0, 250_000.0)] {
         s.run("layout.update", &json!({"element": frame, "grid": {"step": step}})).unwrap();
         assert_eq!(grid(&s).unwrap().step, want, "{step}");
     }
@@ -4072,7 +4072,7 @@ fn a_frames_grid_can_be_a_measured_grid() {
         json!({"crs": "EPSG:1"}),
         json!({"crs": "not a system"}),
         json!({"crs": 25832}),
-        json!({"crs": format!("EPSG:25832 {}", "x".repeat(rustgis_map::layout::MAX_GRID_CRS))}),
+        json!({"crs": format!("EPSG:25832 {}", "x".repeat(powergis_map::layout::MAX_GRID_CRS))}),
     ] {
         assert!(s.run("layout.update", &json!({"element": frame, "grid": bad})).is_err(), "{bad}");
         let mut p = bad.clone();
@@ -4097,7 +4097,7 @@ fn a_frames_grid_can_be_a_measured_grid() {
     s.run("layout.update", &json!({"element": frame, "grid": {"step": 500}})).unwrap();
     assert_eq!(grid(&s).unwrap().step, 90.0, "a graticule's step is degrees");
     // It draws (a PNG of the page).
-    let path = std::env::temp_dir().join(format!("rustgis-measured-{}.png", std::process::id()));
+    let path = std::env::temp_dir().join(format!("powergis-measured-{}.png", std::process::id()));
     s.run("layout.update", &json!({"element": frame, "grid": {"type": "measured", "step": 1000000}})).unwrap();
     s.run("layout.export", &json!({"path": path, "dpi": 72})).unwrap();
     assert!(std::fs::metadata(&path).is_ok_and(|m| m.len() > 1000));
@@ -4108,8 +4108,8 @@ fn a_frames_grid_can_be_a_measured_grid() {
 /// checked before anything changes, kept when other options change, and saved with the layout.
 #[test]
 fn layout_surrounds_take_cartographic_options() {
-    use rustgis_map::Rgba;
-    use rustgis_map::layout::{ArrowStyle, CoordFormat, ElementKind, GridEdges, GridStyle, ScaleBarStyle, ScaleUnits};
+    use powergis_map::Rgba;
+    use powergis_map::layout::{ArrowStyle, CoordFormat, ElementKind, GridEdges, GridStyle, ScaleBarStyle, ScaleUnits};
     let mut s = world();
     s.run("layout.new", &json!({"page": "a4", "orientation": "landscape", "template": "map"})).unwrap();
     let find = |s: &Session, code: &str| s.project.layouts[0].elements.iter().find(|e| e.kind.code() == code).unwrap().clone();
@@ -4143,13 +4143,13 @@ fn layout_surrounds_take_cartographic_options() {
     s.run("layout.update", &json!({"element": frame, "grid": {"style": "linesAndTicks", "tickLength": 1e9, "edges": "bottom, left"}}))
         .unwrap();
     let g3 = grid(&s).unwrap();
-    assert_eq!((g3.style, g3.tick_length, g3.edges), (GridStyle::LinesAndTicks, rustgis_map::layout::MAX_TICK_MM, GridEdges::default()));
+    assert_eq!((g3.style, g3.tick_length, g3.edges), (GridStyle::LinesAndTicks, powergis_map::layout::MAX_TICK_MM, GridEdges::default()));
     s.run("layout.update", &json!({"element": frame, "grid": null})).unwrap();
     assert_eq!(grid(&s), Some(g3), "null is not set: the grid stays");
     s.run("layout.update", &json!({"element": frame, "grid": false})).unwrap();
     assert!(grid(&s).is_none());
     s.run("layout.update", &json!({"element": frame, "grid": true})).unwrap();
-    assert_eq!(grid(&s), Some(rustgis_map::layout::Grid::default()));
+    assert_eq!(grid(&s), Some(powergis_map::layout::Grid::default()));
     let arrow = find(&s, "northArrow").id;
     assert!(s.run("layout.update", &json!({"element": arrow, "grid": true})).is_err(), "only frames have grids");
     // North arrows: a style and colours.
@@ -4185,11 +4185,11 @@ fn layout_surrounds_take_cartographic_options() {
         ElementKind::ScaleBar { units: ScaleUnits::Feet, divisions: 4, style: ScaleBarStyle::Line, .. }
     ));
     // The page draws with them all, and they survive a save.
-    let out = std::env::temp_dir().join(format!("rustgis-surrounds-{}.png", std::process::id()));
+    let out = std::env::temp_dir().join(format!("powergis-surrounds-{}.png", std::process::id()));
     s.run("layout.export", &json!({"path": out.to_string_lossy()})).unwrap();
     let _ = std::fs::remove_file(&out);
     let text = serde_json::to_string(&s.project.layouts[0]).unwrap();
-    let back: rustgis_map::layout::Layout = serde_json::from_str(&text).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_str(&text).unwrap();
     assert_eq!(back, s.project.layouts[0]);
 }
 
@@ -4197,7 +4197,7 @@ fn layout_surrounds_take_cartographic_options() {
 /// commands, checked against the frame's map, and saved with the layout.
 #[test]
 fn layout_colorbars_follow_a_raster() {
-    use rustgis_map::layout::{ElementKind, Orientation, TickSide};
+    use powergis_map::layout::{ElementKind, Orientation, TickSide};
     let mut s = world();
     s.run("layout.new", &json!({"page": "a4", "orientation": "landscape", "template": "map"})).unwrap();
     let kind = |s: &Session, id: u32| s.project.layouts[0].element(id).unwrap().kind.clone();
@@ -4223,7 +4223,7 @@ fn layout_colorbars_follow_a_raster() {
             assert_eq!(title, &dem, "titled after the layer");
             assert_eq!(
                 (*orientation, *ticks, *tick_side, *reverse),
-                (Orientation::Vertical, rustgis_map::layout::MAX_COLORBAR_TICKS, TickSide::Start, true)
+                (Orientation::Vertical, powergis_map::layout::MAX_COLORBAR_TICKS, TickSide::Start, true)
             );
         }
         k => panic!("{k:?}"),
@@ -4260,7 +4260,7 @@ fn layout_colorbars_follow_a_raster() {
     assert_ne!(with, png(&mut s));
     // Saved and read back, and layouts from before colorbars had their defaults read as before.
     let text = serde_json::to_string(&s.project.layouts[0]).unwrap();
-    let back: rustgis_map::layout::Layout = serde_json::from_str(&text).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_str(&text).unwrap();
     assert_eq!(back, s.project.layouts[0]);
     let old: ElementKind = serde_json::from_str(r#"{"Colorbar":{"frame":1}}"#).unwrap();
     assert!(matches!(
@@ -4278,8 +4278,8 @@ fn layout_colorbars_follow_a_raster() {
 /// caption.
 #[test]
 fn publication_layouts_fit_their_pages() {
-    use rustgis_map::layout::ElementKind;
-    let dir = std::env::temp_dir().join(format!("rustgis-publication-{}", std::process::id()));
+    use powergis_map::layout::ElementKind;
+    let dir = std::env::temp_dir().join(format!("powergis-publication-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = world();
     let piaui = json!([-46.8, -11.6, -38.5, -2.2]);
@@ -4333,10 +4333,10 @@ fn publication_layouts_fit_their_pages() {
         // A round scale, two significant figures, at which the extent still fits.
         let unit = 10f64.powf(scale.log10().floor() - 1.0);
         assert!(((scale / unit) - (scale / unit).round()).abs() < 1e-6, "{profile}: 1:{scale}");
-        let extent = rustgis_geom::Extent::new(-46.8, -11.6, -38.5, -2.2);
+        let extent = powergis_geom::Extent::new(-46.8, -11.6, -38.5, -2.2);
         // Fitted within the graticule's label strips (9 mm beside the frame's sides, 6 mm along its
         // top and bottom), so the labels cover none of the extent.
-        let (_, fits) = rustgis_map::layout::fit_scale(s.map(), &extent, frame.w - 18.0, frame.h - 12.0).unwrap();
+        let (_, fits) = powergis_map::layout::fit_scale(s.map(), &extent, frame.w - 18.0, frame.h - 12.0).unwrap();
         assert!(fits <= *scale && *scale < fits * 1.1, "{profile}: 1:{scale} for 1:{fits}");
         assert_eq!(grid.step, 2.0, "{profile}: Piauí's 9.4° take a 2° graticule");
         let text = |name: &str| {
@@ -4401,7 +4401,7 @@ fn publication_layouts_fit_their_pages() {
     s.run("layout.publication", &json!({"extent": piaui})).unwrap();
     s.run("edit.undo", &Value::Null).unwrap();
     assert_eq!(s.project.layouts.len(), layouts);
-    let ids = |m: &rustgis_map::Map| m.layers.iter().map(|l| (l.id, l.name.clone(), l.visible)).collect::<Vec<_>>();
+    let ids = |m: &powergis_map::Map| m.layers.iter().map(|l| (l.id, l.name.clone(), l.visible)).collect::<Vec<_>>();
     assert_eq!(ids(s.map()), ids(&map));
     assert_eq!((s.map().projection.code(), s.map().camera.center), (map.projection.code(), map.camera.center));
     // A figure says it left out an author and headings given to it, as it does a title.
@@ -4472,8 +4472,8 @@ fn publication_layouts_fit_their_pages() {
     s.project.layouts.pop();
     assert_eq!(capitals("Fontes, {date} e {pageName}"), "FONTES, {date} E {pageName}");
     assert_eq!(capitals("Dados {2024 e {só} }"), "DADOS {2024 E {SÓ} }", "a lone or odd brace is text");
-    assert_eq!(grid_step(&rustgis_geom::Extent::new(10.0, 45.0, 11.0, 46.0)), 0.25);
-    assert_eq!(grid_step(&rustgis_geom::Extent::new(-180.0, -90.0, 180.0, 90.0)), 30.0);
+    assert_eq!(grid_step(&powergis_geom::Extent::new(10.0, 45.0, 11.0, 46.0)), 0.25);
+    assert_eq!(grid_step(&powergis_geom::Extent::new(-180.0, -90.0, 180.0, 90.0)), 30.0);
     assert_eq!((step_text(2.0), step_text(0.25), step_text(0.02)), ("2°".to_string(), "15′".to_string(), "1′12″".to_string()));
     assert_eq!(step_text(0.01), "36″");
     assert_eq!((round_scale(1_234_567.0), round_scale(4_500_000.0), round_scale(999.0)), (1_300_000.0, 4_500_000.0, 1_000.0));
@@ -4512,8 +4512,8 @@ fn every_publication_style_in_the_menu_is_taken() {
 /// A figure leaves a style to its caption; an unknown style or a bad accent is refused.
 #[test]
 fn publication_layouts_take_a_style() {
-    use rustgis_map::layout::{ElementKind, FontFamily};
-    let dir = std::env::temp_dir().join(format!("rustgis-styles-{}", std::process::id()));
+    use powergis_map::layout::{ElementKind, FontFamily};
+    let dir = std::env::temp_dir().join(format!("powergis-styles-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = world();
     let piaui = json!([-46.8, -11.6, -38.5, -2.2]);
@@ -4532,7 +4532,7 @@ fn publication_layouts_take_a_style() {
         s.run("layout.export", &json!({"path": dir.join(format!("{style}.png")).display().to_string(), "dpi": 48})).unwrap();
         r
     };
-    let inside = |a: &rustgis_map::layout::Element, b: &rustgis_map::layout::Element| {
+    let inside = |a: &powergis_map::layout::Element, b: &powergis_map::layout::Element| {
         a.x >= b.x - 1e-6 && a.y >= b.y - 1e-6 && a.x + a.w <= b.x + b.w + 1e-6 && a.y + a.h <= b.y + b.h + 1e-6
     };
     // Classic, the default: no band, no panel.
@@ -4546,9 +4546,9 @@ fn publication_layouts_take_a_style() {
     let named = |n: &str| l.elements.iter().find(|e| e.name == n).unwrap_or_else(|| panic!("no {n}: {r}"));
     let (band, title, frame) = (named("Banner"), named("Title"), named("Map Frame"));
     let ElementKind::Rectangle { fill, .. } = &band.kind else { panic!() };
-    assert_eq!(*fill, rustgis_map::Rgba::rgb(0x12, 0x34, 0x56));
+    assert_eq!(*fill, powergis_map::Rgba::rgb(0x12, 0x34, 0x56));
     let ElementKind::Text { color, .. } = &title.kind else { panic!() };
-    assert_eq!(*color, rustgis_map::Rgba::rgb(0xFF, 0xFF, 0xFF));
+    assert_eq!(*color, powergis_map::Rgba::rgb(0xFF, 0xFF, 0xFF));
     assert!(inside(title, band) && inside(named("Subtitle"), band) && frame.y >= band.y + band.h, "{r}");
     // Panel: the map at the left, the panel at the right holding the texts, the locator and the
     // legend; no boxed footer.
@@ -4606,7 +4606,7 @@ fn publication_layouts_take_a_style() {
     let l = s.project.layouts.last().unwrap();
     let named = |n: &str| l.elements.iter().find(|e| e.name == n).unwrap_or_else(|| panic!("no {n}: {r}"));
     let ElementKind::Text { font, color, .. } = &named("Title").kind else { panic!() };
-    assert_eq!((*font, *color), (FontFamily::Serif, rustgis_map::Rgba::rgb(0x1F, 0x2D, 0x4D)));
+    assert_eq!((*font, *color), (FontFamily::Serif, powergis_map::Rgba::rgb(0x1F, 0x2D, 0x4D)));
     // Drawn in the sans where no serif is installed, said.
     let said = r["warnings"].to_string().contains("the editorial title and subtitle: no serif font");
     assert_eq!(said, !crate::render::fonts::serif_available(), "{r}");
@@ -4616,7 +4616,7 @@ fn publication_layouts_take_a_style() {
     }
     // Modular: the map in a card drawn under it, the locator and the legend each in a card at the
     // right, the footer's boxes with rounded corners and no neatline.
-    let radius = |e: &rustgis_map::layout::Element| match &e.kind {
+    let radius = |e: &powergis_map::layout::Element| match &e.kind {
         ElementKind::Rectangle { radius, .. } => *radius,
         _ => 0.0,
     };
@@ -4642,9 +4642,9 @@ fn publication_layouts_take_a_style() {
     let back = named("Background");
     assert_eq!((at("Background"), back.w, back.h), (0, l.width, l.height));
     let ElementKind::Rectangle { fill, .. } = &back.kind else { panic!() };
-    assert_eq!(*fill, rustgis_map::Rgba::rgb(0x3A, 0x26, 0x18));
+    assert_eq!(*fill, powergis_map::Rgba::rgb(0x3A, 0x26, 0x18));
     let ElementKind::Text { color, .. } = &named("Title").kind else { panic!() };
-    assert_eq!(*color, rustgis_map::Rgba::rgb(0xFF, 0xFF, 0xFF));
+    assert_eq!(*color, powergis_map::Rgba::rgb(0xFF, 0xFF, 0xFF));
     assert!(at("Map Card") < at("Map Frame") && inside(named("Map Frame"), named("Map Card")) && radius(named("Sources Box")) > 0.0);
     assert!(l.elements.iter().all(|e| e.name != "Banner" && e.name != "Frame"));
     // A rectangle's rounded corners by hand: added, changed, kept when its colour changes, saved only
@@ -4672,7 +4672,7 @@ fn publication_layouts_take_a_style() {
             _ => None,
         })
     };
-    assert!(fill(&s).is_some_and(|f| f != rustgis_map::Rgba::rgb(0xFF, 0, 0)), "an ellipse, unchanged");
+    assert!(fill(&s).is_some_and(|f| f != powergis_map::Rgba::rgb(0xFF, 0, 0)), "an ellipse, unchanged");
     // A sheet given its size alone (or none) is turned to the area's shape: portrait for a tall
     // one, landscape for a wide one, the size kept; one given its orientation keeps it.
     let wide = json!([-75.0, -14.0, -35.0, -2.0]);
@@ -4715,8 +4715,8 @@ fn publication_layouts_take_a_style() {
 /// and undo takes the globe's map away with the layout.
 #[test]
 fn publication_layouts_locate_their_area() {
-    use rustgis_map::layout::{ElementKind, FrameShape};
-    let dir = std::env::temp_dir().join(format!("rustgis-locator-{}", std::process::id()));
+    use powergis_map::layout::{ElementKind, FrameShape};
+    let dir = std::env::temp_dir().join(format!("powergis-locator-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = world();
     let piaui = json!([-46.8, -11.6, -38.5, -2.2]);
@@ -4783,7 +4783,7 @@ fn publication_layouts_locate_their_area() {
     s.run("layout.remove", &json!({"name": "Again"})).unwrap();
     // Made anew, not kept: a polygon layer hidden meanwhile is gone from the reused map.
     let (gone, gone_name) =
-        s.map().layers.iter().find(|l| l.geometry_type() == rustgis_data::GeometryType::Polygon).map(|l| (l.id, l.name.clone())).unwrap();
+        s.map().layers.iter().find(|l| l.geometry_type() == powergis_data::GeometryType::Polygon).map(|l| (l.id, l.name.clone())).unwrap();
     let globe_has =
         |s: &Session, name: &str| s.project.maps.iter().find(|m| m.name == first).unwrap().layers.iter().any(|l| l.name == name);
     assert!(globe_has(&s, &gone_name));
@@ -4796,9 +4796,9 @@ fn publication_layouts_locate_their_area() {
     let r = s.run("layout.publication", &json!({"extent": piaui})).unwrap();
     assert!(s.project.maps.len() == before + 2 && r["locator"].as_str() != Some(first.as_str()), "{r}");
     // A globe map made by hand under such a name (its layers labelled) is never taken for one.
-    let mut hand = rustgis_map::Map::new(format!("{main} Locator 9"));
-    hand.set_projection(rustgis_map::Projection::Globe);
-    let mut labelled = s.map().layers.iter().find(|l| l.geometry_type() == rustgis_data::GeometryType::Polygon).unwrap().clone();
+    let mut hand = powergis_map::Map::new(format!("{main} Locator 9"));
+    hand.set_projection(powergis_map::Projection::Globe);
+    let mut labelled = s.map().layers.iter().find(|l| l.geometry_type() == powergis_data::GeometryType::Polygon).unwrap().clone();
     labelled.labels.enabled = true;
     hand.layers.push(labelled);
     s.project.maps.push(hand);
@@ -4808,12 +4808,12 @@ fn publication_layouts_locate_their_area() {
     assert!(kept.layers.iter().all(|l| l.labels.enabled));
     // The globe is a new map of what it draws: the polygon layers that show (a hidden one left
     // out) on the map's basemap, without its web tiles, swipe or groups.
-    let polygon = |l: &rustgis_map::Layer| l.geometry_type() == rustgis_data::GeometryType::Polygon;
+    let polygon = |l: &powergis_map::Layer| l.geometry_type() == powergis_data::GeometryType::Polygon;
     let hidden = s.map().layers.iter().find(|l| polygon(l)).map(|l| (l.id, l.name.clone())).unwrap();
     s.map_mut().layer_mut(hidden.0).unwrap().visible = false;
-    s.map_mut().tiles.push(rustgis_map::TileLayer::new(
+    s.map_mut().tiles.push(powergis_map::TileLayer::new(
         "Streets",
-        rustgis_map::TileKind::Raster,
+        powergis_map::TileKind::Raster,
         "https://tiles.example.com/{z}/{x}/{y}.png",
     ));
     s.map_mut().swipe = Some((hidden.0, 0.5));
@@ -4827,7 +4827,7 @@ fn publication_layouts_locate_their_area() {
     for g in &m.layers {
         let l = s.map().layers.iter().find(|l| l.name == g.name).unwrap();
         let vertices =
-            |l: &rustgis_map::Layer| l.dataset.features.iter().filter_map(|f| f.geometry.as_ref()).map(|g| g.coord_count()).sum::<usize>();
+            |l: &powergis_map::Layer| l.dataset.features.iter().filter_map(|f| f.geometry.as_ref()).map(|g| g.coord_count()).sum::<usize>();
         assert_eq!(g.dataset.features.len(), l.dataset.features.len());
         assert!(vertices(g) * 2 < vertices(l), "{}: {} of {} vertices", g.name, vertices(g), vertices(l));
     }
@@ -4848,7 +4848,7 @@ fn publication_layouts_locate_their_area() {
             .filter(|l| l.name == name || name.is_empty())
             .flat_map(|l| l.dataset.features.iter())
             .filter_map(|f| match &f.geometry {
-                Some(rustgis_data::Geometry::Polygon(polys)) => Some(polys.iter().flatten().map(Vec::len).collect::<Vec<_>>()),
+                Some(powergis_data::Geometry::Polygon(polys)) => Some(polys.iter().flatten().map(Vec::len).collect::<Vec<_>>()),
                 _ => None,
             })
             .flatten()
@@ -4902,7 +4902,7 @@ fn publication_layouts_locate_their_area() {
 /// `layout.page` also sets.
 #[test]
 fn publication_surrounds_keep_off_the_data() {
-    let dir = std::env::temp_dir().join(format!("rustgis-placement-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-placement-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let square = |name: &str, (w, so, e, n): (f64, f64, f64, f64)| {
         let path = dir.join(format!("{name}.geojson"));
@@ -4940,10 +4940,10 @@ fn publication_surrounds_keep_off_the_data() {
     // The coverage is drawn on the map itself, its basemap set aside meanwhile and put back.
     // Web tiles, a background like the basemap, are set aside too: they don't make every corner
     // look covered (a closed port, never asked).
-    s.map_mut().basemap = rustgis_map::Basemap::Ocean;
-    s.map_mut().tiles.push(rustgis_map::TileLayer::new("Streets", rustgis_map::TileKind::Raster, "http://127.0.0.1:9/{z}/{x}/{y}.png"));
+    s.map_mut().basemap = powergis_map::Basemap::Ocean;
+    s.map_mut().tiles.push(powergis_map::TileLayer::new("Streets", powergis_map::TileKind::Raster, "http://127.0.0.1:9/{z}/{x}/{y}.png"));
     let r = s.run("layout.publication", &json!({"extent": extent, "author": ""})).unwrap();
-    assert!(s.map().basemap == rustgis_map::Basemap::Ocean && s.map().label_lock.is_none() && s.map().tiles.len() == 1);
+    assert!(s.map().basemap == powergis_map::Basemap::Ocean && s.map().label_lock.is_none() && s.map().tiles.len() == 1);
     assert_ne!(corner_of(&s, "Legend Box"), "bottom left", "{r}");
     s.map_mut().tiles.clear();
     assert_eq!(corner_of(&s, "North Arrow"), "bottom left", "{r}");
@@ -4983,7 +4983,7 @@ fn publication_surrounds_keep_off_the_data() {
 /// gave one such width). Layer names of many widths, so some land on a rounding error with any font.
 #[test]
 fn a_publication_legend_sized_to_its_rows_fits_them() {
-    let dir = std::env::temp_dir().join(format!("rustgis-legend-fit-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-legend-fit-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let names: Vec<String> = (0..300).map(|i| format!("{}{i}", &"WmilQxkaRb"[i % 10..])).collect();
     for name in &names {
@@ -5005,11 +5005,11 @@ fn a_publication_legend_sized_to_its_rows_fits_them() {
 /// ramp gets one at the bottom of the legend's box; a map of vectors only gets none.
 #[test]
 fn a_publication_layouts_raster_gets_a_colorbar() {
-    use rustgis_map::layout::ElementKind;
-    let dir = std::env::temp_dir().join(format!("rustgis-colorbar-{}", std::process::id()));
+    use powergis_map::layout::ElementKind;
+    let dir = std::env::temp_dir().join(format!("powergis-colorbar-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let tif = dir.join("ramp.tif");
-    std::fs::write(&tif, rustgis_data::raster::cog::example(256, 128)).unwrap();
+    std::fs::write(&tif, powergis_data::raster::cog::example(256, 128)).unwrap();
     let mut s = Session::new(Project::default());
     s.run("layer.addData", &json!({"path": tif.display().to_string()})).unwrap();
     let r = s.run("layout.publication", &json!({"extent": [10, 45, 11, 46], "author": "", "locator": "none"})).unwrap();
@@ -5046,7 +5046,7 @@ fn a_publication_layouts_raster_gets_a_colorbar() {
 #[test]
 fn layouts_compose_export_and_round_trip() {
     use base64::Engine;
-    let dir = std::env::temp_dir().join(format!("rustgis-layout-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-layout-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = world();
     s.run("map.goToXY", &json!({"lon": 10.0, "lat": 50.0, "scale": 20_000_000})).unwrap();
@@ -5077,7 +5077,7 @@ fn layouts_compose_export_and_round_trip() {
     // A chart moved to a layer without its field charts that layer's first numeric field.
     let chart = s.project.layouts[0].elements.iter().find(|e| e.kind.code() == "chart").unwrap().id;
     s.run("layout.update", &json!({"element": chart, "layer": "Cities"})).unwrap();
-    let Some(rustgis_map::layout::ElementKind::Chart { layer, field, .. }) = s.project.layouts[0].element(chart).map(|e| &e.kind) else {
+    let Some(powergis_map::layout::ElementKind::Chart { layer, field, .. }) = s.project.layouts[0].element(chart).map(|e| &e.kind) else {
         panic!()
     };
     let cities = &s.map().layer_by_name("Cities").unwrap().dataset;
@@ -5093,7 +5093,7 @@ fn layouts_compose_export_and_round_trip() {
     // Its colour and width (#213): red and 2 pt by default, set when added or later, and kept
     // through a save; `false` takes it away.
     let indicator = |s: &Session| match s.project.layouts[0].element(inset as u32).map(|e| &e.kind) {
-        Some(rustgis_map::layout::ElementKind::MapFrame { extent_of, extent_color, extent_width, .. }) => {
+        Some(powergis_map::layout::ElementKind::MapFrame { extent_of, extent_color, extent_width, .. }) => {
             (*extent_of, extent_color.hex(), *extent_width)
         }
         _ => panic!("the inset is a map frame"),
@@ -5105,11 +5105,11 @@ fn layouts_compose_export_and_round_trip() {
         .unwrap();
     assert_eq!(indicator(&s), (Some(frame), "#1F4E9A".to_string(), 0.75));
     s.run("layout.update", &json!({"element": inset, "extentIndicator": {"width": 99}})).unwrap();
-    assert_eq!(indicator(&s).2, rustgis_map::layout::MAX_INDICATOR_WIDTH, "clamped, and the colour kept");
+    assert_eq!(indicator(&s).2, powergis_map::layout::MAX_INDICATOR_WIDTH, "clamped, and the colour kept");
     assert_eq!(indicator(&s).1, "#1F4E9A");
-    let saved: rustgis_map::layout::Layout = serde_json::from_str(&serde_json::to_string(&s.project.layouts[0]).unwrap()).unwrap();
+    let saved: powergis_map::layout::Layout = serde_json::from_str(&serde_json::to_string(&s.project.layouts[0]).unwrap()).unwrap();
     assert!(saved.element(inset as u32).is_some_and(
-        |e| matches!(&e.kind, rustgis_map::layout::ElementKind::MapFrame { extent_color, .. } if extent_color.hex() == "#1F4E9A")
+        |e| matches!(&e.kind, powergis_map::layout::ElementKind::MapFrame { extent_color, .. } if extent_color.hex() == "#1F4E9A")
     ));
     assert!(s.run("layout.update", &json!({"element": inset, "extentIndicator": {"color": "blue-ish"}})).is_err());
     assert!(s.run("layout.update", &json!({"element": inset, "extentIndicator": 3})).is_err());
@@ -5121,7 +5121,7 @@ fn layouts_compose_export_and_round_trip() {
         add[field] = bad[field].clone();
         assert!(s.run("layout.addElement", &add).is_err_and(|e| e.starts_with(field)));
     }
-    assert_eq!((indicator(&s).1.as_str(), indicator(&s).2), ("#1F4E9A", rustgis_map::layout::MAX_INDICATOR_WIDTH));
+    assert_eq!((indicator(&s).1.as_str(), indicator(&s).2), ("#1F4E9A", powergis_map::layout::MAX_INDICATOR_WIDTH));
     s.run("layout.update", &json!({"element": inset, "extentIndicator": false})).unwrap();
     assert_eq!(indicator(&s).0, None);
     let err = s.run("layout.update", &json!({"element": inset, "extentIndicator": {"color": "#000000"}})).unwrap_err();
@@ -5144,7 +5144,7 @@ fn layouts_compose_export_and_round_trip() {
     s.run("layout.update", &json!({"element": frame, "name": "Main map"})).unwrap();
     assert!(s.run("layout.update", &json!({"element": frame, "x": 99, "center": "Paris"})).is_err());
     assert!((s.project.layouts[0].element(frame).unwrap().x - 12.0).abs() < 1e-9, "a bad update changes nothing");
-    let chart = s.project.layouts[0].elements.iter().find(|e| matches!(e.kind, rustgis_map::layout::ElementKind::Chart { .. })).unwrap().id;
+    let chart = s.project.layouts[0].elements.iter().find(|e| matches!(e.kind, powergis_map::layout::ElementKind::Chart { .. })).unwrap().id;
     assert!(s.run("layout.update", &json!({"element": chart, "field": "no_such_field"})).is_err());
     assert!(s.run("layout.update", &json!({"element": chart, "layer": "Atlantis"})).is_err());
     s.run("layout.update", &json!({"element": chart, "field": "gdp_md"})).unwrap();
@@ -5159,7 +5159,7 @@ fn layouts_compose_export_and_round_trip() {
     // A manual zoom of the series frame survives exports.
     s.run("layout.update", &json!({"element": frame, "scale": 3_000_000})).unwrap();
     let scale_of = |s: &Session| match &s.project.layouts[0].element(frame).unwrap().kind {
-        rustgis_map::layout::ElementKind::MapFrame { scale, .. } => *scale,
+        powergis_map::layout::ElementKind::MapFrame { scale, .. } => *scale,
         _ => 0.0,
     };
     // Export PNG and a PDF of every page.
@@ -5206,8 +5206,8 @@ fn layouts_compose_export_and_round_trip() {
 
 #[test]
 fn custom_colour_ramps_add_apply_save_and_travel() {
-    use rustgis_map::{Ramp, RasterRenderer, Renderer, Rgba};
-    let dir = std::env::temp_dir().join(format!("rustgis-ramps-{}", std::process::id()));
+    use powergis_map::{Ramp, RasterRenderer, Renderer, Rgba};
+    let dir = std::env::temp_dir().join(format!("powergis-ramps-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = |n: &str| dir.join(n).display().to_string();
     let mut s = world();
@@ -5315,8 +5315,8 @@ fn custom_colour_ramps_add_apply_save_and_travel() {
 
 #[test]
 fn colour_ramps_from_qgis_gdal_and_gmt_files() {
-    use rustgis_map::color::RampKind;
-    let dir = std::env::temp_dir().join(format!("rustgis-palettes-{}", std::process::id()));
+    use powergis_map::color::RampKind;
+    let dir = std::env::temp_dir().join(format!("powergis-palettes-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = |n: &str| dir.join(n).display().to_string();
     let mut s = world();
@@ -5349,7 +5349,7 @@ fn colour_ramps_from_qgis_gdal_and_gmt_files() {
 
 #[test]
 fn project_items_files_styles_packages_tasks_and_3d() {
-    let dir = std::env::temp_dir().join(format!("rustgis-items-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-items-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = |n: &str| dir.join(n).display().to_string();
     let mut s = world();
@@ -5428,7 +5428,7 @@ fn project_items_files_styles_packages_tasks_and_3d() {
     s.run("map.activate", &json!({"name": "World"})).unwrap();
     s.run("gp.run", &json!({"tool": "buffer", "params": {"input": "Cities", "distance": 100}})).unwrap();
     s.run("gp.package", &json!({"path": path("results.rgisgpk")})).unwrap();
-    let entries = rustgis_data::zip::read(&std::fs::read(path("results.rgisgpk")).unwrap()).unwrap();
+    let entries = powergis_data::zip::read(&std::fs::read(path("results.rgisgpk")).unwrap()).unwrap();
     assert!(entries.iter().any(|(n, _)| n == "history.json") && entries.iter().any(|(n, _)| n.starts_with("results/")));
     // Layer templates.
     let id = s.run("layer.template", &json!({"template": "places"})).unwrap()["layer"].as_u64().unwrap() as u32;
@@ -5590,7 +5590,7 @@ fn modify_tools_snapping_topology_relationships_and_elevation() {
     s.run("select.rows", &json!({"layer": "Paths", "rows": [a]})).unwrap();
     s.run("edit.move", &json!({"dx": 111_319.5, "dy": 0})).unwrap();
     let first = |s: &Session, row: usize| match s.map().layer_by_name("Paths").unwrap().dataset.features[row].geometry.as_ref().unwrap() {
-        rustgis_data::Geometry::Line(p) => p[0][0],
+        powergis_data::Geometry::Line(p) => p[0][0],
         _ => panic!("not a line"),
     };
     assert!((first(&s, a).x - 1.0).abs() < 1e-3, "{:?}", first(&s, a));
@@ -5619,7 +5619,7 @@ fn modify_tools_snapping_topology_relationships_and_elevation() {
         .unwrap();
     // Vertex editing (the Edit Vertices tool): insert, move and delete, one undo step each.
     let line = |s: &Session| match s.map().layer_by_name("Paths").unwrap().dataset.features[0].geometry.as_ref().unwrap() {
-        rustgis_data::Geometry::Line(p) => p[0].iter().map(|c| [c.x, c.y]).collect::<Vec<_>>(),
+        powergis_data::Geometry::Line(p) => p[0].iter().map(|c| [c.x, c.y]).collect::<Vec<_>>(),
         _ => panic!("not a line"),
     };
     let r = s.run("edit.vertex", &json!({"layer": "Paths", "row": 0, "action": "insert", "index": 0, "lon": 0.5, "lat": 0.5})).unwrap();
@@ -5650,7 +5650,7 @@ fn modify_tools_snapping_topology_relationships_and_elevation() {
         .unwrap();
     let row = r["row"].as_u64().unwrap() as usize;
     let end = |s: &Session, row: usize| match s.map().layer_by_name("Paths").unwrap().dataset.features[row].geometry.as_ref().unwrap() {
-        rustgis_data::Geometry::Line(p) => *p[0].last().unwrap(),
+        powergis_data::Geometry::Line(p) => *p[0].last().unwrap(),
         _ => panic!("not a line"),
     };
     let e = end(&s, row);
@@ -5671,7 +5671,7 @@ fn modify_tools_snapping_topology_relationships_and_elevation() {
     // A dragged vertex doesn't snap to the feature it belongs to.
     s.run("map.goToXY", &json!({"lon": 0.5, "lat": 0.5, "scale": 50_000})).unwrap();
     let paths = s.map().layer_by_name("Paths").unwrap().id;
-    let near = rustgis_geom::Coord::new(0.5001, 0.5001);
+    let near = powergis_geom::Coord::new(0.5001, 0.5001);
     let own = crate::cmd::design::snap_except(&mut s, near, None).map(|(c, _)| c);
     assert!(own.is_some_and(|c| (c.x - 0.5).abs() < 1e-9 && (c.y - 0.5).abs() < 1e-9), "the line's own vertex: {own:?}");
     assert_eq!(crate::cmd::design::snap_except(&mut s, near, Some((paths, 0))), None);
@@ -5708,7 +5708,7 @@ fn modify_tools_snapping_topology_relationships_and_elevation() {
 /// A 40×40 lon/lat DEM near (10°E, 45°N): a hill in the middle, with a wall to its east.
 fn dem_b64() -> String {
     use base64::Engine;
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     let gt = GeoTransform { origin_x: 10.0, origin_y: 45.04, pixel_width: 0.001, pixel_height: -0.001 };
     let z: Vec<f32> = (0..1600)
         .map(|i| {
@@ -5787,7 +5787,7 @@ fn analysis_workflows_models_scripts_and_raster_functions() {
     // Network route along the rivers: two points on the same river.
     let rivers = s.map().layer_by_name("Rivers").unwrap();
     let (a, b2) = match rivers.dataset.features.iter().filter_map(|f| f.geometry.as_ref()).find_map(|g| match g {
-        rustgis_data::Geometry::Line(p) if p[0].len() > 10 => Some((p[0][0], p[0][p[0].len() - 1])),
+        powergis_data::Geometry::Line(p) if p[0].len() > 10 => Some((p[0][0], p[0][p[0].len() - 1])),
         _ => None,
     }) {
         Some(x) => x,
@@ -5852,7 +5852,7 @@ fn analysis_workflows_models_scripts_and_raster_functions() {
 /// A 100 × 80 scan whose value is `ramp(col, row)` (so a bilinear warp reproduces it exactly), with
 /// a bright pixel at (50, 40), added as a layer with a placeholder position.
 fn scan_layer(s: &mut Session, name: &str) -> (fn(f64, f64) -> f32, (f64, f64)) {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     fn ramp(c: f64, r: f64) -> f32 {
         (c * 2.0 + r * 0.5) as f32
     }
@@ -5862,7 +5862,7 @@ fn scan_layer(s: &mut Session, name: &str) -> (fn(f64, f64) -> f32, (f64, f64)) 
     let gt = GeoTransform { origin_x: 0.0, origin_y: 80.0, pixel_width: 1.0, pixel_height: -1.0 };
     let r = Raster::new(name, w, h, vec![z], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
     let bytes = geotiff::write(&r, 0).unwrap();
-    crate::cmd::raster::add_raster(s, name, rustgis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
+    crate::cmd::raster::add_raster(s, name, powergis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
     (ramp, (50.5, 40.5))
 }
 
@@ -5879,7 +5879,7 @@ fn points_of(f: impl Fn(f64, f64) -> (f64, f64)) -> Value {
     Value::Array(pts)
 }
 
-fn out_raster(s: &Session, v: &Value) -> std::sync::Arc<rustgis_data::raster::Raster> {
+fn out_raster(s: &Session, v: &Value) -> std::sync::Arc<powergis_data::raster::Raster> {
     let id = v["layer"].as_u64().unwrap() as u32;
     s.map().layer(id).unwrap().raster.as_ref().unwrap().data.clone().unwrap()
 }
@@ -6016,7 +6016,7 @@ fn a_warp_through_a_known_rotation_puts_pixels_where_the_turn_says() {
 /// the pixel the projection takes the cell's centre back to.
 #[test]
 fn a_warp_reprojects_from_the_points_crs() {
-    use rustgis_data::raster::Crs;
+    use powergis_data::raster::Crs;
     let mut s = world();
     let (ramp, bright) = scan_layer(&mut s, "scan");
     // A north-up block at 40°N, 105°W, a thousandth of a degree a pixel.
@@ -6046,7 +6046,7 @@ fn a_warp_reprojects_from_the_points_crs() {
     assert!(checked > 100, "{checked}");
     // The bright pixel's own UTM position is within a cell of a bright cell.
     let (lon, lat) = map(bright.0, bright.1);
-    let at = t.from_lonlat(rustgis_geom::Coord::new(lon, lat)).unwrap();
+    let at = t.from_lonlat(powergis_geom::Coord::new(lon, lat)).unwrap();
     let (col, row) = out.transform.to_pixel(at);
     let (col, row) = (col.floor() as i64, row.floor() as i64);
     let near = (-1..=1)
@@ -6060,19 +6060,19 @@ fn a_warp_reprojects_from_the_points_crs() {
 /// alpha as 0–255 in every type), and the COG keeps the 16-bit type.
 #[test]
 fn a_sixteen_bit_colour_warp_is_opaque_to_the_renderer() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
     let mut s = world();
     let n = 60 * 40;
     let bands = vec![vec![60_000.0; n], vec![30_000.0; n], vec![1000.0; n]];
     let gt = GeoTransform { origin_x: 0.0, origin_y: 40.0, pixel_width: 1.0, pixel_height: -1.0 };
     let r = Raster::new("deep", 60, 40, bands, gt, Crs::LonLat, None, ColorHint::Rgb { alpha: false }, "UInt16").unwrap();
-    let bytes = rustgis_data::raster::geotiff::write(&r, 0).unwrap();
-    crate::cmd::raster::add_raster(&mut s, "deep", rustgis_map::RasterLayer::from_bytes(r, "deep.tif", bytes)).unwrap();
+    let bytes = powergis_data::raster::geotiff::write(&r, 0).unwrap();
+    crate::cmd::raster::add_raster(&mut s, "deep", powergis_map::RasterLayer::from_bytes(r, "deep.tif", bytes)).unwrap();
     let (sin, cos) = 20f64.to_radians().sin_cos();
     let map = |c: f64, r: f64| (500_000.0 + 10.0 * (c * cos + r * sin), 4_000_000.0 + 10.0 * (c * sin - r * cos));
     let pts: Vec<Value> =
         [(0.0, 0.0), (60.0, 0.0), (0.0, 40.0), (60.0, 40.0)].iter().map(|&(c, r)| json!([c, r, map(c, r).0, map(c, r).1])).collect();
-    let path = std::env::temp_dir().join(format!("rustgis-deep-{}.tif", std::process::id()));
+    let path = std::env::temp_dir().join(format!("powergis-deep-{}.tif", std::process::id()));
     let v = s
         .run("raster.georeference", &json!({"layer": "deep", "transform": "similarity", "pointsCrs": 32613, "points": pts, "name": "w", "path": path.display().to_string()}))
         .unwrap();
@@ -6082,7 +6082,7 @@ fn a_sixteen_bit_colour_warp_is_opaque_to_the_renderer() {
     // The renderer clamps alpha to 0–255: inside is 255, the collar 0.
     let alpha = |c, r| out.value(3, c, r).map(|v| v.clamp(0.0, 255.0) as u8);
     assert_eq!((alpha(mid_c, mid_r), alpha(0, 0)), (Some(255), Some(0)));
-    let back = rustgis_data::raster::read_path(&path).unwrap();
+    let back = powergis_data::raster::read_path(&path).unwrap();
     assert_eq!((back.data_type.as_str(), back.band_count()), ("UInt16", 4));
     assert_eq!(back.value(0, mid_c, mid_r), Some(60_000.0));
     std::fs::remove_file(&path).ok();
@@ -6092,9 +6092,9 @@ fn a_sixteen_bit_colour_warp_is_opaque_to_the_renderer() {
 /// the size limit through its row buffers.
 #[test]
 fn a_warp_refuses_a_globe_in_degrees_and_bounds_its_memory() {
-    use rustgis_analysis::georef::{self, Gcp, Kind};
-    use rustgis_analysis::warp::{self, Options, Resampling};
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    use powergis_analysis::georef::{self, Gcp, Kind};
+    use powergis_analysis::warp::{self, Options, Resampling};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
     let (w, h) = (40u32, 40u32);
     let gt = GeoTransform { origin_x: 0.0, origin_y: 40.0, pixel_width: 1.0, pixel_height: -1.0 };
     let r = Raster::new("s", w, h, vec![vec![1.0; 1600]], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
@@ -6129,7 +6129,7 @@ fn a_warp_can_write_a_cog_and_refuses_what_it_cannot_place() {
     let mut s = world();
     scan_layer(&mut s, "scan");
     let map = |c: f64, r: f64| (500_000.0 + 10.0 * c, 4_000_000.0 - 10.0 * r);
-    let dir = std::env::temp_dir().join(format!("rustgis-warp-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-warp-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("warped.tif");
     let v = s
@@ -6140,7 +6140,7 @@ fn a_warp_can_write_a_cog_and_refuses_what_it_cannot_place() {
         .unwrap();
     assert_eq!(v["cog"]["overviews"], 0, "200 × 160 is one tile: {v}");
     assert_eq!((v["width"].as_u64(), v["height"].as_u64()), (Some(200), Some(160)), "half-size cells double the grid");
-    let back = rustgis_data::raster::read_path(&path).unwrap();
+    let back = powergis_data::raster::read_path(&path).unwrap();
     assert_eq!((back.width, back.height, back.crs.epsg()), (200, 160, 32613));
     assert_eq!(back.transform.origin_x, 500_000.0);
     let layer = s.map().layer_by_name("w").unwrap().raster.as_ref().unwrap();
@@ -6186,7 +6186,7 @@ fn a_warp_can_write_a_cog_and_refuses_what_it_cannot_place() {
 /// laid over the view again.
 #[test]
 fn a_scan_warped_onto_its_points_is_placed_for_real() {
-    let dir = std::env::temp_dir().join(format!("rustgis-scan-warp-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-scan-warp-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let png = dir.join("plate.png");
@@ -6229,14 +6229,14 @@ fn a_scan_warped_onto_its_points_is_placed_for_real() {
     // had no alpha or no data, so it gains an opaque alpha band.
     assert_eq!(out.band_count(), 4);
     let (x, y) = map(10.5, 5.5);
-    let (col, row) = out.transform.to_pixel(rustgis_geom::Coord { x, y });
+    let (col, row) = out.transform.to_pixel(powergis_geom::Coord { x, y });
     let (col, row) = (col.floor() as i64, row.floor() as i64);
     let px: Vec<Option<f32>> = (0..4).map(|b| out.value(b, col, row)).collect();
     assert_eq!(px, [Some(10.0), Some(5.0), Some(9.0), Some(255.0)], "cell {col},{row}");
     // Exporting is no longer refused.
     let tif = dir.join("plate.tif");
     s.run("share.exportRaster", &json!({"layer": "plate", "path": tif.display().to_string(), "cog": true})).unwrap();
-    let back = rustgis_data::raster::read_path(&tif).unwrap();
+    let back = powergis_data::raster::read_path(&tif).unwrap();
     assert!(back.georeferenced && back.crs.epsg() == 32613 && back.transform == out.transform);
     // The project reopens it where the warp put it.
     let text = serde_json::to_string(&s.project).unwrap();
@@ -6252,14 +6252,14 @@ fn exporting_a_raster_as_a_cog() {
     let mut s = world();
     s.run("layer.addDataBytes", &json!({"fileName": "dem.tif", "data": dem_b64()})).unwrap();
     let dem = s.map().layers.iter().find(|l| l.is_raster()).unwrap().name.clone();
-    let dir = std::env::temp_dir().join(format!("rustgis-cog-export-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-cog-export-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let (plain, cog) = (dir.join("plain.tif"), dir.join("cog.tif"));
     let v = s.run("share.exportRaster", &json!({"layer": dem, "path": plain.display().to_string()})).unwrap();
     assert!(v.get("cog").is_none(), "an untiled GeoTIFF unless asked");
     let v = s.run("share.exportRaster", &json!({"layer": dem, "path": cog.display().to_string(), "cog": true})).unwrap();
     assert_eq!(v["cog"]["bigTiff"], false, "{v}");
-    let (a, b) = (rustgis_data::raster::read_path(&plain).unwrap(), rustgis_data::raster::read_path(&cog).unwrap());
+    let (a, b) = (powergis_data::raster::read_path(&plain).unwrap(), powergis_data::raster::read_path(&cog).unwrap());
     assert_eq!((a.width, a.height, a.transform), (b.width, b.height, b.transform));
     assert!(a.bands.iter().zip(&b.bands).all(|(x, y)| x.data == y.data));
     // Tiled, not stripped: the tile tags are in the file.
@@ -6386,7 +6386,7 @@ fn layer_effects_and_imagery_tools() {
     // ground (#223).
     s.run("map.body", &json!({"name": "mars", "basemap": false})).unwrap();
     let on_mars = s.run("raster.measure", &volume).unwrap()["cubicMetresAbove"].as_f64().unwrap();
-    let k = rustgis_geom::Body::get("mars").ratio();
+    let k = powergis_geom::Body::get("mars").ratio();
     assert!(on_earth > 0.0 && (on_mars / on_earth - k * k).abs() < 1e-9, "{on_earth} {on_mars}");
     s.run("map.body", &json!({"name": "earth"})).unwrap();
     // Workspaces: an orthomosaic of two rasters, a DSM mosaic and its mesh.
@@ -6440,7 +6440,7 @@ fn the_globe_has_stars_that_turn_off() {
     // Saved with the project; a project from before stars has them.
     let p = crate::Project::from_json(&serde_json::to_string(&s.project).unwrap()).unwrap();
     assert!(!p.map().view.effects.stars);
-    assert!(serde_json::from_str::<rustgis_map::view::ViewEffects>("{}").unwrap().stars);
+    assert!(serde_json::from_str::<powergis_map::view::ViewEffects>("{}").unwrap().stars);
     s.run("map.effects", &json!({"reset": true})).unwrap();
     assert!(corner(&mut s) == starry);
 }
@@ -6468,7 +6468,7 @@ fn exports_draw_the_globe_in_light_space() {
     // A layout's map frame on the globe map: the space in its corner is light too.
     s.run("layout.new", &json!({"page": "a4", "orientation": "landscape", "template": "blank"})).unwrap();
     s.run("layout.addFrame", &json!({"x": 20, "y": 20, "w": 150, "h": 150})).unwrap();
-    let dir = std::env::temp_dir().join(format!("rustgis-globe-space-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-globe-space-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("inset.png");
     s.run("layout.export", &json!({"path": path.display().to_string(), "dpi": 72})).unwrap();
@@ -6522,7 +6522,7 @@ fn view_effects_scene_and_navigation() {
     s.run("map.displayType", &json!({"mode": "quality"})).unwrap();
     assert!(png(&mut s) == plain);
     // Views and navigation.
-    if rustgis_map::projection::local_views_supported() {
+    if powergis_map::projection::local_views_supported() {
         s.run("map.viewMode", &json!({"mode": "local"})).unwrap();
         assert!(s.map().projection.code().starts_with("local:"));
         let local = png(&mut s);
@@ -6548,7 +6548,7 @@ fn view_effects_scene_and_navigation() {
 
 #[test]
 fn workspace_links_thumbnails_animation_profiles_offline_and_cache() {
-    let dir = std::env::temp_dir().join(format!("rustgis-ws-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-ws-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = world();
     s.run("layer.addDataBytes", &json!({"fileName": "dem.tif", "data": dem_b64()})).unwrap();
@@ -6579,7 +6579,7 @@ fn workspace_links_thumbnails_animation_profiles_offline_and_cache() {
     s.run("animation.add", &json!({"seconds": 1})).unwrap();
     let path = dir.join("anim.zip");
     s.run("animation.export", &json!({"path": path.display().to_string(), "fps": 5, "width": 160, "height": 100})).unwrap();
-    let frames = rustgis_data::zip::read(&std::fs::read(&path).unwrap()).unwrap();
+    let frames = powergis_data::zip::read(&std::fs::read(&path).unwrap()).unwrap();
     assert_eq!(frames.len(), 6, "five frames for the second, then the last view");
     assert!(frames.iter().all(|(n, b)| n.ends_with(".png") && b.starts_with(b"\x89PNG")));
     s.run("animation.remove", &json!({"all": true})).unwrap();
@@ -6626,14 +6626,14 @@ fn workspace_links_thumbnails_animation_profiles_offline_and_cache() {
         let (ni, pi) = (countries.dataset.field_index("name").unwrap(), countries.dataset.field_index("pop_est").unwrap());
         let f = countries.dataset.features.iter_mut().find(|f| f.attrs[ni].to_string() == "France").unwrap();
         if v >= 0 {
-            f.attrs[pi] = rustgis_data::Value::Int(v);
+            f.attrs[pi] = powergis_data::Value::Int(v);
         }
         f.attrs[pi].clone()
     };
     set_france(&mut s, 12_345);
     let sync = s.run("offline.sync", &json!({"name": "Paris"})).unwrap();
     assert_eq!((sync["updated"].as_u64(), sync["added"].as_u64()), (Some(1), Some(1)), "{sync}");
-    assert_eq!(set_france(&mut s, -1), rustgis_data::Value::Int(12_345), "the source edit survives the sync");
+    assert_eq!(set_france(&mut s, -1), powergis_data::Value::Int(12_345), "the source edit survives the sync");
     let world_map = s.project.maps.iter().find(|m| m.name == "World").unwrap();
     let cities = world_map.layer_by_name("Cities").unwrap();
     assert!(cities.dataset.features.iter().any(|f| f.attrs.iter().any(|v| v.to_string() == "Field camp")));
@@ -6658,8 +6658,8 @@ fn workspace_links_thumbnails_animation_profiles_offline_and_cache() {
 
 /// Loads the test plugin as `id` with `perms`.
 fn plugin(id: &str, perms: &[&str]) {
-    let pkg = rustgis_plugins::Package::from_zip(&rustgis_plugins::testing::package(id, perms)).unwrap();
-    rustgis_plugins::load(pkg, "test").unwrap();
+    let pkg = powergis_plugins::Package::from_zip(&powergis_plugins::testing::package(id, perms)).unwrap();
+    powergis_plugins::load(pkg, "test").unwrap();
 }
 
 /// Runs the test plugin's forwarding command: it sends `op` with `params` to the host.
@@ -6692,7 +6692,7 @@ fn plugin_commands_run_like_commands() {
     assert!(s.run("plugin:eng-view/nope", &Value::Null).unwrap_err().contains("unknown command"));
     s.run("plugin.enable", &json!({"id": "eng-view", "enabled": false})).unwrap();
     assert!(s.run("plugin:eng-view/h", &Value::Null).unwrap_err().contains("disabled"));
-    rustgis_plugins::unload("eng-view");
+    powergis_plugins::unload("eng-view");
 }
 
 #[test]
@@ -6732,7 +6732,7 @@ fn plugin_edits_are_one_undo_step() {
         assert!(e.contains("'files' permission"), "{op} {params}: {e}");
     }
     assert!(forward(&mut s, "eng-edit", "layer.rename", json!({"layer": "Rivers", "name": "Streams"})).is_ok());
-    rustgis_plugins::unload("eng-edit");
+    powergis_plugins::unload("eng-edit");
 }
 
 /// A plugin's command the app runs leaves its downloads to the app, which fetches them off the
@@ -6758,14 +6758,14 @@ fn plugin_downloads_are_left_to_the_app() {
     let p = json!({"op": "layer.rename", "params": {"layer": "Rivers", "name": "Streams"}});
     s.run_leaving_downloads("plugin:eng-url/f", &p).unwrap();
     assert_eq!(s.undo.len(), undo + 1);
-    rustgis_plugins::unload("eng-url");
+    powergis_plugins::unload("eng-url");
 }
 
 #[test]
 fn plugin_panels_keep_their_state_between_calls() {
     let mut s = world();
-    let pkg = rustgis_plugins::Package::from_zip(&rustgis_plugins::testing::panel_package("eng-panel")).unwrap();
-    rustgis_plugins::load(pkg, "test").unwrap();
+    let pkg = powergis_plugins::Package::from_zip(&powergis_plugins::testing::panel_package("eng-panel")).unwrap();
+    powergis_plugins::load(pkg, "test").unwrap();
     // Opening it runs its state command, whose answer the session keeps.
     let st = s.run("plugin.panel", &json!({"id": "eng-panel", "refresh": true})).unwrap();
     assert_eq!(st["values"]["release"], 12);
@@ -6804,21 +6804,21 @@ fn plugin_panels_keep_their_state_between_calls() {
     let e = forward(&mut s, "eng-nopanel", "plugin.panel", json!({"id": "eng-panel"})).unwrap_err();
     assert!(e.contains("can't run"), "{e}");
     // A disabled plugin's panel is gone.
-    rustgis_plugins::set_enabled("eng-panel", false).unwrap();
+    powergis_plugins::set_enabled("eng-panel", false).unwrap();
     assert!(s.plugin_panel("eng-panel").is_none());
     assert!(s.run("plugin.panel", &json!({"id": "eng-panel"})).unwrap_err().contains("disabled"));
-    rustgis_plugins::unload("eng-panel");
-    rustgis_plugins::unload("eng-nopanel");
+    powergis_plugins::unload("eng-panel");
+    powergis_plugins::unload("eng-nopanel");
 }
 
 /// Loads the panel test plugin with `edit`, its panel's state command being `state`.
 fn panel_plugin(id: &str, state: &str) {
-    let mut m: Value = serde_json::from_str(&rustgis_plugins::testing::panel_manifest(id)).unwrap();
+    let mut m: Value = serde_json::from_str(&powergis_plugins::testing::panel_manifest(id)).unwrap();
     m["permissions"] = json!(["edit"]);
     m["panel"]["state"] = json!(state);
     let zip =
-        rustgis_plugins::testing::zip_of(&[("plugin.json", m.to_string().as_bytes()), ("plugin.wasm", &rustgis_plugins::testing::wasm())]);
-    rustgis_plugins::load(rustgis_plugins::Package::from_zip(&zip).unwrap(), "test").unwrap();
+        powergis_plugins::testing::zip_of(&[("plugin.json", m.to_string().as_bytes()), ("plugin.wasm", &powergis_plugins::testing::wasm())]);
+    powergis_plugins::load(powergis_plugins::Package::from_zip(&zip).unwrap(), "test").unwrap();
 }
 
 #[test]
@@ -6831,12 +6831,12 @@ fn panel_state_commands_that_change_nothing_are_no_undo_step() {
     // Its other commands keep their undo step, as plugins without a panel do.
     s.run("plugin:eng-noop/q", &Value::Null).unwrap();
     assert_eq!(s.undo_label(), Some("Echo"));
-    rustgis_plugins::unload("eng-noop");
+    powergis_plugins::unload("eng-noop");
     plugin("eng-nopanel-noop", &["edit"]);
     s.undo.clear();
     s.run("plugin:eng-nopanel-noop/h", &Value::Null).unwrap();
     assert_eq!(s.undo_label(), Some("Hello"));
-    rustgis_plugins::unload("eng-nopanel-noop");
+    powergis_plugins::unload("eng-nopanel-noop");
 }
 
 #[test]
@@ -6846,7 +6846,7 @@ fn a_failed_panel_refresh_leaves_the_values() {
     let e = s.run("plugin.panel", &json!({"id": "eng-badstate", "values": {"local": true}, "refresh": true}));
     assert!(e.is_err());
     assert!(!s.plugin_panels["eng-badstate"].checked("local"), "the values it set are undone");
-    rustgis_plugins::unload("eng-badstate");
+    powergis_plugins::unload("eng-badstate");
 }
 
 /// A data cube can be a Zarr store's folder or a STAC API's address, so a plugin needs both
@@ -6860,7 +6860,7 @@ fn plugin_data_cubes_need_files_and_network() {
         let e = forward(&mut s, "eng-cube-files", id, p).unwrap_err();
         assert!(e.contains("'files' and 'network' permissions"), "{id}: {e}");
     }
-    rustgis_plugins::unload("eng-cube-files");
+    powergis_plugins::unload("eng-cube-files");
 }
 
 #[test]
@@ -6871,8 +6871,8 @@ fn plugin_tile_layers_need_network() {
     plugin("eng-tiles-edit", &["edit", "files"]);
     let e = forward(&mut s, "eng-tiles-edit", "map.addTiles", osm.clone()).unwrap_err();
     assert!(e.contains("'network' permission"), "{e}");
-    let mut m = rustgis_map::Map::new("Imported");
-    m.tiles.push(rustgis_map::TileLayer::new("Leak", rustgis_map::TileKind::Raster, "https://evil.example.com/{z}/{x}/{y}.png?d=secret"));
+    let mut m = powergis_map::Map::new("Imported");
+    m.tiles.push(powergis_map::TileLayer::new("Leak", powergis_map::TileKind::Raster, "https://evil.example.com/{z}/{x}/{y}.png?d=secret"));
     let text = serde_json::to_string(&m).unwrap();
     let e = forward(&mut s, "eng-tiles-edit", "map.import", json!({"text": text})).unwrap_err();
     assert!(e.contains("'network' permission"), "{e}");
@@ -6890,7 +6890,7 @@ fn plugin_tile_layers_need_network() {
     forward(&mut s, "eng-tiles-edit", "map.setTiles", json!({"index": 0, "opacity": 0.5})).unwrap();
     assert_eq!(s.map().tiles[0].opacity, 0.5);
     s.run("map.removeTiles", &json!({})).unwrap();
-    rustgis_plugins::unload("eng-tiles-edit");
+    powergis_plugins::unload("eng-tiles-edit");
     // With it (and `edit`), it can; it needs no `files` for an address.
     plugin("eng-tiles-net", &["edit", "network"]);
     forward(&mut s, "eng-tiles-net", "map.addTiles", osm).unwrap();
@@ -6899,7 +6899,7 @@ fn plugin_tile_layers_need_network() {
     assert_eq!(listed[0]["attribution"], "© OpenStreetMap contributors");
     forward(&mut s, "eng-tiles-net", "map.removeTiles", json!({})).unwrap();
     assert!(s.map().tiles.is_empty());
-    rustgis_plugins::unload("eng-tiles-net");
+    powergis_plugins::unload("eng-tiles-net");
 }
 
 /// Serves documents for `host.fetch` on a local port, counting the requests: `/json`, `/text`,
@@ -6950,7 +6950,7 @@ fn plugins_fetch_documents_with_network() {
     plugin("eng-fetch-none", &["edit"]);
     let e = forward(&mut s, "eng-fetch-none", "host.fetch", json!({"url": "https://example.com/x.json"})).unwrap_err();
     assert!(e.contains("'network' permission"), "{e}");
-    rustgis_plugins::unload("eng-fetch-none");
+    powergis_plugins::unload("eng-fetch-none");
 
     plugin("eng-fetch", &["network"]);
     // Never this computer or the local network, by default; never another scheme.
@@ -6990,7 +6990,7 @@ fn plugins_fetch_documents_with_network() {
         assert!(e.contains(why), "{path}: {e}");
     }
     fetch_mode(false, true);
-    rustgis_plugins::unload("eng-fetch");
+    powergis_plugins::unload("eng-fetch");
 }
 
 /// Where nothing may wait (the browser), `host.fetch` answers pending: the command is undone,
@@ -7039,7 +7039,7 @@ fn plugin_fetches_run_the_command_again_when_they_land() {
     assert!(e.contains("gave up"), "{e}");
     s.retry_tries = 0;
     fetch_mode(false, true);
-    rustgis_plugins::unload("eng-fetch-web");
+    powergis_plugins::unload("eng-fetch-web");
 }
 
 #[test]
@@ -7055,13 +7055,13 @@ fn plugin_tools_run_in_the_geoprocessing_pane() {
     s.run("gp.run", &json!({"tool": "plugin:eng-tools/x", "params": {"input": "Cities"}})).unwrap();
     assert_eq!(s.map().layer_by_name("Cities").unwrap().selection, vec![0, 2]);
     assert!(s.run("gp.run", &json!({"tool": "plugin:eng-tools/m", "params": {}})).unwrap_err().contains("required"));
-    rustgis_plugins::unload("eng-tools");
+    powergis_plugins::unload("eng-tools");
 }
 
 #[test]
 fn plugin_tools_run_off_the_session() {
     use crate::cmd::gp::{plugin_complete, plugin_start};
-    use rustgis_plugins::tools::Control;
+    use powergis_plugins::tools::Control;
     let mut s = world();
     plugin("eng-bg", &[]);
     // Started: its layers are read now; it runs elsewhere while the project goes on.
@@ -7104,7 +7104,7 @@ fn plugin_tools_run_off_the_session() {
     // Edits made while it ran: a selection follows the features it chose, by id...
     let run = plugin_start(&mut s, "plugin:eng-bg/x", &json!({"input": "Cities"})).unwrap();
     let ids: Vec<u64> = s.map().layer_by_name("Cities").unwrap().dataset.features.iter().map(|f| f.id).collect();
-    fn cities(s: &mut Session) -> &mut rustgis_map::Layer {
+    fn cities(s: &mut Session) -> &mut powergis_map::Layer {
         s.map_mut().layers.iter_mut().find(|l| l.name == "Cities").unwrap()
     }
     cities(&mut s).dataset.features.remove(0);
@@ -7116,7 +7116,7 @@ fn plugin_tools_run_off_the_session() {
     // ...and an update, which would discard them, is refused.
     let update = |s: &Session| {
         let dataset = s.map().layer_by_name("Cities").unwrap().dataset.clone();
-        Ok(rustgis_analysis::ToolResult { output: rustgis_analysis::Output::Update { layer: "Cities".into(), dataset }, messages: vec![] })
+        Ok(powergis_analysis::ToolResult { output: powergis_analysis::Output::Update { layer: "Cities".into(), dataset }, messages: vec![] })
     };
     let run = plugin_start(&mut s, "plugin:eng-bg/x", &json!({"input": "Cities"})).unwrap();
     let r = update(&s);
@@ -7157,7 +7157,7 @@ fn plugin_tools_run_off_the_session() {
     let r = run.run(&Control::default());
     assert!(plugin_complete(&mut s, run.id, r).unwrap_err().contains("dropped"));
     assert!(s.run("gp.finish", &json!({"id": run.id})).is_err() && s.map().layer_by_name("Made").is_none());
-    rustgis_plugins::unload("eng-bg");
+    powergis_plugins::unload("eng-bg");
 }
 
 #[test]
@@ -7179,8 +7179,8 @@ fn plugin_file_parameters_reach_files_and_stay_out_of_the_history() {
     s.run("gp.run", &picked).unwrap();
     let h = s.project.gp_history.last().unwrap();
     assert!(h.ok && h.params["model"] == "pism.nc", "{h:?}");
-    rustgis_plugins::unload("eng-file");
-    rustgis_plugins::unload("eng-file-edit");
+    powergis_plugins::unload("eng-file");
+    powergis_plugins::unload("eng-file-edit");
 }
 
 #[test]
@@ -7194,28 +7194,28 @@ fn geopackage_plugin_writes_are_user_only_and_reload_needs_files() {
         let e = forward(&mut s, "eng-gpkg-edit", id, json!({})).unwrap_err();
         assert!(e.contains("'files' permission"), "{id}: {e}");
     }
-    rustgis_plugins::unload("eng-gpkg-edit");
+    powergis_plugins::unload("eng-gpkg-edit");
     plugin("eng-gpkg-all", &["edit", "files", "network"]);
     let e = forward(&mut s, "eng-gpkg-all", "gpkg.saveEdits", json!({})).unwrap_err();
     assert!(e.contains("plugins can't run"), "{e}");
-    rustgis_plugins::unload("eng-gpkg-all");
+    powergis_plugins::unload("eng-gpkg-all");
 }
 
 /// This test binary, started as the process test plugin, answers one request and exits.
 #[test]
 fn plugin_process_child() {
-    rustgis_plugins::testing::serve_if_child();
+    powergis_plugins::testing::serve_if_child();
 }
 
 #[test]
 fn process_plugins_reach_the_project_like_modules() {
     let mut s = world();
-    let dir = std::env::temp_dir().join(format!("rustgis-test-eng-process-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-test-eng-process-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let run = rustgis_plugins::testing::child_run("tests::plugin_process_child");
-    let manifest = |perms: &[&str]| rustgis_plugins::testing::process_manifest("eng-proc", perms, &run);
+    let run = powergis_plugins::testing::child_run("tests::plugin_process_child");
+    let manifest = |perms: &[&str]| powergis_plugins::testing::process_manifest("eng-proc", perms, &run);
     std::fs::write(dir.join("plugin.json"), manifest(&["edit"])).unwrap();
-    rustgis_plugins::load(rustgis_plugins::Package::from_dir(&dir).unwrap(), "test").unwrap();
+    powergis_plugins::load(powergis_plugins::Package::from_dir(&dir).unwrap(), "test").unwrap();
     assert_eq!(s.run("plugin:eng-proc/h", &Value::Null).unwrap(), json!({"hello": "world"}));
     // Its host requests go through the same checks, and its edits are one undo step.
     let fc = json!({"type": "FeatureCollection", "features": [{"type": "Feature", "properties": {}, "geometry": {"type": "Point", "coordinates": [3, 4]}}]});
@@ -7228,7 +7228,7 @@ fn process_plugins_reach_the_project_like_modules() {
     // Its tools run in the Geoprocessing pane.
     s.run("gp.run", &json!({"tool": "plugin:eng-proc/m", "params": {"input": "Cities"}})).unwrap();
     assert_eq!(s.map().layer_by_name("Made").map(|l| l.dataset.features.len()), Some(1));
-    rustgis_plugins::unload("eng-proc");
+    powergis_plugins::unload("eng-proc");
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -7236,35 +7236,35 @@ fn process_plugins_reach_the_project_like_modules() {
 fn plugins_install_and_uninstall_from_files() {
     isolate_plugins();
     let mut s = Session::new(Project::default());
-    let dir = std::env::temp_dir().join(format!("rustgis-test-pkg-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-test-pkg-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("eng-install.rgplugin");
-    std::fs::write(&file, rustgis_plugins::testing::package("eng-install", &[])).unwrap();
+    std::fs::write(&file, powergis_plugins::testing::package("eng-install", &[])).unwrap();
     let info = s.run("plugin.install", &json!({"path": file.display().to_string()})).unwrap();
     assert_eq!(info["id"], "eng-install");
     let list = s.run("plugin.list", &Value::Null).unwrap();
     assert!(list["plugins"].as_array().unwrap().iter().any(|p| p["id"] == "eng-install"));
-    let installed = rustgis_plugins::store::dir().unwrap().join("eng-install.rgplugin");
+    let installed = powergis_plugins::store::dir().unwrap().join("eng-install.rgplugin");
     assert!(installed.is_file(), "copied into the plugins folder");
     // Loaded again at startup, remembering that it was disabled.
     s.run("plugin.enable", &json!({"id": "eng-install", "enabled": false})).unwrap();
-    rustgis_plugins::unload("eng-install");
+    powergis_plugins::unload("eng-install");
     assert!(crate::cmd::plugins::load_installed().iter().all(|e| !e.contains("eng-install")));
-    assert_eq!(rustgis_plugins::get("eng-install").map(|p| p.enabled), Some(false));
+    assert_eq!(powergis_plugins::get("eng-install").map(|p| p.enabled), Some(false));
     s.run("plugin.uninstall", &json!({"id": "eng-install"})).unwrap();
     assert!(!installed.exists());
-    assert!(rustgis_plugins::get("eng-install").is_none());
+    assert!(powergis_plugins::get("eng-install").is_none());
     // Uninstalling a development folder that shadows an installed package keeps the package.
     s.run("plugin.install", &json!({"path": file.display().to_string()})).unwrap();
     let folder = dir.join("eng-install-dev");
     std::fs::create_dir_all(&folder).unwrap();
-    std::fs::write(folder.join("plugin.json"), rustgis_plugins::testing::manifest("eng-install", &[])).unwrap();
-    std::fs::write(folder.join("plugin.wasm"), rustgis_plugins::testing::wasm()).unwrap();
+    std::fs::write(folder.join("plugin.json"), powergis_plugins::testing::manifest("eng-install", &[])).unwrap();
+    std::fs::write(folder.join("plugin.wasm"), powergis_plugins::testing::wasm()).unwrap();
     s.run("plugin.install", &json!({"path": folder.display().to_string()})).unwrap();
     s.run("plugin.uninstall", &json!({"id": "eng-install"})).unwrap();
     assert!(installed.is_file(), "the installed package stays");
     assert!(crate::cmd::plugins::load_installed().iter().all(|e| !e.contains("eng-install")));
-    assert_eq!(rustgis_plugins::get("eng-install").map(|p| p.source.clone()), Some(installed.display().to_string()));
+    assert_eq!(powergis_plugins::get("eng-install").map(|p| p.source.clone()), Some(installed.display().to_string()));
     s.run("plugin.uninstall", &json!({"id": "eng-install"})).unwrap();
     assert!(!installed.exists());
     // A file that isn't a package isn't installed.
@@ -7275,8 +7275,8 @@ fn plugins_install_and_uninstall_from_files() {
 
 #[test]
 fn registry_downloads_are_checked() {
-    let bytes = rustgis_plugins::testing::package("eng-reg", &[]);
-    let mut e = rustgis_plugins::registry::Entry {
+    let bytes = powergis_plugins::testing::package("eng-reg", &[]);
+    let mut e = powergis_plugins::registry::Entry {
         id: "eng-reg".into(),
         name: "Reg".into(),
         version: "1.0.0".into(),
@@ -7288,32 +7288,32 @@ fn registry_downloads_are_checked() {
         package: "https://example.com/x.rgplugin".into(),
         sha256: "0".repeat(64),
         size: 0,
-        min_rustgis_version: String::new(),
+        min_powergis_version: String::new(),
         permissions: Vec::new(),
         i18n: Default::default(),
-        runtime: rustgis_plugins::manifest::Runtime::Wasm,
+        runtime: powergis_plugins::manifest::Runtime::Wasm,
         python: None,
     };
     isolate_plugins();
     assert!(crate::cmd::plugins::install_checked(&e, &bytes).unwrap_err().contains("doesn't match"));
-    e.sha256 = rustgis_plugins::package::sha256_hex(&bytes);
+    e.sha256 = powergis_plugins::package::sha256_hex(&bytes);
     e.id = "other".into();
     assert!(crate::cmd::plugins::install_checked(&e, &bytes).unwrap_err().contains("not 'other'"));
     e.id = "eng-reg".into();
     // What the registry said about how it runs (shown before installing) must be so.
-    e.runtime = rustgis_plugins::manifest::Runtime::Process;
+    e.runtime = powergis_plugins::manifest::Runtime::Process;
     let err = crate::cmd::plugins::install_checked(&e, &bytes).unwrap_err();
     assert!(err.contains("is a WebAssembly plugin, but the registry lists it as a process plugin"), "{err}");
     assert_eq!(crate::cmd::plugins::entry_status(&e)["runtime"], "process");
-    e.runtime = rustgis_plugins::manifest::Runtime::Wasm;
+    e.runtime = powergis_plugins::manifest::Runtime::Wasm;
     crate::cmd::plugins::install_checked(&e, &bytes).unwrap();
     assert_eq!(crate::cmd::plugins::entry_status(&e)["installed"], "1.0.0");
     assert_eq!(crate::cmd::plugins::entry_status(&e)["runtime"], "wasm");
-    let _ = rustgis_plugins::store::uninstall("eng-reg");
+    let _ = powergis_plugins::store::uninstall("eng-reg");
 }
 #[test]
 fn reports_group_summarise_relate_export_and_reopen() {
-    let dir = std::env::temp_dir().join(format!("rustgis-report-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-report-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = world();
     assert!(s.run("report.autofill", &Value::Null).is_err(), "no report yet");
@@ -7335,7 +7335,7 @@ fn reports_group_summarise_relate_export_and_reopen() {
     assert!(s.active_layout.is_none(), "adding a layout page leaves the map view showing");
     // The blocks: a heading per country, the sum, every city once.
     let doc = crate::cmd::report::build(&s, 0).unwrap();
-    use rustgis_map::report::Block;
+    use powergis_map::report::Block;
     let rows = doc.blocks.iter().filter(|b| matches!(b, Block::Row(_))).count();
     assert_eq!(rows, n);
     assert!(doc.blocks.iter().any(|b| matches!(b, Block::Heading { level: 0, .. })));
@@ -7358,7 +7358,7 @@ fn reports_group_summarise_relate_export_and_reopen() {
     s.run("report.subreport", &json!({"relationship": "Country of city", "fields": ["name", "adm0name"]})).unwrap();
     s.run("report.update", &json!({"layer": "Cities"})).unwrap();
     let swap = s.project.reports.iter().find(|r| r.name == "Swap").unwrap();
-    assert!(swap.sections.iter().any(|x| matches!(x, rustgis_map::report::Section::Subreport { fields, .. } if fields == &["name"])));
+    assert!(swap.sections.iter().any(|x| matches!(x, powergis_map::report::Section::Subreport { fields, .. } if fields == &["name"])));
     s.run("report.remove", &Value::Null).unwrap();
     // Picture paths are read relative to the saved project's folder only.
     let png = {
@@ -7383,7 +7383,7 @@ fn reports_group_summarise_relate_export_and_reopen() {
     // Renaming a report keeps links to it; exports are .pdf or .png only.
     s.run("report.update", &json!({"report": "Cities", "name": "World cities"})).unwrap();
     let countries = s.project.reports.iter().find(|r| r.name == "Countries").unwrap();
-    assert!(countries.sections.iter().any(|x| matches!(x, rustgis_map::report::Section::Related { report } if report == "World cities")));
+    assert!(countries.sections.iter().any(|x| matches!(x, powergis_map::report::Section::Related { report } if report == "World cities")));
     assert!(s.run("report.export", &json!({"report": "Countries", "path": dir.join("c.jpg").to_str().unwrap()})).is_err());
     s.run("report.update", &json!({"report": "World cities", "name": "Cities"})).unwrap();
     // Sorting a column that mixes numbers and text (9, 10, "1a"…) is a total order, never a panic.
@@ -7415,7 +7415,7 @@ fn reports_group_summarise_relate_export_and_reopen() {
     s.run("report.open", &json!({"path": tmpl.to_str().unwrap(), "layer": "Cities"})).unwrap();
     let t = s.project.reports.last().unwrap();
     assert_eq!(t.layer, "Cities");
-    assert!(t.sections.iter().all(|x| matches!(x, rustgis_map::report::Section::Page { .. })));
+    assert!(t.sections.iter().all(|x| matches!(x, powergis_map::report::Section::Page { .. })));
     // Items, undo and fields kept.
     let (name, bytes) = crate::cmd::items::item_bytes(&mut s, "reportTemplate", &json!({"report": "Cities"})).unwrap();
     assert!(name.ends_with(".rgisrpttemplate") && !bytes.is_empty());
@@ -7430,7 +7430,7 @@ fn reports_group_summarise_relate_export_and_reopen() {
 
 #[test]
 fn presentations_and_notebooks() {
-    let dir = std::env::temp_dir().join(format!("rustgis-pres-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-pres-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = world();
     assert!(s.run("presentation.mapPage", &Value::Null).is_err(), "no presentation yet");
@@ -7538,20 +7538,20 @@ fn presentations_and_notebooks() {
     // Trust left by an undone notebook doesn't pass to a file's notebook of the same name.
     s.run("notebook.new", &json!({"name": "Notebook"})).unwrap();
     s.run("edit.undo", &Value::Null).unwrap();
-    let text = json!({"nbformat": 4, "metadata": {"language_info": {"name": "rustgis"}}, "cells": [{"cell_type": "code", "source": cell}]})
+    let text = json!({"nbformat": 4, "metadata": {"language_info": {"name": "powergis"}}, "cells": [{"cell_type": "code", "source": cell}]})
         .to_string();
     s.run("notebook.open", &json!({"text": text})).unwrap();
     let r = s.run("notebook.run", &json!({"notebook": "Notebook"})).unwrap();
     assert_eq!(r["error"], 0, "{r}");
     // Nor can it make a trusted notebook to run its lines later.
-    let text = json!({"nbformat": 4, "metadata": {"language_info": {"name": "rustgis"}}, "cells": [{"cell_type": "code", "source": "notebook.new {\"name\": \"Laundered\"}"}]}).to_string();
+    let text = json!({"nbformat": 4, "metadata": {"language_info": {"name": "powergis"}}, "cells": [{"cell_type": "code", "source": "notebook.new {\"name\": \"Laundered\"}"}]}).to_string();
     s.run("notebook.open", &json!({"text": text})).unwrap();
     let opened = s.project.notebooks.last().unwrap().name.clone();
     let r = s.run("notebook.run", &json!({"notebook": opened})).unwrap();
     assert_eq!(r["error"], 0, "{r}");
     assert!(!s.project.notebooks.iter().any(|nb| nb.name == "Laundered"));
     // Nor borrow trust from a notebook whose name differs only by non-ASCII case.
-    let text = json!({"nbformat": 4, "metadata": {"title": "éa", "language_info": {"name": "rustgis"}}, "cells": [{"cell_type": "code", "source": cell}]}).to_string();
+    let text = json!({"nbformat": 4, "metadata": {"title": "éa", "language_info": {"name": "powergis"}}, "cells": [{"cell_type": "code", "source": cell}]}).to_string();
     s.run("notebook.open", &json!({"text": text})).unwrap();
     s.run("notebook.new", &json!({"name": "Éa"})).unwrap();
     let r = s.run("notebook.run", &json!({"notebook": "éa"})).unwrap();
@@ -7694,7 +7694,7 @@ fn jupyter_python_notebooks_survive_open_and_save() {
         }
     }
     // A command cell from Jupyter that runs here replaces its Jupyter outputs with the result.
-    let cmds = json!({"nbformat": 4, "nbformat_minor": 5, "metadata": {"language_info": {"name": "rustgis"}}, "cells": [
+    let cmds = json!({"nbformat": 4, "nbformat_minor": 5, "metadata": {"language_info": {"name": "powergis"}}, "cells": [
         {"cell_type": "code", "id": "go", "metadata": {}, "execution_count": 7, "source": "map.goToXY {\"lon\": 3, \"lat\": 3}",
          "outputs": [{"output_type": "stream", "name": "stdout", "text": "old\n"}]}]});
     s.run("notebook.open", &json!({"text": cmds.to_string()})).unwrap();
@@ -7728,7 +7728,7 @@ fn jupyter_python_notebooks_survive_open_and_save() {
     assert!(e.contains("Python"), "{e}");
     assert_eq!(s.project.notebooks.last().unwrap(), &nb, "skipped cells keep their outputs");
     // Saving keeps the kernel, metadata, ids, raw cells and every output, so Jupyter can run it.
-    let dir = std::env::temp_dir().join(format!("rustgis-jupyter-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-jupyter-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("rivers.ipynb");
     s.run("notebook.save", &json!({"path": path.to_str().unwrap()})).unwrap();
@@ -7769,7 +7769,7 @@ fn jupyter_python_notebooks_survive_open_and_save() {
 /// A three-band raster: water-like pixels on the left half, field-like on the right.
 fn two_class_b64() -> String {
     use base64::Engine;
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     let gt = GeoTransform { origin_x: 10.0, origin_y: 45.04, pixel_width: 0.001, pixel_height: -0.001 };
     let band = |water: f32, field: f32| -> Vec<f32> {
         (0..1600).map(|i| if i % 40 < 20 { water + (i % 7) as f32 } else { field + (i % 5) as f32 }).collect()
@@ -7791,7 +7791,7 @@ fn two_class_b64() -> String {
 
 #[test]
 fn deep_learning_hosted_imagery_and_sharing() {
-    let dir = std::env::temp_dir().join(format!("rustgis-share-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-share-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let path = |f: &str| dir.join(f).to_str().unwrap().to_string();
@@ -7839,7 +7839,7 @@ fn deep_learning_hosted_imagery_and_sharing() {
     // Hosted imagery: tiles in a zip, transparent outside the raster.
     let r = s.run("imagery.hostedImagery", &json!({"layer": "scene", "path": path("tiles.zip"), "minZoom": 10, "maxZoom": 12})).unwrap();
     assert!(r["tiles"].as_u64().unwrap() >= 3);
-    let entries = rustgis_data::zip::read(&std::fs::read(path("tiles.zip")).unwrap()).unwrap();
+    let entries = powergis_data::zip::read(&std::fs::read(path("tiles.zip")).unwrap()).unwrap();
     assert!(entries.iter().any(|e| e.0 == "tiles.json") && entries.iter().any(|e| e.0.starts_with("tiles/12/")));
 
     // Sharing to a data store.
@@ -7854,7 +7854,7 @@ fn deep_learning_hosted_imagery_and_sharing() {
         "vector and raster layers"
     );
     s.run("share.webLayer", &json!({"layer": "Countries"})).unwrap();
-    let z = rustgis_data::zip::read(&std::fs::read(path("Countries.zip")).unwrap()).unwrap();
+    let z = powergis_data::zip::read(&std::fs::read(path("Countries.zip")).unwrap()).unwrap();
     for f in ["collections.json", "conformance.json", "style.json", "index.html", "collections/countries/items.json"] {
         assert!(z.iter().any(|e| e.0 == f), "{f}");
     }
@@ -7903,7 +7903,7 @@ fn deep_learning_hosted_imagery_and_sharing() {
     s.run("share.saveWebScene", &Value::Null).unwrap();
     s.run("share.saveWebLinkChart", &Value::Null).unwrap();
     assert_eq!(s.project.shared.len(), before, "updated, not added");
-    let z = rustgis_data::zip::read(&std::fs::read(path("Countries.zip")).unwrap()).unwrap();
+    let z = powergis_data::zip::read(&std::fs::read(path("Countries.zip")).unwrap()).unwrap();
     assert!(z.iter().any(|e| e.0 == "collections/lakes/items.json"), "the web layer now holds the lakes");
     s.run("share.upload", &json!({"path": path("landcover.rgisdlpk"), "store": "out"})).unwrap_err();
     let up = dir.join("upload_src");
@@ -7930,7 +7930,7 @@ fn deep_learning_hosted_imagery_and_sharing() {
 
 /// A FlatGeobuf of a grid of points over the world (`n` × `n`), numbered.
 fn grid_fgb(name: &str, n: usize) -> std::path::PathBuf {
-    use rustgis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
+    use powergis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
     let mut ds = Dataset::new(name, GeometryType::Point, vec![Field::new("i", FieldType::Integer), Field::new("x", FieldType::Double)]);
     for i in 0..n {
         for j in 0..n {
@@ -7938,13 +7938,13 @@ fn grid_fgb(name: &str, n: usize) -> std::path::PathBuf {
             ds.push(Some(Geometry::Point(c)), vec![V::Int((i * n + j) as i64), V::Float(c.x)]);
         }
     }
-    let p = std::env::temp_dir().join(format!("rustgis-engine-{}-{name}.fgb", std::process::id()));
-    rustgis_data::io::write_path(&ds, &p).unwrap();
+    let p = std::env::temp_dir().join(format!("powergis-engine-{}-{name}.fgb", std::process::id()));
+    powergis_data::io::write_path(&ds, &p).unwrap();
     p
 }
 
 /// A view of a lon/lat box, 800 × 600 points.
-fn view_of(s: &mut Session, e: rustgis_geom::Extent) -> crate::render::View {
+fn view_of(s: &mut Session, e: powergis_geom::Extent) -> crate::render::View {
     s.view_size = (800.0, 600.0);
     s.zoom_to(&e);
     crate::render::View { width: 800.0, height: 600.0, pixels_per_point: 1.0, camera: s.map().camera, sky: false }
@@ -7952,13 +7952,13 @@ fn view_of(s: &mut Session, e: rustgis_geom::Extent) -> crate::render::View {
 
 #[test]
 fn a_refused_edit_of_a_streamed_layer_says_why() {
-    use rustgis_data::{Coord, Dataset, Geometry, GeometryType};
+    use powergis_data::{Coord, Dataset, Geometry, GeometryType};
     let path = grid_fgb("refused", 20);
     let mut s = Session::new(Project::default());
     let r = s.run("layer.addData", &json!({"path": path.display().to_string(), "stream": true})).unwrap();
     let streamed = r["layer"].as_u64().unwrap() as u32;
     // Its window read, as drawing does.
-    let v = view_of(&mut s, rustgis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     let count = |s: &Session| s.map().layer(streamed).unwrap().dataset.features.len();
     let n = count(&s);
@@ -8000,7 +8000,7 @@ fn large_sources_stream_a_view_at_a_time() {
     assert!(layer(&s).extent().width() > 350.0);
 
     // The world: a spread sample, capped.
-    let v = view_of(&mut s, rustgis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
     let png = crate::render::render_png(s.map_mut(), &v).unwrap();
     assert!(!png.is_empty());
     let l = layer(&s);
@@ -8010,7 +8010,7 @@ fn large_sources_stream_a_view_at_a_time() {
     assert!(l.dataset.features.iter().any(|f| f.geometry.as_ref().unwrap().extent().min_x > 150.0));
 
     // Zoomed in: exactly the features in view (padded), all of them.
-    let small = rustgis_geom::Extent::new(10.0, 10.0, 14.0, 13.0);
+    let small = powergis_geom::Extent::new(10.0, 10.0, 14.0, 13.0);
     let v = view_of(&mut s, small);
     let lonlat = crate::render::view_lonlat(s.map(), &v);
     let scale = s.map().scale();
@@ -8026,14 +8026,14 @@ fn large_sources_stream_a_view_at_a_time() {
     assert!(l.source.as_ref().unwrap().sampled().is_none());
     let w = l.source.as_ref().unwrap().window().unwrap().extent;
     let inside =
-        |e: &rustgis_geom::Extent| l.dataset.features.iter().filter(|f| e.contains(f.geometry.as_ref().unwrap().extent().center())).count();
+        |e: &powergis_geom::Extent| l.dataset.features.iter().filter(|f| e.contains(f.geometry.as_ref().unwrap().extent().center())).count();
     assert_eq!(inside(&w), l.dataset.features.len());
     assert!(inside(&lonlat) > 0);
 
     // A selection survives the next read (by feature id).
     let ids: Vec<u64> = l.dataset.features.iter().take(3).map(|f| f.id).collect();
     s.map_mut().layer_mut(id).unwrap().selection = vec![0, 1, 2];
-    let v = view_of(&mut s, rustgis_geom::Extent::new(-40.0, -40.0, 60.0, 60.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(-40.0, -40.0, 60.0, 60.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     let l = layer(&s);
     let kept: Vec<u64> = l.selection.iter().map(|r| l.dataset.features[*r].id).collect();
@@ -8059,7 +8059,7 @@ fn streamed_layers_save_their_source_not_their_features() {
     let path = grid_fgb("saved", 60);
     let mut s = Session::new(Project::default());
     s.run("layer.addData", &json!({"path": path.display().to_string(), "stream": true})).unwrap();
-    let v = view_of(&mut s, rustgis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     assert_eq!(s.map().layers[0].dataset.features.len(), 3600);
     let text = serde_json::to_string(&s.project).unwrap();
@@ -8070,7 +8070,7 @@ fn streamed_layers_save_their_source_not_their_features() {
     let l = &t.map().layers[0];
     assert!(l.is_streamed() && l.source.as_ref().unwrap().is_open());
     assert!(l.dataset.features.is_empty());
-    let v = view_of(&mut t, rustgis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
+    let v = view_of(&mut t, powergis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
     crate::render::render_png(t.map_mut(), &v).unwrap();
     assert_eq!(t.map().layers[0].dataset.features.len(), 3600);
     // A missing file is reported, not a crash.
@@ -8091,7 +8091,7 @@ fn tools_read_streamed_layers_whole() {
     let mut s = Session::new(Project::default());
     s.run("layer.addData", &json!({"path": path.display().to_string(), "stream": true})).unwrap();
     // Only a corner is in view.
-    let v = view_of(&mut s, rustgis_geom::Extent::new(0.0, 0.0, 20.0, 20.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(0.0, 0.0, 20.0, 20.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     let windowed = s.map().layers[0].dataset.features.len();
     assert!(windowed < 2500, "{windowed}");
@@ -8113,13 +8113,13 @@ fn tools_read_streamed_layers_whole() {
 
 #[test]
 fn pmtiles_exports_selected_streamed_features_by_id_and_honors_extent_without_selection() {
-    use crate::render::rustgis_tiles::mvt;
+    use crate::render::powergis_tiles::mvt;
     use std::collections::BTreeSet;
     let path = grid_fgb("pmtiles-streamed-selection", 20);
     let mut s = Session::new(Project::default());
     s.queue_gp_files = true;
     s.run("layer.addData", &json!({"path": path.display().to_string(), "stream": true})).unwrap();
-    let view = view_of(&mut s, rustgis_geom::Extent::new(0.0, 0.0, 40.0, 40.0));
+    let view = view_of(&mut s, powergis_geom::Extent::new(0.0, 0.0, 40.0, 40.0));
     crate::render::render_png(s.map_mut(), &view).unwrap();
     let layer = &s.map().layers[0];
     assert!(layer.dataset.windowed);
@@ -8138,7 +8138,7 @@ fn pmtiles_exports_selected_streamed_features_by_id_and_honors_extent_without_se
     assert!(selected.iter().any(|row| full.features[*row].id != layer.dataset.features[*row].id));
     s.map_mut().layer_mut(id).unwrap().selection = selected;
     // Selection takes precedence over the environment, even when it is outside the extent.
-    let extent = rustgis_geom::Extent::new(-150.0, -70.0, -100.0, -30.0);
+    let extent = powergis_geom::Extent::new(-150.0, -70.0, -100.0, -30.0);
     s.project.gp_env.extent = Some(extent);
     let export = |s: &mut Session| -> BTreeSet<(u64, i64)> {
         s.run("gp.run", &json!({"tool": "vectorToPmtiles", "params": {"input": name, "minZoom": 0, "maxZoom": 0}})).unwrap();
@@ -8174,7 +8174,7 @@ fn pmtiles_exports_selected_streamed_features_by_id_and_honors_extent_without_se
         .collect();
     assert!(!inside.is_empty() && inside.len() < 400);
     assert_eq!(export(&mut s), inside, "an unselected streamed export uses the full source's extent rows");
-    s.project.gp_env.extent = Some(rustgis_geom::Extent::new(179.5, 85.0, 180.0, 86.0));
+    s.project.gp_env.extent = Some(powergis_geom::Extent::new(179.5, 85.0, 180.0, 86.0));
     assert!(s.run("gp.run", &json!({"tool": "vectorToPmtiles", "params": {"input": name, "minZoom": 0, "maxZoom": 0}})).is_err());
     assert!(s.take_gp_files().is_empty(), "an empty extent must not fall back to exporting every feature");
     s.project.gp_env.extent = None;
@@ -8228,12 +8228,12 @@ fn web_style_carries_the_layers_scale_limits_as_zooms() {
         label["paint"]["text-halo-color"].as_str().unwrap().to_string()
     };
     let l = s.map_mut().layer_mut(id).unwrap();
-    l.labels.default.color = rustgis_map::Rgba::rgb(0, 0, 0);
+    l.labels.default.color = powergis_map::Rgba::rgb(0, 0, 0);
     l.labels.default.halo_color = None;
     assert_eq!(halo(&s), "rgba(255,255,255,0.882)");
-    s.map_mut().layer_mut(id).unwrap().labels.default.color = rustgis_map::Rgba::rgb(255, 255, 255);
+    s.map_mut().layer_mut(id).unwrap().labels.default.color = powergis_map::Rgba::rgb(255, 255, 255);
     assert_eq!(halo(&s), "rgba(20,22,26,0.824)");
-    s.map_mut().layer_mut(id).unwrap().labels.default.halo_color = Some(rustgis_map::Rgba::new(255, 0, 0, 128));
+    s.map_mut().layer_mut(id).unwrap().labels.default.halo_color = Some(powergis_map::Rgba::new(255, 0, 0, 128));
     assert_eq!(halo(&s), "rgba(255,0,0,0.502)");
     // An offset in ems, as MapLibre has it; none without one.
     let offset = |s: &Session| {
@@ -8252,16 +8252,16 @@ fn web_style_carries_the_layers_scale_limits_as_zooms() {
 #[test]
 fn web_shares_carry_every_feature_of_a_streamed_layer() {
     let path = grid_fgb("webshare", 50);
-    let dir = std::env::temp_dir().join(format!("rustgis-webshare-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-webshare-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = Session::new(Project::default());
     s.run("layer.addData", &json!({"path": path.display().to_string(), "stream": true})).unwrap();
     // Only a corner is in view.
-    let v = view_of(&mut s, rustgis_geom::Extent::new(0.0, 0.0, 20.0, 20.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(0.0, 0.0, 20.0, 20.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     assert!(s.map().layers[0].dataset.features.len() < 2500);
     let count = |zip: &std::path::Path, name: &str| -> usize {
-        let z = rustgis_data::zip::read(&std::fs::read(zip).unwrap()).unwrap();
+        let z = powergis_data::zip::read(&std::fs::read(zip).unwrap()).unwrap();
         let items = z.iter().find(|e| e.0 == name).unwrap();
         let v: Value = serde_json::from_slice(&items.1).unwrap();
         v["features"].as_array().unwrap().len()
@@ -8307,8 +8307,8 @@ fn map_links() {
     s.run("map.goToLink", &json!({"url": "#other=1/2/3&map=4/10/20"})).unwrap();
     assert_eq!(s.run("map.link", &Value::Null).unwrap()["hash"], "#4/10/20");
     // A view wider than zoom 0 gives a link that reads back; no "-0".
-    s.map_mut().camera.res = rustgis_map::camera::MAX_RES;
-    s.map_mut().camera.center = rustgis_geom::lonlat_to_merc(rustgis_geom::Coord::new(-1e-9, 0.0));
+    s.map_mut().camera.res = powergis_map::camera::MAX_RES;
+    s.map_mut().camera.center = powergis_geom::lonlat_to_merc(powergis_geom::Coord::new(-1e-9, 0.0));
     let hash = s.run("map.link", &Value::Null).unwrap()["hash"].as_str().unwrap().to_string();
     assert_eq!(hash, "#0/0/0");
     s.run("map.goToLink", &json!({"url": hash})).unwrap();
@@ -8341,12 +8341,12 @@ fn map_links() {
 /// and pitch once it has loaded; without it the map stays where it is.
 #[test]
 fn style_root_view_moves_the_map() {
-    if std::env::var_os("RUSTGIS_TEST_STYLE_VIEW").is_none() {
+    if std::env::var_os("powergis_TEST_STYLE_VIEW").is_none() {
         // Parallel reload tests clear the process-wide tile cache. Isolate these downloads:
         // refetching after a reload can exhaust the fixture server's request allowance.
         let output = std::process::Command::new(std::env::current_exe().unwrap())
             .args(["--exact", "tests::style_root_view_moves_the_map", "--nocapture"])
-            .env("RUSTGIS_TEST_STYLE_VIEW", "1")
+            .env("powergis_TEST_STYLE_VIEW", "1")
             .output()
             .unwrap();
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -8387,7 +8387,7 @@ fn style_root_view_moves_the_map() {
     // Moved while the style loads: the map stays where it was put.
     s.run("map.addTiles", &json!({"url": format!("{base}/moved/style.json"), "view": true})).unwrap();
     assert!(s.style_view.is_some());
-    let panned = rustgis_geom::lonlat_to_merc(rustgis_geom::Coord::new(10.0, 20.0));
+    let panned = powergis_geom::lonlat_to_merc(powergis_geom::Coord::new(10.0, 20.0));
     s.map_mut().camera.center = panned;
     crate::cmd::tiles::follow_style_view(&mut s, web_time::Duration::from_secs(5));
     assert!(s.style_view.is_none());
@@ -8403,7 +8403,7 @@ fn style_root_view_moves_the_map() {
 /// from its bearing and pitch when it is turned and tilted.
 #[test]
 fn web_scene_camera() {
-    let dir = std::env::temp_dir().join(format!("rustgis_scene_camera_{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis_scene_camera_{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("scene.gltf").display().to_string();
     let mut s = world();
@@ -8452,7 +8452,7 @@ fn web_scene_camera() {
 
 #[test]
 fn reloading_web_layers_clears_the_tile_cache() {
-    use crate::render::rustgis_tiles::cache;
+    use crate::render::powergis_tiles::cache;
     let mut s = world();
     let before = cache::generation();
     let r = s.run("map.reloadWebLayers", &Value::Null).unwrap();
@@ -8467,11 +8467,11 @@ fn a_streamed_layer_whose_file_goes_away_shows_an_error_not_stale_features() {
     let path = grid_fgb("vanishing", 40);
     let mut s = Session::new(Project::default());
     s.run("layer.addData", &json!({"path": path.display().to_string(), "stream": true})).unwrap();
-    let v = view_of(&mut s, rustgis_geom::Extent::new(0.0, 0.0, 30.0, 30.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(0.0, 0.0, 30.0, 30.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     assert!(!s.map().layers[0].dataset.features.is_empty());
     std::fs::remove_file(&path).unwrap();
-    let v = view_of(&mut s, rustgis_geom::Extent::new(-150.0, -60.0, -120.0, -30.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(-150.0, -60.0, -120.0, -30.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     let l = &s.map().layers[0];
     assert!(l.dataset.features.is_empty());
@@ -8492,7 +8492,7 @@ fn a_publication_layout_over_a_streamed_layer_is_undone() {
     assert!(s.project.layouts.is_empty());
     let l = &s.map().layers[0];
     assert!(l.source.as_ref().is_some_and(|src| src.error.is_none()), "still streaming from its source");
-    let v = view_of(&mut s, rustgis_geom::Extent::new(0.0, 0.0, 20.0, 20.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(0.0, 0.0, 20.0, 20.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     assert!(!s.map().layers[0].dataset.features.is_empty(), "it reads the view again");
     let _ = std::fs::remove_file(path);
@@ -8505,13 +8505,13 @@ fn any_command_editing_a_streamed_layer_is_undone() {
     s.run("layer.addData", &json!({"path": path.display().to_string(), "stream": true})).unwrap();
     // A sample of the world, so a closer view reads again.
     s.map_mut().layers[0].source.as_mut().unwrap().limit = 300;
-    let v = view_of(&mut s, rustgis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(-180.0, -80.0, 180.0, 80.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     let before = s.map().layers[0].dataset.features.clone();
     // Whatever the command, an edit of the window is undone and refused.
     let r = s.guarded("Some Edit", true, |s| {
         if let Some(f) = s.map_mut().layers[0].dataset.features.get_mut(0) {
-            f.attrs[0] = rustgis_data::Value::Int(-1);
+            f.attrs[0] = powergis_data::Value::Int(-1);
         }
         Ok(Value::Null)
     });
@@ -8519,7 +8519,7 @@ fn any_command_editing_a_streamed_layer_is_undone() {
     assert_eq!(s.map().layers[0].dataset.features, before);
     // A command whose render reads the source again is fine.
     let r = s.guarded("Render", true, |s| {
-        let v = view_of(s, rustgis_geom::Extent::new(0.0, 0.0, 20.0, 20.0));
+        let v = view_of(s, powergis_geom::Extent::new(0.0, 0.0, 20.0, 20.0));
         crate::render::render_png(s.map_mut(), &v).map(|_| Value::Null)
     });
     assert!(r.is_ok(), "{r:?}");
@@ -8531,10 +8531,10 @@ fn any_command_editing_a_streamed_layer_is_undone() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn gdal_formats_open_when_gdal_is_installed() {
-    if !rustgis_data::source::gdal::available() {
+    if !powergis_data::source::gdal::available() {
         return;
     }
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-gdal-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-gdal-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let seq = dir.join("walk.geojsonl");
     std::fs::write(
@@ -8556,7 +8556,7 @@ fn gdal_formats_open_when_gdal_is_installed() {
 /// KML (with its styles), KMZ and GPX through the built-in readers: files on disk and uploads.
 #[test]
 fn kml_and_gpx_add_as_layers() {
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-kml-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-kml-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let kml = r##"<kml xmlns="http://www.opengis.net/kml/2.2"><Document>
 <Style id="red"><LineStyle><color>ff0000ff</color><width>4</width></LineStyle></Style>
@@ -8574,10 +8574,10 @@ fn kml_and_gpx_add_as_layers() {
     assert_eq!(r["layers"].as_array().map(Vec::len), Some(2), "{r}");
     let lines = s.map().layer_by_name("roads lines").unwrap();
     match &lines.renderer {
-        rustgis_map::Renderer::Unique { field, classes, .. } => {
+        powergis_map::Renderer::Unique { field, classes, .. } => {
             assert_eq!(field, "style");
             let red = classes.iter().find(|(k, _)| k == "red").unwrap().1;
-            assert_eq!((red.stroke, red.stroke_width), (rustgis_map::Rgba::new(255, 0, 0, 255), 4.0));
+            assert_eq!((red.stroke, red.stroke_width), (powergis_map::Rgba::new(255, 0, 0, 255), 4.0));
         }
         other => panic!("{other:?}"),
     }
@@ -8588,7 +8588,7 @@ fn kml_and_gpx_add_as_layers() {
     // A KMZ upload (the web app).
     {
         use base64::Engine;
-        let kmz = rustgis_data::zip::write(&[("doc.kml".to_string(), kml.as_bytes().to_vec())]).unwrap();
+        let kmz = powergis_data::zip::write(&[("doc.kml".to_string(), kml.as_bytes().to_vec())]).unwrap();
         let data = base64::engine::general_purpose::STANDARD.encode(kmz);
         let r = s.run("layer.addDataBytes", &json!({"fileName": "roads.kmz", "data": data})).unwrap();
         assert_eq!(r["layers"].as_array().map(Vec::len), Some(2), "{r}");
@@ -8623,7 +8623,7 @@ fn kml_and_gpx_add_as_layers() {
 fn duckdb_queries_and_databases() {
     let mut s = Session::new(Project::default());
     let query = "SELECT 'a' AS name, ST_Point(7, 45) AS geom UNION ALL SELECT 'b', ST_GeomFromText('LINESTRING(7 45, 8 46)')";
-    if !rustgis_data::source::duckdb::available() {
+    if !powergis_data::source::duckdb::available() {
         let e = s.run("layer.addSql", &json!({"sql": query})).unwrap_err();
         assert!(e.contains("need DuckDB"), "{e}");
         let e = s.run("layer.addData", &json!({"path": "/nowhere/x.duckdb"})).unwrap_err();
@@ -8646,7 +8646,7 @@ fn duckdb_queries_and_databases() {
     let id = r["layer"].as_u64().unwrap() as u32;
     let src = s.map().layer(id).unwrap().source.clone().unwrap();
     let d = src.duckdb.clone().unwrap();
-    assert!(d.sql.as_deref().is_some_and(|q| q.contains("range(50)")) && d.family == rustgis_data::source::Family::Points);
+    assert!(d.sql.as_deref().is_some_and(|q| q.contains("range(50)")) && d.family == powergis_data::source::Family::Points);
     let cached = src.path.clone().unwrap();
     let text = serde_json::to_string(&s.project).unwrap();
     std::fs::remove_file(&cached).unwrap();
@@ -8663,11 +8663,11 @@ fn duckdb_queries_and_databases() {
     assert_eq!(s.map().layers.len(), before);
 
     // A database file: its geometry tables become layers, or the one named.
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-duckdb-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-duckdb-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let db = dir.join("places.duckdb");
-    let ok = std::process::Command::new(rustgis_data::source::duckdb::program().unwrap())
+    let ok = std::process::Command::new(powergis_data::source::duckdb::program().unwrap())
         .arg(&db)
         .arg("-c")
         .arg("LOAD spatial; CREATE TABLE towns AS SELECT 'x' AS name, ST_Point(2.35, 48.85) AS geom; CREATE TABLE lakes AS SELECT ST_GeomFromText('POLYGON((6 46, 7 46, 7 47, 6 46))') AS geom; CREATE TABLE notes(t TEXT);")
@@ -8718,13 +8718,13 @@ fn duckdb_queries_and_databases() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
-/// PostgreSQL/PostGIS through DuckDB, when RUSTGIS_TEST_POSTGRES names a database with a
+/// PostgreSQL/PostGIS through DuckDB, when powergis_TEST_POSTGRES names a database with a
 /// password (`postgres:host=… dbname=… user=… password=…`) holding a PostGIS table.
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn postgres_databases() {
-    let Ok(conn) = std::env::var("RUSTGIS_TEST_POSTGRES") else { return };
-    if !rustgis_data::source::duckdb::available() {
+    let Ok(conn) = std::env::var("powergis_TEST_POSTGRES") else { return };
+    if !powergis_data::source::duckdb::available() {
         return;
     }
     let mut s = Session::new(Project::default());
@@ -8753,14 +8753,14 @@ fn postgres_databases() {
 fn pmtiles_archives_become_tile_layers() {
     let mut s = Session::new(Project::default());
     // A file added as data is a tile layer of kind pmtiles (read when the map draws).
-    let path = std::env::temp_dir().join("rustgis-test-archive.pmtiles");
+    let path = std::env::temp_dir().join("powergis-test-archive.pmtiles");
     s.run("layer.addData", &json!({"path": path.display().to_string()})).unwrap();
     let t = &s.map().tiles[0];
-    assert_eq!(t.kind, rustgis_map::TileKind::PmTiles);
-    assert_eq!(t.name, "rustgis-test-archive");
+    assert_eq!(t.kind, powergis_map::TileKind::PmTiles);
+    assert_eq!(t.name, "powergis-test-archive");
     // A web address is guessed from its extension.
     s.run("map.addTiles", &json!({"url": "https://example.com/data/world.pmtiles"})).unwrap();
-    assert!(s.map().tiles.iter().any(|t| t.kind == rustgis_map::TileKind::PmTiles && t.url.starts_with("https://")));
+    assert!(s.map().tiles.iter().any(|t| t.kind == powergis_map::TileKind::PmTiles && t.url.starts_with("https://")));
     // A relative path or another kind of file is refused.
     assert!(s.run("map.addTiles", &json!({"url": "world.pmtiles", "kind": "pmtiles"})).is_err());
     assert!(s.run("map.addTiles", &json!({"url": "/tmp/x.txt", "kind": "pmtiles"})).is_err());
@@ -8768,14 +8768,14 @@ fn pmtiles_archives_become_tile_layers() {
     let text = serde_json::to_string(&s.project).unwrap();
     let mut t = Session::new(Project::default());
     t.run("project.openText", &json!({"text": text})).unwrap();
-    assert_eq!(t.map().tiles.iter().filter(|x| x.kind == rustgis_map::TileKind::PmTiles).count(), 2);
+    assert_eq!(t.map().tiles.iter().filter(|x| x.kind == powergis_map::TileKind::PmTiles).count(), 2);
 }
 
 /// Identify reports the features of a vector PMTiles archive under the point (topmost and
 /// visible modes), with their tile and source layers; hidden layers and the selectable mode don't.
 #[test]
 fn identify_reports_vector_tile_features() {
-    use crate::render::rustgis_tiles::{mvt, pmtiles};
+    use crate::render::powergis_tiles::{mvt, pmtiles};
     let park = mvt::Feature {
         id: Some(3),
         kind: mvt::GeomKind::Polygon,
@@ -8789,7 +8789,7 @@ fn identify_reports_vector_tile_features() {
         bounds: [-180.0, -85.0, 180.0, 85.0],
         metadata: json!({"vector_layers": [{"id": "parks"}]}),
     };
-    let dir = std::env::temp_dir().join(format!("rustgis-identify-tiles-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-identify-tiles-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("parks.pmtiles");
     std::fs::write(&path, pmtiles::write(vec![(0, 0, 0, tile)], &new).unwrap()).unwrap();
@@ -8797,7 +8797,7 @@ fn identify_reports_vector_tile_features() {
     let mut s = Session::new(Project::default());
     s.run("layer.addData", &json!({"path": path.display().to_string()})).unwrap();
     // Zoom 0, the park in the middle of the world.
-    s.map_mut().camera.center = rustgis_geom::Coord::new(0.0, 0.0);
+    s.map_mut().camera.center = powergis_geom::Coord::new(0.0, 0.0);
     s.map_mut().camera.res = 2.0 * 20_037_508.342_789_244 / 256.0;
     let identify = |s: &mut Session, p: Value| {
         // The archive and its tile arrive in the background.
@@ -8840,7 +8840,7 @@ fn identify_reports_vector_tile_features() {
 /// and a bad list is refused without changing anything.
 #[test]
 fn tile_source_layers_can_be_hidden() {
-    use crate::render::rustgis_tiles::{mvt, pmtiles};
+    use crate::render::powergis_tiles::{mvt, pmtiles};
     let feature = |kind, geometry: Vec<Vec<[f32; 2]>>, name: &str| mvt::Feature {
         id: None,
         kind,
@@ -8867,14 +8867,14 @@ fn tile_source_layers_can_be_hidden() {
             .chain([json!({"id": ""}), json!({"id": "roads"})])
             .collect::<Vec<_>>()}),
     };
-    let dir = std::env::temp_dir().join(format!("rustgis-tile-source-layers-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-tile-source-layers-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("city.pmtiles");
     std::fs::write(&path, pmtiles::write(vec![(0, 0, 0, tile)], &new).unwrap()).unwrap();
 
     let mut s = Session::new(Project::default());
     s.run("layer.addData", &json!({"path": path.display().to_string()})).unwrap();
-    s.map_mut().camera.center = rustgis_geom::Coord::new(0.0, 0.0);
+    s.map_mut().camera.center = powergis_geom::Coord::new(0.0, 0.0);
     s.map_mut().camera.res = 2.0 * 20_037_508.342_789_244 / 256.0;
     // The archive's header arrives in the background.
     let mut listed = Value::Null;
@@ -8929,7 +8929,7 @@ fn tile_source_layers_can_be_hidden() {
     reopened.run("project.openText", &json!({"text": text.replace(r#""hiddenLayers":["parks"]"#, &repeated)})).unwrap();
     assert_eq!(reopened.map().tiles[0].hidden_layers, ["parks", "roads"]);
     // Bad lists, and a raster layer's, are refused and change nothing.
-    let too_many: Vec<String> = (0..=rustgis_map::tiles::MAX_SOURCE_LAYERS).map(|i| format!("l{i}")).collect();
+    let too_many: Vec<String> = (0..=powergis_map::tiles::MAX_SOURCE_LAYERS).map(|i| format!("l{i}")).collect();
     for bad in [json!("parks"), json!([1]), json!({"parks": true}), json!(too_many)] {
         assert!(s.run("map.setTiles", &json!({"index": 0, "hiddenLayers": bad, "opacity": 0.5})).is_err(), "{bad}");
     }
@@ -8967,13 +8967,13 @@ fn empty_pmtiles(bounds: [f64; 4]) -> Vec<u8> {
 /// whole world; Zoom To Tile Layer goes there again, and a layer that can't say is refused.
 #[test]
 fn pmtiles_archives_frame_the_map_on_their_bounds() {
-    let dir = std::env::temp_dir().join(format!("rustgis-pmtiles-frame-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-pmtiles-frame-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let iceland = dir.join("iceland.pmtiles");
     std::fs::write(&iceland, empty_pmtiles([-24.5, 63.3, -13.5, 66.6])).unwrap();
     let world = dir.join("world.pmtiles");
     std::fs::write(&world, empty_pmtiles([-180.0, -85.0, 180.0, 85.0])).unwrap();
-    let center = |s: &Session| rustgis_geom::merc_to_lonlat(s.map().camera.center);
+    let center = |s: &Session| powergis_geom::merc_to_lonlat(s.map().camera.center);
     let wait = |s: &mut Session| {
         let start = std::time::Instant::now();
         while s.style_view.is_some() && start.elapsed() < std::time::Duration::from_secs(20) {
@@ -9085,7 +9085,7 @@ fn malformed_saved_tile_bounds_do_not_prevent_opening_the_project() {
 fn mbtiles_archives_become_tile_layers() {
     use crate::render::View;
     use base64::Engine;
-    let dir = std::env::temp_dir().join(format!("rustgis-mbtiles-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-mbtiles-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("red.mbtiles");
     let _ = std::fs::remove_file(&path);
@@ -9111,7 +9111,7 @@ fn mbtiles_archives_become_tile_layers() {
             if px.is_some_and(|p| p.red() > 200 && p.green() < 60) {
                 return;
             }
-            crate::render::rustgis_tiles::cache::wait(std::time::Duration::from_millis(100));
+            crate::render::powergis_tiles::cache::wait(std::time::Duration::from_millis(100));
         }
         panic!("the tile layer didn't draw: {px:?}");
     };
@@ -9119,13 +9119,13 @@ fn mbtiles_archives_become_tile_layers() {
     let mut s = Session::new(Project::default());
     s.run("layer.addData", &json!({"path": p})).unwrap();
     let t = &s.map().tiles[0];
-    assert_eq!((t.kind, t.name.as_str()), (rustgis_map::TileKind::MbTiles, "red"));
+    assert_eq!((t.kind, t.name.as_str()), (powergis_map::TileKind::MbTiles, "red"));
     draws_red(&mut s);
     // A project keeps the layer by its path.
     let text = serde_json::to_string(&s.project).unwrap();
     let mut t = Session::new(Project::default());
     t.run("project.openText", &json!({"text": text})).unwrap();
-    assert_eq!(t.map().tiles.first().map(|x| x.kind), Some(rustgis_map::TileKind::MbTiles));
+    assert_eq!(t.map().tiles.first().map(|x| x.kind), Some(powergis_map::TileKind::MbTiles));
     draws_red(&mut t);
 
     // An upload is held in memory.
@@ -9157,7 +9157,7 @@ fn mbtiles_archives_become_tile_layers() {
 #[test]
 fn delimited_text_with_a_coordinate_system() {
     use base64::Engine;
-    let dir = std::env::temp_dir().join(format!("rustgis-csv-crs-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-csv-crs-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("parks.tsv");
     std::fs::write(&path, "name\tX\tY\nCentral Park\t992000\t220000\n").unwrap();
@@ -9263,7 +9263,7 @@ fn jpeg2000_from_a_web_address() {
     assert_eq!(named("https://x.org/api/tile?f=jp2", jp2_box).unwrap(), "tile.jp2");
     assert_eq!(named("https://x.org/", &codestream).unwrap(), "data.j2k");
     assert!(named("https://x.org/api/tile", br#"<VRTDataset></VRTDataset>"#).unwrap_err().contains("not a data format"));
-    if !rustgis_data::raster::gdal::available() {
+    if !powergis_data::raster::gdal::available() {
         let jp2 = serve(jp2_box, 4);
         for path in ["TCI.jp2", "api/tile"] {
             let e = s.run("layer.addUrl", &json!({"url": format!("{jp2}/{path}")})).unwrap_err();
@@ -9272,7 +9272,7 @@ fn jpeg2000_from_a_web_address() {
         return;
     }
     let executable = if cfg!(windows) { "gdal_translate.exe" } else { "gdal_translate" };
-    let translate = std::env::var_os("RUSTGIS_GDAL_BIN")
+    let translate = std::env::var_os("powergis_GDAL_BIN")
         .map(|d| std::path::PathBuf::from(d).join(executable))
         .filter(|p| p.is_file())
         .unwrap_or_else(|| executable.into());
@@ -9282,7 +9282,7 @@ fn jpeg2000_from_a_web_address() {
         eprintln!("skipping JPEG 2000 conversion: GDAL has no optional JP2OpenJPEG driver");
         return;
     }
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-jp2-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-jp2-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let asc = dir.join("g.asc");
     std::fs::write(&asc, "ncols 4\nnrows 3\nxllcorner 10\nyllcorner 40\ncellsize 0.5\n1 2 3 4\n5 6 7 8\n9 10 11 12\n").unwrap();
@@ -9428,7 +9428,7 @@ fn downloads_land_in_their_own_project() {
     let id = w.download_started();
     assert!(w.download_landed(id, br#"{"type": "Point", "coordinates": [151.2, -33.9]}"#.to_vec()));
     w.run("layer.addDownload", &json!({"id": id, "url": "https://x.org/sydney.geojson", "zoom": true})).unwrap();
-    let c = rustgis_geom::merc_to_lonlat(w.map().camera.center);
+    let c = powergis_geom::merc_to_lonlat(w.map().camera.center);
     assert!((c.x - 151.2).abs() < 0.5 && (c.y + 33.9).abs() < 0.5, "{c:?}");
     // A file of several layers (a GPX's waypoints and track): the map frames them all.
     let gpx = br#"<gpx version="1.1" creator="t" xmlns="http://www.topografix.com/GPX/1/1"><wpt lat="10" lon="10"/><trk><trkseg><trkpt lat="20" lon="30"/><trkpt lat="21" lon="31"/></trkseg></trk></gpx>"#;
@@ -9436,25 +9436,25 @@ fn downloads_land_in_their_own_project() {
     assert!(w.download_landed(id, gpx.to_vec()));
     let r = w.run("layer.addDownload", &json!({"id": id, "url": "https://x.org/trip.gpx", "zoom": true})).unwrap();
     assert_eq!(r["zoomed"], true, "{r}");
-    let c = rustgis_geom::merc_to_lonlat(w.map().camera.center);
+    let c = powergis_geom::merc_to_lonlat(w.map().camera.center);
     assert!(c.x > 15.0 && c.x < 26.0 && c.y > 10.0 && c.y < 21.0, "{c:?}");
     // Without "zoom" the map stays where it is.
     let id = w.download_started();
     assert!(w.download_landed(id, br#"{"type": "Point", "coordinates": [-70, -40]}"#.to_vec()));
     let r = w.run("layer.addDownload", &json!({"id": id, "url": "https://x.org/far.geojson"})).unwrap();
     assert!(r.get("zoomed").is_none());
-    assert_eq!(rustgis_geom::merc_to_lonlat(w.map().camera.center), c);
+    assert_eq!(powergis_geom::merc_to_lonlat(w.map().camera.center), c);
 }
 
 /// Spreadsheets, GeoRSS, LandXML and encoded polylines through the commands.
 #[test]
 fn spreadsheets_feeds_landxml_and_polylines() {
     use base64::Engine;
-    let dir = std::env::temp_dir().join(format!("rustgis-more-formats-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-more-formats-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = Session::new(Project::default());
     // A workbook: the first sheet by default, another by "layer", with a coordinate system.
-    let book = rustgis_data::sheets::xlsx(&[
+    let book = powergis_data::sheets::xlsx(&[
         ("Places", &[&["name", "longitude", "latitude"], &["A", "10", "20"]]),
         ("Survey", &[&["id", "E", "N"], &["1", "992000", "220000"]]),
     ]);
@@ -9518,9 +9518,9 @@ fn spreadsheets_feeds_landxml_and_polylines() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn gdal_rasters_reopen_with_their_choices() {
-    // Found as the app finds it (the PATH, or RUSTGIS_GDAL_BIN).
-    let Some(translate) = rustgis_data::source::gdal::program("gdal_translate") else { return };
-    let dir = std::env::temp_dir().join(format!("rustgis-gdal-reopen-{}", std::process::id()));
+    // Found as the app finds it (the PATH, or powergis_GDAL_BIN).
+    let Some(translate) = powergis_data::source::gdal::program("gdal_translate") else { return };
+    let dir = std::env::temp_dir().join(format!("powergis-gdal-reopen-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let asc = dir.join("g.asc");
@@ -9547,7 +9547,7 @@ fn gdal_rasters_reopen_with_their_choices() {
 #[test]
 fn gml_mapinfo_and_topojson() {
     use base64::Engine;
-    let dir = std::env::temp_dir().join(format!("rustgis-native-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-native-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = Session::new(Project::default());
     let gml = r#"<ogr:FeatureCollection xmlns:ogr="http://ogr.maptools.org/" xmlns:gml="http://www.opengis.net/gml">
@@ -9561,14 +9561,14 @@ fn gml_mapinfo_and_topojson() {
     std::fs::write(dir.join("sites.mid"), "\"X\"\n\"Y\"\n").unwrap();
     s.run("layer.addData", &json!({"path": dir.join("sites.mif").display().to_string()})).unwrap();
     let l = s.map().layer_by_name("sites").unwrap();
-    assert_eq!(l.dataset.features[1].attrs[0], rustgis_data::Value::Text("Y".into()));
+    assert_eq!(l.dataset.features[1].attrs[0], powergis_data::Value::Text("Y".into()));
     // Zipped together, uploaded.
     let zip =
-        rustgis_data::zip::write(&[("a/sites2.mif".into(), mif.as_bytes().to_vec()), ("a/sites2.mid".into(), b"\"P\"\n\"Q\"\n".to_vec())])
+        powergis_data::zip::write(&[("a/sites2.mif".into(), mif.as_bytes().to_vec()), ("a/sites2.mid".into(), b"\"P\"\n\"Q\"\n".to_vec())])
             .unwrap();
     let b64 = base64::engine::general_purpose::STANDARD.encode(zip);
     s.run("layer.addDataBytes", &json!({"fileName": "mif.zip", "data": b64})).unwrap();
-    assert_eq!(s.map().layer_by_name("sites2").unwrap().dataset.features[0].attrs[0], rustgis_data::Value::Text("P".into()));
+    assert_eq!(s.map().layer_by_name("sites2").unwrap().dataset.features[0].attrs[0], powergis_data::Value::Text("P".into()));
     // TopoJSON, as .topojson and as .json.
     let topo = r#"{"type":"Topology","objects":{"pts":{"type":"GeometryCollection","geometries":[{"type":"Point","coordinates":[5,6],"properties":{"n":1}}]}},"arcs":[]}"#;
     s.run("layer.addDataText", &json!({"fileName": "a.topojson", "text": topo})).unwrap();
@@ -9644,7 +9644,7 @@ fn service_times_and_directories() {
 /// its layers' queries), and no address the session lists or keeps carries it.
 #[test]
 fn an_arcgis_token_in_a_service_address_reaches_its_layers() {
-    use crate::render::rustgis_tiles::arcgis_auth;
+    use crate::render::powergis_tiles::arcgis_auth;
     let mut s = Session::new(Project::default());
     let base = "https://secure914.example.org/server/rest/services/Roads/MapServer";
     let doc = r#"{"currentVersion": 11, "mapName": "Roads", "capabilities": "Map,Query,Data", "singleFusedMapCache": true,
@@ -9701,19 +9701,19 @@ fn wms_layers_draw_as_one_picture_or_tiles_of_a_size() {
     assert!(roads(&s).single_image, "one picture of the view, from its service");
     // Offered in another system too: drawn in Web Mercator as it comes, its other systems kept
     // for maps in them (as most services are).
-    assert!(roads(&s).url.contains("#rustgis-warp=") && roads(&s).sized_tiles(), "{}", roads(&s).url);
+    assert!(roads(&s).url.contains("#powergis-warp=") && roads(&s).sized_tiles(), "{}", roads(&s).url);
     let listed = s.run("map.tiles", &json!({})).unwrap();
     assert_eq!((listed[0]["singleImage"].clone(), listed[0]["tileSize"].clone()), (json!(true), json!(256)));
     // Tiles of 1024 pixels: asked for that size.
     s.run("map.setTiles", &json!({"name": "Roads", "singleImage": false, "tileSize": 1024.0})).unwrap();
     let t = roads(&s);
     assert!(!t.single_image && t.tile_size == 1024);
-    assert!(t.url.contains("&WIDTH=1024&HEIGHT=1024&") && t.url.contains("#rustgis-warp="), "{}", t.url);
+    assert!(t.url.contains("&WIDTH=1024&HEIGHT=1024&") && t.url.contains("#powergis-warp="), "{}", t.url);
     // Its pictures in another system take any size still.
     let base = t.url.split('#').next().unwrap();
-    assert!(rustgis_data::ogc::warp::Warp::map_template(base).contains("BBOX={nbbox}&WIDTH={nw}&HEIGHT={nh}"));
+    assert!(powergis_data::ogc::warp::Warp::map_template(base).contains("BBOX={nbbox}&WIDTH={nw}&HEIGHT={nh}"));
     // Kept with the project, and undone.
-    let saved: rustgis_map::TileLayer = serde_json::from_value(serde_json::to_value(&t).unwrap()).unwrap();
+    let saved: powergis_map::TileLayer = serde_json::from_value(serde_json::to_value(&t).unwrap()).unwrap();
     assert_eq!((saved.single_image, saved.tile_size), (false, 1024));
     assert!(s.undo());
     let t = roads(&s);
@@ -9728,7 +9728,7 @@ fn wms_layers_draw_as_one_picture_or_tiles_of_a_size() {
     // A project saved before: tiles, as then.
     let mut old = serde_json::to_value(roads(&s)).unwrap();
     old.as_object_mut().unwrap().remove("singleImage");
-    let old: rustgis_map::TileLayer = serde_json::from_value(old).unwrap();
+    let old: powergis_map::TileLayer = serde_json::from_value(old).unwrap();
     assert!(!old.single_image);
     // Tiles cut from a tile set are neither.
     s.run("map.addTiles", &json!({"url": "https://tile.example.org/{z}/{x}/{y}.png", "name": "XYZ", "overlay": true})).unwrap();
@@ -9739,13 +9739,13 @@ fn wms_layers_draw_as_one_picture_or_tiles_of_a_size() {
     // Nor is an address by its box with no size to write (a generic template): asked for at its
     // service's default size, it stays in its own tiles.
     let bare = "https://maps.example.org/render?bbox={bbox-epsg-3857}&format=png";
-    assert!(!rustgis_map::tiles::drawn_on_request(bare));
+    assert!(!powergis_map::tiles::drawn_on_request(bare));
     assert!(s.run("map.addTiles", &json!({"url": bare, "name": "Bare", "overlay": true, "singleImage": true})).is_err());
     s.run("map.addTiles", &json!({"url": bare, "name": "Bare", "overlay": true})).unwrap();
     assert!(s.run("map.setTiles", &json!({"name": "Bare", "tileSize": 1024})).is_err());
-    assert!(rustgis_map::tiles::drawn_on_request("https://maps.example.org/wms?BBOX={nbbox}&width={nw}&HEIGHT={nh}&f=png"));
-    assert!(rustgis_map::tiles::drawn_on_request("https://maps.example.org/wms?BBOX={bbox-epsg-3857}&WIDTH={width}&HEIGHT={height}"));
-    assert!(!rustgis_map::tiles::drawn_on_request("https://maps.example.org/wms?BBOX={bbox-epsg-3857}&WIDTH={w}&HEIGHT=256"));
+    assert!(powergis_map::tiles::drawn_on_request("https://maps.example.org/wms?BBOX={nbbox}&width={nw}&HEIGHT={nh}&f=png"));
+    assert!(powergis_map::tiles::drawn_on_request("https://maps.example.org/wms?BBOX={bbox-epsg-3857}&WIDTH={width}&HEIGHT={height}"));
+    assert!(!powergis_map::tiles::drawn_on_request("https://maps.example.org/wms?BBOX={bbox-epsg-3857}&WIDTH={w}&HEIGHT=256"));
     // Added by its address, a layer drawn on request is one picture too, unless tiles are asked
     // for; a bare template, and tiles cut from a tile set, are tiles.
     let wms = "https://m.example.org/wms?SERVICE=WMS&REQUEST=GetMap&LAYERS=a&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng";
@@ -9905,7 +9905,7 @@ fn wms_layers_with_time() {
     let mut s = Session::new(Project::default());
     let added = s.run("service.add", &json!({"url": url, "layer": "population", "text": WMS, "time": "slider"})).unwrap();
     assert!(added["url"].as_str().is_some_and(|u| u.ends_with("&TIME=2025")), "{added}");
-    let year = |y: i32| rustgis_data::time::parse_text(&format!("{y}-01-01")).unwrap();
+    let year = |y: i32| powergis_data::time::parse_text(&format!("{y}-01-01")).unwrap();
     let slider = s.map().time.clone().unwrap();
     assert_eq!((slider.steps(), slider.current), (vec![year(1990), year(2000), year(2025)], year(2025)));
     let population = s.map().tiles.iter().find(|t| t.name == "Population").unwrap();
@@ -10062,7 +10062,7 @@ fn identify_asks_wms_layers() {
     let v = reopened.run("identify", &json!({"lon": 8.5, "lat": 47.4, "mode": "selectable"})).unwrap();
     assert!(v.is_null(), "{v}");
     // Answers and capabilities past the download limit are refused, naming the layer.
-    let huge = "x".repeat(2 * rustgis_data::ogc::MAX_INFO_BYTES + 1);
+    let huge = "x".repeat(2 * powergis_data::ogc::MAX_INFO_BYTES + 1);
     for key in ["text", "capabilities"] {
         let e = reopened.run("identify.featureInfo", &json!({"layer": "Roads", key: huge})).unwrap_err();
         assert!(e.starts_with("Roads: ") && e.contains("larger than"), "{e}");
@@ -10090,7 +10090,7 @@ fn identify_asks_wms_layers() {
 /// out); it stays picked when moved, and a map layer made active ends the pick for good.
 #[test]
 fn selected_in_layers_asks_the_tile_layer_picked() {
-    use rustgis_data::{Dataset, GeometryType};
+    use powergis_data::{Dataset, GeometryType};
     const WMS: &str = r#"<WMS_Capabilities version="1.3.0" xmlns="http://www.opengis.net/wms" xmlns:xlink="http://www.w3.org/1999/xlink">
 <Service><Title>Test WMS</Title></Service>
 <Capability><Request><GetMap><Format>image/png</Format><DCPType><HTTP><Get><OnlineResource xlink:href="https://maps.example.com/wms?"/></Get></HTTP></DCPType></GetMap>
@@ -10522,19 +10522,19 @@ fn wfs_axes_judged_against_the_type_bounds() {
 /// follow, those pointing inward left out.
 #[test]
 fn wcs_coverages_and_catalogue_records() {
-    let r = rustgis_data::raster::Raster::new(
+    let r = powergis_data::raster::Raster::new(
         "soc",
         8,
         8,
         vec![vec![3.0; 64]],
-        rustgis_data::raster::GeoTransform { origin_x: 5.0, origin_y: 50.0, pixel_width: 0.1, pixel_height: -0.1 },
-        rustgis_data::raster::Crs::LonLat,
+        powergis_data::raster::GeoTransform { origin_x: 5.0, origin_y: 50.0, pixel_width: 0.1, pixel_height: -0.1 },
+        powergis_data::raster::Crs::LonLat,
         None,
-        rustgis_data::raster::ColorHint::Gray,
+        powergis_data::raster::ColorHint::Gray,
         "Float32",
     )
     .unwrap();
-    let (base, _) = serve_file(rustgis_data::raster::geotiff::write(&r, 0).unwrap(), false);
+    let (base, _) = serve_file(powergis_data::raster::geotiff::write(&r, 0).unwrap(), false);
     let caps = String::from(
         r#"<wcs:Capabilities version="2.0.1" xmlns:wcs="http://www.opengis.net/wcs/2.0" xmlns:ows="http://www.opengis.net/ows/2.0">
         <ows:ServiceIdentification><ows:Title>Soils</ows:Title></ows:ServiceIdentification>
@@ -10610,7 +10610,7 @@ fn kml_ground_overlays_become_rasters() {
 <GroundOverlay><name>Red</name><Icon><href>files/red.png</href></Icon><LatLonBox><north>41</north><south>40</south><east>11</east><west>10</west><rotation>10</rotation></LatLonBox></GroundOverlay>
 <GroundOverlay><name>Quad</name><Icon><href>files/red.png</href></Icon></GroundOverlay>
 </Document></kml>"#;
-    let kmz = rustgis_data::zip::write(&[("doc.kml".into(), doc.as_bytes().to_vec()), ("files/red.png".into(), red.encode_png().unwrap())])
+    let kmz = powergis_data::zip::write(&[("doc.kml".into(), doc.as_bytes().to_vec()), ("files/red.png".into(), red.encode_png().unwrap())])
         .unwrap();
     let mut s = Session::new(Project::default());
     let b64 = base64::engine::general_purpose::STANDARD.encode(&kmz);
@@ -10625,7 +10625,7 @@ fn kml_ground_overlays_become_rasters() {
     t.run("project.openText", &json!({"text": text})).unwrap();
     assert!(t.map().layer_by_name("Red").and_then(|l| l.raster.as_ref()).is_some_and(|r| r.data.is_some()));
     // A KML of overlays only, whose pictures aren't readable from where it is.
-    let dir = std::env::temp_dir().join(format!("rustgis-overlay-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-overlay-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let only = r#"<kml><GroundOverlay><name>Far</name><Icon><href>../secret.png</href></Icon><LatLonBox><north>1</north><south>0</south><east>1</east><west>0</west></LatLonBox></GroundOverlay>
 <GroundOverlay><name>Web</name><Icon><href>https://example.com/x.png</href></Icon><LatLonBox><north>1</north><south>0</south><east>1</east><west>0</west></LatLonBox></GroundOverlay>
@@ -10646,15 +10646,15 @@ fn pmtiles_from_network_shares_are_refused() {
     for p in [r"\\attacker\share\x.pmtiles", "//attacker/share/x.pmtiles", "file://attacker/share/x.pmtiles"] {
         assert!(s.run("map.addTiles", &json!({"url": p, "kind": "pmtiles"})).is_err(), "{p}");
     }
-    assert!(crate::render::rustgis_tiles::pmtiles::check_local(r"\\attacker\share\x.pmtiles").is_err());
-    assert!(crate::render::rustgis_tiles::pmtiles::check_local("/data/x.pmtiles").is_ok());
+    assert!(crate::render::powergis_tiles::pmtiles::check_local(r"\\attacker\share\x.pmtiles").is_err());
+    assert!(crate::render::powergis_tiles::pmtiles::check_local("/data/x.pmtiles").is_ok());
 }
 
 /// A GeoPackage with more feature tables than are added at once says which were left out, in the
 /// result and in a notice (issue #85); `info.fileLayers` lists them all.
 #[test]
 fn geopackage_table_cap_is_reported() {
-    let dir = std::env::temp_dir().join(format!("rustgis-gpkg-cap-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-gpkg-cap-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("many.gpkg");
     let _ = std::fs::remove_file(&path);
@@ -10668,7 +10668,7 @@ fn geopackage_table_cap_is_reported() {
     .unwrap();
     let mut blob = b"GP\x00\x01".to_vec();
     blob.extend_from_slice(&4326i32.to_le_bytes());
-    blob.extend(rustgis_data::wkb::encode(&rustgis_data::Geometry::Point(rustgis_data::Coord::new(2.35, 48.85))));
+    blob.extend(powergis_data::wkb::encode(&powergis_data::Geometry::Point(powergis_data::Coord::new(2.35, 48.85))));
     for i in 1..=34 {
         let t = format!("t_{i:02}");
         c.execute_batch(&format!(
@@ -10701,7 +10701,7 @@ fn geopackage_table_cap_is_reported() {
     assert_eq!(s.map().layers.len(), 33);
     // The pure-Rust reader the web app lists an upload's tables with sees them all.
     let listed =
-        rustgis_data::source::gpkg_mem::layers(rustgis_data::source::Shared(std::sync::Arc::new(std::fs::read(&path).unwrap()))).unwrap();
+        powergis_data::source::gpkg_mem::layers(powergis_data::source::Shared(std::sync::Arc::new(std::fs::read(&path).unwrap()))).unwrap();
     assert_eq!(listed.len(), 34);
     assert!(s.run("info.fileLayers", &json!({"path": dir.join("none.geojson").display().to_string()})).is_err());
     let notes = dir.join("notes.rgis");
@@ -10749,7 +10749,7 @@ fn blank_project_starts_in_a_projected_crs() {
 
 #[test]
 fn exporting_features_refuses_to_replace_an_existing_geopackage() {
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-gpkg-preserve-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-gpkg-preserve-{}", std::process::id()));
     if dir.exists() {
         std::fs::remove_dir_all(&dir).unwrap();
     }
@@ -10774,7 +10774,7 @@ fn exporting_features_refuses_to_replace_an_existing_geopackage() {
 
 #[test]
 fn layers_export_to_geopackage_geoparquet_shapefile_and_kmz() {
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-export-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-export-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = world();
     let want = s.map().layers.iter().find(|l| l.name == "Countries").unwrap().dataset.features.len();
@@ -10805,7 +10805,7 @@ fn layers_export_to_geopackage_geoparquet_shapefile_and_kmz() {
 #[test]
 fn layers_export_in_the_system_they_were_read_in() {
     // Issue #514: squares in ETRS89 / UTM zone 32N came out of every export in EPSG:4326.
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-export-crs-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-export-crs-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let csv = dir.join("squares.csv");
     std::fs::write(&csv, "side;wkt\n1 km;POLYGON ((500000 5700000, 501000 5700000, 501000 5701000, 500000 5701000, 500000 5700000))\n")
@@ -10849,17 +10849,17 @@ fn layers_export_in_the_system_they_were_read_in() {
 fn zipped_shapefiles_add_as_layers() {
     use base64::Engine;
     // The sample's countries and cities as Shapefiles in one zip, under a folder.
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-zip-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-zip-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut entries = Vec::new();
     for (name, text) in [("countries", crate::sample::countries()), ("cities", crate::sample::CITIES)] {
-        let (ds, _) = rustgis_data::io::read_bytes(&format!("{name}.geojson"), text.as_bytes()).unwrap();
-        let (zipped, _) = rustgis_data::io::write_bytes(&ds, "shp").unwrap();
-        for (n, b) in rustgis_data::zip::read(&zipped).unwrap() {
+        let (ds, _) = powergis_data::io::read_bytes(&format!("{name}.geojson"), text.as_bytes()).unwrap();
+        let (zipped, _) = powergis_data::io::write_bytes(&ds, "shp").unwrap();
+        for (n, b) in powergis_data::zip::read(&zipped).unwrap() {
             entries.push((format!("world/{n}"), b));
         }
     }
-    let zip = rustgis_data::zip::write(&entries).unwrap();
+    let zip = powergis_data::zip::write(&entries).unwrap();
     // Uploaded (the web app).
     let mut s = Session::new(Project::default());
     let data = base64::engine::general_purpose::STANDARD.encode(&zip);
@@ -10943,7 +10943,7 @@ fn stac_search_and_assets() {
     assert_eq!(r["next"], format!("{base}/v1/search?page=2"));
     let l = s.map().layer_by_name("STAC footprints").unwrap();
     assert_eq!(l.dataset.features.len(), 1);
-    assert_eq!(l.dataset.geometry_type, rustgis_data::GeometryType::Polygon);
+    assert_eq!(l.dataset.geometry_type, powergis_data::GeometryType::Polygon);
     // The item as the search gave it: its data asset (no visual one, no GeoTIFF on the web).
     let found = r["items"][0].clone();
     let e = s.run("stac.addAsset", &json!({"item": found, "asset": "b04"})).unwrap_err();
@@ -10985,7 +10985,7 @@ fn directions_between_places() {
     assert_eq!(r["steps"].as_array().map(Vec::len), Some(3));
     assert_eq!(r["steps"][1]["modifier"], "left");
     let line = s.map().layer_by_name("Route (1.9 km)").unwrap();
-    assert_eq!(line.dataset.geometry_type, rustgis_data::GeometryType::Polyline);
+    assert_eq!(line.dataset.geometry_type, powergis_data::GeometryType::Polyline);
     let steps = s.map().layer_by_name("Route steps").unwrap();
     assert_eq!(steps.dataset.features.len(), 3);
     // The camera went to the route.
@@ -11017,7 +11017,7 @@ fn directions_between_places() {
 /// own (a local Nominatim answer here); the app's answers can be passed in instead.
 #[test]
 fn geocoding_places_and_addresses() {
-    use crate::render::rustgis_tiles::geocode::Geocoder;
+    use crate::render::powergis_tiles::geocode::Geocoder;
     const ANSWER: &[u8] = br#"[{"lat": "48.8584", "lon": "2.2945", "display_name": "Tour Eiffel, Paris", "boundingbox": ["48.857", "48.859", "2.293", "2.296"]}]"#;
     let base = serve(ANSWER, 4);
     let mut s = Session::new(Project::default());
@@ -11062,7 +11062,7 @@ fn geocoding_places_and_addresses() {
 fn sql_workspace_rows_and_schema() {
     let mut s = Session::new(Project::default());
     assert!(s.run("sql.query", &json!({})).is_err());
-    if !rustgis_data::source::duckdb::available() {
+    if !powergis_data::source::duckdb::available() {
         assert!(s.run("sql.query", &json!({"sql": "SELECT 1"})).unwrap_err().contains("need DuckDB"));
         return;
     }
@@ -11074,7 +11074,7 @@ fn sql_workspace_rows_and_schema() {
     assert_eq!(r["rows"][2][1], "POINT (2 0)");
     // A result the app ran is added only for the query it came from, and kept until it is.
     let q = "SELECT 'a' AS name, ST_Point(1, 2) AS geom";
-    let out = rustgis_data::source::duckdb::run(&rustgis_data::source::duckdb::Query { sql: q, ..Default::default() }).unwrap();
+    let out = powergis_data::source::duckdb::run(&powergis_data::source::duckdb::Query { sql: q, ..Default::default() }).unwrap();
     let id = s.sql_ran(q, None, out);
     assert!(s.run("layer.addSql", &json!({"sql": "SELECT 2 AS x", "ran": id})).unwrap_err().contains("another query"));
     let r = s.run("layer.addSql", &json!({"sql": q, "ran": id, "name": "Ran"})).unwrap();
@@ -11086,11 +11086,11 @@ fn sql_workspace_rows_and_schema() {
     assert_eq!((r["geometry"].as_bool(), r["more"].as_bool()), (Some(false), Some(false)));
     assert!(s.run("sql.query", &json!({"sql": "SELECT * FROM nowhere"})).unwrap_err().contains("nowhere"));
     // A database's tables and their columns.
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-sqlws-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-sqlws-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let db = dir.join("towns.duckdb");
-    let ok = std::process::Command::new(rustgis_data::source::duckdb::program().unwrap())
+    let ok = std::process::Command::new(powergis_data::source::duckdb::program().unwrap())
         .arg(&db)
         .arg("-c")
         .arg("CREATE TABLE towns AS SELECT 'x' AS name, 3 AS pop;")
@@ -11173,7 +11173,7 @@ fn serve_gated(
 /// band's own units, through its scale; a tile with no date in the window drawn as nothing.
 #[test]
 fn a_stac_data_cube_on_the_time_slider() {
-    let (cog, _) = serve_ranges(rustgis_data::raster::cog::example(512, 256));
+    let (cog, _) = serve_ranges(powergis_data::raster::cog::example(512, 256));
     let item = |id: &str, tile: &str, date: &str, band: bool| {
         let asset = if band {
             format!(
@@ -11270,27 +11270,27 @@ fn a_stac_data_cube_on_the_time_slider() {
     }
     // A file read whole (a GeoTIFF that isn't cloud-optimised) can't follow the slider: the cube
     // is refused, and what it added is taken back, the view its first tile framed included.
-    let gt = rustgis_data::raster::GeoTransform { origin_x: 10.0, origin_y: 46.0, pixel_width: 0.5, pixel_height: -0.5 };
-    let plain = rustgis_data::raster::Raster::new(
+    let gt = powergis_data::raster::GeoTransform { origin_x: 10.0, origin_y: 46.0, pixel_width: 0.5, pixel_height: -0.5 };
+    let plain = powergis_data::raster::Raster::new(
         "p",
         2,
         2,
         vec![vec![1.0; 4]],
         gt,
-        rustgis_data::raster::Crs::LonLat,
+        powergis_data::raster::Crs::LonLat,
         None,
-        rustgis_data::raster::ColorHint::Gray,
+        powergis_data::raster::ColorHint::Gray,
         "Float32",
     )
     .unwrap();
-    let (file, _) = serve_ranges(rustgis_data::raster::geotiff::write(&plain, 0).unwrap());
+    let (file, _) = serve_ranges(powergis_data::raster::geotiff::write(&plain, 0).unwrap());
     let one = format!(
         r#"{{"type": "Feature", "id": "p1", "collection": "cube", "bbox": [10, 45, 11, 46], "geometry": null,
            "properties": {{"datetime": "2024-01-01T00:00:00Z", "bdc:tiles": ["P"]}}, "assets": {{"NDVI": {{"href": "{file}/p.tif"}}}}}}"#
     );
     let first = item("q1", "A", "2024-01-01", true);
     let plain_api = serve_routes(vec![("/v1/search", format!(r#"{{"type": "FeatureCollection", "features": [{first},{one}]}}"#))], 2);
-    s.zoom_to(&rustgis_geom::Extent::new(-60.0, -30.0, -50.0, -20.0));
+    s.zoom_to(&powergis_geom::Extent::new(-60.0, -30.0, -50.0, -20.0));
     let (tiles, layers) = (s.map().tiles.len(), s.map().layers.len());
     let (camera, time) = (s.map().camera, s.map().time.clone());
     let e = s
@@ -11344,7 +11344,7 @@ fn a_stac_data_cube_on_the_time_slider() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_catalog_entry_opens_as_its_command_would() {
-    use crate::render::rustgis_tiles::cubes;
+    use crate::render::powergis_tiles::cubes;
     let mut s = Session::new(Project::default());
     let ids = |r: &Value| r["cubes"].as_array().unwrap().iter().map(|c| c["id"].as_str().unwrap().to_string()).collect::<Vec<_>>();
     let all = s.run("cube.catalog", &json!({})).unwrap();
@@ -11373,7 +11373,7 @@ fn a_catalog_entry_opens_as_its_command_would() {
     assert_eq!(reaches(&spec("cube.catalog"), &json!({"query": "ndvi"})), None);
 
     // An entry over a local STAC API: opened, it makes the cube stac.addCube makes from its values.
-    let (cog, _) = serve_ranges(rustgis_data::raster::cog::example(512, 256));
+    let (cog, _) = serve_ranges(powergis_data::raster::cog::example(512, 256));
     let item = |id: &str, date: &str| {
         format!(
             r#"{{"type": "Feature", "id": "{id}", "collection": "cube", "bbox": [10, 45, 11, 46], "geometry": null,
@@ -11550,7 +11550,7 @@ fn a_stac_trend_searches_the_view_it_reads() {
 #[test]
 fn a_trend_over_a_stac_collection() {
     use crate::cmd::stac::PIECE_VALUES;
-    let (cog, _) = serve_ranges(rustgis_data::raster::cog::example(512, 256));
+    let (cog, _) = serve_ranges(powergis_data::raster::cog::example(512, 256));
     let dates = ["2024-01-01", "2024-01-17", "2024-02-02", "2024-02-18", "2024-03-05", "2024-03-21"];
     let features: Vec<String> = dates
         .iter()
@@ -11737,15 +11737,15 @@ fn a_trend_over_a_stac_collection() {
 /// map tile needs, by range; a GeoTIFF in strips is downloaded whole as a raster layer.
 #[test]
 fn cloud_optimised_geotiffs_are_read_in_place() {
-    use crate::render::rustgis_tiles::cache::{self, Payload, State, Want};
-    let file = rustgis_data::raster::cog::example(2048, 256);
+    use crate::render::powergis_tiles::cache::{self, Payload, State, Want};
+    let file = powergis_data::raster::cog::example(2048, 256);
     let total = file.len();
     let (base, sent) = serve_ranges(file);
     let mut s = Session::new(Project::default());
     let r = s.run("layer.addUrl", &json!({"url": format!("{base}/scene.tif")})).unwrap();
     assert_eq!(r["inPlace"], true, "{r}");
     let t = s.map().tiles.last().unwrap().clone();
-    assert_eq!((t.kind, t.name.as_str()), (rustgis_map::TileKind::Cog, "scene"));
+    assert_eq!((t.kind, t.name.as_str()), (powergis_map::TileKind::Cog, "scene"));
     // Framed on the file: 10–11° E, 45–46° N.
     let b = r["bounds"].as_array().unwrap().iter().map(|v| v.as_f64().unwrap()).collect::<Vec<_>>();
     assert!((b[0] - 10.0).abs() < 1e-6 && (b[3] - 46.0).abs() < 1e-6, "{b:?}");
@@ -11794,19 +11794,19 @@ fn cloud_optimised_geotiffs_are_read_in_place() {
         assert!(e.contains("\"as\"") || e.contains("scan"), "{url}: {e}");
     }
     // A GeoTIFF in strips isn't cloud-optimised: downloaded whole, a raster layer.
-    let r = rustgis_data::raster::Raster::new(
+    let r = powergis_data::raster::Raster::new(
         "strips",
         8,
         8,
         vec![vec![3.0; 64]],
-        rustgis_data::raster::GeoTransform { origin_x: 5.0, origin_y: 50.0, pixel_width: 0.1, pixel_height: -0.1 },
-        rustgis_data::raster::Crs::LonLat,
+        powergis_data::raster::GeoTransform { origin_x: 5.0, origin_y: 50.0, pixel_width: 0.1, pixel_height: -0.1 },
+        powergis_data::raster::Crs::LonLat,
         None,
-        rustgis_data::raster::ColorHint::Gray,
+        powergis_data::raster::ColorHint::Gray,
         "Float32",
     )
     .unwrap();
-    let (base, _) = serve_ranges(rustgis_data::raster::geotiff::write(&r, 0).unwrap());
+    let (base, _) = serve_ranges(powergis_data::raster::geotiff::write(&r, 0).unwrap());
     let r = s.run("layer.addUrl", &json!({"url": format!("{base}/strips.tif")})).unwrap();
     assert!(r.get("inPlace").is_none(), "{r}");
     let id = r["layer"].as_u64().unwrap() as u32;
@@ -11833,7 +11833,7 @@ fn unnamed_cloud_optimised_geotiffs_are_read_in_place() {
     {
         assert!(!is_unnamed_url(named), "{named}");
     }
-    let file = rustgis_data::raster::cog::example(2048, 256);
+    let file = powergis_data::raster::cog::example(2048, 256);
     let total = file.len();
     let (base, sent) = serve_ranges(file);
     let url =
@@ -11842,7 +11842,7 @@ fn unnamed_cloud_optimised_geotiffs_are_read_in_place() {
     let r = s.run("layer.addUrl", &json!({"url": url, "name": "Ortho"})).unwrap();
     assert_eq!(r["inPlace"], true, "{r}");
     let t = s.map().tiles.last().unwrap().clone();
-    assert_eq!((t.kind, t.name.as_str(), t.url.as_str()), (rustgis_map::TileKind::Cog, "Ortho", url.as_str()));
+    assert_eq!((t.kind, t.name.as_str(), t.url.as_str()), (powergis_map::TileKind::Cog, "Ortho", url.as_str()));
     let read = sent.load(std::sync::atomic::Ordering::Relaxed);
     assert!(read < total / 4, "{read} of {total} bytes read: only the header, not the whole file");
     let r = s.run("layer.addUrl", &json!({"url": url, "name": "Probed", "cog": true})).unwrap();
@@ -11921,7 +11921,7 @@ fn serve_logged(
 /// GeoTIFF read and downloads it.
 #[test]
 fn announced_tiff_header_lengths_read_the_header_in_one_request() {
-    let file = rustgis_data::raster::cog::example(2048, 256);
+    let file = powergis_data::raster::cog::example(2048, 256);
     let mut s = Session::new(Project::default());
     let (base, log) = serve_logged(file.clone(), Some("8192"), Some("image/tiff"), true);
     let r = s.run("layer.addUrl", &json!({"url": format!("{base}/transform/geotiff?id=1"), "name": "Announced"})).unwrap();
@@ -12072,7 +12072,7 @@ fn las_bytes(points: &[(f64, f64, f64, u8)]) -> Vec<u8> {
 #[test]
 fn lidar_point_clouds() {
     use base64::Engine;
-    let dir = std::env::temp_dir().join(format!("rustgis-lidar-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-lidar-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let pts: Vec<(f64, f64, f64, u8)> =
         (0..200).map(|i| (10.0 + f64::from(i) / 200.0, 50.5, 300.0 + f64::from(i % 50), if i % 2 == 0 { 2 } else { 6 })).collect();
@@ -12084,10 +12084,10 @@ fn lidar_point_clouds() {
     let id = r["layer"].as_u64().unwrap() as u32;
     let l = s.map().layer(id).unwrap();
     match &l.renderer {
-        rustgis_map::Renderer::Unique { field, classes, .. } => {
+        powergis_map::Renderer::Unique { field, classes, .. } => {
             assert_eq!(field, "classification");
             let ground = classes.iter().find(|(v, _)| v == "2").unwrap();
-            assert_eq!(ground.1.fill, rustgis_map::Rgba::rgb(0xA6, 0x7C, 0x52));
+            assert_eq!(ground.1.fill, powergis_map::Rgba::rgb(0xA6, 0x7C, 0x52));
         }
         other => panic!("{other:?}"),
     }
@@ -12103,7 +12103,7 @@ fn lidar_point_clouds() {
     let b64 = base64::engine::general_purpose::STANDARD.encode(las_bytes(&one));
     let r = s.run("layer.addDataBytes", &json!({"fileName": "ground.las", "data": b64})).unwrap();
     let l = s.map().layer(r["layer"].as_u64().unwrap() as u32).unwrap();
-    assert!(matches!(&l.renderer, rustgis_map::Renderer::Graduated { field, .. } if field == "z"), "{:?}", l.renderer);
+    assert!(matches!(&l.renderer, powergis_map::Renderer::Graduated { field, .. } if field == "z"), "{:?}", l.renderer);
     // Not a point cloud.
     assert!(s.run("layer.addDataBytes", &json!({"fileName": "junk.laz", "data": "AAAA"})).is_err());
     let _ = std::fs::remove_dir_all(dir);
@@ -12121,7 +12121,7 @@ fn zarr_store_over_time(tag: &str) -> (std::path::PathBuf, String) {
 #[cfg(not(target_arch = "wasm32"))]
 fn zarr_store_at(tag: &str, days: &[i32]) -> (std::path::PathBuf, String) {
     let n = days.len();
-    let dir = std::env::temp_dir().join(format!("rustgis-zarr-{tag}-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-zarr-{tag}-{}", std::process::id()));
     let store = dir.join("air.zarr");
     let _ = std::fs::remove_dir_all(&dir);
     for d in ["t", "lat", "lon", "time"] {
@@ -12279,14 +12279,14 @@ fn a_zarr_variable_summarised_over_time() {
     let _ = std::fs::remove_dir_all(dir);
 }
 
-/// Where nothing but a shell waits on them (`rustgis-cli run`: `long_runs` set), a trend and a
+/// Where nothing but a shell waits on them (`powergis-cli run`: `long_runs` set), a trend and a
 /// summary tell their progress up to its end and give what they give anywhere else; and there a
 /// STAC trend's or summary's search takes more items than in the app (a state's four MODIS tiles
 /// over 25 years are 2,304).
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_trend_where_nothing_waits_tells_its_progress() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     use std::sync::Mutex;
     // What was told, by this test alone: no other test sets `long_runs` with this `tell`.
     static TOLD: Mutex<Vec<(String, f64)>> = Mutex::new(Vec::new());
@@ -12309,7 +12309,7 @@ fn a_trend_where_nothing_waits_tells_its_progress() {
             let r = Raster::new(&name, 2, 1, vec![vec![0.3 + 0.02 * k as f32, 0.5]], gt, Crs::LonLat, None, ColorHint::Gray, "Float32")
                 .unwrap();
             let bytes = geotiff::write(&r, 0).unwrap();
-            crate::cmd::raster::add_raster(s, &name, rustgis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
+            crate::cmd::raster::add_raster(s, &name, powergis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
             names.push(name);
         }
         let band = |s: &Session, r: &Value| {
@@ -12385,7 +12385,7 @@ fn a_trend_where_nothing_waits_tells_its_progress() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_trend_over_a_data_cube() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     let mut s = Session::new(Project::default());
     let gt = GeoTransform { origin_x: -56.0, origin_y: -12.0, pixel_width: 0.01, pixel_height: -0.01 };
     // Twelve years; cell 0 rises 0.02 a year, cell 1 is noise, cell 2 has three values only.
@@ -12399,7 +12399,7 @@ fn a_trend_over_a_data_cube() {
         let name = format!("ndvi_{y}-07-01");
         let r = Raster::new(&name, 2, 2, vec![cells(k)], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
         let bytes = geotiff::write(&r, 0).unwrap();
-        crate::cmd::raster::add_raster(&mut s, &name, rustgis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
+        crate::cmd::raster::add_raster(&mut s, &name, powergis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
         names.push(name);
     }
     let value = |s: &Session, id: &Value, cell: usize| {
@@ -12449,7 +12449,7 @@ fn a_trend_over_a_data_cube() {
     }
     let bytes = geotiff::write(&cube, 0).unwrap();
     let id =
-        crate::cmd::raster::add_raster(&mut s, "stack", rustgis_map::RasterLayer::from_bytes(cube, "stack.tif", bytes)).unwrap()["layer"]
+        crate::cmd::raster::add_raster(&mut s, "stack", powergis_map::RasterLayer::from_bytes(cube, "stack.tif", bytes)).unwrap()["layer"]
             .clone();
     let r = s.run("cube.trend", &json!({"layer": id})).unwrap();
     assert!((value(&s, &r["layers"][0], 0) - 0.02).abs() < 1e-3);
@@ -12483,7 +12483,7 @@ fn a_trend_over_a_data_cube() {
     }
     let undated = Raster::new("plain", 2, 2, vec![vec![0.0; 4]], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
     let bytes = geotiff::write(&undated, 0).unwrap();
-    crate::cmd::raster::add_raster(&mut s, "plain", rustgis_map::RasterLayer::from_bytes(undated, "plain.tif", bytes)).unwrap();
+    crate::cmd::raster::add_raster(&mut s, "plain", powergis_map::RasterLayer::from_bytes(undated, "plain.tif", bytes)).unwrap();
     let mut no_date = names[..4].to_vec();
     no_date[1] = "plain".into();
     let e = s.run("cube.trend", &json!({"layers": no_date})).unwrap_err();
@@ -12509,7 +12509,7 @@ fn a_trend_over_a_data_cube() {
     // Seasons from the calendar: the 1st of every month is its month in every year, leap years
     // included, and a 16-day composite on the same day each year keeps its season.
     use crate::cmd::cube::season_of;
-    let day = |d: &str| rustgis_data::time::parse_text(d).unwrap();
+    let day = |d: &str| powergis_data::time::parse_text(d).unwrap();
     for y in 2000..2010 {
         for m in 1..=12 {
             assert_eq!(season_of(day(&format!("{y}-{m:02}-01")), 12), m - 1, "{y}-{m}");
@@ -12527,7 +12527,7 @@ fn a_trend_over_a_data_cube() {
             let name = format!("evi_{y}-{m:02}-01");
             let r = Raster::new(&name, 1, 1, vec![vec![v]], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
             let bytes = geotiff::write(&r, 0).unwrap();
-            crate::cmd::raster::add_raster(&mut s, &name, rustgis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
+            crate::cmd::raster::add_raster(&mut s, &name, powergis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
             monthly.push(name);
         }
     }
@@ -12614,9 +12614,9 @@ fn multiband_tiff(w: u32, h: u32, bands: &[Vec<f32>], origin: (f64, f64), px: f6
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_trend_over_stacked_and_multiband_geotiffs() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     let mut s = Session::new(Project::default());
-    let dir = std::env::temp_dir().join(format!("rustgis-cube-files-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-cube-files-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let (x0, y0, px) = (-56.0, -12.0, 0.01);
     // Twelve years on a grid of 4 × 2 cells: 0 and 5 rise 0.02 a year, 3 and 7 fall 0.01 a year,
@@ -12711,7 +12711,7 @@ fn a_trend_over_stacked_and_multiband_geotiffs() {
     let bytes = geotiff::write(&placed, 0).unwrap();
     let mut scan = placed;
     scan.georeferenced = false;
-    crate::cmd::raster::add_raster(&mut s, "scan_2030-07-01", rustgis_map::RasterLayer::from_bytes(scan, "scan.tif", bytes)).unwrap();
+    crate::cmd::raster::add_raster(&mut s, "scan_2030-07-01", powergis_map::RasterLayer::from_bytes(scan, "scan.tif", bytes)).unwrap();
     let mut with_scan = names.clone();
     with_scan.push("scan_2030-07-01".into());
     let e = s.run("cube.trend", &json!({"layers": with_scan})).unwrap_err();
@@ -12720,7 +12720,7 @@ fn a_trend_over_stacked_and_multiband_geotiffs() {
     let gt_away = GeoTransform { origin_x: x0 + 10.0, origin_y: y0, pixel_width: px, pixel_height: -px };
     let away = Raster::new("away_2030-07-01", 3, 3, vec![vec![0.5; 9]], gt_away, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
     let bytes = geotiff::write(&away, 0).unwrap();
-    crate::cmd::raster::add_raster(&mut s, "away_2030-07-01", rustgis_map::RasterLayer::from_bytes(away, "away.tif", bytes)).unwrap();
+    crate::cmd::raster::add_raster(&mut s, "away_2030-07-01", powergis_map::RasterLayer::from_bytes(away, "away.tif", bytes)).unwrap();
     let mut with_away = names.clone();
     with_away.push("away_2030-07-01".into());
     let e = s.run("cube.trend", &json!({"layers": with_away})).unwrap_err();
@@ -12735,7 +12735,7 @@ fn a_trend_over_stacked_and_multiband_geotiffs() {
     let m =
         Raster::new("merc_2030-07-01", 40, 40, vec![vec![0.5; 1600]], gt_merc, Crs::WebMercator, None, ColorHint::Gray, "Float32").unwrap();
     let bytes = geotiff::write(&m, 0).unwrap();
-    crate::cmd::raster::add_raster(&mut s, "merc_2030-07-01", rustgis_map::RasterLayer::from_bytes(m, "merc.tif", bytes)).unwrap();
+    crate::cmd::raster::add_raster(&mut s, "merc_2030-07-01", powergis_map::RasterLayer::from_bytes(m, "merc.tif", bytes)).unwrap();
     let mut with_merc = names.clone();
     with_merc.push("merc_2030-07-01".into());
     let count = s.run("cube.reduce", &json!({"layers": with_merc, "stat": "count", "name": "merc"})).unwrap();
@@ -12777,7 +12777,7 @@ fn a_trend_over_stacked_and_multiband_geotiffs() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_data_cube_summarised_over_time() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     let mut s = Session::new(Project::default());
     let gt = GeoTransform { origin_x: -44.0, origin_y: -7.0, pixel_width: 0.01, pixel_height: -0.01 };
     // March and September, 2020 to 2022: cell 0 is the date's place (0 to 5), cell 1 has no value
@@ -12791,7 +12791,7 @@ fn a_data_cube_summarised_over_time() {
         let cells = vec![k as f32, gap, march, f32::NAN];
         let r = Raster::new(&name, 2, 2, vec![cells], gt, Crs::LonLat, Some(-9999.0), ColorHint::Gray, "Float32").unwrap();
         let bytes = geotiff::write(&r, 0).unwrap();
-        crate::cmd::raster::add_raster(&mut s, &name, rustgis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
+        crate::cmd::raster::add_raster(&mut s, &name, powergis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
         names.push(name);
     }
     let data = |s: &Session, id: &Value| s.map().layer(id.as_u64().unwrap() as u32).unwrap().raster.as_ref().unwrap().data.clone().unwrap();
@@ -12847,7 +12847,7 @@ fn a_data_cube_summarised_over_time() {
     }
     let bytes = geotiff::write(&cube, 0).unwrap();
     let id =
-        crate::cmd::raster::add_raster(&mut s, "stack", rustgis_map::RasterLayer::from_bytes(cube, "stack.tif", bytes)).unwrap()["layer"]
+        crate::cmd::raster::add_raster(&mut s, "stack", powergis_map::RasterLayer::from_bytes(cube, "stack.tif", bytes)).unwrap()["layer"]
             .clone();
     assert_eq!(one(&mut s, json!({"layer": id, "stat": "mean"})), [5.0]);
     // A Zarr variable: the same values as zarr.reduce's, cell for cell.
@@ -12888,7 +12888,7 @@ fn a_data_cube_summarised_over_time() {
 /// trend still asks for its few, and each says which it is.
 #[test]
 fn a_short_cube_is_summarised_but_not_trended() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     let mut s = Session::new(Project::default());
     let gt = GeoTransform { origin_x: -44.0, origin_y: -7.0, pixel_width: 0.01, pixel_height: -0.01 };
     let mut names = Vec::new();
@@ -12896,7 +12896,7 @@ fn a_short_cube_is_summarised_but_not_trended() {
         let name = format!("ndvi_{d}");
         let r = Raster::new(&name, 1, 1, vec![vec![k as f32 * 4.0 + 1.0]], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
         let bytes = geotiff::write(&r, 0).unwrap();
-        crate::cmd::raster::add_raster(&mut s, &name, rustgis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
+        crate::cmd::raster::add_raster(&mut s, &name, powergis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
         names.push(name);
     }
     for (stat, want) in [("mean", 3.0), ("max", 5.0)] {
@@ -12920,12 +12920,12 @@ fn a_short_cube_is_summarised_but_not_trended() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn a_categorical_stack_summarised_over_time() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     let gt = GeoTransform { origin_x: -44.0, origin_y: -7.0, pixel_width: 0.01, pixel_height: -0.01 };
     let add = |s: &mut Session, name: &str, cells: Vec<f32>| {
         let r = Raster::new(name, cells.len() as u32, 1, vec![cells], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
         let bytes = geotiff::write(&r, 0).unwrap();
-        crate::cmd::raster::add_raster(s, name, rustgis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
+        crate::cmd::raster::add_raster(s, name, powergis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
     };
     let nan = f32::NAN;
     // Four cells over six years: 3 3 4 3 4 4; always 15; 21 21 33 with no data between; and
@@ -13009,7 +13009,7 @@ fn a_categorical_stack_summarised_over_time() {
     let dates: Vec<String> = order.iter().map(|&k| format!("{}-01-01", years[k].0)).collect();
     let r = Raster::new("bandas", 4, 1, bands, gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
     let bytes = geotiff::write(&r, 0).unwrap();
-    crate::cmd::raster::add_raster(&mut s, "bandas", rustgis_map::RasterLayer::from_bytes(r, "bandas.tif".to_string(), bytes)).unwrap();
+    crate::cmd::raster::add_raster(&mut s, "bandas", powergis_map::RasterLayer::from_bytes(r, "bandas.tif".to_string(), bytes)).unwrap();
     assert_eq!(run(&mut s, json!({"layer": "bandas", "dates": dates, "stat": "changes"})).1, vec![3.0, 0.0, 1.0, 2.0]);
     assert_eq!(run(&mut s, json!({"layer": "bandas", "dates": dates, "stat": "longestRun"})).1, vec![3.0, 15.0, 21.0, 7.0]);
     assert_eq!(run(&mut s, json!({"layer": "bandas", "dates": dates, "stat": "longestRunLength"})).1, vec![2.0, 6.0, 2.0, 3.0]);
@@ -13092,7 +13092,7 @@ fn a_summary_over_a_decreasing_zarr_axis_names_its_period_in_order() {
 /// scale and offset taken, the whole period or a month at a time.
 #[test]
 fn a_stac_collection_summarised_over_time() {
-    let (cog, _) = serve_ranges(rustgis_data::raster::cog::example(512, 256));
+    let (cog, _) = serve_ranges(powergis_data::raster::cog::example(512, 256));
     let dates = ["2024-01-01", "2024-01-17", "2024-02-02", "2024-02-18", "2024-03-05", "2024-03-21"];
     let features: Vec<String> = dates
         .iter()
@@ -13153,7 +13153,7 @@ fn a_zarr_variable_follows_the_time_slider() {
     // North up: the last latitude row first; step k's values are 100·k + i.
     assert_eq!(first(&s), Some(8.0));
     let rl = s.map().layer(id).unwrap().raster.clone().unwrap();
-    assert!(matches!(rl.style.stretch, rustgis_map::raster::Stretch::Custom { .. }), "{:?}", rl.style.stretch);
+    assert!(matches!(rl.style.stretch, powergis_map::raster::Stretch::Custom { .. }), "{:?}", rl.style.stretch);
     assert!(s.map().layer(id).unwrap().name.ends_with(" t"), "{}", s.map().layer(id).unwrap().name);
     let stretch = rl.style.stretch;
     // Moving the slider moves the slice; the stretch stays.
@@ -13182,7 +13182,7 @@ fn a_zarr_variable_follows_the_time_slider() {
     s.run("time.goTo", &json!({"step": 3})).unwrap();
     assert_eq!(first(&s), Some(208.0));
     // The animation reads each step's slice.
-    let zip = std::env::temp_dir().join(format!("rustgis-zarr-frames-{}.zip", std::process::id()));
+    let zip = std::env::temp_dir().join(format!("powergis-zarr-frames-{}.zip", std::process::id()));
     let r = s.run("time.export", &json!({"path": zip.display().to_string(), "width": 64, "height": 48})).unwrap();
     assert_eq!(r["frames"], 4, "{r}");
     // After the export the slider is back at its step, and the layer shows it.
@@ -13231,7 +13231,7 @@ fn a_zarr_variable_follows_the_time_slider() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn zarr_stores_in_folders_and_handed_over() {
-    let dir = std::env::temp_dir().join(format!("rustgis-zarr-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-zarr-{}", std::process::id()));
     let store = dir.join("air.zarr");
     let _ = std::fs::remove_dir_all(&dir);
     for d in ["t", "lat", "lon", "time"] {
@@ -13288,7 +13288,7 @@ fn zarr_stores_in_folders_and_handed_over() {
     let first = s.map().layer(r["layer"].as_u64().unwrap() as u32).and_then(|l| l.raster.as_ref()).and_then(|r| r.data.clone()).unwrap();
     assert_eq!(first.bands[0].data[0], 8.0);
     // A slice the app read: its GeoTIFF handed over by id, named by its store and selection.
-    let tif = rustgis_data::raster::geotiff::write(&again, 0).unwrap();
+    let tif = powergis_data::raster::geotiff::write(&again, 0).unwrap();
     let id = s.download_started();
     assert!(s.download_landed(id, tif));
     let r = s
@@ -13414,16 +13414,16 @@ fn s3_connections_listings_and_objects() {
 /// drawn there, so its features are not fetched (#412). Back in range, it reads again.
 #[test]
 fn streamed_layer_outside_its_zoom_range_reads_nothing() {
-    use rustgis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
     let mut ds = Dataset::new("grid", GeometryType::Point, vec![Field::new("n", FieldType::Integer)]);
     for i in 0..200u32 {
         for j in 0..200u32 {
-            let c = rustgis_geom::Coord::new(-179.0 + 1.79 * f64::from(i), -80.0 + 0.8 * f64::from(j));
+            let c = powergis_geom::Coord::new(-179.0 + 1.79 * f64::from(i), -80.0 + 0.8 * f64::from(j));
             let n = u64::from(i * 200 + j);
             ds.features.push(Feature { id: n + 1, geometry: Some(Geometry::Point(c)), attrs: vec![Value::Int(n as i64)] });
         }
     }
-    let (base, sent) = serve_ranges(rustgis_data::source::fgb::write(&ds).unwrap());
+    let (base, sent) = serve_ranges(powergis_data::source::fgb::write(&ds).unwrap());
     let mut s = Session::new(Project::default());
     let r = s.run("layer.addUrl", &json!({"url": format!("{base}/grid.fgb")})).unwrap();
     assert_eq!(r["streamed"], true, "{r}");
@@ -13432,14 +13432,14 @@ fn streamed_layer_outside_its_zoom_range_reads_nothing() {
     s.run("layer.scaleRange", &json!({"layer": id, "min": 1e7})).unwrap();
     let before = sent.load(std::sync::atomic::Ordering::Relaxed);
     // Zoomed out (an export, which waits for its reads): not drawn, so not read.
-    let v = view_of(&mut s, rustgis_geom::Extent::new(-60.0, -40.0, 60.0, 40.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(-60.0, -40.0, 60.0, 40.0));
     assert!(s.map().scale() > 1e7);
     crate::render::render_png(s.map_mut(), &v).unwrap();
     let l = s.map().layer(id).unwrap();
     assert!(l.dataset.features.is_empty() && l.source.as_ref().unwrap().window().is_none());
     assert_eq!(sent.load(std::sync::atomic::Ordering::Relaxed), before);
     // Zoomed in, inside the range: read and drawn.
-    let v = view_of(&mut s, rustgis_geom::Extent::new(10.0, 10.0, 12.0, 11.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(10.0, 10.0, 12.0, 11.0));
     assert!(s.map().scale() < 1e7);
     crate::render::render_png(s.map_mut(), &v).unwrap();
     let l = s.map().layer(id).unwrap();
@@ -13451,13 +13451,13 @@ fn streamed_layer_outside_its_zoom_range_reads_nothing() {
 /// than fail with "the layer's source isn't open" (the server here holds its answers a while).
 #[test]
 fn load_all_features_waits_for_a_source_still_opening() {
-    use rustgis_data::{Dataset, Feature, Geometry, GeometryType};
+    use powergis_data::{Dataset, Feature, Geometry, GeometryType};
     let mut ds = Dataset::new("pts", GeometryType::Point, vec![]);
     for i in 0..100u32 {
-        let c = rustgis_geom::Coord::new(f64::from(i) * 0.1, 1.0);
+        let c = powergis_geom::Coord::new(f64::from(i) * 0.1, 1.0);
         ds.features.push(Feature { id: u64::from(i) + 1, geometry: Some(Geometry::Point(c)), attrs: vec![] });
     }
-    let fgb = rustgis_data::source::fgb::write(&ds).unwrap();
+    let fgb = powergis_data::source::fgb::write(&ds).unwrap();
     let (base, _) = serve_ranges(fgb.clone());
     let mut s = Session::new(Project::default());
     s.run("layer.addUrl", &json!({"url": format!("{base}/pts.fgb")})).unwrap();
@@ -13484,16 +13484,16 @@ fn load_all_features_waits_for_a_source_still_opening() {
 /// downloaded whole instead.
 #[test]
 fn flatgeobuf_and_geoparquet_by_address_are_read_in_place() {
-    use rustgis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
     let mut ds = Dataset::new("grid", GeometryType::Point, vec![Field::new("n", FieldType::Integer)]);
     for i in 0..200u32 {
         for j in 0..200u32 {
-            let c = rustgis_geom::Coord::new(-179.0 + 1.79 * f64::from(i), -80.0 + 0.8 * f64::from(j));
+            let c = powergis_geom::Coord::new(-179.0 + 1.79 * f64::from(i), -80.0 + 0.8 * f64::from(j));
             let n = u64::from(i * 200 + j);
             ds.features.push(Feature { id: n + 1, geometry: Some(Geometry::Point(c)), attrs: vec![Value::Int(n as i64)] });
         }
     }
-    let fgb = rustgis_data::source::fgb::write(&ds).unwrap();
+    let fgb = powergis_data::source::fgb::write(&ds).unwrap();
     let total = fgb.len();
     let (base, sent) = serve_ranges(fgb.clone());
     let mut s = Session::new(Project::default());
@@ -13501,7 +13501,7 @@ fn flatgeobuf_and_geoparquet_by_address_are_read_in_place() {
     assert_eq!((r["inPlace"].as_bool(), r["streamed"].as_bool(), r["features"].as_u64()), (Some(true), Some(true), Some(40_000)), "{r}");
     let id = r["layer"].as_u64().unwrap() as u32;
     // A view: read as the screen reads, in the background.
-    let view = rustgis_geom::Extent::new(10.0, 10.0, 14.0, 13.0);
+    let view = powergis_geom::Extent::new(10.0, 10.0, 14.0, 13.0);
     let sync = |s: &mut Session| {
         let scale = s.map().scale();
         let mut pending = s.map_mut().sync_sources(&view, scale, false);
@@ -13575,7 +13575,7 @@ fn flatgeobuf_and_geoparquet_by_address_are_read_in_place() {
     assert!(a.is_open() && b.is_open(), "{:?} {:?}", a.error, b.error);
 
     // A GeoParquet (with its bbox covering), from its footer at the end.
-    let pq = rustgis_data::source::parquet::write(&ds).unwrap();
+    let pq = powergis_data::source::parquet::write(&ds).unwrap();
     let (base, _) = serve_ranges(pq);
     let r = s.run("layer.addUrl", &json!({"url": format!("{base}/grid.parquet"), "name": "PQ"})).unwrap();
     assert_eq!(r["inPlace"].as_bool(), Some(true), "{r}");
@@ -13590,7 +13590,7 @@ fn flatgeobuf_and_geoparquet_by_address_are_read_in_place() {
     assert!(r.get("inPlace").is_none(), "{r}");
     // A server that ignores ranges answers the footer's request with the whole, longer file:
     // downloaded whole instead, not an error.
-    let pq = rustgis_data::source::parquet::write(&ds).unwrap();
+    let pq = powergis_data::source::parquet::write(&ds).unwrap();
     assert!(pq.len() > 256 << 10);
     let (base, _) = serve_file(pq, false);
     let r = s.run("layer.addUrl", &json!({"url": format!("{base}/grid.parquet"), "name": "NoRanges"})).unwrap();
@@ -13606,7 +13606,7 @@ fn flatgeobuf_and_geoparquet_by_address_are_read_in_place() {
 /// well-known public sources.
 #[test]
 fn data_sources_recent_favourites_and_saved() {
-    let dir = std::env::temp_dir().join(format!("rustgis-sources-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-sources-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("towns.geojson");
     std::fs::write(
@@ -13636,7 +13636,7 @@ fn data_sources_recent_favourites_and_saved() {
         assert!(!text.contains(secret), "{secret} in {text}");
     }
     // The app keeps them in its preferences and reads them back.
-    let back = rustgis_engine_sources_roundtrip(&text);
+    let back = powergis_engine_sources_roundtrip(&text);
     assert_eq!((back.favourites.len(), back.saved.len(), back.recent.len()), (1, 2, 2));
     // Removed by list, kind and address; an unknown one is an error.
     s.run("sources.favourite", &json!({"kind": "file", "address": p, "on": false})).unwrap();
@@ -13669,7 +13669,7 @@ fn layer_address_redaction_preserves_templates_and_local_paths() {
     for (address, (_, expected)) in addresses.iter().zip(cases) {
         assert_eq!(address, expected);
     }
-    let prefix = crate::render::rustgis_tiles::s3::ANONYMOUS;
+    let prefix = crate::render::powergis_tiles::s3::ANONYMOUS;
     let mut anonymous = format!("{prefix}https://bucket.example/a?token=secret");
     crate::project::strip_addresses(vec![&mut anonymous]);
     assert_eq!(anonymous, format!("{prefix}https://bucket.example/a"));
@@ -13693,7 +13693,7 @@ fn saved_layer_files_keep_no_address_secrets() {
     {
         let layer = s.map_mut().layer_mut(raster).unwrap().raster.as_mut().unwrap();
         layer.path = Some(raster_url.into());
-        layer.time_zarr = Some(rustgis_map::raster::ZarrTime { store: zarr_url.into(), ..Default::default() });
+        layer.time_zarr = Some(powergis_map::raster::ZarrTime { store: zarr_url.into(), ..Default::default() });
     }
     for id in [feature, raster] {
         let (_, bytes) = crate::cmd::items::item_bytes(&mut s, "layer", &json!({"layer":id})).unwrap();
@@ -13853,19 +13853,19 @@ fn saved_projects_keep_no_layer_tokens() {
     s.run("map.addTiles", &json!({"url":url,"name":"Secured","legend":legend})).unwrap();
     let layer = s.map().layers[0].id;
     s.map_mut().layers[0].dataset.source = Some("https://u:pw@gis.example/f?f=json&access_token=tok2".into());
-    s.map_mut().service_groups.push(rustgis_map::ServiceGroup {
+    s.map_mut().service_groups.push(powergis_map::ServiceGroup {
         id: 123,
         name: "Protected service".into(),
         url: "https://gis.example/wfs?key=k3y&map=m".into(),
         kind: "wfs".into(),
         expanded: true,
-        children: vec![rustgis_map::ServiceChild {
+        children: vec![powergis_map::ServiceChild {
             layer,
             collection: "roads".into(),
             source_url: "https://gis.example/roads?sig=x&sv=1".into(),
         }],
     });
-    let path = std::env::temp_dir().join(format!("rustgis-token-audit-{}.rgis", std::process::id()));
+    let path = std::env::temp_dir().join(format!("powergis-token-audit-{}.rgis", std::process::id()));
     let result = s.run("project.saveAs", &json!({"path":path})).unwrap();
     let text = std::fs::read_to_string(&path).unwrap();
     for secret in ["s3cret", "pw@", "tok2", "k3y", "sig=x", "l3g"] {
@@ -13884,7 +13884,7 @@ fn saved_projects_keep_no_layer_tokens() {
         }
         if kind == "projectPackage" {
             // Even a hostile archive carrying the exact registered JSON must not restore it.
-            let hostile = rustgis_data::zip::write(&[("exact.rgis".into(), text.as_bytes().to_vec())]).unwrap();
+            let hostile = powergis_data::zip::write(&[("exact.rgis".into(), text.as_bytes().to_vec())]).unwrap();
             let package_path = path.with_extension("rgispkg");
             std::fs::write(&package_path, hostile).unwrap();
             let mut opened = Session::new(Project::default());
@@ -13917,7 +13917,7 @@ fn saved_projects_keep_no_layer_tokens() {
 
 #[test]
 fn connections_commands() {
-    use crate::render::rustgis_tiles::s3;
+    use crate::render::powergis_tiles::s3;
     let mut s = Session::new(Project::default());
     let a = s.run("connection.new", &json!({"kind":"wms","address":"https://a.example/wms?token=t","name":"A"})).unwrap();
     assert_eq!(a["stripped"], true);
@@ -13993,7 +13993,7 @@ fn connections_commands() {
 
 #[test]
 fn connections_loaded_names_route_login_and_remove_to_the_right_endpoint() {
-    use crate::render::rustgis_tiles::s3;
+    use crate::render::powergis_tiles::s3;
     let mut s = Session::new(Project::default());
     s.connections = crate::connections::Connections::from_json(&json!({"connections":[
         {"id":"c1","kind":"s3","name":"connections-alias-target","options":{"credentials":"keys"}},
@@ -14012,7 +14012,7 @@ fn connections_loaded_names_route_login_and_remove_to_the_right_endpoint() {
 
 #[test]
 fn connections_s3_rename_cannot_inherit_a_destination_session() {
-    use crate::render::rustgis_tiles::s3;
+    use crate::render::powergis_tiles::s3;
     let mut s = Session::new(Project::default());
     let (old, destination, occupied) = ("rename-test-old", "rename-test-destination", "rename-test-occupied");
     let saved = s
@@ -14051,7 +14051,7 @@ fn connections_s3_rename_cannot_inherit_a_destination_session() {
 
 #[test]
 fn connection_test_probes_and_answers() {
-    use crate::render::rustgis_tiles::s3;
+    use crate::render::powergis_tiles::s3;
     let mut s = Session::new(Project::default());
     let mut wms = json!({"kind":"wms","address":"https://a.example/wms","probe":true});
     let v = s.run("connection.test", &wms).unwrap();
@@ -14100,7 +14100,7 @@ fn connection_test_probes_and_answers() {
 /// connection's is refused, and nothing browsed is saved or undoable.
 #[test]
 fn connection_browse_levels_and_adds() {
-    use crate::render::rustgis_tiles::s3;
+    use crate::render::powergis_tiles::s3;
     let mut s = Session::new(Project::default());
     let new = |s: &mut Session, p: Value| s.run("connection.new", &p).unwrap();
     let wms_caps = r#"<WMS_Capabilities version="1.3.0" xmlns="http://www.opengis.net/wms" xmlns:xlink="http://www.w3.org/1999/xlink"><Service><Title>Local</Title></Service><Capability><Request><GetMap><Format>image/png</Format><DCPType><HTTP><Get><OnlineResource xlink:href="https://a.example/wms?"/></Get></HTTP></DCPType></GetMap></Request><Layer><CRS>EPSG:3857</CRS><Layer><Name>a</Name><Title>A</Title></Layer><Layer><Name>b</Name><Title>B</Title></Layer></Layer></Capability></WMS_Capabilities>"#;
@@ -14228,7 +14228,7 @@ fn connection_browse_levels_and_adds() {
     assert_eq!(v["children"][0]["name"], "p/");
     // Through a saved connection's login, a file's address names it: only that login reads it.
     let added = v["children"][1]["add"]["params"]["url"].as_str().unwrap();
-    let bound = rustgis_data::s3_address::parse(added).unwrap().unwrap();
+    let bound = powergis_data::s3_address::parse(added).unwrap().unwrap();
     let saved_id = &s.connections.find("BrowseB").unwrap().id;
     assert_eq!((bound.url, bound.endpoint, Some(bound.binding)), ("s3://bkt1/p.tif", "", s.s3_binding(saved_id)));
     assert_eq!(v["children"][1]["key"], "s3://bkt1/p.tif");
@@ -14289,7 +14289,7 @@ fn connection_browse_levels_and_adds() {
     assert!(!s.can_undo());
 }
 
-fn rustgis_engine_sources_roundtrip(text: &str) -> crate::sources::Sources {
+fn powergis_engine_sources_roundtrip(text: &str) -> crate::sources::Sources {
     crate::sources::Sources::from_json(text)
 }
 
@@ -14320,8 +14320,8 @@ fn dxf_drawings_by_path_and_upload() {
         (0, "EOF"),
     ];
     let text: String = pairs.iter().map(|(c, v)| format!("{c:>3}\n{v}\n")).collect();
-    assert!(!rustgis_data::source::gdal::is_gdal_name("site.dxf"));
-    let dir = std::env::temp_dir().join(format!("rustgis-dxf-{}", std::process::id()));
+    assert!(!powergis_data::source::gdal::is_gdal_name("site.dxf"));
+    let dir = std::env::temp_dir().join(format!("powergis-dxf-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("site.dxf");
     std::fs::write(&path, &text).unwrap();
@@ -14385,13 +14385,13 @@ fn catalog_commands_refuse_bad_parameters() {
 /// out again, so trying again doesn't add them twice.
 #[test]
 fn overture_files_are_added_all_or_none() {
-    use rustgis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
     let mut ds = Dataset::new("b", GeometryType::Point, vec![Field::new("n", FieldType::Integer)]);
     for i in 0..50u32 {
-        let c = rustgis_geom::Coord::new(7.0 + 0.01 * f64::from(i), 46.0);
+        let c = powergis_geom::Coord::new(7.0 + 0.01 * f64::from(i), 46.0);
         ds.features.push(Feature { id: u64::from(i) + 1, geometry: Some(Geometry::Point(c)), attrs: vec![Value::Int(i64::from(i))] });
     }
-    let (good, _) = serve_ranges(rustgis_data::source::fgb::write(&ds).unwrap());
+    let (good, _) = serve_ranges(powergis_data::source::fgb::write(&ds).unwrap());
     let (bad, _) = serve_ranges(b"not a flatgeobuf at all".to_vec());
     let mut s = Session::new(Project::default());
     let before = s.map().layers.len();
@@ -14421,13 +14421,13 @@ fn overture_files_are_added_all_or_none() {
 /// the same active layer.
 #[test]
 fn a_failed_multi_file_add_leaves_the_map_as_it_was() {
-    use rustgis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value};
     let mut ds = Dataset::new("b", GeometryType::Point, vec![Field::new("n", FieldType::Integer)]);
     for i in 0..20u32 {
-        let c = rustgis_geom::Coord::new(7.0 + 0.01 * f64::from(i), 46.0);
+        let c = powergis_geom::Coord::new(7.0 + 0.01 * f64::from(i), 46.0);
         ds.features.push(Feature { id: u64::from(i) + 1, geometry: Some(Geometry::Point(c)), attrs: vec![Value::Int(i64::from(i))] });
     }
-    let (good, _) = serve_ranges(rustgis_data::source::fgb::write(&ds).unwrap());
+    let (good, _) = serve_ranges(powergis_data::source::fgb::write(&ds).unwrap());
     let (bad, _) = serve_ranges(b"not a flatgeobuf at all".to_vec());
     let mut s = world();
     // A layer other than the last added is active.
@@ -14450,8 +14450,8 @@ fn a_failed_multi_file_add_leaves_the_map_as_it_was() {
 #[test]
 fn geotagged_photos_become_a_photo_layer() {
     use base64::Engine;
-    use rustgis_data::photo;
-    let dir = std::env::temp_dir().join(format!("rustgis-photos-{}", std::process::id()));
+    use powergis_data::photo;
+    let dir = std::env::temp_dir().join(format!("powergis-photos-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     std::fs::write(dir.join("a.jpg"), photo::example(true, (43.4674, "N"), (11.8851, "E"))).unwrap();
@@ -14466,9 +14466,9 @@ fn geotagged_photos_become_a_photo_layer() {
     let l = s.map().layer_by_name("Photos").unwrap();
     assert!(photo::is_photo_layer(&l.dataset));
     let f = &l.dataset.features[0];
-    assert_eq!(f.attrs[0], rustgis_data::Value::Text("a".into()));
-    assert_eq!(f.attrs[2], rustgis_data::Value::Text("2008-10-22 16:29:49".into()));
-    assert!(matches!(&f.attrs[6], rustgis_data::Value::Text(t) if t.starts_with("data:image/jpeg;base64,")));
+    assert_eq!(f.attrs[0], powergis_data::Value::Text("a".into()));
+    assert_eq!(f.attrs[2], powergis_data::Value::Text("2008-10-22 16:29:49".into()));
+    assert!(matches!(&f.attrs[6], powergis_data::Value::Text(t) if t.starts_with("data:image/jpeg;base64,")));
     // An upload (the web app's way, one file at a time) joins the Photos layer.
     let one = base64::engine::general_purpose::STANDARD.encode(photo::example(true, (43.468, "N"), (11.881, "E")));
     s.run("layer.addDataBytes", &json!({"fileName": "c.jpg", "data": one})).unwrap();
@@ -14503,8 +14503,8 @@ fn geotagged_photos_become_a_photo_layer() {
     assert_eq!((r["photos"].as_u64(), r["skipped"].as_u64()), (Some(1), Some(1)), "{r}");
     let l = s.map().layer_by_name("Photos").unwrap();
     assert_eq!(l.dataset.features.len(), photo::MAX_PHOTOS);
-    assert_eq!(l.dataset.features.last().unwrap().attrs[0], rustgis_data::Value::Text("a-near".into()));
-    let c = rustgis_geom::merc_to_lonlat(s.map().camera.center);
+    assert_eq!(l.dataset.features.last().unwrap().attrs[0], powergis_data::Value::Text("a-near".into()));
+    let c = powergis_geom::merc_to_lonlat(s.map().camera.center);
     assert!((c.x - 11.8851).abs() < 0.01 && (c.y - 43.4674).abs() < 0.01, "zoomed to {c:?}");
     // Full: nothing more is added, and that's said.
     let r = s.run("layer.addPhotos", &json!({"folder": near.display().to_string()}));
@@ -14885,13 +14885,13 @@ fn unknown_params_are_said() {
 
 #[test]
 fn geojson_read_in_place_when_asked_or_large() {
-    use rustgis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
+    use powergis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
     let mut ds = Dataset::new("pts", GeometryType::Point, vec![Field::new("i", FieldType::Integer)]);
     for i in 0..500 {
         ds.push(Some(Geometry::Point(Coord::new(-170.0 + i as f64 * 0.68, (i % 50) as f64))), vec![V::Int(i)]);
     }
-    let p = std::env::temp_dir().join(format!("rustgis-engine-{}-pts.geojson", std::process::id()));
-    rustgis_data::io::write_path(&ds, &p).unwrap();
+    let p = std::env::temp_dir().join(format!("powergis-engine-{}-pts.geojson", std::process::id()));
+    powergis_data::io::write_path(&ds, &p).unwrap();
     // Small: loaded whole, as before.
     let mut s = Session::new(Project::default());
     let r = s.run("layer.addData", &json!({"path": p.display().to_string()})).unwrap();
@@ -14901,7 +14901,7 @@ fn geojson_read_in_place_when_asked_or_large() {
     let r = s.run("layer.addData", &json!({"path": p.display().to_string(), "stream": true})).unwrap();
     assert_eq!(r["streamed"], true, "{r}");
     let id = r["layer"].as_u64().unwrap() as u32;
-    let v = view_of(&mut s, rustgis_geom::Extent::new(-180.0, -10.0, 180.0, 60.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(-180.0, -10.0, 180.0, 60.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     assert_eq!(s.map().layer(id).unwrap().dataset.features.len(), 500);
     let text = serde_json::to_string(&s.project).unwrap();
@@ -14910,19 +14910,19 @@ fn geojson_read_in_place_when_asked_or_large() {
     assert!(t.map().layers[0].is_streamed() && t.map().layers[0].source.as_ref().unwrap().is_open());
     // Load All Features: the same features as a whole read.
     s.run("layer.loadAll", &json!({"layer": id})).unwrap();
-    let whole = rustgis_data::io::read_path(&p).unwrap().0;
+    let whole = powergis_data::io::read_path(&p).unwrap().0;
     assert_eq!(s.map().layer(id).unwrap().dataset.features, whole.features);
     // Larger than IN_PLACE_ABOVE (trailing whitespace pads it): read in place without being asked,
     // and streamed past STREAM_ABOVE features.
-    let n = rustgis_map::source::STREAM_ABOVE as usize + 1;
+    let n = powergis_map::source::STREAM_ABOVE as usize + 1;
     let mut many = Dataset::new("many", GeometryType::Point, vec![Field::new("i", FieldType::Integer)]);
     for i in 0..n {
         many.push(Some(Geometry::Point(Coord::new(-179.0 + 358.0 * i as f64 / n as f64, 0.0))), vec![V::Int(i as i64)]);
     }
-    let large = std::env::temp_dir().join(format!("rustgis-engine-{}-large.geojson", std::process::id()));
-    let mut text = rustgis_data::io::to_geojson(&many).to_string().into_bytes();
+    let large = std::env::temp_dir().join(format!("powergis-engine-{}-large.geojson", std::process::id()));
+    let mut text = powergis_data::io::to_geojson(&many).to_string().into_bytes();
     let json_len = text.len();
-    let pad = (rustgis_data::source::geojson::IN_PLACE_ABOVE as usize + 1).saturating_sub(text.len());
+    let pad = (powergis_data::source::geojson::IN_PLACE_ABOVE as usize + 1).saturating_sub(text.len());
     text.resize(text.len() + pad, b' ');
     std::fs::write(&large, &text).unwrap();
     let mut u = Session::new(Project::default());
@@ -14931,13 +14931,13 @@ fn geojson_read_in_place_when_asked_or_large() {
     assert_eq!(r["features"], n as u64, "{r}");
     // A large file that isn't JSON says why, rather than falling back to a whole read.
     text.truncate(json_len / 2);
-    text.resize(rustgis_data::source::geojson::IN_PLACE_ABOVE as usize + 1, b' ');
+    text.resize(powergis_data::source::geojson::IN_PLACE_ABOVE as usize + 1, b' ');
     std::fs::write(&large, &text).unwrap();
     let e = u.run("layer.addData", &json!({"path": large.display().to_string()})).unwrap_err();
     assert!(e.contains("GeoJSON") && !e.contains("too large"), "{e}");
     let _ = std::fs::remove_file(&large);
     // A document that isn't a FeatureCollection is read whole even when asked to stream.
-    let one = std::env::temp_dir().join(format!("rustgis-engine-{}-one.geojson", std::process::id()));
+    let one = std::env::temp_dir().join(format!("powergis-engine-{}-one.geojson", std::process::id()));
     std::fs::write(&one, r#"{"type":"Point","coordinates":[1,2]}"#).unwrap();
     let r = s.run("layer.addData", &json!({"path": one.display().to_string(), "stream": true})).unwrap();
     assert!(!s.map().layer(r["layer"].as_u64().unwrap() as u32).unwrap().is_streamed());
@@ -14947,13 +14947,13 @@ fn geojson_read_in_place_when_asked_or_large() {
 
 /// A Shapefile of `n` points along the equator, numbered.
 fn line_of_points_shp(name: &str, n: usize) -> std::path::PathBuf {
-    use rustgis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
+    use powergis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value as V};
     let mut ds = Dataset::new(name, GeometryType::Point, vec![Field::new("i", FieldType::Integer)]);
     for i in 0..n {
         ds.push(Some(Geometry::Point(Coord::new(-179.0 + 358.0 * i as f64 / n.max(2) as f64, 0.0))), vec![V::Int(i as i64)]);
     }
-    let p = std::env::temp_dir().join(format!("rustgis-engine-{}-{name}.shp", std::process::id()));
-    rustgis_data::io::write_path(&ds, &p).unwrap();
+    let p = std::env::temp_dir().join(format!("powergis-engine-{}-{name}.shp", std::process::id()));
+    powergis_data::io::write_path(&ds, &p).unwrap();
     p
 }
 
@@ -14964,7 +14964,7 @@ fn shapefiles_too_large_to_load_whole_still_open() {
     // Grown sparse where the file system allows.
     for grown in ["dbf", "shp"] {
         let p = line_of_points_shp(&format!("wide-{grown}"), 20);
-        std::fs::OpenOptions::new().write(true).open(p.with_extension(grown)).unwrap().set_len(rustgis_data::io::MAX_BYTES + 1).unwrap();
+        std::fs::OpenOptions::new().write(true).open(p.with_extension(grown)).unwrap().set_len(powergis_data::io::MAX_BYTES + 1).unwrap();
         let path = p.display().to_string();
         // With and without a coordinate system given for it.
         for params in [json!({"path": path}), json!({"path": path, "crs": "EPSG:4326"})] {
@@ -14995,14 +14995,14 @@ fn large_shapefiles_are_read_in_place() {
     assert_eq!(s.map().layer(id).unwrap().dataset.features.len(), 50);
 
     // Past the streaming threshold: read in place, a view at a time.
-    let n = rustgis_map::source::STREAM_ABOVE as usize + 1;
+    let n = powergis_map::source::STREAM_ABOVE as usize + 1;
     let big = line_of_points_shp("big-shp", n);
     let mut s = Session::new(Project::default());
     let r = s.run("layer.addData", &json!({"path": big.display().to_string()})).unwrap();
     assert_eq!(r["streamed"], true, "{r}");
     assert_eq!(r["features"], n as u64, "{r}");
     let id = r["layer"].as_u64().unwrap() as u32;
-    let v = view_of(&mut s, rustgis_geom::Extent::new(-10.0, -5.0, 10.0, 5.0));
+    let v = view_of(&mut s, powergis_geom::Extent::new(-10.0, -5.0, 10.0, 5.0));
     crate::render::render_png(s.map_mut(), &v).unwrap();
     let l = s.map().layer(id).unwrap();
     assert!(l.is_streamed());
@@ -15038,7 +15038,7 @@ fn large_shapefiles_are_read_in_place() {
 fn postgis_layers_reopen_without_secrets() {
     // Nothing listens on port 1: the connection is refused at once.
     let mut s = Session::new(Project::default());
-    let mut src: rustgis_map::source::SourceLayer = serde_json::from_value(json!({
+    let mut src: powergis_map::source::SourceLayer = serde_json::from_value(json!({
         "postgis": {"database": "postgres:host=127.0.0.1 port=1 dbname=gis user=me", "table": "roads", "family": "Lines"}
     }))
     .unwrap();
@@ -15057,14 +15057,14 @@ fn postgis_layers_reopen_without_secrets() {
     assert_eq!(s.map().layers.len(), before);
 }
 
-/// A live PostGIS database through the commands: `RUSTGIS_TEST_POSTGIS="postgres:host=… dbname=…
+/// A live PostGIS database through the commands: `powergis_TEST_POSTGIS="postgres:host=… dbname=…
 /// user=… password=…"` names one with PostGIS's `us_cities`-style tables (any will do); every
 /// table is added, drawn, saved and opened again.
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 #[ignore]
 fn postgis_live_end_to_end() {
-    let Ok(dsn) = std::env::var("RUSTGIS_TEST_POSTGIS") else { return };
+    let Ok(dsn) = std::env::var("powergis_TEST_POSTGIS") else { return };
     let mut s = Session::new(Project::default());
     let listed = s.run("info.databaseTables", &json!({"database": dsn})).unwrap();
     let names: Vec<String> = listed["layers"].as_array().unwrap().iter().filter_map(|v| v.as_str()).map(str::to_string).collect();
@@ -15076,7 +15076,7 @@ fn postgis_live_end_to_end() {
     assert_eq!(r["streamed"], true);
     let id = r["layer"].as_u64().unwrap() as u32;
     assert!(s.map().layer(id).unwrap().source.as_ref().unwrap().postgis.is_some());
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-postgis-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-postgis-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let png = dir.join("map.png");
     s.run("share.exportMap", &json!({"path": png.display().to_string()})).unwrap();
@@ -15096,7 +15096,7 @@ fn postgis_live_end_to_end() {
 #[test]
 fn mysql_layers_reopen_without_secrets() {
     let mut s = Session::new(Project::default());
-    let mut src: rustgis_map::source::SourceLayer = serde_json::from_value(json!({
+    let mut src: powergis_map::source::SourceLayer = serde_json::from_value(json!({
         "mysql": {"database": "mysql://me@127.0.0.1:1/gis?ssl-mode=DISABLED", "table": "roads", "family": "Lines"}
     }))
     .unwrap();
@@ -15121,14 +15121,14 @@ fn mysql_layers_reopen_without_secrets() {
     assert_eq!(s.map().layers.len(), before);
 }
 
-/// A live MySQL or MariaDB database through the commands: `RUSTGIS_TEST_MYSQL="mysql://user:
+/// A live MySQL or MariaDB database through the commands: `powergis_TEST_MYSQL="mysql://user:
 /// password@host:port/database"` names one with tables of geometry (any will do); every table is
 /// added, drawn, saved and opened again.
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 #[ignore]
 fn mysql_live_end_to_end() {
-    let Ok(address) = std::env::var("RUSTGIS_TEST_MYSQL") else { return };
+    let Ok(address) = std::env::var("powergis_TEST_MYSQL") else { return };
     let mut s = Session::new(Project::default());
     let listed = s.run("info.databaseTables", &json!({"database": address})).unwrap();
     let names: Vec<String> = listed["layers"].as_array().unwrap().iter().filter_map(|v| v.as_str()).map(str::to_string).collect();
@@ -15142,7 +15142,7 @@ fn mysql_live_end_to_end() {
     assert_eq!(r["streamed"], true);
     let id = r["layer"].as_u64().unwrap() as u32;
     assert!(s.map().layer(id).unwrap().source.as_ref().unwrap().mysql.is_some());
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-mysql-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-mysql-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let png = dir.join("map.png");
     s.run("share.exportMap", &json!({"path": png.display().to_string()})).unwrap();
@@ -15162,7 +15162,7 @@ fn mysql_live_end_to_end() {
 #[test]
 fn sqlserver_layers_reopen_without_secrets() {
     let mut s = Session::new(Project::default());
-    let mut src: rustgis_map::source::SourceLayer = serde_json::from_value(json!({
+    let mut src: powergis_map::source::SourceLayer = serde_json::from_value(json!({
         "sqlserver": {"database": "mssql://me@127.0.0.1:1/gis?encrypt=false", "table": "roads", "family": "Lines"}
     }))
     .unwrap();
@@ -15186,12 +15186,12 @@ fn sqlserver_layers_reopen_without_secrets() {
     assert_eq!(s.map().layers.len(), before);
 }
 
-/// `RUSTGIS_TEST_MSSQL` names a live database: add every table, stream one, draw, save and reopen.
+/// `powergis_TEST_MSSQL` names a live database: add every table, stream one, draw, save and reopen.
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 #[ignore]
 fn sqlserver_live_end_to_end() {
-    let Ok(address) = std::env::var("RUSTGIS_TEST_MSSQL") else { return };
+    let Ok(address) = std::env::var("powergis_TEST_MSSQL") else { return };
     let mut s = Session::new(Project::default());
     let listed = s.run("info.databaseTables", &json!({"database": address})).unwrap();
     let names: Vec<String> = listed["layers"].as_array().unwrap().iter().filter_map(|v| v.as_str()).map(str::to_string).collect();
@@ -15203,11 +15203,11 @@ fn sqlserver_live_end_to_end() {
     assert_eq!(r["streamed"], true);
     let id = r["layer"].as_u64().unwrap() as u32;
     assert!(s.map().layer(id).unwrap().source.as_ref().unwrap().sqlserver.is_some());
-    let dir = std::env::temp_dir().join(format!("rustgis-engine-sqlserver-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-engine-sqlserver-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     s.run("share.exportMap", &json!({"path": dir.join("map.png").display().to_string()})).unwrap();
     let text = serde_json::to_string(&s.project).unwrap();
-    let password = rustgis_data::source::msconn::split_password(&address).and_then(|(_, p)| p);
+    let password = powergis_data::source::msconn::split_password(&address).and_then(|(_, p)| p);
     assert!(password.is_none_or(|p| !text.contains(&p)), "the project keeps no password");
     let mut t = Session::new(Project::default());
     t.run("project.openText", &json!({"text": text})).unwrap();
@@ -15290,7 +15290,7 @@ fn bookmarks_export_and_import_across_projections() {
     let mut s = Session::new(sample::world_project());
     s.run("map.goToXY", &json!({"lon": 10.0, "lat": 50.0, "scale": 5_000_000})).unwrap();
     s.run("bookmark.add", &json!({"name": "Here"})).unwrap();
-    let dir = std::env::temp_dir().join(format!("rustgis-bookmarks-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-bookmarks-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let file = dir.join("marks.rgisbookmarks").display().to_string();
     s.run("bookmark.save", &json!({"path": file})).unwrap();
@@ -15404,7 +15404,7 @@ fn the_map_tilts() {
     s.run("bookmark.go", &json!({"name": "Tilted"})).unwrap();
     assert!((s.map().camera.pitch - 45.0).abs() < 1e-9);
     // A tilted map exports.
-    let dir = std::env::temp_dir().join(format!("rustgis-tilt-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-tilt-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let png = dir.join("tilted.png");
     s.run("share.exportMap", &json!({"path": png.display().to_string(), "width": 320, "height": 200})).unwrap();
@@ -15523,7 +15523,7 @@ fn bookmarks_are_managed_in_place_on_any_map() {
     let marks = &mut s.map_mut().bookmarks;
     while marks.len() < 10_000 {
         let name = format!("Bookmark {}", marks.len() + 1);
-        marks.push(rustgis_map::Bookmark::new(name, camera));
+        marks.push(powergis_map::Bookmark::new(name, camera));
     }
     assert!(s.run("bookmark.add", &Value::Null).is_err());
     assert_eq!(s.map().bookmarks.len(), 10_000);
@@ -15531,8 +15531,8 @@ fn bookmarks_are_managed_in_place_on_any_map() {
 
 #[test]
 fn map_rename_names_any_map_and_what_shows_it_follows() {
-    use rustgis_map::layout::ElementKind;
-    use rustgis_map::presentation::PageKind;
+    use powergis_map::layout::ElementKind;
+    use powergis_map::presentation::PageKind;
     let mut s = world();
     let first = s.map().name.clone();
     s.run("layout.new", &json!({"page": "a4"})).unwrap();
@@ -15652,7 +15652,7 @@ fn layout_elements_duplicate_offset_on_top_and_undo() {
 
 #[test]
 fn locked_layout_elements_take_no_change_until_unlocked() {
-    use rustgis_map::layout::ElementKind;
+    use powergis_map::layout::ElementKind;
     let mut s = world();
     s.run("layout.new", &json!({"name": "L"})).unwrap();
     let li = s.active_layout.unwrap();
@@ -15730,7 +15730,7 @@ fn locked_layout_elements_take_no_change_until_unlocked() {
 
     // Saved with the lock, and a layout from before locks loads unlocked.
     let saved = serde_json::to_value(&s.project.layouts[li]).unwrap();
-    let back: rustgis_map::layout::Layout = serde_json::from_value(saved.clone()).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_value(saved.clone()).unwrap();
     assert_eq!(back, s.project.layouts[li]);
     let old = saved["elements"].as_array().unwrap().iter().find(|e| e["id"] == json!(copy)).unwrap();
     assert!(old.get("locked").is_none(), "an unlocked element doesn't write the field");
@@ -15738,13 +15738,13 @@ fn locked_layout_elements_take_no_change_until_unlocked() {
     for e in older["elements"].as_array_mut().unwrap() {
         e.as_object_mut().unwrap().remove("locked");
     }
-    let back: rustgis_map::layout::Layout = serde_json::from_value(older).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_value(older).unwrap();
     assert!(back.elements.iter().all(|e| !e.locked));
 }
 
 #[test]
 fn layout_shapes_are_added_restyled_and_saved() {
-    use rustgis_map::layout::{ElementKind, LineDir};
+    use powergis_map::layout::{ElementKind, LineDir};
     let mut s = world();
     s.run("layout.new", &json!({"name": "Shapes", "template": "blank"})).unwrap();
     let li = s.active_layout.unwrap();
@@ -15811,13 +15811,13 @@ fn layout_shapes_are_added_restyled_and_saved() {
         assert_eq!(s.project.layouts[li].element(neat).unwrap().name, "Neatline");
     }
     // Saved and read back.
-    let back: rustgis_map::layout::Layout = serde_json::from_value(serde_json::to_value(&s.project.layouts[li]).unwrap()).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_value(serde_json::to_value(&s.project.layouts[li]).unwrap()).unwrap();
     assert_eq!(back, s.project.layouts[li]);
 }
 
 #[test]
 fn layout_arrows_point_turn_and_keep_their_length() {
-    use rustgis_map::layout::{ElementKind, LineHead, line_angle, line_length};
+    use powergis_map::layout::{ElementKind, LineHead, line_angle, line_length};
     let mut s = world();
     s.run("layout.new", &json!({"name": "Arrows", "template": "blank"})).unwrap();
     let li = s.active_layout.unwrap();
@@ -15877,7 +15877,7 @@ fn layout_arrows_point_turn_and_keep_their_length() {
 
 #[test]
 fn layout_arrows_keep_shallow_and_steep_angles_exactly() {
-    use rustgis_map::layout::{ElementKind, line_angle, line_length};
+    use powergis_map::layout::{ElementKind, line_angle, line_length};
     let mut s = world();
     s.run("layout.new", &json!({"name": "Arrows", "template": "blank"})).unwrap();
     let li = s.active_layout.unwrap();
@@ -16004,7 +16004,7 @@ fn layout_names_keep_to_200_characters_with_their_number() {
 fn layers_are_copied_and_pasted_between_maps() {
     let mut s = world();
     let first = s.map().name.clone();
-    let names = |m: &rustgis_map::Map| m.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
+    let names = |m: &powergis_map::Map| m.layers.iter().map(|l| l.name.clone()).collect::<Vec<_>>();
     assert!(s.run("layer.paste", &Value::Null).is_err(), "nothing copied yet");
     // A group of two styled layers, one masked by the other, with features selected.
     s.run("group.add", &json!({"name": "Places", "layers": ["Cities", "Countries"]})).unwrap();
@@ -16086,7 +16086,7 @@ fn layers_are_copied_and_pasted_between_maps() {
 
 #[test]
 fn map_duplicate_copies_a_map_beside_it_and_leaves_layouts_alone() {
-    use rustgis_map::layout::ElementKind;
+    use powergis_map::layout::ElementKind;
     let mut s = world();
     let first = s.map().name.clone();
     let layers = s.map().layers.len();
@@ -16200,7 +16200,7 @@ fn a_failed_command_reopens_the_layout_open_before_it() {
 /// field reads as not bold and gains the field when one is made bold.
 #[test]
 fn text_graphics_can_be_bold() {
-    use rustgis_map::graphics;
+    use powergis_map::graphics;
     let mut s = world();
     let a = s.run("graphics.add", &json!({"shape": "text", "points": [[10, 50]], "text": "A", "bold": true})).unwrap();
     let id = a["layer"].as_u64().unwrap() as u32;
@@ -16231,8 +16231,8 @@ fn text_graphics_can_be_bold() {
 /// reads as plain too.
 #[test]
 fn text_graphics_take_italic_alignment_and_letter_spacing() {
-    use rustgis_map::graphics;
-    use rustgis_map::layout::TextAlign;
+    use powergis_map::graphics;
+    use powergis_map::layout::TextAlign;
     let mut s = world();
     let a = s
         .run(
@@ -16305,11 +16305,11 @@ fn text_graphics_take_italic_alignment_and_letter_spacing() {
     // Typed wrong in the attribute table: read as plain, within range.
     let l = s.map_mut().layer_mut(id).unwrap();
     let (fa, fs) = (
-        l.dataset.ensure_field("align", rustgis_data::FieldType::Text),
-        l.dataset.ensure_field("letter_spacing", rustgis_data::FieldType::Double),
+        l.dataset.ensure_field("align", powergis_data::FieldType::Text),
+        l.dataset.ensure_field("letter_spacing", powergis_data::FieldType::Double),
     );
-    l.dataset.features[ra].attrs[fa] = rustgis_data::Value::Text("sideways".into());
-    l.dataset.features[ra].attrs[fs] = rustgis_data::Value::Float(f64::NAN);
+    l.dataset.features[ra].attrs[fa] = powergis_data::Value::Text("sideways".into());
+    l.dataset.features[ra].attrs[fs] = powergis_data::Value::Float(f64::NAN);
     assert_eq!(style(&s, ra), (false, TextAlign::Left, 0.0));
 }
 
@@ -16318,8 +16318,8 @@ fn text_graphics_take_italic_alignment_and_letter_spacing() {
 /// text alike; features that aren't graphics add none, even with a field of the same name.
 #[test]
 fn pasted_graphics_keep_their_style_in_an_older_graphics_layer() {
-    use rustgis_map::graphics;
-    use rustgis_map::layout::TextAlign;
+    use powergis_map::graphics;
+    use powergis_map::layout::TextAlign;
     let mut s = world();
     let a = s
         .run(
@@ -16492,7 +16492,7 @@ fn a_run_is_copied_from_the_history_as_code() {
     assert_eq!(code(&mut s, 0, "command").unwrap(), r#"gp.run {"params":{"distance":100,"input":"Cities"},"tool":"buffer"}"#);
     let cli = code(&mut s, 0, "cli").unwrap();
     assert!(
-        cli.starts_with("rustgis-cli run --project '")
+        cli.starts_with("powergis-cli run --project '")
             && cli.ends_with(r#"--cmd 'gp.run={"params":{"distance":100,"input":"Cities"},"tool":"buffer"}'"#),
         "{cli}"
     );
@@ -16560,7 +16560,7 @@ fn a_run_is_copied_from_the_history_as_code() {
     // is one that can't be run again.
     let out = s.run("gp.historyScript", &Value::Null).unwrap();
     let text = out["text"].as_str().unwrap();
-    assert!(text.contains("import rustgis\n\ns = rustgis.Session(") && text.contains("# 1. Buffer ("), "{text}");
+    assert!(text.contains("import powergis\n\ns = powergis.Session(") && text.contains("# 1. Buffer ("), "{text}");
     assert!(text.contains("UTC)\ns.run(\n    \"gp.run\""), "{text}");
     assert!(text.contains("# 3. Buffer: failed when it ran (no layer https://h.example/a)\n# s.run("), "{text}");
     assert!(text.contains("# 4. Mystery: Mystery can't be run again"), "{text}");
@@ -16579,7 +16579,7 @@ fn a_run_is_copied_from_the_history_as_code() {
     assert!(!text.contains(['\r', '\u{2028}']), "{text:?}");
     assert!(text.lines().filter(|l| l.contains("import os") || l.contains("import sys")).all(|l| l.starts_with('#')), "{text}");
     assert!(!text.contains("s3cr3t") && !text.contains("hunter2"));
-    assert!(text.contains("# The project hasn't been saved yet: save it as this file first.\nimport rustgis"), "{text}");
+    assert!(text.contains("# The project hasn't been saved yet: save it as this file first.\nimport powergis"), "{text}");
     // Named as Save names it, spaces and all.
     assert!(text.contains("\"World Atlas.rgis\""), "{text}");
     // Saved, then changed: the script says to save it again first.
@@ -16592,7 +16592,7 @@ fn a_run_is_copied_from_the_history_as_code() {
     );
     s.mark_saved();
     let text = s.run("gp.historyScript", &Value::Null).unwrap()["text"].as_str().unwrap().to_string();
-    assert!(!text.contains("aren't saved") && text.contains("rustgis.Session(\"atlas.rgis\")"), "{text}");
+    assert!(!text.contains("aren't saved") && text.contains("powergis.Session(\"atlas.rgis\")"), "{text}");
     s.path = None;
     // A file name every system takes, whatever the project is called.
     s.project.name = "A*B?\"C<D>|E".into();
@@ -16658,9 +16658,9 @@ fn ogc_landing_fixture_lists_and_loads_features() {
     assert_eq!(result["features"], 1);
     let dataset = &session.map().layer_by_name("Places").unwrap().dataset;
     assert_eq!(dataset.features.len(), 1);
-    assert_eq!(dataset.features[0].geometry, Some(rustgis_data::Geometry::Point(rustgis_data::Coord::new(10., 50.))));
+    assert_eq!(dataset.features[0].geometry, Some(powergis_data::Geometry::Point(powergis_data::Coord::new(10., 50.))));
     let name = dataset.fields.iter().position(|f| f.name == "name").unwrap();
-    assert_eq!(dataset.features[0].attrs[name], rustgis_data::Value::Text("Test Place".into()));
+    assert_eq!(dataset.features[0].attrs[name], powergis_data::Value::Text("Test Place".into()));
     server.assert_fixture_requests(&[ROOT, CATALOG, ROOT, CATALOG, ITEMS]);
 }
 
@@ -16838,7 +16838,7 @@ fn ogc_group_import_refresh_and_persistence() {
     assert_eq!(s.map().layers.len(), 2);
     let points = s.map().layer_by_name("Places").unwrap().id;
     let lines = s.map().layer_by_name("Routes").unwrap().id;
-    assert_eq!(s.map().layer(lines).unwrap().geometry_type(), rustgis_data::GeometryType::Polyline);
+    assert_eq!(s.map().layer(lines).unwrap().geometry_type(), powergis_data::GeometryType::Polyline);
     server.assert_fixture_requests(&[ROOT, CATALOG, ITEMS, LINE_ITEMS]);
     // One operation, one undo entry, including the parent and all children.
     s.run("edit.undo", &Value::Null).unwrap();
@@ -17043,7 +17043,7 @@ fn ogc_refresh_reconciles_fields_and_preserves_compatible_settings() {
             l.labels.default.size = 19.;
             l.definition_query = Some("value > 0".into());
             l.display_filters = ["value > 0", "keep = 1"]
-                .map(|q| rustgis_map::effects::DisplayFilter { name: q.into(), min_scale: None, max_scale: None, where_: q.into() })
+                .map(|q| powergis_map::effects::DisplayFilter { name: q.into(), min_scale: None, max_scale: None, where_: q.into() })
                 .into();
             let style = l.renderer.clone();
             let labels = l.labels.clone();
@@ -17059,7 +17059,7 @@ fn ogc_refresh_reconciles_fields_and_preserves_compatible_settings() {
             server.set(ITEMS, &features(json!({"replacement":"New", "keep":1})));
             s.run("service.refresh", &target).unwrap();
             let l = s.map().layer(layer).unwrap();
-            assert!(matches!(l.renderer, rustgis_map::Renderer::Single(_)));
+            assert!(matches!(l.renderer, powergis_map::Renderer::Single(_)));
             assert!(!l.labels.enabled);
             assert!(l.labels.default.field.is_empty());
             assert_eq!(l.labels.default.size, 19.);
@@ -17073,7 +17073,7 @@ fn ogc_refresh_reconciles_fields_and_preserves_compatible_settings() {
             // Numeric renderers cannot use a field which has become text; unique values can.
             server.set(ITEMS, &features(json!({"name":"Place", "value":"text", "keep":1})));
             s.run("service.refresh", &target).unwrap();
-            assert_eq!(matches!(s.map().layer(layer).unwrap().renderer, rustgis_map::Renderer::Single(_)), renderer != "unique");
+            assert_eq!(matches!(s.map().layer(layer).unwrap().renderer, powergis_map::Renderer::Single(_)), renderer != "unique");
         }
     }
 }
@@ -17100,7 +17100,7 @@ fn layer_color_honours_an_explicit_fill_alpha() {
 fn layer_color_leaves_the_outline_alone() {
     let mut s = world();
     let symbol = |s: &Session| s.map().layer_by_name("Countries").unwrap().renderer.base_symbol();
-    let rgb = |c: rustgis_map::Rgba| (c.r(), c.g(), c.b());
+    let rgb = |c: powergis_map::Rgba| (c.r(), c.g(), c.b());
     // An outline that was never set stays as it was too.
     let default_stroke = symbol(&s).stroke;
     s.run("layer.color", &json!({"layer": "Countries", "color": "#336699"})).unwrap();
@@ -17116,7 +17116,7 @@ fn layer_color_leaves_the_outline_alone() {
 /// No Fill preserves renderer classes and outlines across persistence and one-step undo/redo.
 #[test]
 fn polygon_no_fill_keeps_classes_and_outlines_and_undoes_as_one_step() {
-    use rustgis_map::Symbol;
+    use powergis_map::Symbol;
 
     for kind in ["single", "unique", "graduated"] {
         let mut s = world();
@@ -17163,7 +17163,7 @@ fn polygon_no_fill_refuses_other_layers() {
 /// Polygon styling follows the actual GeoJSON features, not just their dominant family.
 #[test]
 fn mixed_geometry_no_fill_preserves_other_symbols_classes_and_undo() {
-    use rustgis_data::GeometryType;
+    use powergis_data::GeometryType;
 
     let state = |project: &Project| {
         let mut value = serde_json::to_value(project).unwrap();
@@ -17215,9 +17215,9 @@ fn mixed_geometry_no_fill_preserves_other_symbols_classes_and_undo() {
                 height: 150.0,
                 pixels_per_point: 1.0,
                 sky: false,
-                camera: rustgis_map::Camera { center: rustgis_geom::Coord::new(0.0, 0.0), res: 2000.0, bearing: 0.0, pitch: 0.0 },
+                camera: powergis_map::Camera { center: powergis_geom::Coord::new(0.0, 0.0), res: 2000.0, bearing: 0.0, pitch: 0.0 },
             };
-            s.map_mut().basemap = rustgis_map::Basemap::Blank;
+            s.map_mut().basemap = powergis_map::Basemap::Blank;
             let drawn_before =
                 (kind == GeometryType::Point && renderer == "single").then(|| crate::render::render(s.map_mut(), &view).unwrap().pixmap);
             let before = state(&s.project);
@@ -17261,15 +17261,15 @@ fn mixed_geometry_no_fill_preserves_other_symbols_classes_and_undo() {
 /// Other families can be outside a streamed polygon layer's current view when No Fill runs.
 #[test]
 fn mixed_geometry_no_fill_preserves_unloaded_point_symbols() {
-    use rustgis_data::{Coord, Dataset, Geometry, GeometryType};
+    use powergis_data::{Coord, Dataset, Geometry, GeometryType};
     let mut ds = Dataset::new("mixed", GeometryType::Polygon, vec![]);
     let polygon =
         Geometry::Polygon(vec![vec![vec![Coord::new(0.0, 0.0), Coord::new(1.0, 0.0), Coord::new(1.0, 1.0), Coord::new(0.0, 0.0)]]]);
     ds.push(Some(polygon.clone()), vec![]);
     ds.push(Some(polygon), vec![]);
     ds.push(Some(Geometry::Point(Coord::new(100.0, 30.0))), vec![]);
-    let path = std::env::temp_dir().join(format!("rustgis-engine-{}-mixed-no-fill.geojson", std::process::id()));
-    std::fs::write(&path, rustgis_data::io::to_geojson(&ds).to_string()).unwrap();
+    let path = std::env::temp_dir().join(format!("powergis-engine-{}-mixed-no-fill.geojson", std::process::id()));
+    std::fs::write(&path, powergis_data::io::to_geojson(&ds).to_string()).unwrap();
     let mut s = Session::new(Project::default());
     s.run("layer.addData", &json!({"path":path.to_string_lossy(), "stream":true})).unwrap();
     let id = s.active_layer.unwrap();
@@ -17304,7 +17304,7 @@ fn buffer_point_adds_only_the_buffer() {
 
 #[test]
 fn raster_stretch_custom_bounds_per_band() {
-    use rustgis_map::Stretch;
+    use powergis_map::Stretch;
     let mut s = with_raster();
     let layer = |s: &Session, i: usize| s.map().layers.get(i).and_then(|l| l.raster.as_ref()).unwrap().clone();
     let stretch = |s: &Session| layer(s, 0).style.stretch;
@@ -17369,7 +17369,7 @@ fn raster_stretch_custom_bounds_per_band() {
 
 #[test]
 fn raster_stretch_like_copies_each_band() {
-    use rustgis_map::Stretch;
+    use powergis_map::Stretch;
     let mut s = with_raster();
     s.run("raster.symbology", &json!({"type": "rgb"})).unwrap();
     s.run("raster.stretch", &json!({"type": "custom", "min": [1, 2, 3], "max": [10, 20, 30]})).unwrap();
@@ -17383,7 +17383,7 @@ fn raster_stretch_like_copies_each_band() {
 
 #[test]
 fn raster_stretch_custom_bounds() {
-    use rustgis_map::Stretch;
+    use powergis_map::Stretch;
     let mut s = with_raster();
     // One band: a missing bound is that band's own statistic (on RGB it is the range drawn now).
     s.run("raster.symbology", &json!({"type": "stretch", "band": 1})).unwrap();
@@ -17442,7 +17442,7 @@ fn raster_stretch_custom_bounds() {
 
 #[test]
 fn default_raster_style_applies_to_new_rasters() {
-    use rustgis_map::{RasterRenderer, Resampling, Stretch};
+    use powergis_map::{RasterRenderer, Resampling, Stretch};
     let mut s = world();
     s.mark_saved();
     let undo = s.undo_label();
@@ -17463,7 +17463,7 @@ fn default_raster_style_applies_to_new_rasters() {
     assert!(!s.dirty() && s.undo_label() == undo, "an app setting, not a project change");
     s.run("layer.addDataBytes", &json!({"fileName": "dem.tif", "data": dem_b64()})).unwrap();
     let st = style(&s);
-    assert_eq!(st.renderer, RasterRenderer::Stretch { band: 0, ramp: rustgis_map::Ramp::Viridis, invert: false });
+    assert_eq!(st.renderer, RasterRenderer::Stretch { band: 0, ramp: powergis_map::Ramp::Viridis, invert: false });
     assert_eq!(st.stretch, Stretch::StandardDeviation { n: 2.5 });
     assert_eq!(st.resampling, Resampling::Bilinear);
     // Colour images keep their colours.
@@ -17486,13 +17486,13 @@ fn default_raster_style_applies_to_new_rasters() {
     assert!(s.run("raster.setDefaultStyle", &json!({"resampling": "cubic-ish"})).is_err());
     s.run("raster.symbology", &json!({"type": "classify"})).unwrap();
     assert!(s.run("raster.setDefaultStyle", &json!({"fromLayer": true})).is_err(), "only a stretch");
-    assert_eq!(s.raster_defaults.ramp, rustgis_map::Ramp::Batlow);
+    assert_eq!(s.raster_defaults.ramp, powergis_map::Ramp::Batlow);
 
     // Reset: back to the grey stretch, and new rasters are drawn as before.
     s.run("raster.setDefaultStyle", &json!({"reset": true})).unwrap();
-    assert_eq!(s.raster_defaults, rustgis_map::RasterDefaults::default());
+    assert_eq!(s.raster_defaults, powergis_map::RasterDefaults::default());
     s.run("layer.addDataBytes", &json!({"fileName": "dem.tif", "data": dem_b64(), "name": "dem3"})).unwrap();
-    assert_eq!(style(&s).renderer, RasterRenderer::Stretch { band: 0, ramp: rustgis_map::Ramp::gray(), invert: false });
+    assert_eq!(style(&s).renderer, RasterRenderer::Stretch { band: 0, ramp: powergis_map::Ramp::gray(), invert: false });
     // An inverted stretch stays inverted when only its band changes (the pane sends no invert).
     let scene = |s: &Session| s.map().layer_by_name("scene").unwrap().raster.as_ref().unwrap().style.renderer.clone();
     s.run("raster.symbology", &json!({"layer": "scene", "type": "stretch", "band": 1, "invert": true})).unwrap();
@@ -17592,7 +17592,7 @@ fn layer_groups_hold_related_layers_together() {
     s.run("group.move", &json!({"group": g, "to": 0})).unwrap();
     assert!(s.run("group.move", &json!({"group": g})).is_err());
     // Saved and opened again, with no dataset of its own.
-    let dir = std::env::temp_dir().join(format!("rustgis-groups-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-groups-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("groups.rgis");
     s.run("project.saveAs", &json!({"path": path.display().to_string()})).unwrap();
@@ -17669,8 +17669,8 @@ fn stack_names(s: &Session) -> Vec<String> {
     m.stack()
         .into_iter()
         .map(|d| match d {
-            rustgis_map::Drawn::Layer(i) => m.layers[i].name.clone(),
-            rustgis_map::Drawn::Tile(i) => format!("~{}", m.tiles[i].name),
+            powergis_map::Drawn::Layer(i) => m.layers[i].name.clone(),
+            powergis_map::Drawn::Tile(i) => format!("~{}", m.tiles[i].name),
         })
         .collect()
 }
@@ -18082,7 +18082,7 @@ fn group_named(s: &Session, name: &str) -> u32 {
 
 #[test]
 fn nested_groups_apply_down_the_chain_and_move_whole() {
-    use rustgis_map::Outline;
+    use powergis_map::Outline;
     let mut s = world();
     s.run("group.add", &json!({"name": "Base", "layers": ["Rivers", "Lakes", "Countries"]})).unwrap();
     s.run("group.add", &json!({"name": "Water", "parent": "Base", "layers": ["Rivers", "Lakes"]})).unwrap();
@@ -18176,7 +18176,7 @@ fn outline_commands_indent_and_outdent_one_level_in_one_step() {
     // No loops, and no deeper than eight levels.
     assert!(s.run("group.setParent", &json!({"group": "G", "parent": "H"})).is_err());
     let mut parent = Value::Null;
-    for level in 1..=rustgis_map::MAX_GROUP_DEPTH {
+    for level in 1..=powergis_map::MAX_GROUP_DEPTH {
         let made = s.run("group.add", &json!({"name": format!("L{level}"), "parent": parent})).unwrap();
         parent = made["group"].clone();
     }
@@ -18190,7 +18190,7 @@ fn outline_commands_indent_and_outdent_one_level_in_one_step() {
     let (e1, e2) = (group_named(&s, "E1"), group_named(&s, "E2"));
     s.run("group.setParent", &json!({"group": "E1", "parent": null, "before": null})).unwrap();
     let top = s.map().outline(None);
-    assert_eq!(top.iter().rev().take(2).collect::<Vec<_>>(), [&rustgis_map::Outline::Group(e1), &rustgis_map::Outline::Group(e2)]);
+    assert_eq!(top.iter().rev().take(2).collect::<Vec<_>>(), [&powergis_map::Outline::Group(e1), &powergis_map::Outline::Group(e2)]);
 }
 
 #[test]
@@ -18216,7 +18216,7 @@ fn hand_edited_group_parents_open_without_loops_or_too_many_levels() {
     let p = Project::from_json(&v.to_string()).unwrap();
     let m = p.maps.first().unwrap();
     for g in &m.groups {
-        assert!(m.group_depth(g.id) <= rustgis_map::MAX_GROUP_DEPTH, "{}", g.name);
+        assert!(m.group_depth(g.id) <= powergis_map::MAX_GROUP_DEPTH, "{}", g.name);
         assert!(m.group_chain(g.id).last().is_some_and(|top| top.parent.is_none()), "{}", g.name);
     }
     let parent = |n: &str| m.groups.iter().find(|g| g.name == n).and_then(|g| g.parent);
@@ -18254,7 +18254,7 @@ fn a_copied_group_pastes_with_its_subgroups() {
 #[test]
 fn dem_tiles_mosaic_clip_by_polygon_share_a_stretch_and_report_overviews() {
     use base64::Engine;
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster, geotiff};
     let utm = Crs::from_epsg(25832).unwrap();
     // 10 × 10 tiles of 100 m cells: values 100 + column in the west, 200 + column in the east.
     // Each tile has one no-data cell, `hole` cells from its top-left.
@@ -18284,13 +18284,13 @@ fn dem_tiles_mosaic_clip_by_polygon_share_a_stretch_and_report_overviews() {
         let gt = GeoTransform { origin_x: x0, origin_y: 1e-6, pixel_width: 1e-9, pixel_height: -1e-9 };
         let r = Raster::new(name, 10, 10, vec![vec![1.0; 100]], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
         let bytes = geotiff::write(&r, 0).unwrap();
-        crate::cmd::raster::add_raster(&mut s, name, rustgis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
+        crate::cmd::raster::add_raster(&mut s, name, powergis_map::RasterLayer::from_bytes(r, format!("{name}.tif"), bytes)).unwrap();
     }
     let raster =
         |s: &Session, v: &Value| s.map().layer(v["layer"].as_u64().unwrap() as u32).unwrap().raster.as_ref().unwrap().data.clone().unwrap();
 
     // Mosaic: one grid in the tiles' own CRS and cell size; the first input wins where they overlap.
-    let dir = std::env::temp_dir().join(format!("rustgis-mosaic-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-mosaic-{}", std::process::id()));
     std::fs::remove_dir_all(&dir).ok();
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("dem.tif").display().to_string();
@@ -18302,7 +18302,7 @@ fn dem_tiles_mosaic_clip_by_polygon_share_a_stretch_and_report_overviews() {
     assert_eq!((m.value(0, 3, 0), m.value(0, 15, 2)), (Some(103.0), Some(205.0)));
     // West's no-data corner is filled from the overlapping tile; east's stays no-data.
     assert_eq!((m.value(0, 0, 0), m.value(0, 9, 9), m.value(0, 19, 9)), (Some(100.0), Some(909.0), None));
-    let written = rustgis_data::raster::read_path(std::path::Path::new(&path)).unwrap();
+    let written = powergis_data::raster::read_path(std::path::Path::new(&path)).unwrap();
     assert_eq!((written.width, written.height, written.crs), (20, 10, utm));
     std::fs::remove_dir_all(&dir).ok();
     // Bare file names read files too: tasks and notebooks from elsewhere may not run it.
@@ -18322,7 +18322,7 @@ fn dem_tiles_mosaic_clip_by_polygon_share_a_stretch_and_report_overviews() {
     // Clip by a polygon layer: the window around it, cells outside it no-data.
     let tr = m.transformer();
     let ll = |x: f64, y: f64| {
-        let c = tr.to_lonlat(rustgis_geom::Coord::new(x, y)).unwrap();
+        let c = tr.to_lonlat(powergis_geom::Coord::new(x, y)).unwrap();
         json!([c.x, c.y])
     };
     s.run("layer.template", &json!({"template": "polygons", "name": "City"})).unwrap();
@@ -18371,17 +18371,17 @@ fn dem_tiles_mosaic_clip_by_polygon_share_a_stretch_and_report_overviews() {
     assert!(e_empty.to_string().contains("has no features"), "{e_empty}");
 
     // A polygon layer with UTM source metadata still stores lon/lat geometry.
-    let mut proj_ds = rustgis_data::Dataset::new("CityProj", rustgis_data::GeometryType::Polygon, vec![]);
+    let mut proj_ds = powergis_data::Dataset::new("CityProj", powergis_data::GeometryType::Polygon, vec![]);
     proj_ds.crs = Some(utm);
     let utm_ring = [
-        rustgis_geom::Coord::new(360_500.0, 5_700_000.0),
-        rustgis_geom::Coord::new(361_500.0, 5_700_000.0),
-        rustgis_geom::Coord::new(361_500.0, 5_699_500.0),
-        rustgis_geom::Coord::new(360_500.0, 5_700_000.0),
+        powergis_geom::Coord::new(360_500.0, 5_700_000.0),
+        powergis_geom::Coord::new(361_500.0, 5_700_000.0),
+        powergis_geom::Coord::new(361_500.0, 5_699_500.0),
+        powergis_geom::Coord::new(360_500.0, 5_700_000.0),
     ];
     let lonlat_ring = utm_ring.into_iter().map(|c| tr.to_lonlat(c).unwrap()).collect();
-    proj_ds.push(Some(rustgis_data::Geometry::Polygon(vec![vec![lonlat_ring]])), vec![]);
-    s.map_mut().add_layer(rustgis_map::Layer::new(0, proj_ds));
+    proj_ds.push(Some(powergis_data::Geometry::Polygon(vec![vec![lonlat_ring]])), vec![]);
+    s.map_mut().add_layer(powergis_map::Layer::new(0, proj_ds));
     let v_proj = s.run("raster.process", &json!({"layer": "dem", "operation": "clip", "polygon": "CityProj"})).unwrap();
     let c_proj = raster(&s, &v_proj);
     assert_eq!((c_proj.width, c_proj.height, c_proj.crs), (9, 5, utm));
@@ -18391,23 +18391,23 @@ fn dem_tiles_mosaic_clip_by_polygon_share_a_stretch_and_report_overviews() {
     s.run("raster.stretch", &json!({"layer": "west", "type": "custom", "min": 100, "max": 300})).unwrap();
     s.run("raster.stretch", &json!({"layer": "east", "like": "west"})).unwrap();
     let st = |s: &Session, n: &str| s.map().layer_by_name(n).unwrap().raster.as_ref().unwrap().style.stretch;
-    assert_eq!(st(&s, "east"), rustgis_map::Stretch::custom(100.0, 300.0));
+    assert_eq!(st(&s, "east"), powergis_map::Stretch::custom(100.0, 300.0));
     s.run("raster.stretch", &json!({"layer": "west", "type": "minMax"})).unwrap();
     s.run("raster.stretch", &json!({"layer": "east", "like": "west"})).unwrap();
-    assert_eq!(st(&s, "east"), rustgis_map::Stretch::custom(100.0, 109.0));
+    assert_eq!(st(&s, "east"), powergis_map::Stretch::custom(100.0, 109.0));
     // A mask on the source narrows its range, and the shared one with it.
     s.run("raster.mask", &json!({"layer": "west", "values": [100]})).unwrap();
     s.run("raster.stretch", &json!({"layer": "east", "like": "west"})).unwrap();
-    assert_eq!(st(&s, "east"), rustgis_map::Stretch::custom(101.0, 109.0));
+    assert_eq!(st(&s, "east"), powergis_map::Stretch::custom(101.0, 109.0));
     assert!(s.run("raster.stretch", &json!({"layer": "east", "like": "Countries"})).is_err());
 
     // A raster opened from an overview says so in its results, not only in a notice.
     let mut ov = tile("big", 360_000.0, 100.0, 100.0, 99);
     ov.overview = Some((20, 20));
     let bytes = geotiff::write(&ov, 0).unwrap();
-    let v = crate::cmd::raster::add_raster(&mut s, "big", rustgis_map::RasterLayer::from_bytes(ov, "big.tif", bytes)).unwrap();
+    let v = crate::cmd::raster::add_raster(&mut s, "big", powergis_map::RasterLayer::from_bytes(ov, "big.tif", bytes)).unwrap();
     assert_eq!(v["overviewOf"], json!([20, 20]));
-    let out = std::env::temp_dir().join(format!("rustgis-overview-{}.tif", std::process::id()));
+    let out = std::env::temp_dir().join(format!("powergis-overview-{}.tif", std::process::id()));
     std::fs::remove_file(&out).ok();
     let v = s.run("share.exportRaster", &json!({"layer": "big", "path": out.display().to_string()})).unwrap();
     assert_eq!(v["overviewOf"], json!([20, 20]));
@@ -18513,7 +18513,7 @@ fn model_graphs(s: &mut Session) {
     let _ = s.run("model.remove", &json!({"name": "Junk"}));
 
     // A graph without positions is laid out along the flow.
-    let g = rustgis_engine_graph(&fails);
+    let g = powergis_engine_graph(&fails);
     assert!(g.nodes[0].x < g.nodes[1].x && g.nodes[1].x < g.nodes[2].x);
     // Models saved as steps still run as steps: `%n` anywhere, and a clear error for one too far.
     s.run(
@@ -18581,7 +18581,7 @@ fn a_model_from_a_file_checks_each_step_with_its_tool() {
     assert!(e.contains("from a file"), "{e}");
 }
 
-fn rustgis_engine_graph(v: &Value) -> crate::project::ModelGraph {
+fn powergis_engine_graph(v: &Value) -> crate::project::ModelGraph {
     crate::model::graph_from_json(v).unwrap()
 }
 
@@ -18675,7 +18675,7 @@ fn celestial_bodies_set_the_basemap_and_the_measurements() {
     assert_eq!(background, land);
     // A quarter of Mars' equator, and the scale of a smaller world.
     let on_mars = earth(&mut s);
-    let k = rustgis_geom::Body::get("mars").ratio();
+    let k = powergis_geom::Body::get("mars").ratio();
     assert!((on_mars / on_earth - k).abs() < 1e-9 && (on_mars - std::f64::consts::FRAC_PI_2 * 3_389_526.7).abs() < 1.0, "{on_mars}");
     assert!((s.map().scale() / earth_scale - k).abs() < 1e-9);
     let area = s.run("raster.measure", &json!({"kind": "area", "points": [[0, 0], [1, 0], [1, 1]]})).unwrap();
@@ -18692,7 +18692,7 @@ fn celestial_bodies_set_the_basemap_and_the_measurements() {
     let text = serde_json::to_string(&s.project).unwrap();
     let p = Project::from_json(&text).unwrap();
     assert_eq!(p.maps.first().map(|m| m.body().id), Some("mars"));
-    s.run("map.addTiles", &json!({"url": rustgis_map::planets::EARTH_BASEMAP.url, "id": "overlay", "overlay": true, "opacity": 0.5}))
+    s.run("map.addTiles", &json!({"url": powergis_map::planets::EARTH_BASEMAP.url, "id": "overlay", "overlay": true, "opacity": 0.5}))
         .unwrap();
     // Back on the Earth the planetary basemap becomes USGS Imagery, keeping overlays;
     // an Earth map saves no body.
@@ -18703,8 +18703,8 @@ fn celestial_bodies_set_the_basemap_and_the_measurements() {
     assert_eq!(tiles.len(), 2);
     assert!(tiles.iter().any(|t| t.id == "overlay" && t.overlay && t.opacity == 0.5));
     let imagery = tiles.iter().find(|t| !t.overlay).unwrap();
-    assert_eq!(imagery.id, rustgis_map::planets::EARTH_BASEMAP.id);
-    assert_eq!(imagery.url, rustgis_map::planets::EARTH_BASEMAP.url);
+    assert_eq!(imagery.id, powergis_map::planets::EARTH_BASEMAP.id);
+    assert_eq!(imagery.url, powergis_map::planets::EARTH_BASEMAP.url);
     assert!(imagery.visible && !imagery.overlay && !imagery.tms);
     assert_eq!(imagery.max_zoom, 16);
     assert!(!serde_json::to_string(&s.project).unwrap().contains("\"body\""));
@@ -18720,21 +18720,21 @@ fn celestial_bodies_set_the_basemap_and_the_measurements() {
     assert_eq!(s.map().body().id, "mars");
     let bodies = s.run("map.bodies", &Value::Null).unwrap();
     assert_eq!(bodies["body"], "mars");
-    assert_eq!(bodies["bodies"].as_array().map(Vec::len), Some(rustgis_geom::BODIES.len()));
+    assert_eq!(bodies["bodies"].as_array().map(Vec::len), Some(powergis_geom::BODIES.len()));
     // A basemap the map has no room for (overlays fill it) fails, and the map stays as it was:
     // on its body, with its tile layers.
     let mut full = Session::new(Project::default());
-    for i in 0..rustgis_map::tiles::MAX_TILE_LAYERS {
+    for i in 0..powergis_map::tiles::MAX_TILE_LAYERS {
         full.run("map.addTiles", &json!({"url": format!("https://o{i}.example.com/{{z}}/{{x}}/{{y}}.png"), "overlay": true})).unwrap();
     }
     assert!(full.run("map.body", &json!({"name": "mars"})).is_err());
     assert!(full.map().body().is_earth());
-    assert_eq!(full.map().tiles.len(), rustgis_map::tiles::MAX_TILE_LAYERS);
+    assert_eq!(full.map().tiles.len(), powergis_map::tiles::MAX_TILE_LAYERS);
     // The Earth's new default is also atomic when there is no room for its imagery.
     full.run("map.body", &json!({"name": "moon", "basemap": false})).unwrap();
     assert!(full.run("map.body", &json!({"name": "earth"})).is_err());
     assert_eq!(full.map().body().id, "moon");
-    assert_eq!(full.map().tiles.len(), rustgis_map::tiles::MAX_TILE_LAYERS);
+    assert_eq!(full.map().tiles.len(), powergis_map::tiles::MAX_TILE_LAYERS);
     // A project naming an unknown body is on the Earth.
     let odd = text.replace("\"body\":\"mars\"", "\"body\":\"vulcan\"");
     assert_ne!(odd, text);
@@ -18749,7 +18749,7 @@ fn celestial_bodies_set_the_basemap_and_the_measurements() {
 /// error that changes nothing.
 #[test]
 fn text_elements_take_italic_alignment_and_spacing() {
-    use rustgis_map::layout::{ElementKind, MAX_LETTER_SPACING, TextAlign};
+    use powergis_map::layout::{ElementKind, MAX_LETTER_SPACING, TextAlign};
     let mut s = Session::new(sample::world_project());
     s.run("layout.new", &json!({"name": "Type"})).unwrap();
     let style = |s: &Session, id: u32| match s.project.layouts[0].element(id).map(|e| &e.kind) {
@@ -18777,7 +18777,7 @@ fn text_elements_take_italic_alignment_and_spacing() {
     assert_eq!(style(&s, ocean), (true, TextAlign::Center, MAX_LETTER_SPACING));
     s.run("layout.update", &json!({"element": ocean, "italic": false, "align": "centre"})).unwrap();
     assert_eq!(style(&s, ocean), (false, TextAlign::Center, MAX_LETTER_SPACING));
-    let back: rustgis_map::layout::Layout = serde_json::from_str(&serde_json::to_string(&s.project.layouts[0]).unwrap()).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_str(&serde_json::to_string(&s.project.layouts[0]).unwrap()).unwrap();
     assert!(back.element(ocean).is_some_and(
         |e| matches!(&e.kind, ElementKind::Text { align: TextAlign::Center, letter_spacing, .. } if *letter_spacing == MAX_LETTER_SPACING)
     ));
@@ -18805,7 +18805,7 @@ fn text_elements_take_italic_alignment_and_spacing() {
 /// says so.
 #[test]
 fn text_elements_take_a_font_family() {
-    use rustgis_map::layout::{ElementKind, FontFamily};
+    use powergis_map::layout::{ElementKind, FontFamily};
     let mut s = Session::new(sample::world_project());
     s.run("layout.new", &json!({"name": "Type"})).unwrap();
     let font = |s: &Session, id: u32| match s.project.layouts[0].element(id).map(|e| &e.kind) {
@@ -18819,7 +18819,7 @@ fn text_elements_take_a_font_family() {
     let title = r["element"].as_u64().unwrap() as u32;
     assert_eq!(font(&s, title), FontFamily::Serif);
     // Said only where the text can't be drawn as asked.
-    let installed = rustgis_render::fonts::serif_available();
+    let installed = powergis_render::fonts::serif_available();
     assert_eq!(r.get("warning").is_some(), !installed, "{r}");
     let r = s.run("layout.update", &json!({"element": plain, "font": "serif"})).unwrap();
     assert_eq!(font(&s, plain), FontFamily::Serif);
@@ -18827,7 +18827,7 @@ fn text_elements_take_a_font_family() {
     // Another change leaves the family, and says nothing of it.
     let r = s.run("layout.update", &json!({"element": plain, "italic": true})).unwrap();
     assert_eq!((font(&s, plain), r.get("warning")), (FontFamily::Serif, None));
-    let back: rustgis_map::layout::Layout = serde_json::from_str(&serde_json::to_string(&s.project.layouts[0]).unwrap()).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_str(&serde_json::to_string(&s.project.layouts[0]).unwrap()).unwrap();
     assert!(back.element(plain).is_some_and(|e| matches!(&e.kind, ElementKind::Text { font: FontFamily::Serif, .. })));
     s.run("layout.update", &json!({"element": plain, "font": "sans-serif"})).unwrap();
     assert_eq!(font(&s, plain), FontFamily::Sans);
@@ -18858,7 +18858,7 @@ fn text_elements_take_a_font_family() {
 /// name is written only when set; sans or serif clears it; a fallback goes with a name only.
 #[test]
 fn text_elements_take_an_installed_font_family_by_name() {
-    use rustgis_map::layout::{ElementKind, FontFamily};
+    use powergis_map::layout::{ElementKind, FontFamily};
     let mut s = Session::new(sample::world_project());
     s.run("layout.new", &json!({"name": "Type"})).unwrap();
     let font = |s: &Session, id: u32| match s.project.layouts[0].element(id).map(|e| &e.kind) {
@@ -18876,7 +18876,7 @@ fn text_elements_take_an_installed_font_family_by_name() {
     );
     let r = s.run("layout.update", &json!({"element": id, "fallback": "serif"})).unwrap();
     assert_eq!(font(&s, id), (FontFamily::Serif, Some("No Such Family 762".to_string())));
-    let drawn = if rustgis_render::fonts::serif_available() { "drawn in the serif" } else { "drawn in the sans-serif" };
+    let drawn = if powergis_render::fonts::serif_available() { "drawn in the serif" } else { "drawn in the sans-serif" };
     assert!(r["warning"].as_str().is_some_and(|w| w.ends_with(drawn)), "{r}");
     // A family not installed whose name says it is a serif falls back to the serif.
     let other =
@@ -18890,18 +18890,18 @@ fn text_elements_take_an_installed_font_family_by_name() {
     // Kept through a save, as a name; a layout saved before has none.
     let saved = serde_json::to_string(&s.project.layouts[0]).unwrap();
     assert!(saved.contains(r#""font_name":"No Such Family 762""#) && saved.contains(r#""font":"Serif""#), "{saved}");
-    let back: rustgis_map::layout::Layout = serde_json::from_str(&saved).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_str(&saved).unwrap();
     assert!(back.element(id).is_some_and(|e| matches!(&e.kind, ElementKind::Text { font_name: Some(n), .. } if n == "No Such Family 762")));
     let old = saved.replace(r#","font_name":"No Such Family 762""#, "");
-    let back: rustgis_map::layout::Layout = serde_json::from_str(&old).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_str(&old).unwrap();
     assert!(back.element(id).is_some_and(|e| matches!(&e.kind, ElementKind::Text { font_name: None, .. })));
     // The page draws in the fallback, and the SVG names the family first.
     assert!(!crate::cmd::layout::layout_bytes(&mut s, 0, false, 72.0, false).unwrap().is_empty());
-    let svg = rustgis_render::svg::layout_svg(&s.project.layouts[0], &mut s.project.maps, 72.0, &Default::default()).unwrap();
+    let svg = powergis_render::svg::layout_svg(&s.project.layouts[0], &mut s.project.maps, 72.0, &Default::default()).unwrap();
     assert!(svg.contains(r#"font-family="&apos;No Such Family 762&apos;, serif""#), "{svg}");
     // A name's own quote and backslash are escaped for CSS, not dropped.
     s.run("layout.update", &json!({"element": id, "font": r"O'Brien\Sans", "fallback": "sans"})).unwrap();
-    let svg = rustgis_render::svg::layout_svg(&s.project.layouts[0], &mut s.project.maps, 72.0, &Default::default()).unwrap();
+    let svg = powergis_render::svg::layout_svg(&s.project.layouts[0], &mut s.project.maps, 72.0, &Default::default()).unwrap();
     assert!(svg.contains(r#"font-family="&apos;O\&apos;Brien\\Sans&apos;, sans-serif""#), "{svg}");
     // A generic name with control characters around it is still the generic family.
     s.run("layout.update", &json!({"element": id, "font": "serif\u{0}"})).unwrap();
@@ -18920,10 +18920,10 @@ fn text_elements_take_an_installed_font_family_by_name() {
     assert!(s.run("layout.update", &json!({"element": arrow, "fallback": "serif"})).unwrap_err().contains("only text elements"));
     // An installed family, where this computer has a small one (its file read whatever the
     // session's budget): kept as the font names it, its fallback its own class, and nothing said.
-    let small = |f: &&rustgis_render::families::Family| {
+    let small = |f: &&powergis_render::families::Family| {
         f.listed && f.faces.iter().all(|face| std::fs::metadata(&face.path).is_ok_and(|m| m.len() < 4 << 20))
     };
-    if let Some(f) = rustgis_render::families::installed().iter().find(small) {
+    if let Some(f) = powergis_render::families::installed().iter().find(small) {
         let r = s.run("layout.update", &json!({"element": id, "font": f.name.to_uppercase()})).unwrap();
         let class = if f.serif { FontFamily::Serif } else { FontFamily::Sans };
         assert_eq!(font(&s, id), (class, Some(f.name.clone())));
@@ -18955,7 +18955,7 @@ fn undo_steps_remember_who_made_them() {
 /// out of reach.
 #[test]
 fn undo_back_to_the_saved_state_leaves_nothing_unsaved() {
-    let dir = std::env::temp_dir().join(format!("rustgis-saved-state-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-saved-state-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("atlas.rgis").display().to_string();
     let mut s = world();
@@ -19026,7 +19026,7 @@ fn undo_back_to_the_saved_state_leaves_nothing_unsaved() {
 /// renamed layer.
 #[test]
 fn legends_leave_layers_out() {
-    use rustgis_map::layout::ElementKind;
+    use powergis_map::layout::ElementKind;
     let mut s = Session::new(sample::world_project());
     s.run("layout.new", &json!({"name": "Legends"})).unwrap();
     let left_out = |s: &Session, id: u32| match s.project.layouts[0].element(id).map(|e| &e.kind) {
@@ -19057,7 +19057,7 @@ fn legends_leave_layers_out() {
     // Renaming the layer keeps it left out.
     s.run("layer.rename", &json!({"layer": "Rivers", "name": "Rios"})).unwrap();
     assert_eq!(left_out(&s, lakes), ["Rios"]);
-    let back: rustgis_map::layout::Layout = serde_json::from_str(&serde_json::to_string(&s.project.layouts[0]).unwrap()).unwrap();
+    let back: powergis_map::layout::Layout = serde_json::from_str(&serde_json::to_string(&s.project.layouts[0]).unwrap()).unwrap();
     assert!(back.element(lakes).is_some_and(|e| matches!(&e.kind, ElementKind::Legend { exclude, .. } if exclude == &["Rios"])));
     // Names may repeat. Renaming Lakes onto a name already left out keeps it once; with two
     // layers named Rios, removing one keeps the name left out for the other.
@@ -19081,7 +19081,7 @@ fn legends_leave_layers_out() {
     s.run("group.remove", &json!({"group": "Places"})).unwrap();
     assert_eq!(left_out(&s, lakes), ["Countries"]);
     // A list past the cap is refused rather than cut short.
-    let many = vec!["Countries"; rustgis_map::layout::MAX_LEGEND_EXCLUDED + 1];
+    let many = vec!["Countries"; powergis_map::layout::MAX_LEGEND_EXCLUDED + 1];
     assert!(s.run("layout.update", &json!({"element": lakes, "exclude": many})).unwrap_err().contains("at most"));
     assert_eq!(left_out(&s, lakes), ["Countries"]);
     // A frame naming its map in another case (as an imported layout may) still takes a list and
@@ -19120,12 +19120,12 @@ fn timed_events() -> Session {
     let mut feats = Vec::new();
     let dates = ["2015-01-10", "2015-02-03", "2015-03-01", "2015-03-30", "2015-04-15", "2015-06-20", "2015-09-09", "2015-12-25"];
     for (i, d) in dates.iter().enumerate() {
-        let ms = rustgis_data::time::parse_text(d).unwrap();
+        let ms = powergis_data::time::parse_text(d).unwrap();
         feats.push(json!({"type": "Feature", "geometry": {"type": "Point", "coordinates": [i as f64, 0.0]},
             "properties": {"name": format!("e{i}"), "when": d, "ms": ms, "year": 2010 + i}}));
     }
     let text = json!({"type": "FeatureCollection", "features": feats}).to_string();
-    let (ds, _) = rustgis_data::io::read_geojson(&text, "Events").unwrap();
+    let (ds, _) = powergis_data::io::read_geojson(&text, "Events").unwrap();
     let mut s = Session::new(Project::default());
     let id = s.map_mut().add_dataset(ds);
     s.active_layer = Some(id);
@@ -19234,11 +19234,11 @@ fn time_slider_survives_saving_cumulative_edits_and_bad_parameters() {
     t.run("time.goTo", &json!({"date": "2015-03"})).unwrap();
     // Whole numbers that look like years (heights here) aren't taken for dates unasked; a layer
     // with real dates is.
-    assert!(rustgis_map::time::has_dates(&t.map().layers[0].dataset));
+    assert!(powergis_map::time::has_dates(&t.map().layers[0].dataset));
     let text = r#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":null,"properties":{"elev":1500}},{"type":"Feature","geometry":null,"properties":{"elev":2210}}]}"#;
-    let (heights, _) = rustgis_data::io::read_geojson(text, "Peaks").unwrap();
-    assert!(!rustgis_map::time::has_dates(&heights));
-    assert_eq!(rustgis_map::time::time_fields(&heights).len(), 1, "still offered when asked");
+    let (heights, _) = powergis_data::io::read_geojson(text, "Peaks").unwrap();
+    assert!(!powergis_map::time::has_dates(&heights));
+    assert_eq!(powergis_map::time::time_fields(&heights).len(), 1, "still offered when asked");
     // Pasted into a map without a slider, the copy shows every feature (no window comes along).
     t.run("layer.copy", &json!({"layer": "Events"})).unwrap();
     t.run("map.new", &json!({"name": "Plain"})).unwrap();
@@ -19251,7 +19251,7 @@ fn time_slider_survives_saving_cumulative_edits_and_bad_parameters() {
     {
         let l = t.map_mut().layers.iter_mut().find(|l| l.name == "Events").unwrap();
         let fi = l.dataset.field_index("when").unwrap();
-        l.dataset.features[0].attrs[fi] = rustgis_data::Value::Text("2015-12-01".into());
+        l.dataset.features[0].attrs[fi] = powergis_data::Value::Text("2015-12-01".into());
     }
     assert_eq!(shown(&t), ["e1", "e2", "e3", "e7"]);
     // A field that is gone filters nothing.
@@ -19333,7 +19333,7 @@ fn time_slider_fills_dated_tile_addresses_and_exports_its_steps() {
     s.run("map.removeTiles", &Value::Null).unwrap();
     s.run("time.bind", &json!({"field": "when"})).unwrap();
     s.run("time.goTo", &json!({"date": "2015-06"})).unwrap();
-    let dir = std::env::temp_dir().join(format!("rustgis-time-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-time-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let gif = dir.join("events.gif");
     let r = s
@@ -19386,7 +19386,7 @@ fn tagless_tiff() -> Vec<u8> {
 #[test]
 fn rasters_without_coordinates_open_laid_over_the_view() {
     use base64::Engine;
-    let dir = std::env::temp_dir().join(format!("rustgis-scans-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-scans-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let encode = |format| {
@@ -19478,7 +19478,7 @@ fn scans_have_no_coordinates_to_give_away() {
     assert_eq!(r["georeferenced"], false, "{r}");
     let flat = |s: &mut Session| s.run("raster.info", &json!({"layer": "flat"})).unwrap();
     assert_eq!(flat(&mut s)["georeferenced"], false);
-    let dir = std::env::temp_dir().join(format!("rustgis-scan-export-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-scan-export-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     s.active_layer = s.map().layer_by_name("flat").map(|l| l.id);
     let out = dir.join("flat.tif");
@@ -19551,13 +19551,13 @@ fn postgis_tab_needs_a_connection() {
     assert_eq!(s.map().layers.len(), before);
 }
 
-/// A live PostGIS database through the PostGIS editing commands: `RUSTGIS_TEST_POSTGIS` names one
+/// A live PostGIS database through the PostGIS editing commands: `powergis_TEST_POSTGIS` names one
 /// (as for `postgis_live_end_to_end`) with a table that has an integer primary key.
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 #[ignore]
 fn postgis_tab_live() {
-    let Ok(dsn) = std::env::var("RUSTGIS_TEST_POSTGIS") else { return };
+    let Ok(dsn) = std::env::var("powergis_TEST_POSTGIS") else { return };
     let mut s = Session::new(Project::default());
     let dsn = dsn.trim_start_matches("postgres:").to_string();
     let r = s.run("pg.connect", &json!({"connection": dsn})).unwrap();
@@ -19590,8 +19590,8 @@ fn postgis_tab_live() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn postgis_edits_are_counted_and_checked() {
-    use rustgis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value};
-    use rustgis_map::source::{PostgisEdit, PostgisOrigin, RowVersion, row_hash};
+    use powergis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_map::source::{PostgisEdit, PostgisOrigin, RowVersion, row_hash};
     let mut s = Session::new(Project::default());
     let mut ds =
         Dataset::new("roads", GeometryType::Point, vec![Field::new("id", FieldType::Integer), Field::new("name", FieldType::Text)]);
@@ -19660,7 +19660,7 @@ fn postgis_edits_are_counted_and_checked() {
 }
 
 /// Edits saved to a live PostGIS database and read back, and every conflict refused:
-/// `RUSTGIS_TEST_POSTGIS` names a database (`postgresql://…`) where the test may make and drop
+/// `powergis_TEST_POSTGIS` names a database (`postgresql://…`) where the test may make and drop
 /// two tables of its own.
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
@@ -19675,10 +19675,10 @@ fn postgis_edits_live() {
             }
         }
     }
-    let Ok(url) = std::env::var("RUSTGIS_TEST_POSTGIS") else { return };
+    let Ok(url) = std::env::var("powergis_TEST_POSTGIS") else { return };
     let url = url.trim_start_matches("postgres:").to_string();
     let mut db = postgres::Client::connect(&url, postgres::NoTls).unwrap();
-    let serial = format!("rustgis_edit_test_{}", std::process::id());
+    let serial = format!("powergis_edit_test_{}", std::process::id());
     let keyed = format!("{serial}_k");
     let _cleanup = Cleanup(url.clone(), serial.clone(), keyed.clone());
     db.batch_execute(&format!(
@@ -19759,7 +19759,7 @@ fn postgis_edits_live() {
     s.run("pg.discardEdits", &json!({"layer": "T"})).unwrap();
     db.execute(format!("UPDATE public.{serial} SET name = 'theirs too' WHERE id = 2").as_str(), &[]).unwrap();
     let r1 = row_of(&s, 1);
-    assert_eq!(s.map().layer(id).unwrap().dataset.value(r1, 1), &rustgis_data::Value::Text("theirs".into()));
+    assert_eq!(s.map().layer(id).unwrap().dataset.value(r1, 1), &powergis_data::Value::Text("theirs".into()));
     s.run("edit.setValue", &json!({"layer": "T", "row": r1, "field": "name", "value": "mine"})).unwrap();
     assert_eq!(s.run("pg.saveEdits", &json!({"layer": "T"})).unwrap()["updated"], 1);
     assert_eq!((name_of(&mut db, 1).as_deref(), name_of(&mut db, 2).as_deref()), (Some("mine"), Some("theirs too")));
@@ -19792,9 +19792,9 @@ fn postgis_edits_live() {
 fn geopackage_edits_save_back() {
     use rusqlite::functions::FunctionFlags;
     use rusqlite::types::ValueRef;
-    use rustgis_data::raster::Crs;
-    use rustgis_data::source::{Request, gpkg, open_path};
-    use rustgis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType};
+    use powergis_data::raster::Crs;
+    use powergis_data::source::{Request, gpkg, open_path};
+    use powergis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType};
 
     struct Cleanup(std::path::PathBuf);
     impl Drop for Cleanup {
@@ -19809,7 +19809,7 @@ fn geopackage_edits_save_back() {
         }
     }
     let serial = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-    let dir = std::env::temp_dir().join(format!("rustgis-gpkg-edits-{}-{serial}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-gpkg-edits-{}-{serial}", std::process::id()));
     std::fs::create_dir(&dir).unwrap();
     let _cleanup = Cleanup(dir.clone());
     let path = dir.join("roads.gpkg");
@@ -19819,7 +19819,7 @@ fn geopackage_edits_save_back() {
         let x = 1_000_000.0 + i as f64 * 10_000.0;
         roads.push(
             Some(Geometry::Line(vec![vec![Coord::new(x, 2_000_000.0), Coord::new(x + 1_000.0, 2_002_000.0)]])),
-            vec![rustgis_data::Value::Text((*name).into()), rustgis_data::Value::Int(i as i64 + 1)],
+            vec![powergis_data::Value::Text((*name).into()), powergis_data::Value::Int(i as i64 + 1)],
         );
     }
     gpkg::write_in(&roads, &path, Crs::from_epsg(3857).unwrap()).unwrap();
@@ -19929,8 +19929,8 @@ fn geopackage_edits_save_back() {
     assert_eq!(name_of(4), "new");
     assert_eq!(db.query_row("SELECT v FROM other WHERE id = 1", [], |r| r.get::<_, String>(0)).unwrap(), "keep");
     assert_ne!(changed_at(), before);
-    let native: Vec<_> = moved.iter().copied().map(rustgis_geom::lonlat_to_merc).collect();
-    let expected = rustgis_geom::Extent::from_points(native[0], native[1]);
+    let native: Vec<_> = moved.iter().copied().map(powergis_geom::lonlat_to_merc).collect();
+    let expected = powergis_geom::Extent::from_points(native[0], native[1]);
     let indexed: (f64, f64, f64, f64) = db
         .query_row("SELECT minx, maxx, miny, maxy FROM rtree_roads_geom WHERE id = 2", [], |r| {
             Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?))
@@ -20061,7 +20061,7 @@ struct GpkgRegressionFixture {
 impl GpkgRegressionFixture {
     fn new(name: &str) -> Self {
         let serial = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_nanos();
-        let dir = std::env::temp_dir().join(format!("rustgis-gpkg-{name}-{}-{serial}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-gpkg-{name}-{}-{serial}", std::process::id()));
         std::fs::create_dir(&dir).unwrap();
         let fixture = Self { dir };
         let db = rusqlite::Connection::open(fixture.path()).unwrap();
@@ -20127,7 +20127,7 @@ impl Drop for GpkgRegressionFixture {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn oversized_geopackage_refuses_whole_reads_but_streams_and_exports() {
-    use rustgis_data::{Dataset, Geometry, GeometryType, source::MAX_LIMIT};
+    use powergis_data::{Dataset, Geometry, GeometryType, source::MAX_LIMIT};
 
     let fixture = GpkgRegressionFixture::new("whole-read-limit");
     let path = fixture.path();
@@ -20137,7 +20137,7 @@ fn oversized_geopackage_refuses_whole_reads_but_streams_and_exports() {
     // The compact, valid point blob omits the optional envelope to keep this fixture small.
     let mut blob = b"GP\x00\x01".to_vec();
     blob.extend_from_slice(&4326i32.to_le_bytes());
-    blob.extend(rustgis_data::wkb::encode(&Geometry::Point(rustgis_geom::Coord::new(1.0, 20.0))));
+    blob.extend(powergis_data::wkb::encode(&Geometry::Point(powergis_geom::Coord::new(1.0, 20.0))));
     db.execute_batch(
         "DELETE FROM roads;
          UPDATE gpkg_contents SET min_x=1, max_x=1, min_y=20, max_y=20 WHERE table_name='roads';",
@@ -20165,7 +20165,7 @@ fn oversized_geopackage_refuses_whole_reads_but_streams_and_exports() {
 
     // A real file input to merge must fail even when the map already has a usable input layer.
     let mut initial = Dataset::new("Initial", GeometryType::Point, vec![]);
-    initial.push_next(Some(Geometry::Point(rustgis_geom::Coord::new(0.0, 0.0))), vec![]);
+    initial.push_next(Some(Geometry::Point(powergis_geom::Coord::new(0.0, 0.0))), vec![]);
     let initial_id = s.map_mut().add_dataset(initial);
     let error = s.run("gp.run", &json!({"tool": "merge", "params": {"inputs": [path], "output": "Merged"}})).unwrap_err();
     assert_limit(&error);
@@ -20207,8 +20207,8 @@ fn oversized_geopackage_refuses_whole_reads_but_streams_and_exports() {
     assert_eq!(s.map().layer(id).unwrap().dataset.features.len(), resident);
     assert_eq!(s.map().layers.len(), 2);
 
-    assert_limit(&rustgis_data::io::read_path(&path).unwrap_err().to_string());
-    assert_limit(&rustgis_data::io::read_owned("oversized.gpkg", std::fs::read(&path).unwrap()).unwrap_err().to_string());
+    assert_limit(&powergis_data::io::read_path(&path).unwrap_err().to_string());
+    assert_limit(&powergis_data::io::read_owned("oversized.gpkg", std::fs::read(&path).unwrap()).unwrap_err().to_string());
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -20220,7 +20220,7 @@ fn assert_gpkg_regression_clean(s: &mut Session) {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_delete_trigger_restored_rows_rejoin_the_saved_baseline() {
-    use rustgis_data::{Coord, Geometry, Value};
+    use powergis_data::{Coord, Geometry, Value};
     let fixture = GpkgRegressionFixture::new("restored-delete");
     let db = rusqlite::Connection::open(fixture.path()).unwrap();
     db.execute_batch(
@@ -20259,7 +20259,7 @@ fn geopackage_delete_trigger_restored_rows_rejoin_the_saved_baseline() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_cross_row_triggers_refresh_residents_without_expanding_scope() {
-    use rustgis_data::{Coord, Geometry, Value};
+    use powergis_data::{Coord, Geometry, Value};
     for deleted in [false, true] {
         let fixture = GpkgRegressionFixture::new("resident-triggers");
         let db = rusqlite::Connection::open(fixture.path()).unwrap();
@@ -20371,7 +20371,7 @@ fn geopackage_trigger_snapshots_respect_partial_loaded_scope() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_trigger_rebuild_rejects_a_valid_envelope_with_unreadable_wkb() {
-    use rustgis_data::{Coord, Geometry};
+    use powergis_data::{Coord, Geometry};
     let fixture = GpkgRegressionFixture::new("unreadable-enveloped-body");
     let db = rusqlite::Connection::open(fixture.path()).unwrap();
     let mut bad = GpkgRegressionFixture::point_blob(3.0, 20.0);
@@ -20545,7 +20545,7 @@ fn geopackage_discard_refreshes_geometry_family_and_visible_point_symbols() {
     db.execute("UPDATE roads SET geom = ?1 WHERE fid = 1", [GpkgRegressionFixture::point_blob(10.0, 20.0)]).unwrap();
     s.run("gpkg.discardEdits", &json!({"layer": "R"})).unwrap();
     let layer = s.map().layer_by_name("R").unwrap();
-    assert_eq!(layer.geometry_type(), rustgis_data::GeometryType::Point);
+    assert_eq!(layer.geometry_type(), powergis_data::GeometryType::Point);
     assert!(layer.renderer.base_symbol().size > 0.0, "reloaded point features need visible markers");
     s.run(
         "edit.addFeature",
@@ -20556,14 +20556,14 @@ fn geopackage_discard_refreshes_geometry_family_and_visible_point_symbols() {
     .unwrap();
     assert_eq!(s.run("gpkg.saveEdits", &json!({"layer": "R"})).unwrap()["inserted"], 1);
     let stored: Vec<u8> = db.query_row("SELECT geom FROM roads WHERE name = 'new point'", [], |r| r.get(0)).unwrap();
-    assert_eq!(rustgis_data::wkb::decode(&stored[40..]), Some(rustgis_data::Geometry::Point(rustgis_data::Coord::new(11.0, 21.0))));
+    assert_eq!(powergis_data::wkb::decode(&stored[40..]), Some(powergis_data::Geometry::Point(powergis_data::Coord::new(11.0, 21.0))));
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_saved_defaults_and_trigger_values_become_baseline() {
-    use rustgis_data::source::{Request, open_path};
-    use rustgis_data::{Coord, Geometry, Value};
+    use powergis_data::source::{Request, open_path};
+    use powergis_data::{Coord, Geometry, Value};
 
     let fixture = GpkgRegressionFixture::new("stored-values");
     let db = rusqlite::Connection::open(fixture.path()).unwrap();
@@ -20645,7 +20645,7 @@ fn geopackage_saved_defaults_and_trigger_values_become_baseline() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_insert_reserves_externally_deleted_loaded_keys() {
-    use rustgis_data::Value;
+    use powergis_data::Value;
 
     let fixture = GpkgRegressionFixture::new("reserved-keys");
     let db = rusqlite::Connection::open(fixture.path()).unwrap();
@@ -20717,9 +20717,9 @@ fn geopackage_command_save_refuses_a_declaration_changed_since_loading() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_reopened_polygons_stay_clean_and_locator_sketches_are_unbound() {
-    use rustgis_data::raster::Crs;
-    use rustgis_data::source::gpkg;
-    use rustgis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_data::raster::Crs;
+    use powergis_data::source::gpkg;
+    use powergis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value};
 
     let fixture = GpkgRegressionFixture::new("locator-sketch");
     let path = fixture.dir.join("parcels.gpkg");
@@ -20773,8 +20773,8 @@ fn geopackage_new_features_avoid_keys_of_either_bound_baseline() {
     let fixture = GpkgRegressionFixture::new("dual-binding");
     let mut s = fixture.session();
     let id = s.map().layer_by_name("R").unwrap().id;
-    s.map_mut().layer_mut(id).unwrap().postgis = Some(rustgis_map::source::PostgisEdit {
-        origin: rustgis_map::source::PostgisOrigin {
+    s.map_mut().layer_mut(id).unwrap().postgis = Some(powergis_map::source::PostgisEdit {
+        origin: powergis_map::source::PostgisOrigin {
             database: "postgres:host=127.0.0.1 port=1 dbname=gis".into(),
             table: "roads".into(),
             family: None,
@@ -20800,8 +20800,8 @@ fn geopackage_new_features_avoid_keys_of_either_bound_baseline() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_discard_refreshes_renamed_key_and_geometry() {
-    use rustgis_data::source::{Request, open_path};
-    use rustgis_data::{Coord, Geometry};
+    use powergis_data::source::{Request, open_path};
+    use powergis_data::{Coord, Geometry};
 
     let fixture = GpkgRegressionFixture::new("renamed-columns");
     let db = rusqlite::Connection::open(fixture.path()).unwrap();
@@ -20838,9 +20838,9 @@ fn geopackage_discard_refreshes_renamed_key_and_geometry() {
 
 #[test]
 fn raster_tools_read_projected_zone_files_without_reprojecting_twice() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
-    use rustgis_data::{Dataset, Geometry, GeometryType, Value};
-    let dir = std::env::temp_dir().join(format!("rustgis-zonal-crs-{}", std::process::id()));
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    use powergis_data::{Dataset, Geometry, GeometryType, Value};
+    let dir = std::env::temp_dir().join(format!("powergis-zonal-crs-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let mut s = Session::new(Project::default());
     let gt = GeoTransform { origin_x: 622_000.0, origin_y: 5_164_000.0, pixel_width: 100.0, pixel_height: -100.0 };
@@ -20851,14 +20851,14 @@ fn raster_tools_read_projected_zone_files_without_reprojecting_twice() {
         .map(|(x, y)| tr.to_lonlat(gt.to_world(x, y)).unwrap())
         .collect();
     zones.push(Some(Geometry::Polygon(vec![vec![ring]])), vec![]);
-    s.map_mut().add_layer(rustgis_map::Layer::new(0, zones));
+    s.map_mut().add_layer(powergis_map::Layer::new(0, zones));
     let nw = tr.to_lonlat(gt.to_world(0.0, 0.0)).unwrap();
     let se = tr.to_lonlat(gt.to_world(4.0, 4.0)).unwrap();
     let geographic = GeoTransform { origin_x: nw.x, origin_y: nw.y, pixel_width: (se.x - nw.x) / 4.0, pixel_height: (se.y - nw.y) / 4.0 };
     for (name, transform, crs) in [("utm", gt, Crs::Epsg(25832)), ("geographic", geographic, Crs::LonLat)] {
         let raster =
             Raster::new(name, 4, 4, vec![(1..=16).map(|v| v as f32).collect()], transform, crs, None, ColorHint::Gray, "Float32").unwrap();
-        s.map_mut().add_raster(name, rustgis_map::RasterLayer::from_path(raster, format!("{name}.tif")));
+        s.map_mut().add_raster(name, powergis_map::RasterLayer::from_path(raster, format!("{name}.tif")));
     }
     for epsg in [4326, 25832, 32632, 3003, 3857] {
         for ext in ["gpkg", "shp"] {
@@ -20903,9 +20903,9 @@ fn raster_tools_read_projected_zone_files_without_reprojecting_twice() {
 
 #[test]
 fn gp_zonal_stats_end_to_end_and_undo() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
-    use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
-    use rustgis_geom::Coord;
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_geom::Coord;
 
     let mut s = world();
 
@@ -20918,7 +20918,7 @@ fn gp_zonal_stats_end_to_end_and_undo() {
     }
     let gt = GeoTransform { origin_x: 0.0, origin_y: 10.0, pixel_width: 1.0, pixel_height: -1.0 };
     let raster = Raster::new("dem", w, h, vec![data], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
-    let raster_layer = rustgis_map::RasterLayer::from_path(raster, "dem.tif");
+    let raster_layer = powergis_map::RasterLayer::from_path(raster, "dem.tif");
     s.map_mut().add_raster("dem", raster_layer);
 
     let mut poly_ds = Dataset::new("districts", GeometryType::Polygon, vec![Field::new("code", FieldType::Text)]);
@@ -20933,7 +20933,7 @@ fn gp_zonal_stats_end_to_end_and_undo() {
     };
     poly_ds.push(Some(sq(1.0, 7.0, 3.0, 9.0)), vec![Value::Text("D1".into())]);
     poly_ds.push(Some(sq(50.0, 50.0, 52.0, 52.0)), vec![Value::Text("D2".into())]);
-    s.map_mut().add_layer(rustgis_map::Layer::new(0, poly_ds));
+    s.map_mut().add_layer(powergis_map::Layer::new(0, poly_ds));
 
     let layers_before = s.map().layers.len();
 
@@ -21005,7 +21005,7 @@ fn gp_zonal_stats_end_to_end_and_undo() {
     let mut merc_ds = Dataset::new("merc_districts", GeometryType::Polygon, vec![Field::new("code", FieldType::Text)]);
     merc_ds.crs = Some(Crs::WebMercator);
     merc_ds.push(Some(sq(1.0, 7.0, 3.0, 9.0)), vec![Value::Text("M1".into())]);
-    s.map_mut().add_layer(rustgis_map::Layer::new(0, merc_ds));
+    s.map_mut().add_layer(powergis_map::Layer::new(0, merc_ds));
 
     let merc_res = s.run(
         "gp.zonalStats",
@@ -21036,7 +21036,7 @@ fn gp_zonal_stats_end_to_end_and_undo() {
         "Float32",
     )
     .unwrap();
-    s.map_mut().add_raster("multi", rustgis_map::RasterLayer::from_path(multiband, "multi.tif"));
+    s.map_mut().add_raster("multi", powergis_map::RasterLayer::from_path(multiband, "multi.tif"));
 
     // "bands": "all"
     let all_res = s.run(
@@ -21073,9 +21073,9 @@ fn gp_zonal_stats_end_to_end_and_undo() {
 
 #[test]
 fn raster_clip_polygon_selection_semantics_and_partial_failure() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
-    use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
-    use rustgis_geom::Coord;
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_geom::Coord;
 
     let mut s = world();
 
@@ -21089,7 +21089,7 @@ fn raster_clip_polygon_selection_semantics_and_partial_failure() {
     }
     let gt = GeoTransform { origin_x: 0.0, origin_y: 10.0, pixel_width: 1.0, pixel_height: -1.0 };
     let raster = Raster::new("dem", w, h, vec![data], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
-    let raster_layer = rustgis_map::RasterLayer::from_path(raster, "dem.tif");
+    let raster_layer = powergis_map::RasterLayer::from_path(raster, "dem.tif");
     s.map_mut().add_raster("dem", raster_layer);
 
     let sq = |x0: f64, y0: f64, x1: f64, y1: f64| {
@@ -21116,7 +21116,7 @@ fn raster_clip_polygon_selection_semantics_and_partial_failure() {
     ]]);
     poly_ds.push(Some(bad_hole_poly), vec![Value::Text("Z4_bad".into())]);
 
-    let poly_layer_id = s.map_mut().add_layer(rustgis_map::Layer::new(0, poly_ds));
+    let poly_layer_id = s.map_mut().add_layer(powergis_map::Layer::new(0, poly_ds));
 
     // Test 1: selectedOnly: "invalid" or non-boolean returns validation error
     let err_type = s.run(
@@ -21459,7 +21459,7 @@ fn a_layout_exports_to_svg_with_each_element_its_own_group() {
         .as_u64()
         .unwrap();
     s.run("layout.addElement", &json!({"kind": "rectangle", "x": 5, "y": 5, "w": 40, "h": 20})).unwrap();
-    let out = std::env::temp_dir().join(format!("rustgis-layout-{}.svg", std::process::id()));
+    let out = std::env::temp_dir().join(format!("powergis-layout-{}.svg", std::process::id()));
     let r = s.run("layout.export", &json!({"path": out.to_string_lossy(), "dpi": 72})).unwrap();
     let svg = std::fs::read_to_string(&out).unwrap();
     let _ = std::fs::remove_file(&out);
@@ -21491,9 +21491,9 @@ fn a_layout_exports_to_svg_with_each_element_its_own_group() {
     assert_eq!(s.project.layouts[0], before, "export keeps the selected page and frame");
     let _ = std::fs::remove_file(&out);
     // A required map-source failure is reported without leaving an incomplete file.
-    let dir = std::env::temp_dir().join(format!("rustgis-svg-failure-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-svg-failure-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let mut source = rustgis_map::source::SourceLayer::default();
+    let mut source = powergis_map::source::SourceLayer::default();
     source.path = Some(dir.join("missing.shp").display().to_string());
     s.map_mut().layers[0].source = Some(source);
     // Use a world view so the missing layer is visible on the exported page.
@@ -21506,7 +21506,7 @@ fn a_layout_exports_to_svg_with_each_element_its_own_group() {
 
 #[test]
 fn manual_breaks_are_the_ones_given() {
-    use rustgis_map::{ClassMethod, Renderer};
+    use powergis_map::{ClassMethod, Renderer};
     let mut s = world();
     let breaks = |s: &Session| match &s.map().layer_by_name("Countries").unwrap().renderer {
         Renderer::Graduated { breaks, method, .. } => (breaks.clone(), *method),
@@ -21548,9 +21548,9 @@ fn manual_breaks_are_the_ones_given() {
 /// Raster-side projection failures retain good multipart coverage and reach both command results.
 #[test]
 fn raster_projection_failures_are_reported_for_zonal_statistics_and_clipping() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
-    use rustgis_data::{Dataset, Geometry, GeometryType};
-    use rustgis_geom::Coord;
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    use powergis_data::{Dataset, Geometry, GeometryType};
+    use powergis_geom::Coord;
 
     let mut s = world();
     let gt = GeoTransform { origin_x: 500_000.0, origin_y: 4_500_000.0, pixel_width: 1_000.0, pixel_height: -1_000.0 };
@@ -21561,17 +21561,17 @@ fn raster_projection_failures_are_reported_for_zonal_statistics_and_clipping() {
         .collect();
     let invalid = vec![Coord::new(-81.0, 100.0), Coord::new(-80.0, 100.0), Coord::new(-80.0, 101.0)];
     assert!(raster.transformer().from_lonlat(invalid[0]).is_none());
-    s.map_mut().add_raster("utm", rustgis_map::RasterLayer::from_path(raster, "utm.tif"));
+    s.map_mut().add_raster("utm", powergis_map::RasterLayer::from_path(raster, "utm.tif"));
     let mut zones = Dataset::new("parts", GeometryType::Polygon, vec![]);
     zones.push(Some(Geometry::Polygon(vec![vec![ring], vec![invalid]])), vec![]);
-    s.map_mut().add_layer(rustgis_map::Layer::new(0, zones));
+    s.map_mut().add_layer(powergis_map::Layer::new(0, zones));
 
     s.run("gp.zonalStats", &json!({"raster": "utm", "polygons": "parts", "output": "stats"})).unwrap();
     let messages = &s.project.gp_history.last().unwrap().messages;
     assert!(messages.iter().any(|message| message.contains("1 polygon part(s) could not be projected")), "{messages:?}");
     let out = &s.map().layer_by_name("stats").unwrap().dataset;
-    assert_eq!(out.value(0, out.field_index("utm_count").unwrap()), &rustgis_data::Value::Int(64));
-    assert_eq!(out.value(0, out.field_index("utm_mean").unwrap()), &rustgis_data::Value::Float(7.0));
+    assert_eq!(out.value(0, out.field_index("utm_count").unwrap()), &powergis_data::Value::Int(64));
+    assert_eq!(out.value(0, out.field_index("utm_mean").unwrap()), &powergis_data::Value::Float(7.0));
 
     let clip = s.run("raster.process", &json!({"layer": "utm", "operation": "clip", "polygon": "parts", "name": "clipped"})).unwrap();
     assert!(clip["messages"].to_string().contains("skipped 1 polygon part(s)"), "{clip}");
@@ -21581,8 +21581,8 @@ fn raster_projection_failures_are_reported_for_zonal_statistics_and_clipping() {
 
 #[test]
 fn simplify_large_tolerances_keep_a_small_polygon_and_one_step_undo() {
-    use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
-    use rustgis_geom::Coord;
+    use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_geom::Coord;
     let mut s = world();
     let ring = (0..=40)
         .map(|i| {
@@ -21592,7 +21592,7 @@ fn simplify_large_tolerances_keep_a_small_polygon_and_one_step_undo() {
         .collect();
     let mut zones = Dataset::new("zones", GeometryType::Polygon, vec![Field::new("code", FieldType::Text)]);
     zones.push(Some(Geometry::Polygon(vec![vec![ring]])), vec![Value::Text("Z1".into())]);
-    s.map_mut().add_layer(rustgis_map::Layer::new(0, zones.clone()));
+    s.map_mut().add_layer(powergis_map::Layer::new(0, zones.clone()));
     let mut previous = zones.features[0].geometry.as_ref().unwrap().coord_count();
     for tolerance in [0.1, 0.5, 1.0, 2.0, 5.0, 25.0, 100.0] {
         let depth = s.undo_depth();
@@ -21616,8 +21616,8 @@ fn simplify_large_tolerances_keep_a_small_polygon_and_one_step_undo() {
 
 #[test]
 fn publication_locator_keeps_small_islands_across_the_antimeridian() {
-    use rustgis_data::{Dataset, Geometry, GeometryType};
-    use rustgis_geom::Coord;
+    use powergis_data::{Dataset, Geometry, GeometryType};
+    use powergis_geom::Coord;
     for (lon, lat) in [(0.0_f64, -5.0), (180.0, -5.0), (-180.0, 70.0)] {
         let mut s = world();
         let ring: Vec<_> = [(-0.0005, 0.0), (0.0005, 0.0), (0.0005, 0.001), (-0.0005, 0.001), (-0.0005, 0.0)]
@@ -21627,7 +21627,7 @@ fn publication_locator_keeps_small_islands_across_the_antimeridian() {
         let original = Geometry::Polygon(vec![vec![ring]]);
         let mut island = Dataset::new("island", GeometryType::Polygon, vec![]);
         island.push(Some(original.clone()), vec![]);
-        s.map_mut().add_layer(rustgis_map::Layer::new(0, island));
+        s.map_mut().add_layer(powergis_map::Layer::new(0, island));
         let r = s.run("layout.publication", &json!({"extent": [-46.8, -11.6, -38.5, -2.2]})).unwrap();
         let locator = s.project.maps.iter().find(|m| Some(m.name.as_str()) == r["locator"].as_str()).unwrap();
         let geometry = &locator.layer_by_name("island").unwrap().dataset.features[0].geometry;
@@ -21637,12 +21637,12 @@ fn publication_locator_keeps_small_islands_across_the_antimeridian() {
 
 #[test]
 fn calculate_geometry_updates_ellipsoidal_lengths_in_one_undo_step() {
-    use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
-    use rustgis_geom::Coord;
+    use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
+    use powergis_geom::Coord;
     let mut s = world();
     let mut routes = Dataset::new("routes", GeometryType::Polyline, vec![Field::new("code", FieldType::Text)]);
     routes.push(Some(Geometry::Line(vec![vec![Coord::new(0.0, 0.0), Coord::new(1.0, 0.0)]])), vec![Value::Text("R1".into())]);
-    s.map_mut().add_layer(rustgis_map::Layer::new(0, routes.clone()));
+    s.map_mut().add_layer(powergis_map::Layer::new(0, routes.clone()));
     let depth = s.undo_depth();
     s.run("gp.run", &json!({"tool":"calculateGeometry", "params":{"input":"routes"}})).unwrap();
     let out = &s.map().layer_by_name("routes").unwrap().dataset;
@@ -21694,7 +21694,7 @@ fn the_session_log_records_each_command_run_in_the_session() {
     assert_eq!(service.command, "service.layers");
     assert!(!service.params.to_string().contains("S3CRET"), "{service:?}");
     // A document given as text is kept as its size only: it may hold secrets no redaction finds.
-    let qgs = format!("<qgis version=\"3.42.0\"><title>{}</title></qgis>", "rustgis-s3:TOKEN:s3://b/k ".repeat(20));
+    let qgs = format!("<qgis version=\"3.42.0\"><title>{}</title></qgis>", "powergis-s3:TOKEN:s3://b/k ".repeat(20));
     let _ = s.run("project.importQgis", &json!({"text": qgs}));
     let doc = last(&s);
     assert_eq!(doc.params["text"], json!(format!("(a document of {} characters)", qgs.chars().count())), "{doc:?}");
@@ -21756,7 +21756,7 @@ fn the_session_log_records_each_command_run_in_the_session() {
     let formula = LogEntry { at: 2, command: "x".into(), params: Value::Null, ok: false, error: Some("=HYPERLINK(1)".into()), millis: 0 };
     s.log.push(formula);
     // Written out as CSV and JSON Lines.
-    let dir = std::env::temp_dir().join(format!("rustgis-session-log-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-session-log-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let csv = dir.join("log.csv");
     s.run("project.exportLog", &json!({"path": csv.to_string_lossy()})).unwrap();
@@ -21907,14 +21907,14 @@ fn plugins_can_neither_clear_the_session_log_nor_crowd_out_the_users_entries() {
 /// layer's selection gives the extent, and bad parameters are refused before anything is made.
 #[test]
 fn a_raster_projected_onto_a_chosen_grid() {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
     let mut s = world();
     // 40 × 40 pixels of 0.001° near Teresina, value = column + 100 · row.
     let gt = GeoTransform { origin_x: -42.82, origin_y: -5.08, pixel_width: 0.001, pixel_height: -0.001 };
     let v: Vec<f32> = (0..1600).map(|i| (i % 40 + 100 * (i / 40)) as f32).collect();
     let r = Raster::new("the", 40, 40, vec![v], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
-    let bytes = rustgis_data::raster::geotiff::write(&r, 0).unwrap();
-    crate::cmd::raster::add_raster(&mut s, "the", rustgis_map::RasterLayer::from_bytes(r, "the.tif", bytes)).unwrap();
+    let bytes = powergis_data::raster::geotiff::write(&r, 0).unwrap();
+    crate::cmd::raster::add_raster(&mut s, "the", powergis_map::RasterLayer::from_bytes(r, "the.tif", bytes)).unwrap();
 
     // SIRGAS 2000 / UTM 23S, 200 m cells averaged: about 22 × 22 cells, means within the values.
     let v = s.run("raster.project", &json!({"layer": "the", "crs": 31983, "cellSize": 200, "resampling": "average"})).unwrap();
@@ -22017,7 +22017,7 @@ fn geolibre_import_inline_styles_groups_and_undo() {
     assert_eq!(layer.transparency, 50.0);
     assert!(!s.map().groups[0].visible);
     assert_eq!(s.map().groups[0].transparency, 50.0);
-    assert!(matches!(layer.renderer, rustgis_map::Renderer::Unique { .. }));
+    assert!(matches!(layer.renderer, powergis_map::Renderer::Unique { .. }));
     assert!(layer.labels.enabled);
     assert_eq!(s.map().groups[0].children, vec![layer.id]);
     assert_eq!(s.map().bookmarks[0].name, "Place");
@@ -22048,7 +22048,7 @@ fn geolibre_input_channels_missing_sources_and_malformed_data() {
 
 #[test]
 fn geolibre_moved_local_source_uses_project_directory() {
-    let dir = std::env::temp_dir().join(format!("rustgis-geolibre-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-geolibre-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let data = dir.join("points.geojson");
     std::fs::write(
@@ -22068,7 +22068,7 @@ fn geolibre_moved_local_source_uses_project_directory() {
 #[test]
 fn geolibre_download_finishes_in_its_original_map_and_position() {
     let mut s = world();
-    let mut ds = rustgis_data::Dataset::new("Points", rustgis_data::GeometryType::Point, Vec::new());
+    let mut ds = powergis_data::Dataset::new("Points", powergis_data::GeometryType::Point, Vec::new());
     ds.source = Some("geolibre-pending:test".into());
     let target = s.project.active_map;
     let id = s.map_mut().add_dataset(ds);
@@ -22127,33 +22127,33 @@ fn geolibre_tile_sources_keep_visibility_opacity_and_order() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geolibre_local_source_kinds_and_archives() {
-    let dir = std::env::temp_dir().join(format!("rustgis-geolibre-kinds-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-geolibre-kinds-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
-    let (ds,_)=rustgis_data::io::read_bytes("points.geojson",br#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[0,0]},"properties":{"value":1}}]}"#).unwrap();
+    let (ds,_)=powergis_data::io::read_bytes("points.geojson",br#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[0,0]},"properties":{"value":1}}]}"#).unwrap();
     for (file, ext) in [("points.fgb", "fgb"), ("points.parquet", "parquet")] {
-        std::fs::write(dir.join(file), rustgis_data::io::write_bytes(&ds, ext).unwrap().0).unwrap();
+        std::fs::write(dir.join(file), powergis_data::io::write_bytes(&ds, ext).unwrap().0).unwrap();
     }
     std::fs::write(dir.join("points.las"), las_bytes(&[(10.5, 50.5, 300.0, 2)])).unwrap();
-    let raster = rustgis_data::raster::ascii::read(
+    let raster = powergis_data::raster::ascii::read(
         "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\nNODATA_value -9999\n1 2\n3 4\n",
         "grid",
-        Some(rustgis_data::raster::Crs::LonLat),
+        Some(powergis_data::raster::Crs::LonLat),
     )
     .unwrap();
-    let tif = rustgis_data::raster::geotiff::write(&raster, 0).unwrap();
+    let tif = powergis_data::raster::geotiff::write(&raster, 0).unwrap();
     std::fs::write(dir.join("grid.tif"), &tif).unwrap();
     let mut tile = tiny_skia::Pixmap::new(1, 1).unwrap();
     tile.fill(tiny_skia::Color::from_rgba8(10, 20, 30, 255));
     let png = tile.encode_png().unwrap();
-    let archive = crate::render::rustgis_tiles::pmtiles::NewArchive {
-        tile_type: crate::render::rustgis_tiles::pmtiles::TileType::Png,
+    let archive = crate::render::powergis_tiles::pmtiles::NewArchive {
+        tile_type: crate::render::powergis_tiles::pmtiles::TileType::Png,
         gzipped_tiles: false,
         bounds: [-180.0, -85.0, 180.0, 85.0],
         metadata: json!({}),
     };
     std::fs::write(
         dir.join("tiles.pmtiles"),
-        crate::render::rustgis_tiles::pmtiles::write(vec![(0, 0, 0, png.clone())], &archive).unwrap(),
+        crate::render::powergis_tiles::pmtiles::write(vec![(0, 0, 0, png.clone())], &archive).unwrap(),
     )
     .unwrap();
     let db = rusqlite::Connection::open(dir.join("tiles.mbtiles")).unwrap();
@@ -22224,10 +22224,10 @@ fn geolibre_saved_order_overrides_automatic_geometry_ranking() {
 fn geolibre_failed_download_discards_only_its_own_reservation() {
     let mut s = world();
     let original = s.map().layers.len();
-    let mut ds = rustgis_data::Dataset::new("Pending", rustgis_data::GeometryType::Point, Vec::new());
+    let mut ds = powergis_data::Dataset::new("Pending", powergis_data::GeometryType::Point, Vec::new());
     ds.source = Some("geolibre-pending:failure".into());
     let id = s.map_mut().add_dataset(ds);
-    let mut group = rustgis_map::LayerGroup::new("Group");
+    let mut group = powergis_map::LayerGroup::new("Group");
     group.children.push(id);
     s.map_mut().add_group(group);
     s.run("map.new", &json!({"name":"Other"})).unwrap();
@@ -22257,7 +22257,7 @@ fn geolibre_extensionless_cog_uses_tile_storage_and_inherited_opacity() {
     assert_eq!(out["layers"], json!(["Coverage"]));
     assert!(s.map().layers.is_empty());
     assert_eq!(s.map().tiles.len(), 1);
-    assert_eq!(s.map().tiles[0].kind, rustgis_map::tiles::TileKind::Cog);
+    assert_eq!(s.map().tiles[0].kind, powergis_map::tiles::TileKind::Cog);
     assert!((s.map().tiles[0].opacity - 0.3).abs() < 1e-6);
     assert!(s.map().groups.iter().all(|g| g.children.is_empty()));
     assert!(s.take_url_requests().is_empty());
@@ -22285,13 +22285,13 @@ fn geolibre_remote_plain_tiff_folder_opacity_is_not_baked_twice() {
         Arc,
         atomic::{AtomicBool, Ordering},
     };
-    let raster = rustgis_data::raster::ascii::read(
+    let raster = powergis_data::raster::ascii::read(
         "ncols 2\nnrows 2\nxllcorner 0\nyllcorner 0\ncellsize 1\n1 2\n3 4\n",
         "plain",
-        Some(rustgis_data::raster::Crs::LonLat),
+        Some(powergis_data::raster::Crs::LonLat),
     )
     .unwrap();
-    let bytes = rustgis_data::raster::geotiff::write(&raster, 0).unwrap();
+    let bytes = powergis_data::raster::geotiff::write(&raster, 0).unwrap();
     let listener = std::net::TcpListener::bind("127.0.0.1:0").unwrap();
     listener.set_nonblocking(true).unwrap();
     let url = format!("http://{}/plain.tif", listener.local_addr().unwrap());
@@ -22392,7 +22392,7 @@ fn geolibre_pending_layers_cannot_be_saved_as_completed_data() {
     s.map_mut().layer_mut(id).unwrap().dataset.source = None;
     assert!(s.project.saved_text(None).is_ok());
     assert!(s.project.clone().recovery_text().is_ok());
-    let mut tile = rustgis_map::tiles::TileLayer::new("Pending archive", rustgis_map::tiles::TileKind::MbTiles, "upload:pending.mbtiles");
+    let mut tile = powergis_map::tiles::TileLayer::new("Pending archive", powergis_map::tiles::TileKind::MbTiles, "upload:pending.mbtiles");
     tile.id = "geolibre-pending:tile-save-test".into();
     s.map_mut().tiles.push(tile);
     assert!(s.project.saved_text(None).unwrap_err().contains("still downloading"));
@@ -22409,7 +22409,7 @@ fn geolibre_pending_layers_cannot_be_saved_as_completed_data() {
 
 #[test]
 fn geolibre_text_cannot_read_local_files_without_explicit_directory() {
-    let dir = std::env::temp_dir().join(format!("rustgis-geolibre-local-trust-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-geolibre-local-trust-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("local.geojson");
     std::fs::write(
@@ -22429,7 +22429,7 @@ fn geolibre_text_cannot_read_local_files_without_explicit_directory() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geolibre_archive_completion_preserves_pending_tile_edits() {
-    let dir = std::env::temp_dir().join(format!("rustgis-geolibre-archive-edits-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-geolibre-archive-edits-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("archive.mbtiles");
     let _ = std::fs::remove_file(&path);
@@ -22438,7 +22438,7 @@ fn geolibre_archive_completion_preserves_pending_tile_edits() {
     drop(db);
     let mut s = world();
     let token = "geolibre-pending:archive-edits";
-    let mut tile = rustgis_map::tiles::TileLayer::new("Original", rustgis_map::tiles::TileKind::MbTiles, "upload:pending-edits.mbtiles");
+    let mut tile = powergis_map::tiles::TileLayer::new("Original", powergis_map::tiles::TileKind::MbTiles, "upload:pending-edits.mbtiles");
     tile.id = token.into();
     tile.visible = true;
     tile.opacity = 0.5;
@@ -22486,7 +22486,7 @@ fn geolibre_file_pending_tokens_are_rejected_without_mutating_live_work() {
     let mut s = world();
     let mut ds = crate::data::Dataset::new("Forged pending", crate::data::GeometryType::Point, Vec::new());
     ds.source = Some("geolibre-pending:forged".into());
-    let mut map = rustgis_map::Map::new("Forged map");
+    let mut map = powergis_map::Map::new("Forged map");
     let id = map.add_dataset(ds);
     let layer = serde_json::to_string(map.layer(id).unwrap()).unwrap();
     assert!(crate::cmd::layer::add_layer_text(&mut s, &layer).is_err());
@@ -22497,7 +22497,7 @@ fn geolibre_file_pending_tokens_are_rejected_without_mutating_live_work() {
     project.maps = vec![map];
     assert!(crate::project::Project::from_json(&serde_json::to_string(&project).unwrap()).is_err());
     project.maps[0].layers[0].dataset.source = None;
-    let mut tile = rustgis_map::tiles::TileLayer::new("Forged archive", rustgis_map::tiles::TileKind::MbTiles, "upload:forged.mbtiles");
+    let mut tile = powergis_map::tiles::TileLayer::new("Forged archive", powergis_map::tiles::TileKind::MbTiles, "upload:forged.mbtiles");
     tile.id = "geolibre-pending:forged-tile".into();
     project.maps[0].tiles.push(tile);
     assert!(crate::project::Project::from_json(&serde_json::to_string(&project).unwrap()).is_err());
@@ -22538,8 +22538,8 @@ fn merge_reads_complete_streamed_inputs_and_supports_undo() {
     // A streamed map layer only holds its current window, not every source feature.
     s.map_mut().layer_mut(id).unwrap().dataset.features.truncate(1);
     assert!(s.map().layer(id).unwrap().dataset.features.len() < total);
-    let mut other = rustgis_data::Dataset::new("Other", rustgis_data::GeometryType::Point, vec![]);
-    other.push_next(Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(0.0, 0.0))), vec![]);
+    let mut other = powergis_data::Dataset::new("Other", powergis_data::GeometryType::Point, vec![]);
+    other.push_next(Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(0.0, 0.0))), vec![]);
     s.map_mut().add_dataset(other);
     for inputs in [json!(format!("{name};Other")), json!([name, "Other"]), json!([path.to_string_lossy(), "Other"])] {
         let before = s.map().layers.len();
@@ -22567,11 +22567,11 @@ fn merge_file_inputs_use_the_existing_file_access_check() {
 
 #[test]
 fn merge_keeps_import_warnings_from_direct_file_inputs() {
-    let path = std::env::temp_dir().join(format!("rustgis-merge-warnings-{}.geojson", std::process::id()));
+    let path = std::env::temp_dir().join(format!("powergis-merge-warnings-{}.geojson", std::process::id()));
     std::fs::write(&path, r#"{"type":"FeatureCollection","features":[{"type":"Feature","geometry":{"type":"Point","coordinates":[1,2]},"properties":{}},{"type":"Feature","geometry":{"type":"Point","coordinates":["bad",2]},"properties":{}}]}"#).unwrap();
     let mut s = Session::new(Project::default());
-    let mut ds = rustgis_data::Dataset::new("Other", rustgis_data::GeometryType::Point, vec![]);
-    ds.push_next(Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(0.0, 0.0))), vec![]);
+    let mut ds = powergis_data::Dataset::new("Other", powergis_data::GeometryType::Point, vec![]);
+    ds.push_next(Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(0.0, 0.0))), vec![]);
     s.map_mut().add_dataset(ds);
     let mark = s.notice_mark();
     let result = s.run("gp.run", &json!({"tool":"merge","params":{"inputs":[path.to_string_lossy(),"Other"]}})).unwrap();
@@ -22585,7 +22585,7 @@ fn merge_keeps_import_warnings_from_direct_file_inputs() {
 #[cfg(target_os = "linux")]
 #[test]
 fn merge_distinguishes_case_sensitive_file_paths() {
-    let dir = std::env::temp_dir().join(format!("rustgis-merge-case-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-merge-case-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let a = dir.join("a.geojson");
     let b = dir.join("A.geojson");
@@ -22600,7 +22600,7 @@ fn merge_distinguishes_case_sensitive_file_paths() {
         .features
         .iter()
         .map(|f| match f.geometry.as_ref().unwrap() {
-            rustgis_data::Geometry::Point(c) => c.x,
+            powergis_data::Geometry::Point(c) => c.x,
             _ => panic!("expected point"),
         })
         .collect();

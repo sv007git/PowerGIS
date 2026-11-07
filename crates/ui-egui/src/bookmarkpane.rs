@@ -7,7 +7,7 @@ use egui::{RichText, Sense, Ui, vec2};
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, semibold};
-use crate::{RustGisApp, i18n, icons, widgets};
+use crate::{powergisApp, i18n, icons, widgets};
 
 /// The most bookmarks the pane lists at once: a map can import thousands, and every row is laid
 /// out each frame; the filter narrows the rest.
@@ -56,7 +56,7 @@ struct Mark {
 /// reaches it rather than the global shortcuts.
 const KEYS: egui::EventFilter = egui::EventFilter { horizontal_arrows: true, vertical_arrows: true, escape: true, tab: false };
 
-fn run(app: &mut RustGisApp, id: &str, p: Value) {
+fn run(app: &mut powergisApp, id: &str, p: Value) {
     if let Err(e) = app.run(id, p) {
         app.session.notify(e, true);
     }
@@ -70,7 +70,7 @@ fn act(ui: &mut Ui, icon: &str, tip: &str) -> egui::Response {
     r
 }
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     ui.horizontal(|ui| {
         let gap = ui.spacing().item_spacing.x;
         let room = (ui.available_width() - 3.0 * (26.0 + gap)).max(60.0);
@@ -156,7 +156,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 
 /// One bookmark: a chevron that shows its description, its name (a click zooms to it; a double
 /// click renames it; right-click for the rest), and Zoom To, Pan To, Update and Delete.
-fn row(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, map: &str, in_view: bool, count: usize, m: &Mark) {
+fn row(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, map: &str, in_view: bool, count: usize, m: &Mark) {
     let key = (map.to_string(), m.name.clone());
     let open = app.ui.bookmarks.open.as_ref() == Some(&key);
     let p = json!({"map": map, "name": m.name});
@@ -212,7 +212,7 @@ fn row(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, map: &str, in_view: bool, 
 }
 
 /// The right-click menu of a bookmark's name.
-fn menu(app: &mut RustGisApp, ui: &mut Ui, map: &str, in_view: bool, count: usize, m: &Mark, p: &Value) {
+fn menu(app: &mut powergisApp, ui: &mut Ui, map: &str, in_view: bool, count: usize, m: &Mark, p: &Value) {
     if ui.button(tl!("Rename")).clicked() {
         start(app, map, m, Field::Name);
         ui.close();
@@ -243,13 +243,13 @@ fn menu(app: &mut RustGisApp, ui: &mut Ui, map: &str, in_view: bool, count: usiz
     }
 }
 
-fn start(app: &mut RustGisApp, map: &str, m: &Mark, field: Field) {
+fn start(app: &mut powergisApp, map: &str, m: &Mark, field: Field) {
     let text = if field == Field::Name { m.name.clone() } else { m.description.clone() };
     app.ui.bookmarks.editing = Some(Edit { map: map.to_string(), name: m.name.clone(), field, text, focused: false });
 }
 
 /// The box a bookmark is renamed in: Enter (or clicking away) renames it, Escape leaves it as it was.
-fn name_box(app: &mut RustGisApp, ui: &mut Ui, p: &Value) {
+fn name_box(app: &mut powergisApp, ui: &mut Ui, p: &Value) {
     let Some(mut e) = app.ui.bookmarks.editing.take() else { return };
     let r = ui.add(egui::TextEdit::singleline(&mut e.text).desired_width(ui.available_width()).event_filter(KEYS));
     if !e.focused {
@@ -272,7 +272,7 @@ fn name_box(app: &mut RustGisApp, ui: &mut Ui, p: &Value) {
 }
 
 /// A bookmark's description, or the box it is edited in.
-fn description(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens, map: &str, m: &Mark, p: &Value) {
+fn description(app: &mut powergisApp, ui: &mut Ui, t: &Tokens, map: &str, m: &Mark, p: &Value) {
     if !app.ui.bookmarks.editing.as_ref().is_some_and(|e| e.is(map, &m.name, Field::Description)) {
         if m.description.is_empty() {
             if ui.link(tl!("Add a description.")).clicked() {

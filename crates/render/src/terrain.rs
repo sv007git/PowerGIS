@@ -6,12 +6,12 @@ use std::cell::RefCell;
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use rustgis_data::raster::Raster;
-use rustgis_geom::{Coord, MERCATOR_R};
-use rustgis_map::view::{TerrainEncoding, TerrainSource};
-use rustgis_map::{Camera, Map};
-use rustgis_tiles::cache::{self, Payload, State, Want};
-use rustgis_tiles::template::{self, TileId};
+use powergis_data::raster::Raster;
+use powergis_geom::{Coord, MERCATOR_R};
+use powergis_map::view::{TerrainEncoding, TerrainSource};
+use powergis_map::{Camera, Map};
+use powergis_tiles::cache::{self, Payload, State, Want};
+use powergis_tiles::template::{self, TileId};
 
 /// Cells along each side of a tilted view's band laid over the relief, in the settled frame and
 /// the moving drape alike: fine enough to follow it, few enough to draw quickly.
@@ -56,10 +56,10 @@ impl Ground {
     /// there.
     pub fn of(map: &Map, camera: &Camera) -> Option<Ground> {
         let t = map.view.terrain.as_ref()?;
-        if map.projection != rustgis_map::Projection::WebMercator {
+        if map.projection != powergis_map::Projection::WebMercator {
             return None;
         }
-        let exaggeration = if t.exaggeration.is_finite() { t.exaggeration.clamp(0.0, rustgis_map::view::MAX_EXAGGERATION) } else { 1.0 };
+        let exaggeration = if t.exaggeration.is_finite() { t.exaggeration.clamp(0.0, powergis_map::view::MAX_EXAGGERATION) } else { 1.0 };
         let heights = match &t.source {
             TerrainSource::Layer(name) => {
                 let raster = map.layer_by_name(name)?.raster.as_ref()?.data.clone()?;
@@ -236,13 +236,13 @@ fn pixel_height(pm: &tiny_skia::Pixmap, encoding: TerrainEncoding, fx: f64, fy: 
 
 /// The ground metres a Web Mercator unit spans at `m` on a body `body` times the Earth's size.
 fn per_unit(m: Coord, body: f64) -> f64 {
-    (rustgis_map::projection::Flat::Mercator.ground_per_unit(m) * body).max(1e-9)
+    (powergis_map::projection::Flat::Mercator.ground_per_unit(m) * body).max(1e-9)
 }
 
 #[cfg(test)]
 mod tests {
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform};
-    use rustgis_geom::lonlat_to_merc;
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform};
+    use powergis_geom::lonlat_to_merc;
 
     use super::*;
 
@@ -297,7 +297,7 @@ mod tests {
     fn heights_stand_in_the_metres_of_the_body() {
         // A metre on Mars spans more of the (Earth-sized) map than one on the Earth (#223).
         let at = Coord::new(0.0, 0.0);
-        let mars = rustgis_geom::Body::get("mars").ratio();
+        let mars = powergis_geom::Body::get("mars").ratio();
         assert!((per_unit(at, 1.0) / per_unit(at, mars) - 1.0 / mars).abs() < 1e-9);
     }
 

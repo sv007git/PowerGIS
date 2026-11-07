@@ -3,13 +3,13 @@
 //! bind layers to it.
 
 use egui::{Color32, Rect, Sense, Stroke, Ui, pos2, vec2};
-use rustgis_engine::data::time::Unit;
-use rustgis_engine::map::time::{TimeSlider, has_dates, histogram, instants, time_fields};
+use powergis_engine::data::time::Unit;
+use powergis_engine::map::time::{TimeSlider, has_dates, histogram, instants, time_fields};
 use serde_json::{Value, json};
 
 use crate::theme::{Tokens, regular, semibold};
 use crate::widgets::small;
-use crate::{RustGisApp, icons};
+use crate::{powergisApp, icons};
 
 /// The bar's own state.
 #[derive(Default)]
@@ -28,7 +28,7 @@ pub struct TimeBarState {
 }
 
 /// The slider's steps, listed again only when its span or steps change (not when it moves).
-fn steps(app: &mut RustGisApp, t: &TimeSlider) -> std::sync::Arc<Vec<f64>> {
+fn steps(app: &mut powergisApp, t: &TimeSlider) -> std::sync::Arc<Vec<f64>> {
     let same = |a: &TimeSlider| (a.start, a.end, a.unit, a.interval, &a.dates) == (t.start, t.end, t.unit, t.interval, &t.dates);
     if let Some((k, s)) = &app.time.steps
         && same(k)
@@ -63,13 +63,13 @@ fn unit_label(u: Unit) -> String {
 }
 
 /// Whether the bar shows: the map has a slider and the bar wasn't closed.
-pub fn open(app: &RustGisApp) -> bool {
+pub fn open(app: &powergisApp) -> bool {
     app.session.map().time.is_some() && !app.time.hidden
 }
 
 /// Opens the time slider: shows the bar when the map has one, else binds the active layer (or the
 /// first with a date field).
-pub fn toggle(app: &mut RustGisApp) -> Result<Value, String> {
+pub fn toggle(app: &mut powergisApp) -> Result<Value, String> {
     if app.session.map().time.is_some() {
         app.time.hidden = !app.time.hidden;
         if app.time.hidden {
@@ -92,7 +92,7 @@ pub fn toggle(app: &mut RustGisApp) -> Result<Value, String> {
 }
 
 /// Starts or stops playing (from the start when at the end and not looping).
-pub fn play(app: &mut RustGisApp) -> Result<Value, String> {
+pub fn play(app: &mut powergisApp) -> Result<Value, String> {
     let Some(t) = app.session.map().time.clone() else { return Err("the time slider is off".into()) };
     if app.time.playing.take().is_none() {
         let all = steps(app, &t);
@@ -106,7 +106,7 @@ pub fn play(app: &mut RustGisApp) -> Result<Value, String> {
 }
 
 /// Exports the steps as an animated GIF.
-pub fn export(app: &mut RustGisApp) -> Result<Value, String> {
+pub fn export(app: &mut powergisApp) -> Result<Value, String> {
     if app.services.download.is_some() {
         return Err("exporting time animations needs the desktop app".into());
     }
@@ -118,7 +118,7 @@ pub fn export(app: &mut RustGisApp) -> Result<Value, String> {
 }
 
 /// Steps while playing.
-fn advance(app: &mut RustGisApp, ui: &Ui) {
+fn advance(app: &mut powergisApp, ui: &Ui) {
     let Some(elapsed) = app.time.playing else { return };
     let Some(t) = app.session.map().time.clone() else {
         app.time.playing = None;
@@ -144,11 +144,11 @@ fn advance(app: &mut RustGisApp, ui: &Ui) {
 type CountsKey = (u64, usize, Option<f64>, Option<f64>, usize, Unit, u32);
 
 /// A bound layer as its counts were made from.
-type Bound = (u32, String, rustgis_engine::data::Features, Vec<rustgis_engine::data::Field>);
+type Bound = (u32, String, powergis_engine::data::Features, Vec<powergis_engine::data::Field>);
 
 /// The features of the bound layers in each step's own span (a step, whatever the window);
 /// worked out again only when the layers or steps change.
-fn counts(app: &mut RustGisApp, t: &TimeSlider, steps: &[f64]) -> Vec<u32> {
+fn counts(app: &mut powergisApp, t: &TimeSlider, steps: &[f64]) -> Vec<u32> {
     let key = (
         app.session.opened,
         app.session.project.active_map,
@@ -183,7 +183,7 @@ fn counts(app: &mut RustGisApp, t: &TimeSlider, steps: &[f64]) -> Vec<u32> {
     out
 }
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui) {
     if !open(app) {
         app.time.playing = None;
         return;
@@ -212,7 +212,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn header(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64], tk: &Tokens) {
+fn header(app: &mut powergisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64], tk: &Tokens) {
     let (r, _) = ui.allocate_exact_size(vec2(18.0, 18.0), Sense::hover());
     icons::paint(ui.painter(), r, "time_slider", tk.icon, tk.accent);
     ui.label(egui::RichText::new(tl!("Time Slider")).font(semibold(13.0)));
@@ -267,7 +267,7 @@ fn header(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64], tk: 
         if ui.selectable_label(looped, tl!("Loop")).on_hover_text(tl!("Start over at the end while playing.")).clicked() {
             let _ = app.run("time.set", json!({"loop": !looped}));
         }
-        let presets = rustgis_engine::cmd::time::SHOWS;
+        let presets = powergis_engine::cmd::time::SHOWS;
         let shown = presets.iter().find(|(_, b, a, c)| *b == t.before && *a == t.after && *c == t.cumulative).map_or("custom", |p| p.0);
         egui::ComboBox::from_id_salt("time_show")
             .selected_text(show_label(shown))
@@ -312,7 +312,7 @@ fn header(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64], tk: 
 }
 
 /// Binds and unbinds layers, choosing each one's date field.
-fn layers_menu(app: &mut RustGisApp, ui: &mut Ui) {
+fn layers_menu(app: &mut powergisApp, ui: &mut Ui) {
     let m = app.session.map();
     let n = m.layers.iter().filter(|l| l.time.is_some()).count() + m.tiles.iter().filter(|t| t.time_url.is_some()).count();
     let button = ui.button(crate::i18n::fmt("Layers ({n})", &[("n", &n.to_string())]));
@@ -362,7 +362,7 @@ fn layers_menu(app: &mut RustGisApp, ui: &mut Ui) {
     });
 }
 
-fn transport(app: &mut RustGisApp, ui: &mut Ui, steps: &[f64]) {
+fn transport(app: &mut powergisApp, ui: &mut Ui, steps: &[f64]) {
     let playing = app.time.playing.is_some();
     small(ui, app, "time_first", "", "Go to the first step.", "time.goTo", json!({"step": 0}), false);
     small(ui, app, "time_prev", "", "Go back a step.", "time.step", json!({"by": -1}), false);
@@ -383,7 +383,7 @@ fn transport(app: &mut RustGisApp, ui: &mut Ui, steps: &[f64]) {
 
 /// The timeline: a bar per step (its height the features it holds), the window shaded, and the
 /// current step marked; click or drag to move.
-fn timeline(app: &mut RustGisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64], cur: usize, tk: &Tokens) {
+fn timeline(app: &mut powergisApp, ui: &mut Ui, t: &TimeSlider, steps: &[f64], cur: usize, tk: &Tokens) {
     let counts = counts(app, t, steps);
     let (r, resp) = ui.allocate_exact_size(vec2(ui.available_width(), ui.available_height().max(40.0)), Sense::click_and_drag());
     let p = ui.painter_at(r);

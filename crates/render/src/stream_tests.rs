@@ -1,7 +1,7 @@
 use super::*;
-use rustgis_data::source::{Batch, FeatureSource, Request, SourceInfo};
-use rustgis_data::{Dataset, Feature, Field, FieldType, Value};
-use rustgis_map::{Layer, Renderer, source::SourceLayer};
+use powergis_data::source::{Batch, FeatureSource, Request, SourceInfo};
+use powergis_data::{Dataset, Feature, Field, FieldType, Value};
+use powergis_map::{Layer, Renderer, source::SourceLayer};
 
 thread_local! {
     /// Complete chunks drawing from display geometry, and chunks retaining a full projection.
@@ -18,7 +18,7 @@ impl FeatureSource for Chunks {
     fn info(&self) -> &SourceInfo {
         &self.info
     }
-    fn read(&self, _: &Request) -> rustgis_data::Result<Batch> {
+    fn read(&self, _: &Request) -> powergis_data::Result<Batch> {
         Ok(Batch {
             features: self.ds.features.iter().take(1).cloned().collect(),
             matched: self.ds.features.len() as u64,
@@ -33,11 +33,11 @@ impl FeatureSource for Chunks {
         &self,
         _: Option<Extent>,
         _: usize,
-        visit: &mut dyn FnMut(Vec<Feature>) -> rustgis_data::Result<()>,
-    ) -> rustgis_data::Result<Batch> {
+        visit: &mut dyn FnMut(Vec<Feature>) -> powergis_data::Result<()>,
+    ) -> powergis_data::Result<Batch> {
         if self.size == 0 {
             visit(self.ds.features.iter().take(1).cloned().collect())?;
-            return Err(rustgis_data::DataError::Format("cancelled after a source failure".into()));
+            return Err(powergis_data::DataError::Format("cancelled after a source failure".into()));
         }
         for chunk in self.ds.features.chunks(self.size) {
             visit(chunk.to_vec())?;
@@ -57,7 +57,7 @@ fn settle(map: &mut Map, view: &View) {
         let pending = if view.camera.pitch > 0.0 {
             sync_tilted_view(map, view)
         } else {
-            let scale = map.ground_res_at(&view.camera) / rustgis_geom::PIXEL_M;
+            let scale = map.ground_res_at(&view.camera) / powergis_geom::PIXEL_M;
             map.sync_sources(&view_lonlat(map, view), scale, false)
         };
         if !pending {
@@ -96,7 +96,7 @@ fn complete_chunks_preserve_painter_order_filters_transparency_labels_and_select
         fn info(&self) -> &SourceInfo {
             self.0.info()
         }
-        fn read(&self, _: &Request) -> rustgis_data::Result<Batch> {
+        fn read(&self, _: &Request) -> powergis_data::Result<Batch> {
             Ok(Batch {
                 features: [5, 3].iter().filter_map(|row| self.0.ds.features.get(*row).cloned()).collect(),
                 matched: self.0.ds.features.len() as u64,
@@ -111,8 +111,8 @@ fn complete_chunks_preserve_painter_order_filters_transparency_labels_and_select
             &self,
             extent: Option<Extent>,
             bytes: usize,
-            visit: &mut dyn FnMut(Vec<Feature>) -> rustgis_data::Result<()>,
-        ) -> rustgis_data::Result<Batch> {
+            visit: &mut dyn FnMut(Vec<Feature>) -> powergis_data::Result<()>,
+        ) -> powergis_data::Result<Batch> {
             self.0.visit_chunks(extent, bytes, visit)
         }
     }
@@ -134,7 +134,7 @@ fn complete_chunks_preserve_painter_order_filters_transparency_labels_and_select
     }
     let mut m = Map::new("test");
     m.add_dataset(ds);
-    m.camera = Camera::new(rustgis_geom::lonlat_to_merc(Coord::new(0.02, 0.02)), 80.0);
+    m.camera = Camera::new(powergis_geom::lonlat_to_merc(Coord::new(0.02, 0.02)), 80.0);
     let l = &mut m.layers[0];
     l.transparency = 0.35;
     l.selection = vec![5, 3];
@@ -144,7 +144,7 @@ fn complete_chunks_preserve_painter_order_filters_transparency_labels_and_select
     l.renderer = Renderer::Single(Symbol { fill: Rgba::new(210, 60, 25, 120), ..Symbol::default_for(GeometryType::Polygon, l.id) });
     let view = View { width: 320.0, height: 240.0, pixels_per_point: 1.0, camera: m.camera, sky: false };
     for extrusion in [None, Some(true), Some(false)] {
-        m.layers[0].extrusion = extrusion.map(|shadows| rustgis_map::effects::Extrusion {
+        m.layers[0].extrusion = extrusion.map(|shadows| powergis_map::effects::Extrusion {
             height: 1500.0,
             field: None,
             factor: 1.0,
@@ -185,7 +185,7 @@ fn complete_chunks_accumulate_point_bins_across_boundaries() {
     let mut m = Map::new("test");
     m.add_dataset(ds);
     m.camera = Camera::new(Coord::new(0.0, 0.0), 30.0);
-    m.layers[0].aggregation = Some(rustgis_map::effects::Aggregation { size: 18.0, hexagons: false });
+    m.layers[0].aggregation = Some(powergis_map::effects::Aggregation { size: 18.0, hexagons: false });
     m.layers[0].selection = vec![0];
     let view = View { width: 320.0, height: 240.0, pixels_per_point: 1.0, camera: m.camera, sky: false };
     let expected = render(&mut m.clone(), &view).unwrap();
@@ -250,7 +250,7 @@ fn complete_chunks_preserve_reused_stroke_paths_with_overlap_and_alpha() {
         );
     }
     let mut base = Map::new("stroke paths");
-    base.basemap = rustgis_map::Basemap::Blank;
+    base.basemap = powergis_map::Basemap::Blank;
     base.add_dataset(ds);
     let layer = &mut base.layers[0];
     layer.definition_query = Some("value < 34".into());
@@ -303,7 +303,7 @@ fn complete_chunks_preserve_label_classes_projection_rotation_and_png_export() {
     class.color = Rgba::rgb(180, 20, 30);
     class.bold = true;
     l.labels.classes.push(class);
-    l.display_filters.push(rustgis_map::effects::DisplayFilter {
+    l.display_filters.push(powergis_map::effects::DisplayFilter {
         name: "subset".into(),
         min_scale: None,
         max_scale: None,
@@ -311,11 +311,11 @@ fn complete_chunks_preserve_label_classes_projection_rotation_and_png_export() {
     });
     l.selection = vec![0];
     l.line_strokes = vec![
-        rustgis_map::LineStroke { color: Some(Rgba::rgb(20, 20, 20)), width: Some(5.0), offset: 3.0, ..Default::default() },
-        rustgis_map::LineStroke { color: Some(Rgba::rgb(240, 180, 40)), width: Some(2.0), offset: 3.0, ..Default::default() },
+        powergis_map::LineStroke { color: Some(Rgba::rgb(20, 20, 20)), width: Some(5.0), offset: 3.0, ..Default::default() },
+        powergis_map::LineStroke { color: Some(Rgba::rgb(240, 180, 40)), width: Some(2.0), offset: 3.0, ..Default::default() },
     ];
     let view = View { width: 320.0, height: 240.0, pixels_per_point: 1.0, camera: Camera::new(Coord::new(0.0, 0.0), 80.0), sky: false };
-    for projection in [rustgis_map::Projection::default(), rustgis_map::Projection::Custom("robinson".into())] {
+    for projection in [powergis_map::Projection::default(), powergis_map::Projection::Custom("robinson".into())] {
         base.projection = projection;
         for bearing in [0.0, 25.0] {
             let view = View { camera: Camera { bearing, ..view.camera }, ..view };
@@ -434,10 +434,10 @@ fn actual_shapefile_export_is_complete_despite_one_row_interaction_limit() {
             vec![Value::Text(format!("p{i}")), Value::Int(i)],
         );
     }
-    for (ext, bytes) in rustgis_data::io::shapefile_parts(&ds).unwrap().0 {
+    for (ext, bytes) in powergis_data::io::shapefile_parts(&ds).unwrap().0 {
         std::fs::write(path.with_extension(ext), bytes).unwrap();
     }
-    let source = rustgis_data::source::shp::ShpSource::open_path(&path, "complete").unwrap();
+    let source = powergis_data::source::shp::ShpSource::open_path(&path, "complete").unwrap();
     ds.fields = source.info().fields.clone();
     ds.features = source.read(&Request::all()).unwrap().features.into();
     let mut base = Map::new("complete");
@@ -448,14 +448,14 @@ fn actual_shapefile_export_is_complete_despite_one_row_interaction_limit() {
     let symbol = base.layers[0].symbol(0);
     let renderers = vec![
         Renderer::Single(symbol),
-        Renderer::unique(&base.layers[0].dataset, &[], "value", rustgis_map::Ramp::Ember, symbol).unwrap(),
+        Renderer::unique(&base.layers[0].dataset, &[], "value", powergis_map::Ramp::Ember, symbol).unwrap(),
         Renderer::graduated(
             &base.layers[0].dataset,
             &[],
             "value",
             4,
-            rustgis_map::ClassMethod::EqualInterval,
-            rustgis_map::Ramp::Ember,
+            powergis_map::ClassMethod::EqualInterval,
+            powergis_map::Ramp::Ember,
             symbol,
         )
         .unwrap(),
@@ -471,14 +471,14 @@ fn actual_shapefile_export_is_complete_despite_one_row_interaction_limit() {
         let mut source = SourceLayer::from_path(
             path.to_string_lossy(),
             None,
-            Box::new(rustgis_data::source::shp::ShpSource::open_path(&path, "complete").unwrap()),
+            Box::new(powergis_data::source::shp::ShpSource::open_path(&path, "complete").unwrap()),
         );
         source.limit = 1;
         actual.layers[0].source = Some(source);
         let bytes = render_png(&mut actual, &view).unwrap();
         assert_eq!(bytes, render_png(&mut base.clone(), &view).unwrap());
         assert_eq!(actual.layers[0].dataset.features.len(), 1, "export must not replace the interaction window");
-        if let Ok(path) = std::env::var("RUSTGIS_CHUNK_TEST_PNG") {
+        if let Ok(path) = std::env::var("powergis_CHUNK_TEST_PNG") {
             std::fs::write(path, bytes).unwrap();
         }
     }
@@ -510,7 +510,7 @@ fn partial_source_failure_and_incomplete_summary_reach_unchanged_owner() {
 
 #[test]
 fn layout_export_keeps_all_drawn_legend_classes() {
-    use rustgis_map::layout::{ElementKind, FrameShape, INDICATOR_COLOR, INDICATOR_WIDTH, Layout};
+    use powergis_map::layout::{ElementKind, FrameShape, INDICATOR_COLOR, INDICATOR_WIDTH, Layout};
     let mut ds = Dataset::new("classes", GeometryType::Point, vec![Field::new("value", FieldType::Integer)]);
     for i in 0..12 {
         ds.push(Some(Geometry::Point(Coord::new((i % 4) as f64 * 0.02, (i / 4) as f64 * 0.02))), vec![Value::Int(i)]);
@@ -518,7 +518,7 @@ fn layout_export_keeps_all_drawn_legend_classes() {
     let mut base = Map::new("legend");
     base.add_dataset(ds);
     let layer = &mut base.layers[0];
-    layer.renderer = Renderer::unique(&layer.dataset, &[], "value", rustgis_map::Ramp::Ember, layer.symbol(0)).unwrap();
+    layer.renderer = Renderer::unique(&layer.dataset, &[], "value", powergis_map::Ramp::Ember, layer.symbol(0)).unwrap();
     layer.definition_query = Some("value >= 2".into());
     let mut page = Layout::new("page", 140.0, 100.0);
     let frame = page.add(
@@ -644,7 +644,7 @@ fn extrusion_spool_failures_retain_the_actual_source_diagnostic() {
     );
     let mut base = Map::new("spool failure");
     base.add_dataset(ds);
-    base.layers[0].extrusion = Some(rustgis_map::effects::Extrusion {
+    base.layers[0].extrusion = Some(powergis_map::effects::Extrusion {
         height: 100.0,
         field: None,
         factor: 1.0,
@@ -698,7 +698,7 @@ fn pitched_mixed_sources_keep_windows_and_pending_on_the_owner() {
         fn info(&self) -> &SourceInfo {
             &self.chunks.info
         }
-        fn read(&self, _: &Request) -> rustgis_data::Result<Batch> {
+        fn read(&self, _: &Request) -> powergis_data::Result<Batch> {
             let (lock, wake) = &*self.gate;
             let mut ready = lock.lock().unwrap();
             while !*ready {
@@ -780,7 +780,7 @@ fn perspective_snapshot_budget_counts_all_layers_capacity_and_nested_values() {
         geometry: Some(Geometry::MultiPoint(vec![Coord::new(0.0, 0.0); 8])),
         attrs: vec![Value::Text("large attribute".repeat(16))],
     };
-    let row_bytes = rustgis_data::source::chunk_memory::feature_bytes(&row) + std::mem::size_of::<Feature>();
+    let row_bytes = powergis_data::source::chunk_memory::feature_bytes(&row) + std::mem::size_of::<Feature>();
     let mut budget = SnapshotBudget::new(row_bytes);
     let mut first = Vec::new();
     budget.append(&mut first, vec![row.clone()]).unwrap();
@@ -841,7 +841,7 @@ fn masks_skip_undrawn_targets_and_reuse_one_complete_source_with_distinct_swipes
         fn info(&self) -> &SourceInfo {
             self.chunks.info()
         }
-        fn read(&self, request: &Request) -> rustgis_data::Result<Batch> {
+        fn read(&self, request: &Request) -> powergis_data::Result<Batch> {
             self.chunks.read(request)
         }
         fn streams_chunks(&self) -> bool {
@@ -851,8 +851,8 @@ fn masks_skip_undrawn_targets_and_reuse_one_complete_source_with_distinct_swipes
             &self,
             extent: Option<Extent>,
             bytes: usize,
-            visit: &mut dyn FnMut(Vec<Feature>) -> rustgis_data::Result<()>,
-        ) -> rustgis_data::Result<Batch> {
+            visit: &mut dyn FnMut(Vec<Feature>) -> powergis_data::Result<()>,
+        ) -> powergis_data::Result<Batch> {
             self.calls.fetch_add(1, Ordering::Relaxed);
             self.chunks.visit_chunks(extent, bytes, visit)
         }
@@ -889,7 +889,7 @@ fn masks_skip_undrawn_targets_and_reuse_one_complete_source_with_distinct_swipes
         bursts: Default::default(),
     };
     let flat = base.flat();
-    let scale = base.ground_res_at(&view.camera) / rustgis_geom::PIXEL_M;
+    let scale = base.ground_res_at(&view.camera) / powergis_geom::PIXEL_M;
     let expected = layer_masks(&mut base.clone(), &ctx, 120, 90, &flat, "test", scale).unwrap();
     let info = streamed(base.layer(mask).unwrap(), 1).source.unwrap().info().unwrap().clone();
     let calls = Arc::new(AtomicUsize::new(0));
@@ -912,7 +912,7 @@ fn masks_skip_undrawn_targets_and_reuse_one_complete_source_with_distinct_swipes
                 0 => map.layer_mut(id).unwrap().visible = false,
                 1 => map.layer_mut(id).unwrap().max_scale = Some(scale * 2.0),
                 2 | 3 => {
-                    let mut group = rustgis_map::LayerGroup::new(format!("group {id}"));
+                    let mut group = powergis_map::LayerGroup::new(format!("group {id}"));
                     group.id = id;
                     group.children = vec![id];
                     if mode == 2 {
@@ -1114,7 +1114,7 @@ fn layout_failure_policy_only_requires_active_complete_sources_and_masks() {
     assert!(!layout::frame_requires_complete(&map, &view));
     map.layer_mut(mask).unwrap().visible = true;
     assert!(layout::frame_requires_complete(&map, &view));
-    let mut group = rustgis_map::LayerGroup::new("hidden group");
+    let mut group = powergis_map::LayerGroup::new("hidden group");
     group.visible = false;
     group.children = vec![mask];
     map.groups.push(group);
@@ -1124,7 +1124,7 @@ fn layout_failure_policy_only_requires_active_complete_sources_and_masks() {
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn layout_export_rejects_unopened_local_shapefiles_and_required_masks() {
-    use rustgis_map::layout::{ElementKind, FrameShape, INDICATOR_COLOR, INDICATOR_WIDTH, Layout};
+    use powergis_map::layout::{ElementKind, FrameShape, INDICATOR_COLOR, INDICATOR_WIDTH, Layout};
     let dir = tempfile::tempdir().unwrap();
     let mut base = Map::new("persisted sources");
     let mut points = Dataset::new("points", GeometryType::Point, vec![]);
@@ -1228,7 +1228,7 @@ impl FeatureSource for CountedLod {
         self.chunks.info()
     }
     /// Interaction-window reads do not count as full render traversals.
-    fn read(&self, request: &Request) -> rustgis_data::Result<Batch> {
+    fn read(&self, request: &Request) -> powergis_data::Result<Batch> {
         self.chunks.read(request)
     }
     /// Advertises the same complete traversal capability as the wrapped source.
@@ -1240,8 +1240,8 @@ impl FeatureSource for CountedLod {
         &self,
         extent: Option<Extent>,
         bytes: usize,
-        visit: &mut dyn FnMut(Vec<Feature>) -> rustgis_data::Result<()>,
-    ) -> rustgis_data::Result<Batch> {
+        visit: &mut dyn FnMut(Vec<Feature>) -> powergis_data::Result<()>,
+    ) -> powergis_data::Result<Batch> {
         self.calls.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         self.chunks.visit_chunks(extent, bytes, visit)
     }
@@ -1267,7 +1267,7 @@ fn streamed_lod_reuses_decisions_across_render_snapshots_and_pans() {
         let n = if detailed { 210_001 } else { 101 };
         ds.push(Some(Geometry::Line(vec![(0..n).map(|i| Coord::new(i as f64 / n as f64 * 0.2 - 0.1, 0.0)).collect()])), vec![]);
         let mut base = Map::new("LOD visits");
-        base.basemap = rustgis_map::Basemap::Blank;
+        base.basemap = powergis_map::Basemap::Blank;
         base.add_dataset(ds);
         let (layer, calls) = counted_lod(&base.layers[0], 1);
         let mut actual = base.clone();
@@ -1292,7 +1292,7 @@ fn streamed_lod_separates_levels_projections_and_source_resets() {
     let mut ds = Dataset::new("LOD invalidation", GeometryType::Polyline, vec![]);
     ds.push(Some(Geometry::Line(vec![vec![Coord::new(-0.1, 0.0), Coord::new(0.1, 0.0)]])), vec![]);
     let mut base = Map::new("LOD invalidation");
-    base.basemap = rustgis_map::Basemap::Blank;
+    base.basemap = powergis_map::Basemap::Blank;
     base.add_dataset(ds);
     let (layer, calls) = counted_lod(&base.layers[0], 1);
     let mut actual = base.clone();
@@ -1302,11 +1302,11 @@ fn streamed_lod_separates_levels_projections_and_source_resets() {
     // Resolutions 80 and 90 share a level. Density 2 selects the next finer level;
     // a different projection needs its own counts, even at the same tolerance.
     for (res, ppp, projection, visits) in [
-        (80.0, 1.0, rustgis_map::Projection::default(), 2),
-        (90.0, 1.0, rustgis_map::Projection::default(), 1),
-        (80.0, 2.0, rustgis_map::Projection::default(), 2),
-        (80.0, 2.0, rustgis_map::Projection::Custom("robinson".into()), 2),
-        (80.0, 2.0, rustgis_map::Projection::default(), 1),
+        (80.0, 1.0, powergis_map::Projection::default(), 2),
+        (90.0, 1.0, powergis_map::Projection::default(), 1),
+        (80.0, 2.0, powergis_map::Projection::default(), 2),
+        (80.0, 2.0, powergis_map::Projection::Custom("robinson".into()), 2),
+        (80.0, 2.0, powergis_map::Projection::default(), 1),
     ] {
         view.camera.res = res;
         view.pixels_per_point = ppp;
@@ -1338,11 +1338,11 @@ fn streamed_lod_retries_failed_decisions_and_bounds_retained_levels() {
     let (layer, _) = counted_lod(&Layer::new(1, ds), 1);
     let source = layer.source.as_ref().unwrap();
     for _ in 0..2 {
-        assert!(source.cached_thinning("mercator", 0, || Err(rustgis_data::DataError::Format("incomplete".into()))).is_err());
+        assert!(source.cached_thinning("mercator", 0, || Err(powergis_data::DataError::Format("incomplete".into()))).is_err());
     }
     assert!(!source.cached_thinning("mercator", 0, || Ok(false)).unwrap());
     assert!(!source.cached_thinning("mercator", 0, || panic!("negative decisions must be cached")).unwrap());
-    for level in 1..=rustgis_map::lod::LEVELS_KEPT as i32 {
+    for level in 1..=powergis_map::lod::LEVELS_KEPT as i32 {
         assert!(source.cached_thinning("mercator", level, || Ok(true)).unwrap());
     }
     // The oldest negative entry was evicted; recomputation may now return a different value.

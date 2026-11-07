@@ -75,7 +75,7 @@ jobs:
         shell: bash
         env:
           TARGET: ${{ matrix.target }}
-        run: cargo build --release --locked -p rustgis -p rustgis-cli ${TARGET:+--target "$TARGET"}
+        run: cargo build --release --locked -p powergis -p powergis-cli ${TARGET:+--target "$TARGET"}
 
       - name: Install packaging tools
         if: runner.os == 'Linux'
@@ -197,8 +197,8 @@ jobs:
         run: |
           $ErrorActionPreference = 'Stop'
           function Check($dir, $scope) {
-            & "$dir\rustgis-cli.exe" logo "$env:RUNNER_TEMP\logo.png" --size 64
-            if ($LASTEXITCODE) { throw "rustgis-cli failed in $dir" }
+            & "$dir\powergis-cli.exe" logo "$env:RUNNER_TEMP\logo.png" --size 64
+            if ($LASTEXITCODE) { throw "powergis-cli failed in $dir" }
             if (-not (Test-Path "$dir\THIRD-PARTY-LICENSES.txt")) { throw "no THIRD-PARTY-LICENSES.txt in $dir" }
             $path = [Environment]::GetEnvironmentVariable('Path', $scope) -split ';'
             if ($path -notcontains $dir.TrimEnd('\') -and $path -notcontains "$($dir.TrimEnd('\'))\") {
@@ -206,7 +206,7 @@ jobs:
             }
           }
           function Gone($dir, $scope) {
-            if (Test-Path "$dir\rustgis.exe") { throw "$dir\rustgis.exe is still there" }
+            if (Test-Path "$dir\powergis.exe") { throw "$dir\powergis.exe is still there" }
             $path = [Environment]::GetEnvironmentVariable('Path', $scope)
             if ($path -and $path.Contains($dir.TrimEnd('\'))) { throw "$dir is still on the $scope PATH" }
           }
@@ -238,17 +238,17 @@ jobs:
       - name: Check the .deb installs
         if: runner.os == 'Linux'
         run: |
-          sudo apt-get install -y ./dist/rustgis_*.deb
-          dpkg-deb -f dist/rustgis_*.deb Depends
-          rustgis-cli logo "$RUNNER_TEMP/logo.png" --size 64
-          test -s /usr/share/doc/rustgis/THIRD-PARTY-LICENSES.txt
+          sudo apt-get install -y ./dist/powergis_*.deb
+          dpkg-deb -f dist/powergis_*.deb Depends
+          powergis-cli logo "$RUNNER_TEMP/logo.png" --size 64
+          test -s /usr/share/doc/powergis/THIRD-PARTY-LICENSES.txt
 
       - name: Check the .rpm installs on Fedora
         if: runner.os == 'Linux'
         run: |
-          rpm -qp --requires dist/rustgis-*.rpm
+          rpm -qp --requires dist/powergis-*.rpm
           docker run --rm -v "$PWD/dist:/dist:ro" fedora:latest sh -c \
-            'dnf install -y -q /dist/rustgis-*.rpm && rustgis-cli logo /tmp/logo.png --size 64'
+            'dnf install -y -q /dist/powergis-*.rpm && powergis-cli logo /tmp/logo.png --size 64'
 
       - name: Check the AppImage runs
         if: runner.os == 'Linux'
@@ -256,20 +256,20 @@ jobs:
           chmod +x dist/*.AppImage
           cd "$RUNNER_TEMP" && rm -rf squashfs-root
           "$GITHUB_WORKSPACE"/dist/*.AppImage --appimage-extract > /dev/null
-          squashfs-root/usr/bin/rustgis-cli logo logo.png --size 64
+          squashfs-root/usr/bin/powergis-cli logo logo.png --size 64
           test -x squashfs-root/AppRun
           # The embedded update information points at the .zsync published beside it.
           "$GITHUB_WORKSPACE"/dist/*.AppImage --appimage-updateinformation | tee update.txt
           grep -q "^gh-releases-zsync|.*|latest|PowerGIS-\*-linux-$(uname -m).AppImage.zsync$" update.txt
           test -s "$GITHUB_WORKSPACE"/dist/*.AppImage.zsync
           # The GUI cannot start on a headless runner: check that its libraries resolve.
-          if ldd squashfs-root/usr/bin/rustgis | grep 'not found'; then exit 1; fi
+          if ldd squashfs-root/usr/bin/powergis | grep 'not found'; then exit 1; fi
           rm -rf squashfs-root
 
       - name: Upload workflow artifact
         uses: actions/upload-artifact@v7
         with:
-          name: rustgis-${{ matrix.os }}
+          name: powergis-${{ matrix.os }}
           path: dist/*
           if-no-files-found: error
 
@@ -291,7 +291,7 @@ jobs:
           tar xzf "$RUNNER_TEMP/trunk.tar.gz" -C "$RUNNER_TEMP/bin" trunk
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: Build the static app
-        working-directory: apps/rustgis-web
+        working-directory: apps/powergis-web
         run: trunk build --release --locked --public-url ./
       - name: Add the service worker
         run: cargo xtask web-pwa dist/web
@@ -310,7 +310,7 @@ jobs:
           (cd dist/web && zip -r "../PowerGIS-$version-web.zip" .)
       - uses: actions/upload-artifact@v7
         with:
-          name: rustgis-web
+          name: powergis-web
           path: dist/PowerGIS-*-web.zip
           if-no-files-found: error
 
@@ -347,7 +347,7 @@ jobs:
 
       - uses: actions/upload-artifact@v7
         with:
-          name: rustgis-sha256sums
+          name: powergis-sha256sums
           path: dist/SHA256SUMS
 
   publish:

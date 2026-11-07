@@ -5,8 +5,8 @@ use std::hash::BuildHasher;
 use std::path::Path;
 use std::sync::{Mutex, MutexGuard, OnceLock};
 
-use rustgis_data::{Dataset, Feature, Field, GeometryType};
-use rustgis_map::Map;
+use powergis_data::{Dataset, Feature, Field, GeometryType};
+use powergis_map::Map;
 use serde::{Deserialize, Serialize};
 
 use crate::GpRecord;
@@ -45,7 +45,7 @@ pub fn opens_as_project(name: &str) -> bool {
 /// dropped on its window do: native projects replace it, GeoLibre projects import a map, and
 /// other files are added as data.
 pub fn open_command(path: &str) -> &'static str {
-    if rustgis_map::geolibre::is_project_file(path) {
+    if powergis_map::geolibre::is_project_file(path) {
         "project.importGeolibre"
     } else if opens_as_project(path) {
         "project.open"
@@ -63,7 +63,7 @@ pub const MAX_BYTES: u64 = 512 << 20;
 /// through a saved S3 connection by the address it wraps, the wrapper rebuilt around it (its
 /// binding and endpoint are provenance, not secrets); a COG's look after either is kept.
 fn saved_address(address: &str) -> Option<String> {
-    use rustgis_data::s3_address;
+    use powergis_data::s3_address;
     if let Some((head, archive)) = crate::sources::template_archive(address) {
         let (file, look) = split_look(archive);
         return saved_address(file).map(|saved| format!("{head}{saved}{look}"));
@@ -75,7 +75,7 @@ fn saved_address(address: &str) -> Option<String> {
         let inner = saved_address(b.url)?;
         return s3_address::bind(b.binding, b.endpoint, &inner).ok().map(|saved| format!("{saved}{look}"));
     }
-    let inner = address.strip_prefix(crate::render::rustgis_tiles::s3::ANONYMOUS).unwrap_or(address);
+    let inner = address.strip_prefix(crate::render::powergis_tiles::s3::ANONYMOUS).unwrap_or(address);
     let (protocol, _) = inner.split_once("://")?;
     if !["http", "https", "s3"].iter().any(|s| protocol.eq_ignore_ascii_case(s)) {
         return None;
@@ -87,13 +87,13 @@ fn saved_address(address: &str) -> Option<String> {
     }
     let rest = rest.split('#').next().unwrap_or(rest);
     let mut out = format!("{scheme}://{rest}");
-    rustgis_data::source::credentials::redact_query(&mut out);
+    powergis_data::source::credentials::redact_query(&mut out);
     (out != address).then_some(out)
 }
 
 /// A COG address without its look (`…#bands=…`), and the look as written.
 fn split_look(address: &str) -> (&str, &str) {
-    let file = crate::render::rustgis_tiles::cog::split(address).0;
+    let file = crate::render::powergis_tiles::cog::split(address).0;
     (file, address.get(file.len()..).unwrap_or(""))
 }
 
@@ -137,7 +137,7 @@ pub struct Project {
     #[serde(default)]
     pub gp_history: Vec<GpRecord>,
     #[serde(default)]
-    pub layouts: Vec<rustgis_map::layout::Layout>,
+    pub layouts: Vec<powergis_map::layout::Layout>,
     /// Folder connections shown in the Browser.
     #[serde(default)]
     pub folders: Vec<String>,
@@ -146,7 +146,7 @@ pub struct Project {
     pub styles: Vec<StyleItem>,
     /// Custom colour ramps, offered beside the built-in ones (renderers keep their own copy).
     #[serde(default)]
-    pub ramps: Vec<rustgis_map::color::CustomRamp>,
+    pub ramps: Vec<powergis_map::color::CustomRamp>,
     /// Step-by-step tasks: guided command sequences.
     #[serde(default)]
     pub tasks: Vec<Task>,
@@ -173,10 +173,10 @@ pub struct Project {
     pub offline_areas: Vec<OfflineArea>,
     /// Reports on layers' records.
     #[serde(default)]
-    pub reports: Vec<rustgis_map::report::Report>,
+    pub reports: Vec<powergis_map::report::Report>,
     /// Presentations: pages of maps, text, images and videos.
     #[serde(default)]
-    pub presentations: Vec<rustgis_map::presentation::Presentation>,
+    pub presentations: Vec<powergis_map::presentation::Presentation>,
     /// Notebooks of text and command cells.
     #[serde(default)]
     pub notebooks: Vec<crate::cmd::notebook::Notebook>,
@@ -271,7 +271,7 @@ pub struct Job {
     pub assigned: String,
     /// The area the job covers (longitude/latitude), if any.
     #[serde(default)]
-    pub extent: Option<rustgis_geom::Extent>,
+    pub extent: Option<powergis_geom::Extent>,
     /// Seconds since 1970.
     pub created: f64,
     #[serde(default)]
@@ -284,7 +284,7 @@ pub struct OfflineArea {
     pub name: String,
     /// The map it came from (by name).
     pub map: String,
-    pub extent: rustgis_geom::Extent,
+    pub extent: powergis_geom::Extent,
     pub created: f64,
     #[serde(default)]
     pub synced: f64,
@@ -298,7 +298,7 @@ pub struct GpEnvironment {
     /// Tools only process features meeting this longitude/latitude extent (when no features are
     /// selected).
     #[serde(default)]
-    pub extent: Option<rustgis_geom::Extent>,
+    pub extent: Option<powergis_geom::Extent>,
     /// The cell size (degrees) of rasters tools create, when they don't say.
     #[serde(default)]
     pub cell_size: Option<f64>,
@@ -382,9 +382,9 @@ pub struct ModelStep {
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct StyleItem {
     pub name: String,
-    pub geometry: rustgis_data::GeometryType,
-    pub renderer: rustgis_map::Renderer,
-    pub labels: rustgis_map::Labeling,
+    pub geometry: powergis_data::GeometryType,
+    pub renderer: powergis_map::Renderer,
+    pub labels: powergis_map::Labeling,
     #[serde(default)]
     pub transparency: f32,
 }
@@ -422,8 +422,8 @@ impl Default for Project {
 pub(crate) fn resolve_file_paths<'a>(dir: &str, paths: impl IntoIterator<Item = (&'a mut String, bool)>) {
     for (p, record) in paths {
         if (!record || ["./", "../", ".\\", "..\\"].iter().any(|prefix| p.starts_with(prefix)))
-            && rustgis_map::paths::is_project_relative(p)
-            && let Some(full) = rustgis_map::paths::resolve(dir, p)
+            && powergis_map::paths::is_project_relative(p)
+            && let Some(full) = powergis_map::paths::resolve(dir, p)
         {
             *p = full;
         }
@@ -447,7 +447,7 @@ impl Project {
         }
         for table in &mut self.tables {
             if let Some(p) = &mut table.dataset.source
-                && rustgis_map::paths::is_local(p)
+                && powergis_map::paths::is_local(p)
             {
                 paths.push((p, true));
             }
@@ -600,7 +600,7 @@ impl Project {
         // or built-in name gets a suffix, so every ramp stays reachable.
         self.ramps.truncate(MAX_ITEMS);
         for r in &mut self.ramps {
-            if rustgis_map::Ramp::from_name(r.name()).is_some() {
+            if powergis_map::Ramp::from_name(r.name()).is_some() {
                 r.name_mut().push_str(" (custom)");
             }
         }
@@ -624,7 +624,7 @@ impl Project {
             // Layer groups likewise: ids of their own, children that exist and are in no other
             // group, numbers in range, parents that exist without a loop or too many levels;
             // each group's layers kept together in the drawing order.
-            m.groups.truncate(rustgis_map::MAX_GROUPS);
+            m.groups.truncate(powergis_map::MAX_GROUPS);
             m.groups.retain_mut(|g| {
                 if g.id == 0 || !ids.insert(g.id) {
                     return false;
@@ -639,25 +639,25 @@ impl Project {
             m.tidy_groups();
             // A projection this version can't use (a hand edit, or a newer file) falls back to
             // Web Mercator rather than being named while another is drawn.
-            if let rustgis_map::Projection::Custom(code) = &m.projection
-                && let Err(e) = rustgis_map::projection::Projector::new(code)
+            if let powergis_map::Projection::Custom(code) = &m.projection
+                && let Err(e) = powergis_map::projection::Projector::new(code)
             {
                 log::warn!("{}: {e}; using Web Mercator", m.name);
-                m.projection = rustgis_map::Projection::WebMercator;
+                m.projection = powergis_map::Projection::WebMercator;
                 // The camera is in the lost projection's units: start from the whole world.
-                m.camera = rustgis_map::Camera::world();
+                m.camera = powergis_map::Camera::world();
             }
             m.camera.clamp();
             // The time slider's window and dated tile addresses, before the addresses are checked.
             m.apply_time();
             for t in &mut m.tiles {
-                if let Some(f) = t.archive_file().filter(|f| rustgis_map::paths::is_project_relative(f)) {
-                    t.error = Some(rustgis_map::paths::unknown_folder(f));
+                if let Some(f) = t.archive_file().filter(|f| powergis_map::paths::is_project_relative(f)) {
+                    t.error = Some(powergis_map::paths::unknown_folder(f));
                 }
             }
             // Tile layers with an address that can't be fetched (a hand edit) are dropped.
             m.tiles.retain_mut(|t| t.repair().map_err(|e| log::warn!("{}: {e}", m.name)).is_ok());
-            m.tiles.truncate(rustgis_map::tiles::MAX_TILE_LAYERS);
+            m.tiles.truncate(powergis_map::tiles::MAX_TILE_LAYERS);
             #[cfg(not(target_arch = "wasm32"))]
             for t in &mut m.tiles {
                 if t.error.is_none()
@@ -674,10 +674,10 @@ impl Project {
                 let unresolved = l
                     .file_paths_mut()
                     .into_iter()
-                    .find(|(p, record)| !record && rustgis_map::paths::is_project_relative(p))
+                    .find(|(p, record)| !record && powergis_map::paths::is_project_relative(p))
                     .map(|(p, _)| p.clone());
                 if let Some(p) = &unresolved {
-                    let error = rustgis_map::paths::unknown_folder(p);
+                    let error = powergis_map::paths::unknown_folder(p);
                     if let Some(rl) = &mut l.raster {
                         rl.error = Some(error.clone());
                         rl.data = None;
@@ -711,7 +711,7 @@ impl Project {
                 l.normalize_selection();
                 let fields = l.dataset.fields.len();
                 for f in &mut l.dataset.features {
-                    f.attrs.resize(fields, rustgis_data::Value::Null);
+                    f.attrs.resize(fields, powergis_data::Value::Null);
                 }
                 l.touch_geometry();
             }
@@ -765,12 +765,12 @@ impl Project {
             self.file_paths_mut()
                 .into_iter()
                 .map(|(p, _)| {
-                    let relative = rustgis_map::paths::is_absolute_local(p)
-                        .then(|| rustgis_map::paths::relative_to(d, p))
+                    let relative = powergis_map::paths::is_absolute_local(p)
+                        .then(|| powergis_map::paths::relative_to(d, p))
                         .flatten()
                         // Keep the traversal stable during restoration, even for an unusually deep
                         // destination whose relative spelling exceeds the local-path size bound.
-                        .filter(|r| rustgis_map::paths::is_local(r));
+                        .filter(|r| powergis_map::paths::is_local(r));
                     relative.map(|r| std::mem::replace(p, r))
                 })
                 .collect()
@@ -852,7 +852,7 @@ impl Project {
     pub fn save(&mut self, path: &Path) -> Result<usize, String> {
         let dir = std::path::absolute(path).ok().and_then(|p| p.parent().map(Path::to_path_buf));
         let (text, stripped) = self.saved_text(dir.as_deref())?;
-        rustgis_data::io::write_atomic(path, text.as_bytes()).map_err(|e| format!("could not save {}: {e}", path.display()))?;
+        powergis_data::io::write_atomic(path, text.as_bytes()).map_err(|e| format!("could not save {}: {e}", path.display()))?;
         Ok(stripped)
     }
 

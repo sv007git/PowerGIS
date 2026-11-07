@@ -832,7 +832,7 @@ mod tests {
 
     #[test]
     fn files_are_written_through_a_temporary() {
-        let dir = std::env::temp_dir().join(format!("rustgis-cog-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-cog-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("out.tif");
         let r = big_rgb();

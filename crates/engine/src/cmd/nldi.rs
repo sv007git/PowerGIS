@@ -1,12 +1,12 @@
 //! USGS NLDI (the Network-Linked Data Index): a point's flowline, the basin draining to it, and
 //! navigation up- or downstream to the flowlines and linked sites on the way, each added as a
-//! GeoJSON layer. Requests and answers are `rustgis_tiles::nldi`'s; the app fetches off the frame
+//! GeoJSON layer. Requests and answers are `powergis_tiles::nldi`'s; the app fetches off the frame
 //! and passes the answers, the command line waits for them.
 
 use serde_json::{Value, json};
 
 use super::{f, ps, uint};
-use crate::render::rustgis_tiles::nldi;
+use crate::render::powergis_tiles::nldi;
 use crate::{CmdResult, CommandSpec as C, Session};
 
 const WHERE: &str = "Home › Add › Web Data › United States › USGS NLDI";
@@ -74,12 +74,12 @@ fn add(s: &mut Session, fc: &Value, name: &str, look: Look) -> Result<Option<u32
     if text.len() > 256 << 20 {
         return Err(format!("{name}: the answer is too large"));
     }
-    let (ds, _) = rustgis_data::io::read_geojson(&text, name).map_err(|e| format!("{name}: {e}"))?;
+    let (ds, _) = powergis_data::io::read_geojson(&text, name).map_err(|e| format!("{name}: {e}"))?;
     let id = super::layer::add_dataset(s, ds);
     if let Some(l) = s.map_mut().layer_mut(id)
-        && let rustgis_map::Renderer::Single(sym) = &mut l.renderer
+        && let powergis_map::Renderer::Single(sym) = &mut l.renderer
     {
-        let rgba = rustgis_map::Rgba::new;
+        let rgba = powergis_map::Rgba::new;
         match look {
             Look::Flowline | Look::Navigation => {
                 let c = if matches!(look, Look::Flowline) { rgba(0, 92, 230, 255) } else { rgba(0, 150, 200, 255) };
@@ -194,12 +194,12 @@ fn navigate(s: &mut Session, p: &Value) -> CmdResult {
 
 #[cfg(not(target_arch = "wasm32"))]
 fn fetch(url: &str) -> Result<Vec<u8>, String> {
-    crate::render::rustgis_tiles::cache::download_blocking(url).map_err(nldi::explain)
+    crate::render::powergis_tiles::cache::download_blocking(url).map_err(nldi::explain)
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 fn fetch_post(url: &str, body: &str) -> Result<Vec<u8>, String> {
-    crate::render::rustgis_tiles::cache::post_json_blocking(url, body)
+    crate::render::powergis_tiles::cache::post_json_blocking(url, body)
 }
 
 #[cfg(target_arch = "wasm32")]

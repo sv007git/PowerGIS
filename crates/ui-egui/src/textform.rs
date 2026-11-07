@@ -5,8 +5,8 @@
 //! and says what was settled; each caller runs its own command.
 
 use egui::{Color32, Ui, vec2};
-use rustgis_engine::map::layout::{FontFamily, MAX_LETTER_SPACING, MIN_LETTER_SPACING, TextAlign};
-use rustgis_engine::render::families;
+use powergis_engine::map::layout::{FontFamily, MAX_LETTER_SPACING, MIN_LETTER_SPACING, TextAlign};
+use powergis_engine::render::families;
 
 use crate::widgets::Dragged;
 
@@ -111,7 +111,7 @@ pub fn show(ui: &mut Ui, id: impl std::hash::Hash + std::fmt::Debug, tokens: &[&
         let saved = *f.size;
         let drag = Dragged::lend(ui, id.with("size"), f.size);
         let r = ui
-            .add(egui::DragValue::new(f.size).range(rustgis_engine::map::graphics::FONT_SIZE).speed(0.2).suffix(" pt"))
+            .add(egui::DragValue::new(f.size).range(powergis_engine::map::graphics::FONT_SIZE).speed(0.2).suffix(" pt"))
             .labelled_by(input_label.id);
         // Named for assistive technology, as its label sits in the other column.
         let size = *f.size;
@@ -258,7 +258,7 @@ pub fn show(ui: &mut Ui, id: impl std::hash::Hash + std::fmt::Debug, tokens: &[&
             }
             // A text not drawn as asked says so here, so the page never differs from what was
             // asked unsaid: a family this computer hasn't, or a serif where none is installed.
-            let serif_drawn = *fam == FontFamily::Serif && rustgis_engine::render::fonts::serif_available();
+            let serif_drawn = *fam == FontFamily::Serif && powergis_engine::render::fonts::serif_available();
             let note = if missing {
                 Some(if serif_drawn {
                     tl!("This font isn't installed here, so the text is drawn in the serif")
@@ -308,7 +308,7 @@ mod tests {
                 let s = show(
                     ui,
                     "form",
-                    &[rustgis_engine::map::graphics::TOKENS, rustgis_engine::map::layout::PAGE_TOKENS],
+                    &[powergis_engine::map::graphics::TOKENS, powergis_engine::map::layout::PAGE_TOKENS],
                     Fields {
                         text: &mut f.text,
                         size: &mut size,

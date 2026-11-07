@@ -1,7 +1,7 @@
 PowerGIS @VERSION@ (portable)
 
-Unzip this folder anywhere and run powergis.exe (or rustgis.exe). No installation or admin rights
-are needed. powergis-cli.exe (or rustgis-cli.exe) is the command line tool: run it from a terminal in
+Unzip this folder anywhere and run powergis.exe. No installation or admin rights
+are needed. powergis-cli.exe is the command line tool: run it from a terminal in
 this folder, or add the folder to your PATH.
 
 Settings and plugins are kept in your user profile (%APPDATA%\PowerGIS and

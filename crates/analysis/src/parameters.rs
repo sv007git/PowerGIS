@@ -1,5 +1,5 @@
 //! Shared metadata for field/statistic editors; command values retain their JSON contracts.
-use rustgis_data::FieldType;
+use powergis_data::FieldType;
 
 /// The vocabulary and object keys of an existing field/statistic list parameter.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -50,7 +50,7 @@ impl StatisticList {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Dataset, Field, GeometryType};
+    use powergis_data::{Dataset, Field, GeometryType};
     use serde_json::json;
 
     /// Editor identities accept execution aliases without rewriting their saved spelling.

@@ -9,7 +9,7 @@
 
 use std::collections::{HashMap, HashSet};
 
-use rustgis_analysis::{ParamKind, ToolSpec};
+use powergis_analysis::{ParamKind, ToolSpec};
 use serde::Serialize;
 use serde_json::{Value, json};
 
@@ -69,7 +69,7 @@ pub fn port_kind(k: ParamKind) -> Option<(PortKind, bool)> {
 
 /// A tool node's tool, if PowerGIS has it.
 pub fn tool_of(node: &ModelNode) -> Option<&'static ToolSpec> {
-    node.tool.as_deref().and_then(crate::cmd::gp::tool_id).and_then(rustgis_analysis::tool)
+    node.tool.as_deref().and_then(crate::cmd::gp::tool_id).and_then(powergis_analysis::tool)
 }
 
 /// The ports edges can come into.
@@ -683,7 +683,7 @@ fn rename(s: &mut Session, id: u32, wanted: &str) -> Option<String> {
 }
 
 /// The JSON a model file holds (`*.model.json`).
-pub const SCHEMA: &str = "https://rustgis.app/schemas/model-graph-v1.json";
+pub const SCHEMA: &str = "https://powergis.app/schemas/model-graph-v1.json";
 
 pub fn to_file(name: &str, g: &ModelGraph) -> Value {
     json!({"$schema": SCHEMA, "version": "1.0.0", "name": name, "graph": g})
@@ -696,9 +696,9 @@ mod tests {
 
     fn session() -> Session {
         let mut s = Session::new(Project::default());
-        let mut points = rustgis_data::Dataset::new("Points", rustgis_data::GeometryType::Point, Vec::new());
-        points.push_next(Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(20.0, 30.0))), Vec::new());
-        s.map_mut().add_layer(rustgis_map::Layer::new(0, points));
+        let mut points = powergis_data::Dataset::new("Points", powergis_data::GeometryType::Point, Vec::new());
+        points.push_next(Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(20.0, 30.0))), Vec::new());
+        s.map_mut().add_layer(powergis_map::Layer::new(0, points));
         s.queue_gp_files = true;
         s.mark_saved();
         s

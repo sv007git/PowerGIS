@@ -36,7 +36,7 @@ Before picking work, read [ROADMAP.md](ROADMAP.md) (check Underway) and
 | L4 | `engine` | `Session`, undo, command registry, sample project |
 | L5 | `assistant` | the AI Assistant: a chat agent (sans I/O: `provider` builds and reads OpenAI Chat Completions/Responses, Anthropic and Gemini requests, `chatgpt` signs in with ChatGPT to use the user's plan, `agent` loops, `tools` run commands; file, network and plugin commands wait for the user's approval) |
 | L6 | `ui-egui` | ribbon, panes, map view, attribute table, dialogs (swappable) |
-| apps | `rustgis`, `rustgis-cli`, `rustgis-web`, `rustgis-python` | desktop app, command line, browser (WebAssembly), the `rustgis` Python package (PyO3, built with maturin) |
+| apps | `powergis`, `powergis-cli`, `powergis-web`, `powergis-python` | desktop app, command line, browser (WebAssembly), the `powergis` Python package (PyO3, built with maturin) |
 
 - **Everything is a command**: a `CommandSpec` in `crates/engine/src/cmd/*.rs`. UI-only
   commands (`ui.*`) live in `crates/ui-egui/src/lib.rs`. The ribbon, shortcuts, command search
@@ -45,9 +45,9 @@ Before picking work, read [ROADMAP.md](ROADMAP.md) (check Underway) and
   [ribbon guidelines](docs/contributing.md#ribbon-guidelines): the tab's purpose, one button per
   destination, labels that say what happens, and what a ribbon pull request states.
 - **Never break wasm**: everything below `apps/` must build for `wasm32-unknown-unknown`
-  (CI runs `cargo build --target wasm32-unknown-unknown -p rustgis-web`; the Zstandard decoder in
-  `rustgis-data` is C, so this needs clang). Use `web_time`, not
-  `std::time`; file access goes through `Services` on the web. `rustgis-geolibre` builds for
+  (CI runs `cargo build --target wasm32-unknown-unknown -p powergis-web`; the Zstandard decoder in
+  `powergis-data` is C, so this needs clang). Use `web_time`, not
+  `std::time`; file access goes through `Services` on the web. `powergis-geolibre` builds for
   both: natively it runs the `geolibre` program; in the browser the web app runs geolibre-rust's
   WASI runner asynchronously (`external_start` → `Services::geolibre_run` → `gp.finish`).
 - **Interface text is translatable**: wrap user-visible literals in `tl!("…")`, use
@@ -66,8 +66,8 @@ Before picking work, read [ROADMAP.md](ROADMAP.md) (check Underway) and
   the paper or standard. Name in the pull request any project whose code you followed (see
   [CONTRIBUTING.md](CONTRIBUTING.md#where-code-comes-from)).
 - Screenshots and other images are not committed here: they live in
-  [opengeos/rustgis-assets](https://github.com/opengeos/rustgis-assets) (WebP, served at
-  `https://assets.rustgis.app/images/…`) and docs link to them by URL.
+  [opengeos/powergis-assets](https://github.com/opengeos/powergis-assets) (WebP, served at
+  `https://assets.powergis.app/images/…`) and docs link to them by URL.
 
 ## Quality gates
 `cargo xtask ci` (fmt, clippy -D warnings, tests, layers) before every commit.
@@ -81,9 +81,9 @@ code, paths, file dialogs). The release build of the apps runs nightly
 `Nightly build failed` issue. `ci:full` also runs the release build on the pull request.
 
 ## Looking at the app
-- `cargo run --release -p rustgis` (opens the World Atlas sample).
-- Headless screenshots: `cargo run --release -p rustgis-ui-egui --example ui_shot -- script.jsonl`
+- `cargo run --release -p powergis` (opens the World Atlas sample).
+- Headless screenshots: `cargo run --release -p powergis-ui-egui --example ui_shot -- script.jsonl`
   (see the example header). For UI work, render the actual changed UI and look at the PNG.
   For substantial visible changes, include screenshots in the PR (before/after where useful);
   see [attachment guidance](docs/contributing.md#documentation).
-- CLI: `rustgis-cli run --sample --cmd 'gp.run={"tool":"buffer","params":{"input":"Cities","distance":100}}' --cmd 'share.exportMap={"path":"out.png"}'`.
+- CLI: `powergis-cli run --sample --cmd 'gp.run={"tool":"buffer","params":{"input":"Cities","distance":100}}' --cmd 'share.exportMap={"path":"out.png"}'`.

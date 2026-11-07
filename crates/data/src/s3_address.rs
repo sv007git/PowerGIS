@@ -1,16 +1,16 @@
 //! The address of a web or `s3://` object read through one saved S3 connection.
 //!
 //! A saved connection's login is kept for the session under its own runtime *binding* (see
-//! `rustgis_tiles::s3`), and an address that must be read with that connection's keys (and no
-//! other's) names it: `rustgis-s3:<binding>:<endpoint-byte-length>:<endpoint>:<inner-url>`. The
+//! `powergis_tiles::s3`), and an address that must be read with that connection's keys (and no
+//! other's) names it: `powergis-s3:<binding>:<endpoint-byte-length>:<endpoint>:<inner-url>`. The
 //! endpoint is the connection's canonical one (empty for AWS), the inner address is a web address
 //! or an `s3://` one, kept verbatim. An empty binding is an address no connection has been chosen
 //! for yet. The reserved [`LEGACY`] marker additionally retains an unknown endpoint while a choice
 //! is pending. Neither can be a live login or fetch data. Nothing here is secret, so a saved
-//! project may keep these addresses; `rustgis_tiles::s3` authorizes live bindings, not this parser.
+//! project may keep these addresses; `powergis_tiles::s3` authorizes live bindings, not this parser.
 
 /// Starts an address read through a saved S3 connection.
-pub const PREFIX: &str = "rustgis-s3:";
+pub const PREFIX: &str = "powergis-s3:";
 /// Reserved unresolved marker for legacy sources whose endpoint is unknown. Never a live login.
 pub const LEGACY: &str = "0000000000000000";
 /// The longest address, in bytes.
@@ -132,68 +132,68 @@ mod tests {
     fn s3_address_round_trips_every_part() {
         let url = "https://minio.example:9000/bucket/a b+c%20d.fgb?list-type=2&prefix=x%2Fy";
         let a = bind(B, "https://minio.example:9000", url).unwrap();
-        assert_eq!(a, format!("rustgis-s3:{B}:26:https://minio.example:9000:{url}"));
+        assert_eq!(a, format!("powergis-s3:{B}:26:https://minio.example:9000:{url}"));
         let p = parse(&a).unwrap().unwrap();
         assert_eq!((p.binding, p.endpoint, p.url), (B, "https://minio.example:9000", url));
         assert_eq!(inner(&a), url);
         // AWS: an empty endpoint; unresolved: an empty binding.
         let aws = bind("", "", "s3://my-bucket/k.tif").unwrap();
-        assert_eq!(aws, "rustgis-s3::0::s3://my-bucket/k.tif");
+        assert_eq!(aws, "powergis-s3::0::s3://my-bucket/k.tif");
         let p = parse(&aws).unwrap().unwrap();
         assert_eq!((p.binding, p.endpoint, p.url), ("", "", "s3://my-bucket/k.tif"));
-        assert_eq!(rebound(&aws, B).unwrap(), format!("rustgis-s3:{B}:0::s3://my-bucket/k.tif"));
+        assert_eq!(rebound(&aws, B).unwrap(), format!("powergis-s3:{B}:0::s3://my-bucket/k.tif"));
         // Not a wrapper: left alone.
         assert_eq!(parse("https://x.org/a").unwrap(), None);
         assert_eq!(inner("https://x.org/a"), "https://x.org/a");
-        assert!(is_wrapper("rustgis-s3:junk") && !is_wrapper("s3://b/k"));
+        assert!(is_wrapper("powergis-s3:junk") && !is_wrapper("s3://b/k"));
     }
 
     #[test]
     fn s3_address_rejects_malformed_values_without_echoing_them() {
         let endpoint = "https://h.example";
-        let good = format!("rustgis-s3:{B}:{}:{endpoint}:https://h.example/b/k", endpoint.len());
+        let good = format!("powergis-s3:{B}:{}:{endpoint}:https://h.example/b/k", endpoint.len());
         assert!(parse(&good).unwrap().is_some());
         let bad = [
             // binding: upper case, short, long, non-hex
-            format!("rustgis-s3:{}:17:{endpoint}:https://h.example/k", B.to_uppercase()),
-            "rustgis-s3:abc:17:https://h.example:https://h.example/k".to_string(),
-            format!("rustgis-s3:{B}0:17:{endpoint}:https://h.example/k"),
-            format!("rustgis-s3:{}:17:{endpoint}:https://h.example/k", "g".repeat(16)),
+            format!("powergis-s3:{}:17:{endpoint}:https://h.example/k", B.to_uppercase()),
+            "powergis-s3:abc:17:https://h.example:https://h.example/k".to_string(),
+            format!("powergis-s3:{B}0:17:{endpoint}:https://h.example/k"),
+            format!("powergis-s3:{}:17:{endpoint}:https://h.example/k", "g".repeat(16)),
             // Unknown origin is only meaningful for a bare s3 object, never a known endpoint.
-            format!("rustgis-s3:{LEGACY}:{}:{endpoint}:s3://b/k", endpoint.len()),
-            format!("rustgis-s3:{LEGACY}:0::https://h.example/b/k"),
+            format!("powergis-s3:{LEGACY}:{}:{endpoint}:s3://b/k", endpoint.len()),
+            format!("powergis-s3:{LEGACY}:0::https://h.example/b/k"),
             // length: missing, signed, too long, past the end, off by one either way
-            format!("rustgis-s3:{B}::{endpoint}:https://h.example/k"),
-            format!("rustgis-s3:{B}:+17:{endpoint}:https://h.example/k"),
-            format!("rustgis-s3:{B}:99999:{endpoint}:https://h.example/k"),
-            format!("rustgis-s3:{B}:2049:{endpoint}:https://h.example/k"),
-            format!("rustgis-s3:{B}:16:{endpoint}:https://h.example/k"),
-            format!("rustgis-s3:{B}:18:{endpoint}:https://h.example/k"),
+            format!("powergis-s3:{B}::{endpoint}:https://h.example/k"),
+            format!("powergis-s3:{B}:+17:{endpoint}:https://h.example/k"),
+            format!("powergis-s3:{B}:99999:{endpoint}:https://h.example/k"),
+            format!("powergis-s3:{B}:2049:{endpoint}:https://h.example/k"),
+            format!("powergis-s3:{B}:16:{endpoint}:https://h.example/k"),
+            format!("powergis-s3:{B}:18:{endpoint}:https://h.example/k"),
             // nothing after the endpoint, or no separator
-            format!("rustgis-s3:{B}:17:{endpoint}"),
-            format!("rustgis-s3:{B}:17:{endpoint}https://h.example/k"),
+            format!("powergis-s3:{B}:17:{endpoint}"),
+            format!("powergis-s3:{B}:17:{endpoint}https://h.example/k"),
             // inner: not a web or s3 address, nested wrappers, anonymous marker
-            format!("rustgis-s3:{B}:17:{endpoint}:ftp://h.example/k"),
-            format!("rustgis-s3:{B}:17:{endpoint}:/etc/passwd"),
-            format!("rustgis-s3:{B}:17:{endpoint}:rustgis-s3:{B}:17:{endpoint}:https://h.example/k"),
-            format!("rustgis-s3:{B}:17:{endpoint}:rustgis-anonymous:https://h.example/k"),
+            format!("powergis-s3:{B}:17:{endpoint}:ftp://h.example/k"),
+            format!("powergis-s3:{B}:17:{endpoint}:/etc/passwd"),
+            format!("powergis-s3:{B}:17:{endpoint}:powergis-s3:{B}:17:{endpoint}:https://h.example/k"),
+            format!("powergis-s3:{B}:17:{endpoint}:powergis-anonymous:https://h.example/k"),
             // controls
-            format!("rustgis-s3:{B}:17:{endpoint}:https://h.example/k\n"),
-            format!("rustgis-s3:{B}:17:{endpoint}:https://h.example/\u{7}k"),
+            format!("powergis-s3:{B}:17:{endpoint}:https://h.example/k\n"),
+            format!("powergis-s3:{B}:17:{endpoint}:https://h.example/\u{7}k"),
         ];
         for a in &bad {
             let e = parse(a).unwrap_err();
             assert!(!e.contains("h.example") && !e.contains("passwd"), "{e}");
         }
         // A length that cuts a multi-byte character is an error, not a panic.
-        assert!(parse(&format!("rustgis-s3:{B}:2:é:https://h.example/k")).is_ok());
-        assert!(parse(&format!("rustgis-s3:{B}:1:é:https://h.example/k")).is_err());
+        assert!(parse(&format!("powergis-s3:{B}:2:é:https://h.example/k")).is_ok());
+        assert!(parse(&format!("powergis-s3:{B}:1:é:https://h.example/k")).is_err());
         // The overall bound, and the endpoint's.
         let long = format!("https://h.example/{}", "k".repeat(MAX_ADDRESS));
-        assert!(bind(B, endpoint, &long).is_err() && parse(&format!("rustgis-s3:{B}:17:{endpoint}:{long}")).is_err());
+        assert!(bind(B, endpoint, &long).is_err() && parse(&format!("powergis-s3:{B}:17:{endpoint}:{long}")).is_err());
         assert!(bind(B, &"e".repeat(MAX_ENDPOINT + 1), "https://h.example/k").is_err());
         assert!(bind("nope", endpoint, "https://h.example/k").is_err());
         // A malformed wrapper is never read as its own inner address.
-        assert_eq!(inner("rustgis-s3:junk:https://h.example/k"), "rustgis-s3:junk:https://h.example/k");
+        assert_eq!(inner("powergis-s3:junk:https://h.example/k"), "powergis-s3:junk:https://h.example/k");
     }
 }

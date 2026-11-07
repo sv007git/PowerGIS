@@ -5,8 +5,8 @@
 //! offset turned with it.
 
 #[cfg(doc)]
-use rustgis_map::LineMarkers;
-use rustgis_map::{LineMark, LineStroke, Rgba, Symbol};
+use powergis_map::LineMarkers;
+use powergis_map::{LineMark, LineStroke, Rgba, Symbol};
 use tiny_skia::{FillRule, LineCap, LineJoin, PathBuilder, Pixmap, Stroke, Transform};
 
 use crate::{marker_path, paint};
@@ -137,8 +137,8 @@ pub(crate) fn plain(strokes: &[LineStroke], turn: f32) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::GeometryType;
-    use rustgis_map::{Glyph, LineMarkers, Marker};
+    use powergis_data::GeometryType;
+    use powergis_map::{Glyph, LineMarkers, Marker};
 
     fn ink(pm: &Pixmap, x: u32, y: u32) -> bool {
         pm.pixel(x, y).is_some_and(|p| p.alpha() > 200)

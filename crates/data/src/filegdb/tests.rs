@@ -576,7 +576,7 @@ fn reads_what_gdal_writes_when_gdal_is_installed() {
     if !crate::source::gdal::available() {
         return;
     }
-    let dir = std::env::temp_dir().join(format!("rustgis-filegdb-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-filegdb-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
     let gdb = dir.join("written.gdb");

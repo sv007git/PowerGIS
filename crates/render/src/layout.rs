@@ -1,14 +1,14 @@
 //! Draws a page layout: the page, its map frames (each a map rendered at the frame's scale and
 //! clipped to its shape, with grids and extent indicators), and the surrounds.
 
-use rustgis_data::GeometryType;
-use rustgis_geom::{Coord, Extent};
-use rustgis_map::layout::{
+use powergis_data::GeometryType;
+use powergis_geom::{Coord, Extent};
+use powergis_map::layout::{
     ArrowStyle, ColorScale, ElementKind, FrameShape, Grid, GridKind, Layout, LineHead, Orientation, PT_PER_MM, ScaleBarStyle, ScaleUnits,
     TextAlign, TickSide, frame_camera,
 };
-use rustgis_map::symbology::LegendEntry;
-use rustgis_map::{Map, Rgba};
+use powergis_map::symbology::LegendEntry;
+use powergis_map::{Map, Rgba};
 use tiny_skia::{FillRule, Mask, PathBuilder, Pixmap, PixmapPaint, Rect, Stroke, Transform};
 
 use crate::{View, paint, text};
@@ -30,11 +30,11 @@ pub(crate) const MAX_PIXELS: f64 = if cfg!(target_arch = "wasm32") { 25_000_000.
 
 /// Whether skipping a failed frame would omit required complete-source content.
 pub(crate) fn frame_requires_complete(map: &Map, view: &View) -> bool {
-    let mut scales = vec![map.ground_res_at(&view.camera) / rustgis_geom::PIXEL_M];
+    let mut scales = vec![map.ground_res_at(&view.camera) / powergis_geom::PIXEL_M];
     if view.camera.pitch != 0.0 && !map.projection.is_globe() {
-        scales.extend(view.camera.tilt_bands(view.width, view.height).iter().map(|b| map.ground_res_at(&b.camera) / rustgis_geom::PIXEL_M));
+        scales.extend(view.camera.tilt_bands(view.width, view.height).iter().map(|b| map.ground_res_at(&b.camera) / powergis_geom::PIXEL_M));
     }
-    let complete = |source: &rustgis_map::source::SourceLayer| {
+    let complete = |source: &powergis_map::source::SourceLayer| {
         source.chunk_source().is_some() || (!source.is_open() && crate::is_local_shapefile(source))
     };
     map.layers.iter().filter(|l| scales.iter().any(|scale| map.draws_at(l, *scale))).any(|layer| {
@@ -96,9 +96,9 @@ fn draw_page(
     if element.is_none() {
         pm.fill(tiny_skia::Color::WHITE);
     }
-    let visible = |e: &&rustgis_map::layout::Element| e.visible && element.is_none_or(|id| e.id == id);
+    let visible = |e: &&powergis_map::layout::Element| e.visible && element.is_none_or(|id| e.id == id);
     // Frame cameras first: surrounds and extent indicators read them.
-    let frames: Vec<(u32, usize, rustgis_map::Camera, f64, f64)> = layout
+    let frames: Vec<(u32, usize, powergis_map::Camera, f64, f64)> = layout
         .elements
         .iter()
         .filter_map(|e| match &e.kind {
@@ -123,7 +123,7 @@ fn draw_page(
         {
             let view = View { width: fw, height: fh, pixels_per_point: 1.0, camera: cam, sky: false };
             let lonlat = crate::view_lonlat(map, &view);
-            let scale = map.ground_res_at(&cam) / rustgis_geom::PIXEL_M;
+            let scale = map.ground_res_at(&cam) / powergis_geom::PIXEL_M;
             map.sync_sources(&lonlat, scale, true);
             shown.push((*f, complete_shown_legends(map, scale)?));
         }
@@ -210,7 +210,7 @@ fn draw_page(
                     && let Some(map) = maps.get(mi)
                 {
                     let drawn = (!*all_classes).then(|| shown.iter().find(|(id, _)| id == f).map(|(_, v)| v.as_slice()).unwrap_or(&[]));
-                    let scale = map.ground_res_at(&cam) / rustgis_geom::PIXEL_M;
+                    let scale = map.ground_res_at(&cam) / powergis_geom::PIXEL_M;
                     wait_for_tile_legends(map, scale, exclude);
                     legend(&mut pm, r, map, title, drawn, LegendOptions { hide_other: *hide_other, exclude, scale }, ppp);
                 }
@@ -218,9 +218,9 @@ fn draw_page(
             ElementKind::Colorbar { frame: f, layer, title, orientation, ticks, tick_side, reverse } => {
                 let scale = frame(*f)
                     .and_then(|fr| maps.get(fr.1))
-                    .and_then(|m| rustgis_map::layout::colorbar_layer(m, layer.as_deref()))
+                    .and_then(|m| powergis_map::layout::colorbar_layer(m, layer.as_deref()))
                     .and_then(|l| l.raster.as_ref())
-                    .and_then(rustgis_map::layout::color_scale);
+                    .and_then(powergis_map::layout::color_scale);
                 match scale {
                     Some(sc) => colorbar(
                         &mut pm,
@@ -246,7 +246,7 @@ fn draw_page(
                 // for the font index while it is being built; a script or the command line builds
                 // it now (`families::find_ready`).
                 let family = font_name.as_deref().and_then(crate::families::find_ready);
-                let face = text::Face { bold: *bold, italic: *italic, serif: *font == rustgis_map::layout::FontFamily::Serif, family };
+                let face = text::Face { bold: *bold, italic: *italic, serif: *font == powergis_map::layout::FontFamily::Serif, family };
                 let style = TextStyle { face, align: *align, spacing: *letter_spacing as f32 };
                 text_block(&mut pm, r, &s, *size as f32, *color, style, ppp);
             }
@@ -358,7 +358,7 @@ fn draw_page(
 /// A map frame's map, `w` × `h` points at `ppp` pixels a point, labels and attribution included:
 /// what a frame shows before its grid, indicator and outline. It waits for the map's tiles, as a
 /// page needs them all.
-pub fn frame_map(map: &mut Map, camera: rustgis_map::Camera, w: f64, h: f64, ppp: f64) -> Option<Pixmap> {
+pub fn frame_map(map: &mut Map, camera: powergis_map::Camera, w: f64, h: f64, ppp: f64) -> Option<Pixmap> {
     let view = View { width: w, height: h, pixels_per_point: ppp, camera, sky: false };
     crate::render_complete(map, &view).map(|img| finish_frame_map(img, ppp))
 }
@@ -366,7 +366,7 @@ pub fn frame_map(map: &mut Map, camera: rustgis_map::Camera, w: f64, h: f64, ppp
 /// [`frame_map`] without waiting for tiles still on their way, for a preview drawn while the
 /// interface waits: a pan's preview, whose size is more than the frame's for the overscan slid
 /// under the pointer.
-pub fn frame_map_preview(map: &mut Map, camera: rustgis_map::Camera, w: f64, h: f64, ppp: f64) -> Option<Pixmap> {
+pub fn frame_map_preview(map: &mut Map, camera: powergis_map::Camera, w: f64, h: f64, ppp: f64) -> Option<Pixmap> {
     let view = View { width: w, height: h, pixels_per_point: ppp, camera, sky: false };
     crate::render(map, &view).map(|img| finish_frame_map(img, ppp))
 }
@@ -381,13 +381,13 @@ fn finish_frame_map(mut img: crate::Rendered, ppp: f64) -> Pixmap {
 }
 
 /// Expands layout text tokens: the page ones here, the map ones from the first frame.
-pub fn expand(t: &str, layout: &Layout, info: &PageInfo, frame: Option<(&Map, rustgis_map::Camera)>) -> String {
+pub fn expand(t: &str, layout: &Layout, info: &PageInfo, frame: Option<(&Map, powergis_map::Camera)>) -> String {
     // The frame's scale, worked out once for both its forms below.
-    let scale = frame.map(|(m, cam)| m.ground_res_at(&cam) / rustgis_map::layout::PAPER_M_PER_PT);
+    let scale = frame.map(|(m, cam)| m.ground_res_at(&cam) / powergis_map::layout::PAPER_M_PER_PT);
     // A layout with a decimal comma prints its scale with points between thousands: put in first,
     // so a page or layout name holding "{scale}" isn't read as the token.
     let t = match scale {
-        Some(scale) if layout.decimal_comma => t.replace("{scale}", &decimal(rustgis_map::graphics::scale_ratio(scale), true)),
+        Some(scale) if layout.decimal_comma => t.replace("{scale}", &decimal(powergis_map::graphics::scale_ratio(scale), true)),
         _ => t.to_string(),
     };
     let t = t
@@ -397,7 +397,7 @@ pub fn expand(t: &str, layout: &Layout, info: &PageInfo, frame: Option<(&Map, ru
         .replace("{layout}", &layout.name);
     let now = web_time::SystemTime::now().duration_since(web_time::UNIX_EPOCH).map(|d| d.as_secs()).unwrap_or(0);
     let v = match frame {
-        Some((m, cam)) => rustgis_map::graphics::TokenValues {
+        Some((m, cam)) => powergis_map::graphics::TokenValues {
             map: m.name.clone(),
             scale: scale.unwrap_or(0.0),
             crs: m.projection.label(),
@@ -405,7 +405,7 @@ pub fn expand(t: &str, layout: &Layout, info: &PageInfo, frame: Option<(&Map, ru
             center: m.to_lonlat(cam.center).unwrap_or_default(),
             now,
         },
-        None => rustgis_map::graphics::TokenValues {
+        None => powergis_map::graphics::TokenValues {
             map: String::new(),
             scale: 0.0,
             crs: String::new(),
@@ -414,7 +414,7 @@ pub fn expand(t: &str, layout: &Layout, info: &PageInfo, frame: Option<(&Map, ru
             now,
         },
     };
-    rustgis_map::graphics::expand(&t, &v)
+    powergis_map::graphics::expand(&t, &v)
 }
 
 /// A rectangle with its corners rounded by `rad` pixels (at most half its shorter side), each a
@@ -477,7 +477,7 @@ fn shape_path(shape: &FrameShape, r: Rect) -> Option<tiny_skia::Path> {
 }
 
 /// The lon/lat outline of what a frame shows.
-fn frame_outline_lonlat(map: &Map, cam: &rustgis_map::Camera, w: f64, h: f64) -> Vec<Coord> {
+fn frame_outline_lonlat(map: &Map, cam: &powergis_map::Camera, w: f64, h: f64) -> Vec<Coord> {
     let mut ring = Vec::new();
     let n = 16;
     let edge = |t: f64, side: usize| match side {
@@ -575,7 +575,7 @@ const WIDENED_LINES: f64 = 50.0;
 /// `tr`: eastings (north–south) and northings, each back in longitude/latitude, with its label.
 fn measured_lines(
     g: &Grid,
-    tr: &rustgis_data::raster::Transformer,
+    tr: &powergis_data::raster::Transformer,
     lonlats: &[Coord],
     comma: bool,
     lines: &mut Vec<(Vec<Coord>, String, bool)>,
@@ -588,11 +588,11 @@ fn measured_lines(
         return;
     }
     let span = ext.width().max(ext.height());
-    let given = g.step.clamp(0.0, rustgis_map::layout::MAX_MEASURED_STEP);
+    let given = g.step.clamp(0.0, powergis_map::layout::MAX_MEASURED_STEP);
     let step = if given > 0.0 {
-        given.max(rustgis_map::layout::MIN_MEASURED_STEP)
+        given.max(powergis_map::layout::MIN_MEASURED_STEP)
     } else {
-        nice_step(span, rustgis_map::layout::MIN_MEASURED_STEP)
+        nice_step(span, powergis_map::layout::MIN_MEASURED_STEP)
     };
     // A step too fine for the frame (a 1 m grid over a country) is widened, not drawn as a blur.
     let step = if span / step > MAX_MEASURED_LINES { nice_step(span * 8.0 / WIDENED_LINES, step) } else { step };
@@ -659,23 +659,23 @@ enum Edge {
 /// The coordinate system of a measured grid on `map`: the grid's own, else the map's when it is
 /// projected, else the WGS 84 UTM zone at `center` (longitude/latitude). `None` for one that
 /// can't be read or isn't projected.
-pub fn measured_crs(g: &Grid, map: &Map, center: Coord) -> Option<rustgis_data::raster::Crs> {
-    use rustgis_data::raster::Crs;
+pub fn measured_crs(g: &Grid, map: &Map, center: Coord) -> Option<powergis_data::raster::Crs> {
+    use powergis_data::raster::Crs;
     let named = g.crs.as_deref().map(str::trim).filter(|c| !c.is_empty());
     let crs = match named {
         // (One longer than a command keeps, from a crafted project, isn't read each frame.)
-        Some(c) if c.chars().count() > rustgis_map::layout::MAX_GRID_CRS => return None,
+        Some(c) if c.chars().count() > powergis_map::layout::MAX_GRID_CRS => return None,
         Some(c) => Crs::parse(c).ok()?,
         // The map's own: its code (a preset, EPSG:, ESRI: or local:) as its PROJ definition.
         None => match &map.projection {
-            rustgis_map::Projection::Custom(code) => rustgis_map::projection::lookup(code)
+            powergis_map::Projection::Custom(code) => powergis_map::projection::lookup(code)
                 .ok()
                 .and_then(|(def, _)| Crs::parse(&def).ok())
                 .or_else(|| Crs::parse(code).ok())
                 .filter(|c| !c.is_geographic()),
             _ => None,
         }
-        .map_or_else(|| Crs::from_epsg(rustgis_map::layout::utm_epsg(center.x, center.y)), Some)?,
+        .map_or_else(|| Crs::from_epsg(powergis_map::layout::utm_epsg(center.x, center.y)), Some)?,
     };
     (!crs.is_geographic()).then_some(crs)
 }
@@ -973,10 +973,10 @@ fn scale_bar(pm: &mut Pixmap, r: Rect, ground_per_pt: f64, bar: (ScaleUnits, usi
     if !(ground_per_pt.is_finite() && ground_per_pt > 0.0) {
         return;
     }
-    let divisions = divisions.clamp(1, rustgis_map::layout::MAX_SCALE_DIVISIONS);
+    let divisions = divisions.clamp(1, powergis_map::layout::MAX_SCALE_DIVISIONS);
     let room_m = ground_per_pt * r.width() as f64 / ppp * 0.85;
-    let (unit_m, abbr) = units.resolve(rustgis_geom::nice_distance(room_m));
-    let total = rustgis_geom::nice_distance(room_m / unit_m);
+    let (unit_m, abbr) = units.resolve(powergis_geom::nice_distance(room_m));
+    let total = powergis_geom::nice_distance(room_m / unit_m);
     if total <= 0.0 {
         return;
     }
@@ -1080,14 +1080,14 @@ fn complete_shown_legends(map: &mut Map, scale: f64) -> Option<Vec<(u32, Vec<Leg
             continue;
         };
         let unique = match &layer.renderer {
-            rustgis_map::Renderer::Unique { field, classes, .. } => Some((field, classes)),
+            powergis_map::Renderer::Unique { field, classes, .. } => Some((field, classes)),
             _ => None,
         };
         let fi = unique.and_then(|(field, _)| layer.dataset.field_index(field));
         let fields = unique
             .filter(|_| fi.is_some())
-            .map_or_else(Vec::new, |(field, _)| vec![rustgis_data::Field::new(field, rustgis_data::FieldType::Text)]);
-        let mut sample = rustgis_data::Dataset::new("legend", layer.geometry_type(), fields);
+            .map_or_else(Vec::new, |(field, _)| vec![powergis_data::Field::new(field, powergis_data::FieldType::Text)]);
+        let mut sample = powergis_data::Dataset::new("legend", layer.geometry_type(), fields);
         let mut used = std::collections::HashSet::new();
         let mut any = false;
         let mut chunk = layer.clone();
@@ -1102,7 +1102,7 @@ fn complete_shown_legends(map: &mut Map, scale: f64) -> Option<Vec<(u32, Vec<Leg
                     let value = fi.map(|fi| chunk.dataset.value(row, fi).to_string());
                     let key = value.as_ref().and_then(|v| classes.iter().position(|(k, _)| k == v)).unwrap_or(classes.len());
                     if used.insert(key) {
-                        sample.push(None, value.map_or_else(Vec::new, |v| vec![rustgis_data::Value::Text(v)]));
+                        sample.push(None, value.map_or_else(Vec::new, |v| vec![powergis_data::Value::Text(v)]));
                     }
                 }
             }
@@ -1134,10 +1134,10 @@ struct LegendOptions<'a> {
 /// A row of a legend: a layer drawn in one symbol (its swatch and name), a layer's name over its
 /// classes, or one of them, or a WMS or WMTS layer's legend picture (under its name).
 enum LegendRow<'a> {
-    Plain(&'a rustgis_map::Layer),
+    Plain(&'a powergis_map::Layer),
     Head(&'a str),
     Class(GeometryType, LegendEntry),
-    Picture(std::sync::Arc<rustgis_tiles::cache::Payload>),
+    Picture(std::sync::Arc<powergis_tiles::cache::Payload>),
 }
 
 impl LegendRow<'_> {
@@ -1151,15 +1151,15 @@ impl LegendRow<'_> {
 }
 
 /// A legend picture's size in points (a pixel a point).
-fn picture_size(p: &rustgis_tiles::cache::Payload) -> (f32, f32) {
+fn picture_size(p: &powergis_tiles::cache::Payload) -> (f32, f32) {
     match p {
-        rustgis_tiles::cache::Payload::Image(pm) => (pm.width() as f32, pm.height() as f32),
+        powergis_tiles::cache::Payload::Image(pm) => (pm.width() as f32, pm.height() as f32),
         _ => (0.0, 0.0),
     }
 }
 
 /// Whether a legend lists a WMS or WMTS layer: drawn, and with a legend.
-fn tile_listed(t: &rustgis_map::TileLayer) -> bool {
+fn tile_listed(t: &powergis_map::TileLayer) -> bool {
     t.draws() && t.opacity > 0.0 && !t.legends.is_empty()
 }
 
@@ -1167,10 +1167,10 @@ fn tile_listed(t: &rustgis_map::TileLayer) -> bool {
 /// the first of its legends there that is a picture. `None` while the one to show is still on
 /// its way (`pending` then set), or when none can be shown. The addresses come from a service or
 /// a project, so they are checked as the layer's own are.
-fn tile_legend(t: &rustgis_map::TileLayer, scale: f64, pending: &mut bool) -> Option<std::sync::Arc<rustgis_tiles::cache::Payload>> {
-    use rustgis_tiles::cache::{self, Payload, State, Want};
-    for l in rustgis_data::ogc::legends_at(&t.legends, scale) {
-        if rustgis_tiles::address::check(&l.url, Some(&t.url)).is_err() {
+fn tile_legend(t: &powergis_map::TileLayer, scale: f64, pending: &mut bool) -> Option<std::sync::Arc<powergis_tiles::cache::Payload>> {
+    use powergis_tiles::cache::{self, Payload, State, Want};
+    for l in powergis_data::ogc::legends_at(&t.legends, scale) {
+        if powergis_tiles::address::check(&l.url, Some(&t.url)).is_err() {
             continue;
         }
         match cache::get(&l.url, Want::Image) {
@@ -1210,7 +1210,7 @@ pub fn legends_pending(layout: &Layout, maps: &[Map]) -> bool {
         };
         let Some(m) = maps.iter().find(|m| m.name.eq_ignore_ascii_case(map)) else { return false };
         let cam = frame_camera(m, *center, *scale, *bearing, *pitch);
-        tile_legends_pending(m, m.ground_res_at(&cam) / rustgis_geom::PIXEL_M, exclude)
+        tile_legends_pending(m, m.ground_res_at(&cam) / powergis_geom::PIXEL_M, exclude)
     })
 }
 
@@ -1243,12 +1243,12 @@ fn legend_rows<'a>(map: &'a Map, drawn: Option<&[(u32, Vec<LegendEntry>)]>, opts
     // In the order the map draws them and the Layers pane lists them, top first.
     for item in map.stack() {
         let l = match item {
-            rustgis_map::Drawn::Layer(i) => match map.layers.get(i) {
+            powergis_map::Drawn::Layer(i) => match map.layers.get(i) {
                 Some(l) => l,
                 None => continue,
             },
             // A WMS or WMTS layer's legend is its service's picture, whatever the frame draws of it.
-            rustgis_map::Drawn::Tile(i) => {
+            powergis_map::Drawn::Tile(i) => {
                 if let Some(t) = map.tiles.get(i).filter(|t| tile_listed(t) && !excluded(&t.name))
                     && let Some(p) = tile_legend(t, opts.scale, &mut false)
                 {
@@ -1278,7 +1278,7 @@ fn legend_rows<'a>(map: &'a Map, drawn: Option<&[(u32, Vec<LegendEntry>)]>, opts
         }
         if entries.is_empty() {
             // A Unique Values layer that lists nothing draws nothing visible (#207).
-            if !matches!(l.renderer, rustgis_map::Renderer::Unique { .. }) {
+            if !matches!(l.renderer, powergis_map::Renderer::Unique { .. }) {
                 rows.push(LegendRow::Plain(l));
             }
             continue;
@@ -1305,7 +1305,7 @@ fn legend(pm: &mut Pixmap, r: Rect, map: &Map, title: &str, drawn: Option<&[(u32
     while let Some(row) = rows.next() {
         if let LegendRow::Picture(p) = &row {
             match &**p {
-                rustgis_tiles::cache::Payload::Image(pic) => match legend_picture(pm, r, y, pic, ppp) {
+                powergis_tiles::cache::Payload::Image(pic) => match legend_picture(pm, r, y, pic, ppp) {
                     Some((h, true)) => y += h,
                     // Cut at the bottom, or no room for it.
                     _ => break,
@@ -1321,7 +1321,7 @@ fn legend(pm: &mut Pixmap, r: Rect, map: &Map, title: &str, drawn: Option<&[(u32
         }
         // A WMS or WMTS layer's name only with room for some of its picture under it.
         if let (LegendRow::Head(_), Some(LegendRow::Picture(p))) = (&row, rows.peek())
-            && let rustgis_tiles::cache::Payload::Image(pic) = &**p
+            && let powergis_tiles::cache::Payload::Image(pic) = &**p
             && y + line + picture_scale(r, pic, ppp) > r.bottom() + line * 1e-3
         {
             break;
@@ -1418,7 +1418,7 @@ pub fn legend_size_mm(map: &mut Map, scale: f64, all_classes: bool, hide_other: 
 /// [`legend_size_mm`] takes).
 pub fn frame_render_scale(map: &Map, center: Coord, scale: f64) -> f64 {
     let cam = frame_camera(map, center, scale, 0.0, 0.0);
-    map.ground_res_at(&cam) / rustgis_geom::PIXEL_M
+    map.ground_res_at(&cam) / powergis_geom::PIXEL_M
 }
 
 /// Where a frame showing `map` at 1:`scale` draws its layers: a grid of about `cells` cells across
@@ -1439,10 +1439,10 @@ pub fn frame_coverage(map: &mut Map, center: Coord, scale: f64, w_mm: f64, h_mm:
     let view = View { width: w, height: h, pixels_per_point: ppp, camera: frame_camera(map, center, scale, 0.0, 0.0), sky: false };
     // Put back when this ends, a panic in the drawing included.
     struct Aside<'a> {
-        basemap: rustgis_map::Basemap,
-        tiles: Vec<rustgis_map::TileLayer>,
+        basemap: powergis_map::Basemap,
+        tiles: Vec<powergis_map::TileLayer>,
         graticule: bool,
-        lock: Option<Vec<(rustgis_map::LabelKey, u8)>>,
+        lock: Option<Vec<(powergis_map::LabelKey, u8)>>,
         map: &'a mut Map,
     }
     impl Drop for Aside<'_> {
@@ -1454,7 +1454,7 @@ pub fn frame_coverage(map: &mut Map, center: Coord, scale: f64, w_mm: f64, h_mm:
         }
     }
     let aside = Aside {
-        basemap: std::mem::replace(&mut map.basemap, rustgis_map::Basemap::Blank),
+        basemap: std::mem::replace(&mut map.basemap, powergis_map::Basemap::Blank),
         tiles: std::mem::take(&mut map.tiles),
         graticule: std::mem::replace(&mut map.graticule, false),
         lock: map.label_lock.take(),
@@ -1469,7 +1469,7 @@ pub fn frame_coverage(map: &mut Map, center: Coord, scale: f64, w_mm: f64, h_mm:
     Some((gw, gh, drawn))
 }
 
-fn swatch(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, gt: GeometryType, s: &rustgis_map::Symbol, ppp: f32) {
+fn swatch(pm: &mut Pixmap, x: f32, y: f32, w: f32, h: f32, gt: GeometryType, s: &powergis_map::Symbol, ppp: f32) {
     let cy = y + h / 2.0;
     match gt {
         GeometryType::Point => {
@@ -1533,11 +1533,11 @@ fn tick_labels(lo: f64, hi: f64, n: usize) -> Vec<(f64, String)> {
     if !(lo.is_finite() && hi.is_finite()) {
         return Vec::new();
     }
-    let n = if hi > lo { n.clamp(2, rustgis_map::layout::MAX_COLORBAR_TICKS) } else { 1 };
+    let n = if hi > lo { n.clamp(2, powergis_map::layout::MAX_COLORBAR_TICKS) } else { 1 };
     let step = if n > 1 { (hi - lo) / (n - 1) as f64 } else { 0.0 };
     let values: Vec<f64> = (0..n).map(|i| if i + 1 == n { hi } else { lo + step * i as f64 }).collect();
     if values.iter().any(|v| v.abs() >= 1e6) {
-        return values.into_iter().map(|v| (v, rustgis_map::symbology::fmt_num(v))).collect();
+        return values.into_iter().map(|v| (v, powergis_map::symbology::fmt_num(v))).collect();
     }
     let tol = if step > 0.0 { step * 0.05 } else { (lo.abs() * 1e-3).max(1e-9) };
     let decimals = (0..=6)
@@ -1575,12 +1575,12 @@ fn colorbar(pm: &mut Pixmap, r: Rect, scale: &ColorScale, bar: &Bar, ppp: f64) {
         }
         ColorScale::Steps { edges, colors } => {
             let n = colors.len().max(1) as f32;
-            let labels = edges.iter().enumerate().map(|(i, v)| (i as f32 / n, rustgis_map::symbology::fmt_num(*v))).collect();
+            let labels = edges.iter().enumerate().map(|(i, v)| (i as f32 / n, powergis_map::symbology::fmt_num(*v))).collect();
             (colors.clone(), labels)
         }
         ColorScale::Values(v) => {
             let n = v.len().max(1) as f32;
-            let labels = v.iter().enumerate().map(|(i, (val, _))| ((i as f32 + 0.5) / n, rustgis_map::symbology::fmt_num(*val))).collect();
+            let labels = v.iter().enumerate().map(|(i, (val, _))| ((i as f32 + 0.5) / n, powergis_map::symbology::fmt_num(*val))).collect();
             (v.iter().map(|(_, c)| *c).collect(), labels)
         }
     };
@@ -1713,7 +1713,7 @@ fn text_block(pm: &mut Pixmap, r: Rect, s: &str, size: f32, color: Rgba, style: 
 }
 
 /// The first `rows` rows of a table, with as many columns as fit.
-fn table(pm: &mut Pixmap, r: Rect, ds: &rustgis_data::Dataset, rows: usize, ppp: f64) {
+fn table(pm: &mut Pixmap, r: Rect, ds: &powergis_data::Dataset, rows: usize, ppp: f64) {
     let ppp = ppp as f32;
     let px = 8.0 * 1.33 * ppp;
     let row_h = px * 1.6;
@@ -1771,7 +1771,7 @@ fn table(pm: &mut Pixmap, r: Rect, ds: &rustgis_data::Dataset, rows: usize, ppp:
 }
 
 /// A bar chart of a field's values, largest first (up to 20 bars).
-fn chart(pm: &mut Pixmap, r: Rect, ds: &rustgis_data::Dataset, field: &str, label: Option<&str>, ppp: f64) {
+fn chart(pm: &mut Pixmap, r: Rect, ds: &powergis_data::Dataset, field: &str, label: Option<&str>, ppp: f64) {
     let ppp = ppp as f32;
     let Some(fi) = ds.field_index(field) else {
         placeholder(pm, r, "Chart", ppp as f64);
@@ -1822,7 +1822,7 @@ mod tests {
     fn the_tokens_offered_are_the_ones_expanded() {
         let layout = Layout::new("Atlas", 100.0, 100.0);
         let info = PageInfo { page: 2, pages: 5, page_name: "North".into() };
-        let tokens = rustgis_map::layout::PAGE_TOKENS.iter().chain(rustgis_map::graphics::TOKENS);
+        let tokens = powergis_map::layout::PAGE_TOKENS.iter().chain(powergis_map::graphics::TOKENS);
         for (token, _) in tokens {
             assert!(!expand(token, &layout, &info, None).contains('{'), "{token}");
         }
@@ -1836,8 +1836,8 @@ mod tests {
     fn a_web_layers_legend_is_its_services_picture() {
         crate::tiles::tests::serve();
         let mut map = Map::new("m");
-        let mut t = rustgis_map::TileLayer::new("Walls", rustgis_map::TileKind::Raster, "https://tiles.test/red/{z}/{x}/{y}.png");
-        t.legends = vec![rustgis_data::ogc::Legend { url: "https://tiles.test/red/legend.png".into(), ..Default::default() }];
+        let mut t = powergis_map::TileLayer::new("Walls", powergis_map::TileKind::Raster, "https://tiles.test/red/{z}/{x}/{y}.png");
+        t.legends = vec![powergis_data::ogc::Legend { url: "https://tiles.test/red/legend.png".into(), ..Default::default() }];
         map.tiles.push(t);
         // The red drawn (the picture is red; the name is dark) and how far right, in pixels.
         let red = |map: &Map, width: f32, exclude: &[String], scale: f64| {
@@ -1888,8 +1888,8 @@ mod tests {
         assert_eq!(names, ["Walls", "Floors"]);
         // Among the map's layers where the map draws them: a web layer placed over a feature
         // layer is listed just above it, under the feature layers above.
-        let lower = map.add_dataset(rustgis_data::Dataset::new("Lower", GeometryType::Point, vec![]));
-        map.add_dataset(rustgis_data::Dataset::new("Upper", GeometryType::Point, vec![]));
+        let lower = map.add_dataset(powergis_data::Dataset::new("Lower", GeometryType::Point, vec![]));
+        map.add_dataset(powergis_data::Dataset::new("Upper", GeometryType::Point, vec![]));
         map.tiles[1].over = Some(lower);
         let listed: Vec<&str> = legend_rows(&map, None, &opts)
             .iter()
@@ -1917,21 +1917,21 @@ mod tests {
 
     #[test]
     fn legends_leave_out_what_the_frame_does_not_draw() {
-        use rustgis_data::{Dataset, Field, FieldType, Geometry, Value};
+        use powergis_data::{Dataset, Field, FieldType, Geometry, Value};
         // A layer with one feature, of class "a", classed a, b and c; and an empty layer.
         let mut map = Map::new("m");
         let mut d = Dataset::new("pts", GeometryType::Point, vec![Field::new("g", FieldType::Text)]);
         d.push(Some(Geometry::Point(Coord::new(0.0, 0.0))), vec![Value::Text("a".into())]);
         let pts = map.add_dataset(d);
         map.add_dataset(Dataset::new("empty", GeometryType::Point, vec![]));
-        let s = |c| rustgis_map::Symbol::default_for(GeometryType::Point, c);
+        let s = |c| powergis_map::Symbol::default_for(GeometryType::Point, c);
         if let Some(l) = map.layers.iter_mut().find(|l| l.id == pts) {
             let classes = ["a", "b", "c"].iter().zip(0u32..).map(|(k, i)| (k.to_string(), s(i))).collect();
-            l.renderer = rustgis_map::Renderer::Unique {
+            l.renderer = powergis_map::Renderer::Unique {
                 field: "g".into(),
                 classes,
                 other: s(3),
-                ramp: rustgis_map::Ramp::Ember,
+                ramp: powergis_map::Ramp::Ember,
                 class_labels: Default::default(),
                 other_label: None,
                 class_strokes: Default::default(),
@@ -1996,7 +1996,7 @@ mod tests {
         // A layer whose drawn features all fall in <all other values>, hidden, is left out rather
         // than drawn as a plain swatch.
         if let Some(l) = map.layers.iter_mut().find(|l| l.id == pts)
-            && let rustgis_map::Renderer::Unique { classes, .. } = &mut l.renderer
+            && let powergis_map::Renderer::Unique { classes, .. } = &mut l.renderer
         {
             classes.retain(|(k, _)| k != "a");
         }
@@ -2007,7 +2007,7 @@ mod tests {
         // rather than drawn as a plain swatch of its first feature.
         let set_other_alpha = |map: &mut Map, a: u8| {
             if let Some(l) = map.layers.iter_mut().find(|l| l.id == pts)
-                && let rustgis_map::Renderer::Unique { other, .. } = &mut l.renderer
+                && let powergis_map::Renderer::Unique { other, .. } = &mut l.renderer
             {
                 other.fill = other.fill.with_alpha(a);
                 other.stroke = other.stroke.with_alpha(a);
@@ -2019,28 +2019,28 @@ mod tests {
         set_other_alpha(&mut map, 255);
         // A class that bears the fallback's name is a class: hiding the fallback keeps it.
         if let Some(l) = map.layers.iter_mut().find(|l| l.id == pts)
-            && let rustgis_map::Renderer::Unique { classes, .. } = &mut l.renderer
+            && let powergis_map::Renderer::Unique { classes, .. } = &mut l.renderer
         {
             classes.push(("a".into(), s(0)));
             classes.iter_mut().for_each(|(k, _)| {
                 if k == "a" {
-                    *k = rustgis_map::symbology::OTHER_VALUES.into();
+                    *k = powergis_map::symbology::OTHER_VALUES.into();
                 }
             });
         }
         if let Some(l) = map.layers.iter_mut().find(|l| l.id == pts) {
-            l.dataset.features.iter_mut().for_each(|f| f.attrs = vec![Value::Text(rustgis_map::symbology::OTHER_VALUES.into())]);
+            l.dataset.features.iter_mut().for_each(|f| f.attrs = vec![Value::Text(powergis_map::symbology::OTHER_VALUES.into())]);
         }
         let drawn = shown_legends(&map, 1e6);
         assert!(depth(&map, Some(&drawn), true) > 0, "the class named like the fallback is still listed");
         // A Graduated layer with no classes still shows its plain swatch, as before #207.
         if let Some(l) = map.layers.iter_mut().find(|l| l.id == pts) {
-            l.renderer = rustgis_map::Renderer::Graduated {
+            l.renderer = powergis_map::Renderer::Graduated {
                 field: "g".into(),
                 breaks: Vec::new(),
                 symbols: Vec::new(),
-                ramp: rustgis_map::Ramp::Ember,
-                method: rustgis_map::ClassMethod::NaturalBreaks,
+                ramp: powergis_map::Ramp::Ember,
+                method: powergis_map::ClassMethod::NaturalBreaks,
                 min: 0.0,
                 classes: 0,
                 class_labels: Default::default(),
@@ -2066,8 +2066,8 @@ mod tests {
                 shape: FrameShape::Rectangle,
                 grid: None,
                 extent_of: None,
-                extent_color: rustgis_map::layout::INDICATOR_COLOR,
-                extent_width: rustgis_map::layout::INDICATOR_WIDTH,
+                extent_color: powergis_map::layout::INDICATOR_COLOR,
+                extent_width: powergis_map::layout::INDICATOR_WIDTH,
                 bearing: 0.0,
                 pitch: 0.0,
             },
@@ -2080,12 +2080,12 @@ mod tests {
     }
 
     /// A map with one 100 × 1 raster valued 0–99 by column, styled by `renderer`.
-    fn ramp_map(renderer: rustgis_map::raster::RasterRenderer, stretch: rustgis_map::raster::Stretch) -> Map {
-        use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    fn ramp_map(renderer: powergis_map::raster::RasterRenderer, stretch: powergis_map::raster::Stretch) -> Map {
+        use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
         let gt = GeoTransform { origin_x: 0.0, origin_y: 1.0, pixel_width: 0.01, pixel_height: -0.01 };
         let data: Vec<f32> = (0..100).map(|i| i as f32).collect();
         let r = Raster::new("dem", 100, 1, vec![data], gt, Crs::LonLat, None, ColorHint::Gray, "Float32").unwrap();
-        let mut rl = rustgis_map::raster::RasterLayer::from_path(r, "dem.tif");
+        let mut rl = powergis_map::raster::RasterLayer::from_path(r, "dem.tif");
         rl.style.renderer = renderer;
         rl.style.stretch = stretch;
         let mut map = Map::new("m");
@@ -2211,7 +2211,7 @@ mod tests {
     /// The extent indicator is drawn in its own colour and width (#213): red and 2 pt until set.
     #[test]
     fn extent_indicators_take_their_colour_and_width() {
-        use rustgis_map::layout::{INDICATOR_COLOR, INDICATOR_WIDTH};
+        use powergis_map::layout::{INDICATOR_COLOR, INDICATOR_WIDTH};
         let blue = Rgba::rgb(0x1F, 0x4E, 0x9A);
         let default = indicator_page(INDICATOR_COLOR, INDICATOR_WIDTH);
         assert!(inset_pixels(&default, INDICATOR_COLOR) > 0, "red by default");
@@ -2228,8 +2228,8 @@ mod tests {
 
     #[test]
     fn colorbars_draw_the_raster_colour_scale() {
-        use rustgis_map::raster::{RasterRenderer, Stretch};
-        let ramp = rustgis_map::Ramp::Thermal;
+        use powergis_map::raster::{RasterRenderer, Stretch};
+        let ramp = powergis_map::Ramp::Thermal;
         let map = ramp_map(RasterRenderer::Stretch { band: 0, ramp: ramp.clone(), invert: false }, Stretch::MinMax);
         let k = PT_PER_MM;
         // A row through the bar, near its top edge (the labels are below it).
@@ -2260,7 +2260,7 @@ mod tests {
         // Classes draw as steps, one colour each.
         let breaks = vec![24.0, 49.0, 74.0, 99.0];
         let classify =
-            RasterRenderer::Classify { band: 0, method: rustgis_map::ClassMethod::EqualInterval, ramp: ramp.clone(), breaks, classes: 4 };
+            RasterRenderer::Classify { band: 0, method: powergis_map::ClassMethod::EqualInterval, ramp: ramp.clone(), breaks, classes: 4 };
         let pm = colorbar_page(&ramp_map(classify, Stretch::MinMax), Orientation::Horizontal, false, "");
         let mut colours: Vec<(u8, u8, u8)> = ((16.0 * k) as u32..(84.0 * k) as u32).map(|x| rgb(&pm, x, y)).collect();
         colours.dedup();
@@ -2278,8 +2278,8 @@ mod tests {
                 shape: FrameShape::Rectangle,
                 grid: None,
                 extent_of: None,
-                extent_color: rustgis_map::layout::INDICATOR_COLOR,
-                extent_width: rustgis_map::layout::INDICATOR_WIDTH,
+                extent_color: powergis_map::layout::INDICATOR_COLOR,
+                extent_width: powergis_map::layout::INDICATOR_WIDTH,
                 bearing: 0.0,
                 pitch: 0.0,
             },
@@ -2321,7 +2321,7 @@ mod tests {
         // One value: one label. Out of range counts are clamped.
         assert_eq!(labels(5.0, 5.0, 5), ["5"]);
         assert_eq!(tick_labels(0.0, 1.0, 0).len(), 2);
-        assert_eq!(tick_labels(0.0, 1.0, 1000).len(), rustgis_map::layout::MAX_COLORBAR_TICKS);
+        assert_eq!(tick_labels(0.0, 1.0, 1000).len(), powergis_map::layout::MAX_COLORBAR_TICKS);
         assert!(tick_labels(f64::NAN, 1.0, 5).is_empty());
         assert_eq!(labels(0.0, 4e6, 2), ["0", "4.0M"]);
     }
@@ -2343,7 +2343,7 @@ mod tests {
 
     #[test]
     fn arrowheads_are_drawn_at_the_ends_they_point_to() {
-        use rustgis_map::layout::LineDir;
+        use powergis_map::layout::LineDir;
         // 100 × 20 mm at 254 dpi (ten pixels a millimetre); a level arrow from 10 to 90 mm.
         let mut l = Layout::new("Layout", 100.0, 20.0);
         let blue = Rgba::rgb(0, 0, 255);
@@ -2365,7 +2365,7 @@ mod tests {
 
     #[test]
     fn ellipses_and_lines_draw_inside_their_boxes() {
-        use rustgis_map::layout::LineDir;
+        use powergis_map::layout::LineDir;
         // 100 × 50 mm at 254 dpi: ten pixels a millimetre.
         let mut l = Layout::new("Layout", 100.0, 50.0);
         let red = Rgba::rgb(255, 0, 0);
@@ -2388,7 +2388,7 @@ mod tests {
 
     /// A 100 × 100 mm page with one map frame filling 10–90 mm, showing the world at 1:200M with
     /// `grid` over it, drawn at 96 dpi.
-    fn grid_page(grid: rustgis_map::layout::Grid) -> Pixmap {
+    fn grid_page(grid: powergis_map::layout::Grid) -> Pixmap {
         let mut maps = vec![Map::new("m")];
         let mut l = Layout::new("Layout", 100.0, 100.0);
         l.add(
@@ -2401,8 +2401,8 @@ mod tests {
                 shape: FrameShape::Rectangle,
                 grid: Some(grid),
                 extent_of: None,
-                extent_color: rustgis_map::layout::INDICATOR_COLOR,
-                extent_width: rustgis_map::layout::INDICATOR_WIDTH,
+                extent_color: powergis_map::layout::INDICATOR_COLOR,
+                extent_width: powergis_map::layout::INDICATOR_WIDTH,
                 bearing: 0.0,
                 pitch: 0.0,
             },
@@ -2425,7 +2425,7 @@ mod tests {
     }
 
     /// A page whose 80 mm frame shows Winterthur at 1:25,000 (2 km across) on a map in `projection`.
-    fn winterthur_page(grid: rustgis_map::layout::Grid, projection: rustgis_map::Projection) -> Pixmap {
+    fn winterthur_page(grid: powergis_map::layout::Grid, projection: powergis_map::Projection) -> Pixmap {
         let mut m = Map::new("m");
         m.projection = projection;
         let mut maps = vec![m];
@@ -2440,8 +2440,8 @@ mod tests {
                 shape: FrameShape::Rectangle,
                 grid: Some(grid),
                 extent_of: None,
-                extent_color: rustgis_map::layout::INDICATOR_COLOR,
-                extent_width: rustgis_map::layout::INDICATOR_WIDTH,
+                extent_color: powergis_map::layout::INDICATOR_COLOR,
+                extent_width: powergis_map::layout::INDICATOR_WIDTH,
                 bearing: 0.0,
                 pitch: 0.0,
             },
@@ -2473,7 +2473,7 @@ mod tests {
     /// can't draw.
     #[test]
     fn measured_grids_draw_eastings_and_northings() {
-        use rustgis_map::layout::{Grid, GridKind};
+        use powergis_map::layout::{Grid, GridKind};
         let utm = Grid {
             kind: GridKind::Measured,
             crs: Some("EPSG:25832".into()),
@@ -2485,12 +2485,12 @@ mod tests {
         };
         let gaps = |xs: &[f64]| xs.windows(2).map(|w| w[1] - w[0]).collect::<Vec<_>>();
         // On Web Mercator: 1 km is 40 mm on paper, give or take Mercator's scale at 47.5°N.
-        let pm = winterthur_page(utm.clone(), rustgis_map::Projection::WebMercator);
+        let pm = winterthur_page(utm.clone(), powergis_map::Projection::WebMercator);
         let xs = red_runs(&pm, 50.0);
         assert!(xs.len() >= 2, "{xs:?}");
         assert!(gaps(&xs).iter().all(|g| (g - 40.0).abs() < 1.5), "{xs:?}");
         // On a map in EPSG:25832 itself: exactly 40 mm, and straight (the same at the top and bottom).
-        let own = rustgis_map::Projection::Custom("EPSG:25832".into());
+        let own = powergis_map::Projection::Custom("EPSG:25832".into());
         let pm = winterthur_page(utm.clone(), own.clone());
         let (top, bottom) = (red_runs(&pm, 20.0), red_runs(&pm, 80.0));
         assert!(gaps(&top).iter().all(|g| (g - 40.0).abs() < 0.3), "{top:?}");
@@ -2500,28 +2500,28 @@ mod tests {
         // (EPSG:32632, the same eastings as 25832 to a metre) does.
         let unnamed = Grid { crs: None, ..utm.clone() };
         assert!(red_runs(&winterthur_page(unnamed.clone(), own), 20.0).iter().zip(&top).all(|(a, b)| (a - b).abs() < 0.3));
-        let mercator = red_runs(&winterthur_page(utm.clone(), rustgis_map::Projection::WebMercator), 20.0);
-        let zone = red_runs(&winterthur_page(unnamed, rustgis_map::Projection::WebMercator), 20.0);
+        let mercator = red_runs(&winterthur_page(utm.clone(), powergis_map::Projection::WebMercator), 20.0);
+        let zone = red_runs(&winterthur_page(unnamed, powergis_map::Projection::WebMercator), 20.0);
         assert_eq!(mercator.len(), zone.len());
         assert!(mercator.iter().zip(&zone).all(|(a, b)| (a - b).abs() < 0.3), "{mercator:?} {zone:?}");
         // A map in an ESRI system (or a preset): its own, by its PROJ definition, straight on it.
-        let esri = rustgis_map::Projection::Custom("ESRI:102031".into());
+        let esri = powergis_map::Projection::Custom("ESRI:102031".into());
         let pm = winterthur_page(Grid { crs: None, ..utm.clone() }, esri);
         let (top, bottom) = (red_runs(&pm, 20.0), red_runs(&pm, 80.0));
         assert!(top.len() >= 2 && top.len() == bottom.len(), "{top:?} {bottom:?}");
         assert!(top.iter().zip(&bottom).all(|(a, b)| (a - b).abs() < 0.3), "the map's own system: straight {top:?} {bottom:?}");
         // A system it can't draw (geographic, unknown): nothing.
         for crs in ["EPSG:4326", "EPSG:1", "not a system"] {
-            let pm = winterthur_page(Grid { crs: Some(crs.into()), ..utm.clone() }, rustgis_map::Projection::WebMercator);
+            let pm = winterthur_page(Grid { crs: Some(crs.into()), ..utm.clone() }, powergis_map::Projection::WebMercator);
             assert_eq!(count(&pm, (10.0, 10.0, 90.0, 90.0), red), 0, "{crs}");
         }
         // A step too fine for the frame is widened rather than drawn as a blur.
-        let fine = winterthur_page(Grid { step: 1.0, ..utm.clone() }, rustgis_map::Projection::WebMercator);
+        let fine = winterthur_page(Grid { step: 1.0, ..utm.clone() }, powergis_map::Projection::WebMercator);
         // (About 2 km across: 50 m apart, some 40 lines across the frame.)
         let across = red_runs(&fine, 50.0).len();
         assert!((20..=55).contains(&across), "{across} lines across: not a red blur");
         // Its labels: eastings and northings, whole or short, a step apart.
-        let tr = rustgis_data::raster::Crs::parse("EPSG:25832").unwrap().transformer().unwrap();
+        let tr = powergis_data::raster::Crs::parse("EPSG:25832").unwrap().transformer().unwrap();
         let frame: Vec<Coord> =
             [(8.71, 47.49), (8.75, 47.49), (8.75, 47.51), (8.71, 47.51)].iter().map(|&(x, y)| Coord::new(x, y)).collect();
         let mut lines = Vec::new();
@@ -2541,7 +2541,7 @@ mod tests {
 
     #[test]
     fn grids_draw_lines_ticks_or_both() {
-        use rustgis_map::layout::{Grid, GridStyle};
+        use powergis_map::layout::{Grid, GridStyle};
         let g = |style| Grid {
             step: 30.0,
             color: Rgba::rgb(0xFF, 0, 0),
@@ -2570,7 +2570,7 @@ mod tests {
 
     #[test]
     fn grid_labels_go_on_the_edges_picked() {
-        use rustgis_map::layout::{Grid, GridEdges};
+        use powergis_map::layout::{Grid, GridEdges};
         let g = |edges, label_orientation| Grid { step: 30.0, color: Rgba::new(0, 0, 0, 0), edges, label_orientation, ..Grid::default() };
         let (top, bottom) = ((20.0, 10.0, 80.0, 16.0), (20.0, 84.0, 80.0, 90.0));
         let (left, right) = ((10.0, 20.0, 18.0, 80.0), (82.0, 20.0, 90.0, 80.0));

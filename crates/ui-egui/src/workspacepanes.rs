@@ -4,7 +4,7 @@
 use egui::{Color32, Sense, Ui, pos2, vec2};
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::theme::{Tokens, regular, semibold};
 
 /// State of these panes.
@@ -13,7 +13,7 @@ pub struct WorkspaceState {
     pub task: String,
     pub task_step: usize,
     /// The steps recorded so far while Record Task is on.
-    pub recording: Option<Vec<rustgis_engine::project::TaskStep>>,
+    pub recording: Option<Vec<powergis_engine::project::TaskStep>>,
     /// The recording reached a task's 200 steps (and said so).
     pub recording_full: bool,
     /// The recording said that Undo keeps a recorded step.
@@ -65,14 +65,14 @@ fn heading(ui: &mut Ui, text: &str) {
     ui.add_space(2.0);
 }
 
-fn message(app: &RustGisApp, ui: &mut Ui) {
+fn message(app: &powergisApp, ui: &mut Ui) {
     if let Some((m, err)) = &app.ws.message {
         let c = if *err { Color32::from_rgb(0xC0, 0x30, 0x30) } else { ui.visuals().weak_text_color() };
         ui.label(egui::RichText::new(m.as_str()).small().color(c));
     }
 }
 
-fn run(app: &mut RustGisApp, id: &str, p: Value) -> Option<Value> {
+fn run(app: &mut powergisApp, id: &str, p: Value) -> Option<Value> {
     match app.run(id, p) {
         Ok(v) => {
             app.ws.message = None;
@@ -88,7 +88,7 @@ fn run(app: &mut RustGisApp, id: &str, p: Value) -> Option<Value> {
 /// After step `from` moves to `to` (as `task.moveStep` does), the step being edited (and the
 /// current one) keep pointing at the same steps, so Save writes the text where it was typed: the
 /// moved step is at `to`, and those it passed shift by one towards `from`.
-pub fn follow_move(app: &mut RustGisApp, from: usize, to: usize) {
+pub fn follow_move(app: &mut powergisApp, from: usize, to: usize) {
     let swap = |i: usize| {
         if i == from {
             to
@@ -108,7 +108,7 @@ pub fn follow_move(app: &mut RustGisApp, from: usize, to: usize) {
 
 /// After a step is deleted: an edit open on it closes, one open on a later step (and the current
 /// step) moves up with it, so typed text stays with its step.
-pub fn follow_delete(app: &mut RustGisApp, deleted: usize) {
+pub fn follow_delete(app: &mut powergisApp, deleted: usize) {
     match app.ws.task_edit.as_ref().map(|e| e.0) {
         Some(e) if e == deleted => app.ws.task_edit = None,
         Some(e) if e > deleted => {
@@ -127,7 +127,7 @@ pub fn follow_delete(app: &mut RustGisApp, deleted: usize) {
 }
 
 /// Record Task: the button that starts or stops recording, and how far it has got.
-fn record_row(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn record_row(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     ui.horizontal_wrapped(|ui| match app.ws.recording.as_ref().map(Vec::len) {
         Some(n) => {
             ui.label(egui::RichText::new("●").color(t.red));
@@ -152,7 +152,7 @@ fn record_row(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// Tasks: pick one, read each step's instructions and run it; record a task, and edit its steps.
-pub fn tasks(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn tasks(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     // Rows wrap at the pane's width rather than widen it: long titles and instructions would
     // otherwise be cut at its edge.
     ui.set_max_width(ui.available_width());
@@ -211,7 +211,7 @@ pub fn tasks(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                         app.ws.task_step = i;
                     }
                     if app.ws.task_editing {
-                        // (`RustGisApp::run` keeps the open edit on its step: `follow_move`, `follow_delete`.)
+                        // (`powergisApp::run` keeps the open edit on its step: `follow_move`, `follow_delete`.)
                         if ui.add_enabled(i > 0, egui::Button::new("▲").small()).on_hover_text(tl!("Move Up")).clicked() {
                             run(app, "task.moveStep", json!({"task": name, "step": i, "to": i - 1}));
                         }
@@ -298,7 +298,7 @@ pub fn tasks(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// The Workflow Manager: jobs with their status.
-pub fn jobs(app: &mut RustGisApp, ui: &mut Ui, _t: &Tokens) {
+pub fn jobs(app: &mut powergisApp, ui: &mut Ui, _t: &Tokens) {
     message(app, ui);
     ui.horizontal(|ui| {
         ui.add(egui::TextEdit::singleline(&mut app.ws.job_name).hint_text(tl!("New job name")).desired_width(170.0));
@@ -355,12 +355,12 @@ pub fn jobs(app: &mut RustGisApp, ui: &mut Ui, _t: &Tokens) {
 }
 
 /// Elevation profiles, drawn as a chart.
-pub fn profile(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn profile(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     message(app, ui);
     let map = app.session.map();
     let rasters: Vec<String> = map.layers.iter().filter(|l| l.is_raster()).map(|l| l.name.clone()).collect();
     let lines: Vec<String> =
-        map.layers.iter().filter(|l| l.geometry_type() == rustgis_engine::data::GeometryType::Polyline).map(|l| l.name.clone()).collect();
+        map.layers.iter().filter(|l| l.geometry_type() == powergis_engine::data::GeometryType::Polyline).map(|l| l.name.clone()).collect();
     if !rasters.contains(&app.ws.profile_layer) {
         app.ws.profile_layer = rasters.first().cloned().unwrap_or_default();
     }
@@ -390,7 +390,7 @@ pub fn profile(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         }
     });
     let layer = app.ws.profile_layer.clone();
-    let done = |app: &RustGisApp, purpose: &str, min: usize| {
+    let done = |app: &powergisApp, purpose: &str, min: usize| {
         app.workflow
             .pick
             .as_ref()
@@ -489,7 +489,7 @@ pub fn profile(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 /// A summary over time running on a thread of its own: Cancel, the slices read, and the result.
 #[cfg(not(target_arch = "wasm32"))]
 pub struct Reducing {
-    pub run: rustgis_engine::cmd::zarr::ReduceRun,
+    pub run: powergis_engine::cmd::zarr::ReduceRun,
     /// Its place among the project's downloads: a summary that lands after another project
     /// opened is dropped.
     pub id: u64,
@@ -502,7 +502,7 @@ pub struct Reducing {
 /// every frame, whatever pane is in view, so a run lands though the Time Series pane closed or
 /// its layer went. `true` while one is still running.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn land_summary(app: &mut RustGisApp) -> bool {
+pub fn land_summary(app: &mut powergisApp) -> bool {
     use std::sync::atomic::Ordering;
     let Some(r) = &app.ws.reducing else { return false };
     let Some(res) = r.result.lock().ok().and_then(|mut g| g.take()) else { return true };
@@ -537,7 +537,7 @@ pub fn land_summary(app: &mut RustGisApp) -> bool {
 /// layer's steps over a period (and months), computed on a thread with progress and Cancel, and
 /// added as a raster layer.
 #[cfg(not(target_arch = "wasm32"))]
-fn summarise(app: &mut RustGisApp, ui: &mut Ui) {
+fn summarise(app: &mut powergisApp, ui: &mut Ui) {
     use std::sync::atomic::Ordering;
     // A run under way: its progress and Cancel (its result lands through `land_summary`).
     if land_summary(app)
@@ -608,7 +608,7 @@ fn summarise(app: &mut RustGisApp, ui: &mut Ui) {
             if !months.is_empty() {
                 p["months"] = Value::Array(months);
             }
-            match rustgis_engine::cmd::zarr::reduce_start(&app.session, &p) {
+            match powergis_engine::cmd::zarr::reduce_start(&app.session, &p) {
                 Ok(job) => {
                     let id = app.session.download_started();
                     let r =
@@ -619,7 +619,7 @@ fn summarise(app: &mut RustGisApp, ui: &mut Ui) {
                     let spawned = std::thread::Builder::new().name("zarr-summary".into()).spawn(move || {
                         let out = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                             job.run(&cancel, &done)
-                                .and_then(|r| rustgis_engine::data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string()))
+                                .and_then(|r| powergis_engine::data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string()))
                         }))
                         .unwrap_or_else(|_| Err(tl!("The summary failed unexpectedly").to_string()));
                         if let Ok(mut g) = result.lock() {
@@ -646,7 +646,7 @@ const MAX_SERIES: usize = 6;
 
 /// A Zarr variable's time series at points clicked on the map (opengeos/PowerGIS#555): a line a
 /// point, the time slider's step marked, and a click on the chart takes the slider there.
-pub fn time_series(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn time_series(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     message(app, ui);
     let map = app.session.map();
     // Zarr layers: one that follows the time slider, or a slice (`t2m[time=3]`).
@@ -773,7 +773,7 @@ pub fn time_series(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
             }
         }
     }
-    let fmt = |v: f64| rustgis_engine::map::symbology::fmt_num(v);
+    let fmt = |v: f64| powergis_engine::map::symbology::fmt_num(v);
     // The units, when every line has the same (lines of other variables share the scale without them).
     let mut all_units = app.ws.series.iter().map(|s| s["units"].as_str().unwrap_or(""));
     let first_units = all_units.next().unwrap_or("");
@@ -786,7 +786,7 @@ pub fn time_series(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
         regular(10.0),
         t.text_dim,
     );
-    let day = |ms: f64| rustgis_engine::data::time::format(ms, "YYYY-MM-DD");
+    let day = |ms: f64| powergis_engine::data::time::format(ms, "YYYY-MM-DD");
     painter.text(
         rect.right_bottom() + vec2(-6.0, -3.0),
         egui::Align2::RIGHT_BOTTOM,
@@ -832,7 +832,7 @@ fn series_csv(series: &[Value]) -> String {
 }
 
 /// The Diagnostic Monitor.
-pub fn diagnostics(app: &mut RustGisApp, ui: &mut Ui, _t: &Tokens) {
+pub fn diagnostics(app: &mut powergisApp, ui: &mut Ui, _t: &Tokens) {
     ui.ctx().request_repaint_after(std::time::Duration::from_millis(500));
     let dt = ui.input(|i| i.unstable_dt).max(1e-4);
     let now = ui.input(|i| i.time);
@@ -845,7 +845,7 @@ pub fn diagnostics(app: &mut RustGisApp, ui: &mut Ui, _t: &Tokens) {
         row("Frame rate", format!("{:.0} fps", 1.0 / dt));
         row("Map draw", format!("{} ms", app.map.render_ms()));
         if app.ws.diagnostics.as_ref().is_none_or(|(t, _)| now - t > 1.0) {
-            app.ws.diagnostics = Some((now, rustgis_engine::cmd::workspace::diagnostics(&app.session)));
+            app.ws.diagnostics = Some((now, powergis_engine::cmd::workspace::diagnostics(&app.session)));
         }
         if let Some((_, v)) = &app.ws.diagnostics
             && let Some(o) = v.as_object()
@@ -858,14 +858,14 @@ pub fn diagnostics(app: &mut RustGisApp, ui: &mut Ui, _t: &Tokens) {
 }
 
 /// Infographics: cards summarising what's in view.
-pub fn infographics(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn infographics(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     ui.label(egui::RichText::new(tl!("Live summary of the features in view.")).small().color(t.text_dim));
     // Worked out again only when the view or the data change.
     let cam = app.session.map().camera;
     // The revision changes with every edit, undo and redo (the undo depth stops at its limit).
     let key = [cam.center.x, cam.center.y, cam.res, app.session.revision as f64];
     if app.ws.infographic.as_ref().is_none_or(|(k, _)| *k != key) {
-        app.ws.infographic = Some((key, rustgis_engine::cmd::workspace::infographic_of(&app.session, None)));
+        app.ws.infographic = Some((key, powergis_engine::cmd::workspace::infographic_of(&app.session, None)));
     }
     let Some((_, v)) = app.ws.infographic.clone() else { return };
     for card in v["layers"].as_array().cloned().unwrap_or_default() {
@@ -878,7 +878,7 @@ pub fn infographics(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
                     .color(t.accent),
             );
             for n in card["numbers"].as_array().cloned().unwrap_or_default() {
-                let sum = n["sum"].as_f64().map(rustgis_engine::map::symbology::fmt_num).unwrap_or_default();
+                let sum = n["sum"].as_f64().map(powergis_engine::map::symbology::fmt_num).unwrap_or_default();
                 ui.label(
                     egui::RichText::new(crate::i18n::fmt(
                         "{field}: total {sum}",
@@ -903,7 +903,7 @@ pub fn infographics(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
 }
 
 /// The Browser view: the project's items as a grid of cards, in place of the map.
-pub fn catalog_view(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn catalog_view(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     let p = &app.session.project;
     let mut items: Vec<(&str, String, &str, Option<Value>)> = Vec::new();
     for m in &p.maps {
@@ -978,7 +978,7 @@ mod tests {
 
     #[test]
     fn the_step_being_edited_follows_a_move() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.ws.task_edit = Some((2, "Title".into(), "Text".into()));
         app.ws.task_step = 2;
         // Step 2 moves up: the text typed for it stays with it, now at 1.
@@ -1005,9 +1005,9 @@ mod tests {
 
     #[test]
     fn deleting_a_step_keeps_an_edit_on_another() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         // The task as follow_delete sees it, after each deletion (it only reads the count).
-        let task = |app: &mut RustGisApp, n: usize| {
+        let task = |app: &mut powergisApp, n: usize| {
             let steps: Vec<_> = (0..n).map(|i| json!({"title": format!("Step {i}"), "command": "map.zoomFull", "params": {}})).collect();
             let _ = app.session.run("task.remove", &json!({"task": "Lesson"}));
             app.session.run("task.new", &json!({"name": "Lesson", "steps": steps})).unwrap();
@@ -1042,7 +1042,7 @@ mod tests {
     fn the_time_series_pane_reads_a_point() {
         use egui_kittest::kittest::Queryable;
         // A store of `t` over three monthly steps on a 3 × 4 grid (step k's values 100·k + i).
-        let dir = std::env::temp_dir().join(format!("rustgis-ui-series-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-ui-series-{}", std::process::id()));
         let store = dir.join("air.zarr");
         let _ = std::fs::remove_dir_all(&dir);
         for d in ["t", "lat", "lon", "time"] {
@@ -1070,14 +1070,14 @@ mod tests {
             let v: Vec<f32> = (0..12).map(|i| (k * 100 + i) as f32).collect();
             std::fs::write(store.join(format!("t/{k}.0.0")), f32s(&v)).unwrap();
         }
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.run("layer.addZarr", json!({"path": store.display().to_string(), "variable": "t", "time": true, "name": "air"})).unwrap();
         // A point picked at 1°E 30°N.
         app.workflow.pick =
-            Some(crate::analysispane::Pick { purpose: "ts_point", needed: 1, points: vec![rustgis_engine::geom::Coord::new(1.0, 30.0)] });
+            Some(crate::analysispane::Pick { purpose: "ts_point", needed: 1, points: vec![powergis_engine::geom::Coord::new(1.0, 30.0)] });
         // Without the interface fonts (`theme::install_fonts`) egui's faces have no "●".
         let mut h = egui_kittest::Harness::builder().allow_missing_glyphs().with_size(egui::vec2(420.0, 600.0)).build_ui_state(
-            |ui, app: &mut RustGisApp| {
+            |ui, app: &mut powergisApp| {
                 let t = crate::theme::Tokens::get(ui.ctx());
                 time_series(app, ui, &t);
             },

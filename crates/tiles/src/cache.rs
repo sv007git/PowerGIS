@@ -248,7 +248,7 @@ pub fn clear() {
     crate::mbtiles::forget();
     crate::cog::forget();
     crate::warp::forget();
-    rustgis_data::source::remote::forget();
+    powergis_data::source::remote::forget();
     GENERATION.fetch_add(1, Ordering::Relaxed);
 }
 
@@ -287,7 +287,7 @@ pub fn forget(url: &str) {
     // Map tiles made from a service's pictures, kept only while one is missing or on its way,
     // and their plans: all are made again (those kept in the cache stay till `clear`).
     crate::warp::forget();
-    rustgis_data::source::remote::forget_file(url);
+    powergis_data::source::remote::forget_file(url);
     GENERATION.fetch_add(1, Ordering::Relaxed);
 }
 
@@ -517,9 +517,9 @@ fn decode_with(
     }
 }
 
-/// Marks the part of an address that asks for a byte range, `#rustgis-range=<first>-<last>`:
+/// Marks the part of an address that asks for a byte range, `#powergis-range=<first>-<last>`:
 /// a fragment, so it never reaches the server, which gets a `Range` header instead.
-pub(crate) const RANGE: &str = "#rustgis-range=";
+pub(crate) const RANGE: &str = "#powergis-range=";
 
 /// Splits an address into the address to fetch and the byte range it asks for, if any.
 pub fn split_range(url: &str) -> (&str, Option<(u64, u64)>) {
@@ -532,9 +532,9 @@ pub fn split_range(url: &str) -> (&str, Option<(u64, u64)>) {
     }
 }
 
-/// Marks an address asking for the file's last bytes, `#rustgis-tail=<n>` (`Range: bytes=-n`),
+/// Marks an address asking for the file's last bytes, `#powergis-tail=<n>` (`Range: bytes=-n`),
 /// where its length isn't known (a GeoParquet's footer). A shorter answer is the whole file.
-pub const TAIL: &str = "#rustgis-tail=";
+pub const TAIL: &str = "#powergis-tail=";
 
 /// Splits an address into the address to fetch and how many of its last bytes it asks for, if any.
 pub fn split_tail(url: &str) -> (&str, Option<u64>) {
@@ -550,8 +550,8 @@ pub fn split_tail(url: &str) -> (&str, Option<u64>) {
 /// Starts an address that [`download`] made: the fetchers take up to [`MAX_DOWNLOAD`] bytes for
 /// it, and [`MAX_BYTES`] (a tile) for any other. No tile, style or archive address can start with
 /// it: those pass `address::check`, which takes only `http(s)://` ones.
-pub const DOWNLOAD: &str = "rustgis-download:";
-const LIMITED_DOWNLOAD: &str = "rustgis-download-limit:";
+pub const DOWNLOAD: &str = "powergis-download:";
+const LIMITED_DOWNLOAD: &str = "powergis-download-limit:";
 
 /// The most bytes a data download may have.
 pub const MAX_DOWNLOAD: usize = if cfg!(target_arch = "wasm32") { 256 << 20 } else { 512 << 20 };
@@ -801,7 +801,7 @@ pub(crate) fn fetch_worker(url: String, done: Done) {
     native::fetch(url, done);
 }
 
-/// Reads a range of a local file (`<path>#rustgis-range=a-b`) on the fetch workers, counted like
+/// Reads a range of a local file (`<path>#powergis-range=a-b`) on the fetch workers, counted like
 /// [`fetch_counted`]; never through an installed fetcher, which only knows web addresses.
 pub(crate) fn fetch_local(url: String, done: Done) {
     IN_FLIGHT.fetch_add(1, Ordering::Relaxed);
@@ -904,11 +904,12 @@ pub fn decode(bytes: &[u8], want: Want) -> Result<Payload, String> {
 /// Starts a picture drawn by PowerGIS itself (a COG's map tile) or decoded by the browser (see
 /// [`set_image_decoder`]): its width and height (u32, little end first), then straight RGBA
 /// pixels. No encoding, so no PNG encoder in the browser build.
-pub const RAW: &[u8] = b"RUSTGIS-RGBA";
+pub const RAW: &[u8] = b"powergis-RGBA";
+pub const LEGACY_RAW: &[u8] = b"rustgis-RGBA";
 
 /// Decodes a PNG, JPEG or WebP picture into a premultiplied pixmap (at most 4096 pixels a side).
 pub fn decode_image(bytes: &[u8]) -> Result<Pixmap, String> {
-    if let Some(rest) = bytes.strip_prefix(RAW) {
+    if let Some(rest) = bytes.strip_prefix(RAW).or_else(|| bytes.strip_prefix(LEGACY_RAW)) {
         let dim = |at: usize| rest.get(at..at + 4).and_then(|b| b.try_into().ok()).map(u32::from_le_bytes).unwrap_or(0);
         let (w, h) = (dim(0), dim(4));
         let mut data = rest.get(8..).unwrap_or_default().to_vec();
@@ -986,7 +987,7 @@ mod native {
         static Q: OnceLock<Queue> = OnceLock::new();
         Q.get_or_init(|| {
             for i in 0..WORKERS {
-                let spawned = std::thread::Builder::new().name(format!("rustgis-tiles-{i}")).spawn(work);
+                let spawned = std::thread::Builder::new().name(format!("powergis-tiles-{i}")).spawn(work);
                 if let Err(e) = spawned {
                     log::error!("could not start a tile fetcher: {e}");
                 }
@@ -1001,7 +1002,7 @@ mod native {
         if crate::mbtiles::is_tile(url) || url.starts_with(LOCAL) {
             return String::new();
         }
-        let Some((_, rest)) = rustgis_data::s3_address::reached(url).split_once("://") else { return String::new() };
+        let Some((_, rest)) = powergis_data::s3_address::reached(url).split_once("://") else { return String::new() };
         let end = rest.find(['/', '?', '#']).unwrap_or(rest.len());
         let authority = rest.get(..end).unwrap_or(rest);
         // Credentials in the address aren't part of the server.
@@ -1252,7 +1253,7 @@ mod native {
     }
 
     /// The User-Agent every request goes with.
-    const USER_AGENT: &str = concat!("PowerGIS/", env!("CARGO_PKG_VERSION"), " (+https://rustgis.app)");
+    const USER_AGENT: &str = concat!("PowerGIS/", env!("CARGO_PKG_VERSION"), " (+https://powergis.app)");
 
     /// A request that never got an answer: what kind of failure, for the user (#509).
     fn unanswered(e: ureq::Error) -> Failure {
@@ -1559,7 +1560,7 @@ mod tests {
     fn download_budget_also_bounds_decompressed_bytes() {
         let data = vec![b'x'; 4096];
         // The ZIP writer supplies the CRC-32 for a valid, generated gzip trailer.
-        let zip = rustgis_data::zip::write(&[("body".into(), data.clone())]).unwrap();
+        let zip = powergis_data::zip::write(&[("body".into(), data.clone())]).unwrap();
         let mut gzip = vec![0x1f, 0x8b, 8, 0, 0, 0, 0, 0, 0, 255];
         gzip.extend(miniz_oxide::deflate::compress_to_vec(&data, 6));
         gzip.extend_from_slice(&zip[14..18]);
@@ -1785,7 +1786,7 @@ mod tests {
         assert_eq!(native::host("http://127.0.0.1:8080/a?b#c"), "127.0.0.1:8080");
         assert_eq!(native::host("https://user:pw@example.org"), "example.org");
         assert_eq!(native::host(&format!("{DOWNLOAD}https://example.org/x")), "example.org");
-        assert_eq!(native::host("https://example.org/a.pmtiles#rustgis-range=0-9"), "example.org");
+        assert_eq!(native::host("https://example.org/a.pmtiles#powergis-range=0-9"), "example.org");
         assert_eq!(native::host("mbtiles:/data/a.mbtiles/1/2/3"), "");
         assert_eq!(native::host("not an address"), "");
         // OpenStreetMap's servers get fewer than other servers; local reads aren't limited.

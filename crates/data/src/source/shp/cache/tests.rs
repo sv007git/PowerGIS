@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 struct Folder(PathBuf);
 impl Folder {
     fn new() -> Self {
-        let path = std::env::temp_dir().join(format!("rustgis-cache-test-{}", unique()));
+        let path = std::env::temp_dir().join(format!("powergis-cache-test-{}", unique()));
         let mut builder = std::fs::DirBuilder::new();
         builder.recursive(true);
         #[cfg(unix)]
@@ -208,10 +208,10 @@ fn spawn(root: &Path, mode: &str) -> Process {
     let marker = root.join(format!("ready-{}", unique()));
     let child = Command::new(std::env::current_exe().unwrap())
         .args(["--exact", "source::shp::cache::tests::cache_child_fixture", "--nocapture"])
-        .env("RUSTGIS_CACHE_TEST_READY", &marker)
-        .env("RUSTGIS_CACHE_TEST_ROOT", root)
-        .env("RUSTGIS_CACHE_TEST_MODE", mode)
-        .env("RUSTGIS_SHP_CACHE", if matches!(mode, "fallback" | "scan") { root.join("blocked") } else { root.to_path_buf() })
+        .env("powergis_CACHE_TEST_READY", &marker)
+        .env("powergis_CACHE_TEST_ROOT", root)
+        .env("powergis_CACHE_TEST_MODE", mode)
+        .env("powergis_SHP_CACHE", if matches!(mode, "fallback" | "scan") { root.join("blocked") } else { root.to_path_buf() })
         .env("TMP", root)
         .env("TEMP", root)
         .env("TMPDIR", root)
@@ -268,8 +268,8 @@ fn cache_killed_process_is_reclaimed_at_checkout_but_live_instance_is_preserved(
 
 #[test]
 fn cache_child_fixture() {
-    let Some(root) = std::env::var_os("RUSTGIS_CACHE_TEST_ROOT").map(PathBuf::from) else { return };
-    let mode = std::env::var("RUSTGIS_CACHE_TEST_MODE").unwrap();
+    let Some(root) = std::env::var_os("powergis_CACHE_TEST_ROOT").map(PathBuf::from) else { return };
+    let mode = std::env::var("powergis_CACHE_TEST_MODE").unwrap();
     if mode == "reject-root" {
         for result in [
             directory_lock(&root).map(|_| ()),
@@ -364,7 +364,7 @@ fn cache_child_fixture() {
         File::options().write(true).open(lease.path()).unwrap().set_len(1024).unwrap();
         lease
     };
-    let marker = PathBuf::from(std::env::var_os("RUSTGIS_CACHE_TEST_READY").unwrap());
+    let marker = PathBuf::from(std::env::var_os("powergis_CACHE_TEST_READY").unwrap());
     let scratch = marker.with_extension("tmp");
     std::fs::write(&scratch, lease.path().to_string_lossy().as_bytes()).unwrap();
     std::fs::rename(scratch, marker).unwrap();
@@ -440,7 +440,7 @@ fn cache_reservation_preserves_unverified_payload_even_at_the_requested_key() {
 fn cache_unix_unsafe_root_is_rejected_before_an_attacker_lock() {
     use std::os::unix::fs::{MetadataExt, PermissionsExt};
     let root = Folder::new();
-    let lock_path = root.0.join(".rustgis-cache-v1.lock");
+    let lock_path = root.0.join(".powergis-cache-v1.lock");
     std::fs::write(&lock_path, b"sentinel").unwrap();
     std::fs::set_permissions(&lock_path, std::fs::Permissions::from_mode(0o600)).unwrap();
     let lock = open_lock(&lock_path).unwrap();
@@ -476,7 +476,7 @@ fn cache_unix_roots_are_private_and_legacy_owned_roots_still_work() {
     let lease = ready(&root, 1, 10, 4096);
     let reopened = pin_index(&root, &key(1), 4096).unwrap().unwrap();
     assert_eq!(lease.path(), reopened.path());
-    assert_eq!(index_fallback_dir().file_name().unwrap(), format!("rustgis-shp-index-{}", rustix::process::geteuid().as_raw()).as_str());
+    assert_eq!(index_fallback_dir().file_name().unwrap(), format!("powergis-shp-index-{}", rustix::process::geteuid().as_raw()).as_str());
 }
 
 #[cfg(unix)]
@@ -504,10 +504,10 @@ fn cache_unix_symlink_roots_and_lock_files_are_rejected() {
     for alias in [root.clone(), root.join("."), PathBuf::from(format!("{}/", root.display()))] {
         assert!(directory_lock(&alias).is_err(), "symlink root accepted: {}", alias.display());
     }
-    assert!(!other.0.join(".rustgis-cache-v1.lock").exists());
+    assert!(!other.0.join(".powergis-cache-v1.lock").exists());
     let sentinel = other.0.join("sentinel");
     std::fs::write(&sentinel, b"unchanged").unwrap();
-    std::os::unix::fs::symlink(&sentinel, folder.0.join(".rustgis-cache-v1.lock")).unwrap();
+    std::os::unix::fs::symlink(&sentinel, folder.0.join(".powergis-cache-v1.lock")).unwrap();
     assert!(directory_lock(&folder.0).is_err());
     assert_eq!(std::fs::read(sentinel).unwrap(), b"unchanged");
 }
@@ -520,7 +520,7 @@ fn cache_unix_writable_ancestors_cannot_redirect_private_roots() {
     let root = folder.0.join("private");
     std::fs::set_permissions(&folder.0, std::fs::Permissions::from_mode(0o777)).unwrap();
     assert!(directory_lock(&root).is_err());
-    assert!(!root.join(".rustgis-cache-v1.lock").exists());
+    assert!(!root.join(".powergis-cache-v1.lock").exists());
     std::fs::set_permissions(&folder.0, std::fs::Permissions::from_mode(0o1777)).unwrap();
     drop(directory_lock(&root).unwrap());
     std::fs::set_permissions(&folder.0, std::fs::Permissions::from_mode(0o700)).unwrap();
@@ -537,7 +537,7 @@ fn cache_unix_foreign_owned_roots_are_rejected() {
         let root = Folder::new();
         rustix::fs::chown(&root.0, Some(rustix::process::Uid::from_raw(65534)), None).unwrap();
         assert_eq!(directory_lock(&root.0).unwrap_err().kind(), io::ErrorKind::PermissionDenied);
-        assert!(!root.0.join(".rustgis-cache-v1.lock").exists());
+        assert!(!root.0.join(".powergis-cache-v1.lock").exists());
     }
 }
 

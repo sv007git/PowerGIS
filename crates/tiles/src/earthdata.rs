@@ -19,7 +19,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 
-use rustgis_data::secrets::{Secret, SecretStore};
+use powergis_data::secrets::{Secret, SecretStore};
 
 use serde_json::{Value, json};
 
@@ -238,7 +238,7 @@ pub fn login(token: &str, remember: bool) -> Result<Option<&'static str>, String
         _ if remember => Ok(Some(NOT_REMEMBERED)),
         Ok(()) => Ok(None),
         // A system without a credential store had nowhere to keep one.
-        Err(rustgis_data::secrets::SecretError::Unavailable(_)) if !kept => Ok(None),
+        Err(powergis_data::secrets::SecretError::Unavailable(_)) if !kept => Ok(None),
         Err(_) => Ok(Some(NOT_FORGOTTEN)),
     }
 }
@@ -257,7 +257,7 @@ pub fn logout() -> Result<(), &'static str> {
             REMEMBERED.kept.store(false, Ordering::SeqCst);
             Ok(())
         }
-        Err(rustgis_data::secrets::SecretError::Unavailable(_)) if !REMEMBERED.kept.load(Ordering::SeqCst) => Ok(()),
+        Err(powergis_data::secrets::SecretError::Unavailable(_)) if !REMEMBERED.kept.load(Ordering::SeqCst) => Ok(()),
         Err(_) => Err(NOT_FORGOTTEN),
     }
 }
@@ -817,17 +817,17 @@ mod tests {
     }
 
     /// A new run of the app: nothing typed yet, the store not read.
-    fn relaunch(store: &Arc<rustgis_data::secrets::MemorySecrets>) {
+    fn relaunch(store: &Arc<powergis_data::secrets::MemorySecrets>) {
         set_token(None).unwrap();
         set_secret_store(Some(store.clone()));
     }
 
-    fn stored(store: &rustgis_data::secrets::MemorySecrets) -> Option<String> {
+    fn stored(store: &powergis_data::secrets::MemorySecrets) -> Option<String> {
         store.load(ACCOUNT).unwrap().map(|s| s.expose().to_string())
     }
 
     fn remembered_tokens() {
-        use rustgis_data::secrets::{MemorySecrets, SecretError};
+        use powergis_data::secrets::{MemorySecrets, SecretError};
         let store = Arc::new(MemorySecrets::new());
 
         // Remembered, then read back by the next run's first request to a data host only.

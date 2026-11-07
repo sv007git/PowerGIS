@@ -463,7 +463,7 @@ mod tests {
     /// the tiles, as missing metadata is.
     #[test]
     fn junk_metadata_falls_back_to_the_tiles() {
-        let path = std::env::temp_dir().join(format!("rustgis-mbtiles-junk-{}.mbtiles", std::process::id()));
+        let path = std::env::temp_dir().join(format!("powergis-mbtiles-junk-{}.mbtiles", std::process::id()));
         let _ = std::fs::remove_file(&path);
         {
             let c = rusqlite::Connection::open(&path).unwrap();
@@ -483,7 +483,7 @@ mod tests {
     /// Plain and deduplicated layouts written by SQLite read the same through both readers.
     #[test]
     fn reads_layouts_both_ways() {
-        let dir = std::env::temp_dir().join(format!("rustgis-mbtiles-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-mbtiles-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let png = |i: u8| -> Vec<u8> { [b"\x89PNG\r\n\x1a\n".as_slice(), &[i; 40]].concat() };
         let layouts = [
@@ -568,12 +568,12 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
-    /// Reads every `.mbtiles` file in `RUSTGIS_SAMPLE_MBTILES` both ways and compares them:
-    /// `RUSTGIS_SAMPLE_MBTILES=<dir> cargo test --release -p rustgis-data -- --ignored mbtiles_samples --nocapture`.
+    /// Reads every `.mbtiles` file in `powergis_SAMPLE_MBTILES` both ways and compares them:
+    /// `powergis_SAMPLE_MBTILES=<dir> cargo test --release -p powergis-data -- --ignored mbtiles_samples --nocapture`.
     #[test]
     #[ignore = "needs sample files"]
     fn mbtiles_samples() {
-        let dir = std::env::var("RUSTGIS_SAMPLE_MBTILES").unwrap_or_else(|_| panic!("set RUSTGIS_SAMPLE_MBTILES"));
+        let dir = std::env::var("powergis_SAMPLE_MBTILES").unwrap_or_else(|_| panic!("set powergis_SAMPLE_MBTILES"));
         for entry in std::fs::read_dir(dir).unwrap() {
             let path = entry.unwrap().path();
             if !is_mbtiles_name(&path.to_string_lossy()) {

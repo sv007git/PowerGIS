@@ -1,7 +1,7 @@
 # AI Assistant
 
 <figure markdown="span">
-  ![The AI Assistant pane: asked for the five most populous African countries, it read the Countries table, selected them and zoomed to them](https://assets.rustgis.app/images/assistant.webp)
+  ![The AI Assistant pane: asked for the five most populous African countries, it read the Countries table, selected them and zoomed to them](https://assets.powergis.app/images/assistant.webp)
   <figcaption>The AI Assistant selects the five most populous African countries and zooms to them.</figcaption>
 </figure>
 
@@ -29,7 +29,7 @@ message box is empty or showing a recalled message. Drag the grip above it to re
 **Stop** ends the current assistant run; background local-agent threads have their own Stop
 controls.
 
-From the command line, `rustgis-cli ask` sends one request (see
+From the command line, `powergis-cli ask` sends one request (see
 [Command Line](../cli.md#asking-the-ai-assistant)).
 
 ## Choosing a model
@@ -47,8 +47,8 @@ Click the model name or the gear to open the settings. The assistant works with:
 | OpenAI-compatible | — | LM Studio, vLLM, llama.cpp…: `OPENAI_COMPATIBLE_BASE_URL` (default `http://localhost:1234/v1`), with an optional `OPENAI_COMPATIBLE_API_KEY` |
 
 The ↻ button lists the provider's models. The provider and model you last chose in the settings
-are used at start. Until you choose one, `RUSTGIS_ASSISTANT_PROVIDER` and
-`RUSTGIS_ASSISTANT_MODEL` pick them, and otherwise the desktop uses the first provider with a key
+are used at start. Until you choose one, `powergis_ASSISTANT_PROVIDER` and
+`powergis_ASSISTANT_MODEL` pick them, and otherwise the desktop uses the first provider with a key
 in the environment, falling back to Anthropic when none has a key. ChatGPT sign-in is used
 only when you choose that provider. Saved settings win over the environment. The **Address**
 field changes the endpoint for providers other than ChatGPT; use the OpenAI-compatible API
@@ -72,20 +72,20 @@ account** adds a registration; choose an existing one to reuse its issued client
 account** signs the selected one out and forgets it. From the command line:
 
 ```sh
-rustgis-cli ask --login                 # continue with ChatGPT in the browser
-rustgis-cli ask --login --another-account  # or register PowerGIS for another account
-rustgis-cli ask --sample --provider chatgpt "Zoom to Tokyo"
-rustgis-cli ask --accounts              # list saved registrations
-rustgis-cli ask --account oaiapp_...      # select one by its issued client id
-rustgis-cli ask --login --account oaiapp_... # reauthorize that registration
-rustgis-cli ask --remove-account oaiapp_...  # sign out and forget it
-rustgis-cli ask --logout
+powergis-cli ask --login                 # continue with ChatGPT in the browser
+powergis-cli ask --login --another-account  # or register PowerGIS for another account
+powergis-cli ask --sample --provider chatgpt "Zoom to Tokyo"
+powergis-cli ask --accounts              # list saved registrations
+powergis-cli ask --account oaiapp_...      # select one by its issued client id
+powergis-cli ask --login --account oaiapp_... # reauthorize that registration
+powergis-cli ask --remove-account oaiapp_...  # sign out and forget it
+powergis-cli ask --logout
 ```
 
 The model catalog loads after sign-in, on startup when signed in, and when switching to this
 provider or another account. The first model is chosen when the current one is not offered.
 The ↻ button reloads the catalog. The CLI uses the catalog's first model unless `--model` or
-`RUSTGIS_ASSISTANT_MODEL` is set. While waiting for sign-in, **Open browser again** and
+`powergis_ASSISTANT_MODEL` is set. While waiting for sign-in, **Open browser again** and
 **Copy sign-in link** let you recover a closed tab or failed browser launch. Requests go to the OpenAI API (`https://api.openai.com/v1/responses`) and use
 your plan's usage; when a limit is reached, the assistant says so and points to the usage settings.
 Signing in needs the desktop app or the command line (it runs a short-lived server on
@@ -110,7 +110,7 @@ the budget uses a byte-based estimate (four UTF-8 bytes per token), rather than 
 It includes JSON escaping and truncation metadata. This bounds individual results, not the
 entire conversation or all results from a batch.
 
-`RUSTGIS_ASSISTANT_TOOL_OUTPUT_TOKEN_LIMIT` changes the requested per-tool budget; it cannot
+`powergis_ASSISTANT_TOOL_OUTPUT_TOKEN_LIMIT` changes the requested per-tool budget; it cannot
 bypass the 24,000-token ceiling. Embedding callers can set `Config::tool_output_token_limit`.
 MCP uses the 10,000-token default.
 
@@ -180,9 +180,9 @@ description: Map flood depth and extent from a depth raster and the river networ
 From the command line:
 
 ```sh
-rustgis-cli skills                      # every skill, where it comes from, and whether it's on
-rustgis-cli skills add ./flood-map      # a SKILL.md, a folder or a .zip
-rustgis-cli skills disable explore-data # enable / disable / remove <name>
+powergis-cli skills                      # every skill, where it comes from, and whether it's on
+powergis-cli skills add ./flood-map      # a SKILL.md, a folder or a .zip
+powergis-cli skills disable explore-data # enable / disable / remove <name>
 ```
 
 ### Skill folders and ZIP names
@@ -314,7 +314,7 @@ Plain HTTP is only used for servers on your computer or local network.
 
 In the web app, the browser calls the provider directly. Anthropic, OpenAI, Gemini and
 OpenRouter accept that; a local Ollama server must allow the page's origin
-(`OLLAMA_ORIGINS=https://web.rustgis.app ollama serve`).
+(`OLLAMA_ORIGINS=https://web.powergis.app ollama serve`).
 
 ## Retries and long conversations
 

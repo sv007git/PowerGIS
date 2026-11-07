@@ -5,8 +5,8 @@
 use serde_json::{Value, json};
 
 use super::{b, ps};
-use crate::render::rustgis_tiles::portal::{self, Portal, Use};
-use crate::render::rustgis_tiles::{boundaries, overpass};
+use crate::render::powergis_tiles::portal::{self, Portal, Use};
+use crate::render::powergis_tiles::{boundaries, overpass};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -70,7 +70,7 @@ fn osm_download(s: &mut Session, p: &Value) -> CmdResult {
     let mut layers = Vec::new();
     let mut counts = serde_json::Map::new();
     for (kind, fc) in answer.layers() {
-        let (ds, _) = rustgis_data::io::read_geojson(&fc.to_string(), &format!("{name} ({kind})")).map_err(|e| e.to_string())?;
+        let (ds, _) = powergis_data::io::read_geojson(&fc.to_string(), &format!("{name} ({kind})")).map_err(|e| e.to_string())?;
         counts.insert(kind.to_string(), json!(ds.features.len()));
         layers.push(super::layer::add_dataset(s, ds));
     }
@@ -102,7 +102,7 @@ fn boundaries_add(s: &mut Session, p: &Value) -> CmdResult {
         .filter(|n| !n.is_empty())
         .map(str::to_string)
         .unwrap_or_else(|| format!("{} {level}", title.unwrap_or_else(|| country.clone())));
-    let (ds, _) = rustgis_data::io::read_geojson(&text, &name).map_err(|e| format!("{name}: {e}"))?;
+    let (ds, _) = powergis_data::io::read_geojson(&text, &name).map_err(|e| format!("{name}: {e}"))?;
     let n = ds.features.len();
     let id = super::layer::add_dataset(s, ds);
     if let Some(e) = s.map().layer(id).map(|l| l.extent()) {
@@ -186,7 +186,7 @@ fn portal_add(s: &mut Session, p: &Value) -> CmdResult {
     let url = ps(p, "url").map(str::trim).filter(|u| !u.is_empty()).ok_or("url is required (a resource portal.search lists)")?;
     // The portal's documents are hostile: an address they give is judged as one found there.
     let from = ps(p, "portal").map(str::trim).filter(|u| !u.is_empty());
-    crate::render::rustgis_tiles::address::check(url, from)?;
+    crate::render::powergis_tiles::address::check(url, from)?;
     let name = ps(p, "name").map(str::trim).filter(|n| !n.is_empty());
     match ps(p, "use").unwrap_or("file") {
         "file" => {
@@ -248,7 +248,7 @@ fn first_layer(s: &mut Session, url: &str, kind: &str) -> Result<String, String>
 /// frame and passes the answer).
 #[cfg(not(target_arch = "wasm32"))]
 fn fetch(url: &str) -> Result<Vec<u8>, String> {
-    crate::render::rustgis_tiles::cache::download_blocking(url).map_err(|e| {
+    crate::render::powergis_tiles::cache::download_blocking(url).map_err(|e| {
         if e.contains("timeout") || e.contains("timed out") {
             "the server didn't answer within a minute (it may be busy): try again later, or a smaller area".to_string()
         } else if e.contains("504") || e.contains("429") {

@@ -1,5 +1,5 @@
 //! Define Projection reinterprets native coordinates; it never edits the source files.
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value, io, raster::Crs},
 };
@@ -21,7 +21,7 @@ fn zip(crs: Option<Crs>) -> Vec<u8> {
         .filter(|(ext, _)| *ext != "prj" || crs.is_some())
         .map(|(ext, bytes)| (format!("data/PARCELS.{}", ext.to_ascii_uppercase()), bytes))
         .collect::<Vec<_>>();
-    rustgis_engine::data::zip::write(&parts).unwrap()
+    powergis_engine::data::zip::write(&parts).unwrap()
 }
 
 /// Uploads exercise the browser/ZIP command path, not the on-disk reader.
@@ -115,7 +115,7 @@ fn invalid_crs_or_unconvertible_coordinate_leaves_layer_unchanged() {
 
 #[test]
 fn loose_and_streamed_overrides_survive_project_reopen_and_do_not_write_prj() {
-    let dir = std::env::temp_dir().join(format!("rustgis-m1-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-m1-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     let parts = io::shapefile_parts_in(&native(), Crs::parse("EPSG:4269").unwrap()).unwrap().0;
     for (ext, bytes) in &parts {
@@ -147,7 +147,7 @@ fn loose_and_streamed_overrides_survive_project_reopen_and_do_not_write_prj() {
 #[test]
 fn import_override_accepts_missing_prj_wkt_and_custom_proj_definitions() {
     let utm = Crs::parse("EPSG:32631").unwrap();
-    let wkt = rustgis_engine::data::raster::wkt::to_wkt(utm).unwrap();
+    let wkt = powergis_engine::data::raster::wkt::to_wkt(utm).unwrap();
     for crs in ["EPSG:32631", &wkt, "+proj=utm +zone=31 +datum=WGS84 +units=m +no_defs"] {
         let mut s = Session::new(Project::default());
         let id = upload(&mut s, &zip(None), Some(crs));
@@ -180,7 +180,7 @@ fn zip_override_applies_to_each_shapefile_and_keeps_geojson_coordinates() {
         }
     }
     entries.push(("other.geojson".into(), br#"{"type":"Point","coordinates":[10,20]}"#.to_vec()));
-    let bytes = rustgis_engine::data::zip::write(&entries).unwrap();
+    let bytes = powergis_engine::data::zip::write(&entries).unwrap();
     let read = io::read_zip_in("several.zip", &bytes, Some(Crs::parse("EPSG:32631").unwrap())).unwrap();
     assert_eq!(read.len(), 3);
     paris(&read[0].0);
@@ -190,7 +190,7 @@ fn zip_override_applies_to_each_shapefile_and_keeps_geojson_coordinates() {
 
 #[test]
 fn blank_shapefile_crs_keeps_prj_for_whole_and_streamed_imports() {
-    let dir = std::env::temp_dir().join(format!("rustgis-m1-blank-{}", std::process::id()));
+    let dir = std::env::temp_dir().join(format!("powergis-m1-blank-{}", std::process::id()));
     std::fs::create_dir_all(&dir).unwrap();
     for (ext, bytes) in io::shapefile_parts_in(&native(), Crs::parse("EPSG:32631").unwrap()).unwrap().0 {
         std::fs::write(dir.join(format!("parcels.{ext}")), bytes).unwrap();

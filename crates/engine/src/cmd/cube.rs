@@ -9,16 +9,16 @@
 //!   descriptions GDAL writes in the file or its `.aux.xml`).
 //!
 //! `cube.trend` reads the slices into one block, cell by date, and works out each cell's trend
-//! with [`rustgis_analysis::trend`]: Sen's slope and the modified Mann–Kendall test.
+//! with [`powergis_analysis::trend`]: Sen's slope and the modified Mann–Kendall test.
 //! `cube.reduce` folds the slices into running totals as they are read: a statistic over time,
 //! for the whole period or a year (or a month of the year) at a time.
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
 
-use rustgis_analysis::rasterops;
-use rustgis_analysis::trend::{self, Test};
-use rustgis_data::raster::{self, Raster};
+use powergis_analysis::rasterops;
+use powergis_analysis::trend::{self, Test};
+use powergis_data::raster::{self, Raster};
 use serde_json::{Value, json};
 
 use super::ps;
@@ -43,7 +43,7 @@ pub const MAX_VALUES: u64 = if cfg!(target_arch = "wasm32") { 16_000_000 } else 
 /// Sen's slope takes: far fewer in the browser, which works them out on one thread. At the cap a
 /// run can take minutes on the desktop, which the app runs on threads with progress and Cancel;
 /// `cube.trend` called directly (a script, the assistant, an MCP client) takes
-/// [`MAX_WAITED_PAIRS`], but where only a shell waits on it (`rustgis-cli run`:
+/// [`MAX_WAITED_PAIRS`], but where only a shell waits on it (`powergis-cli run`:
 /// [`Session::long_runs`](crate::Session::long_runs)) it takes this.
 pub const MAX_PAIRS: u64 = if cfg!(target_arch = "wasm32") { 50_000_000 } else { 20_000_000_000 };
 /// The most pairs a trend worked out where it's called compares (`cube.trend` without `ran`: a
@@ -186,7 +186,7 @@ pub fn date_in_text(text: &str) -> Option<f64> {
     let ends = |i: usize| !b.get(i).is_some_and(u8::is_ascii_digit);
     let day = |y: u32, m: u32, d: u32| {
         ((1800..=2200).contains(&y) && (1..=12).contains(&m) && (1..=31).contains(&d))
-            .then(|| rustgis_data::time::parse_text(&format!("{y:04}-{m:02}-{d:02}")))
+            .then(|| powergis_data::time::parse_text(&format!("{y:04}-{m:02}-{d:02}")))
             .flatten()
     };
     // MODIS: A + year + day of the year.
@@ -246,7 +246,7 @@ fn date_list(p: &Value) -> Result<Option<Vec<f64>>, String> {
         None => Ok(None),
         Some(Value::Array(a)) => a
             .iter()
-            .map(|v| rustgis_data::time::parse_input(v).ok_or_else(|| format!("{v} isn't a date")))
+            .map(|v| powergis_data::time::parse_input(v).ok_or_else(|| format!("{v} isn't a date")))
             .collect::<Result<Vec<_>, _>>()
             .map(Some),
         Some(_) => Err("dates is a list of dates".into()),
@@ -325,7 +325,7 @@ pub fn cube_from(s: &Session, p: &Value, needs: Needs) -> Result<Box<dyn TimeCub
                 return Err(format!(
                     "{} and another layer have the same date ({}): one layer a date",
                     l.name,
-                    rustgis_data::time::format(date, "YYYY-MM-DD")
+                    powergis_data::time::format(date, "YYYY-MM-DD")
                 ));
             }
             items.push((date, r, band));
@@ -396,7 +396,7 @@ pub fn cube_from(s: &Session, p: &Value, needs: Needs) -> Result<Box<dyn TimeCub
             return Err(format!(
                 "band {} and another band have the same date ({}): one band a date",
                 b + 1,
-                rustgis_data::time::format(date, "YYYY-MM-DD")
+                powergis_data::time::format(date, "YYYY-MM-DD")
             ));
         }
         items.push((date, r.clone(), b));
@@ -454,16 +454,16 @@ fn common_label(name: &str) -> String {
 /// season from year to year (a day near a season's edge can move by one in a leap year).
 pub fn season_of(ms: f64, m: u32) -> usize {
     let m = m.max(1) as usize;
-    let month = rustgis_data::time::format(ms, "MM").parse::<usize>().unwrap_or(1);
+    let month = powergis_data::time::format(ms, "MM").parse::<usize>().unwrap_or(1);
     if m == 12 {
         return month.clamp(1, 12) - 1;
     }
-    let year = rustgis_data::time::format(ms, "YYYY");
-    let start = rustgis_data::time::parse_text(&format!("{year}-01-01")).unwrap_or(ms);
+    let year = powergis_data::time::format(ms, "YYYY");
+    let start = powergis_data::time::parse_text(&format!("{year}-01-01")).unwrap_or(ms);
     let next = year
         .parse::<i64>()
         .ok()
-        .and_then(|y| rustgis_data::time::parse_text(&format!("{:04}-01-01", y + 1)))
+        .and_then(|y| powergis_data::time::parse_text(&format!("{:04}-01-01", y + 1)))
         .unwrap_or(start + 365.0 * 86_400_000.0);
     let fraction = ((ms - start) / (next - start).max(1.0)).clamp(0.0, 1.0);
     ((fraction * m as f64).floor() as usize).min(m - 1)
@@ -475,7 +475,7 @@ pub fn steps(dates: &[f64], period: (usize, usize), p: &Value) -> Result<Vec<usi
     let date = |k: &str| -> Result<Option<f64>, String> {
         match p.get(k).filter(|v| !v.is_null()) {
             None => Ok(None),
-            Some(v) => rustgis_data::time::parse_input(v)
+            Some(v) => powergis_data::time::parse_input(v)
                 .map(Some)
                 .ok_or_else(|| format!("{k} is a date (2015-06-01, a year, or milliseconds since 1970)")),
         }
@@ -492,7 +492,7 @@ pub fn steps(dates: &[f64], period: (usize, usize), p: &Value) -> Result<Vec<usi
         (None, None) => (period.0.min(dates.len()), period.1.min(dates.len())),
         _ => (0, dates.len()),
     };
-    let month = |d: f64| rustgis_data::time::format(d, "MM").parse::<u32>().unwrap_or(0);
+    let month = |d: f64| powergis_data::time::format(d, "MM").parse::<u32>().unwrap_or(0);
     let out: Vec<usize> = (lo..hi)
         .filter(|i| {
             let d = dates.get(*i).copied().unwrap_or(f64::NAN);
@@ -869,7 +869,7 @@ fn off_grid(cube: &dyn TimeCube, i: usize, g: &Raster, r: &Raster) -> Result<(),
     }
     Err(format!(
         "the slice at {} is {} × {} on another grid than the first ({} × {}): put them on one grid first (Raster Functions › Resample)",
-        rustgis_data::time::format(cube.dates().get(i).copied().unwrap_or(f64::NAN), "YYYY-MM-DD"),
+        powergis_data::time::format(cube.dates().get(i).copied().unwrap_or(f64::NAN), "YYYY-MM-DD"),
         r.width,
         r.height,
         g.width,
@@ -956,7 +956,7 @@ pub fn trend_start(s: &Session, p: &Value) -> Result<TrendRun, String> {
     if let Some(m) = min_valid.filter(|m| *m > steps.len()) {
         return Err(format!("minValid is {m}, more than the {} dates", steps.len()));
     }
-    let day = |i: usize| rustgis_data::time::format(cube.dates().get(i).copied().unwrap_or(f64::NAN), "YYYY-MM-DD");
+    let day = |i: usize| powergis_data::time::format(cube.dates().get(i).copied().unwrap_or(f64::NAN), "YYYY-MM-DD");
     let (a, z) = (steps.first().copied().unwrap_or(0), steps.last().copied().unwrap_or(0));
     let label = format!("{} {}–{}", cube.label(), day(a), day(z));
     let name = ps(p, "name").map(str::trim).filter(|n| !n.is_empty()).map_or(label, |n| n.chars().take(200).collect());
@@ -965,7 +965,7 @@ pub fn trend_start(s: &Session, p: &Value) -> Result<TrendRun, String> {
 
 /// Whether two slices' grids are one: origins and pixel sizes within a thousandth of a pixel, so
 /// files written apart (an ulp off) still stack.
-pub(crate) fn same_grid(a: &rustgis_data::raster::GeoTransform, b: &rustgis_data::raster::GeoTransform) -> bool {
+pub(crate) fn same_grid(a: &powergis_data::raster::GeoTransform, b: &powergis_data::raster::GeoTransform) -> bool {
     let (w, h) = (a.pixel_width.abs().max(f64::MIN_POSITIVE), a.pixel_height.abs().max(f64::MIN_POSITIVE));
     let near = |x: f64, y: f64, unit: f64| (x - y).abs() <= unit * 1e-3;
     near(a.origin_x, b.origin_x, w)
@@ -998,7 +998,7 @@ fn trend_cmd(s: &mut Session, p: &Value) -> CmdResult {
         return add_outputs(s, rasters, dates);
     }
     // Worked out here, waited for with no Cancel: in the app (a script, the assistant) and Python a
-    // run of seconds, not minutes; where only a shell waits on it (`rustgis-cli run`), the panes'
+    // run of seconds, not minutes; where only a shell waits on it (`powergis-cli run`), the panes'
     // bound, its progress told.
     let mut run = trend_start(s, p)?;
     run.max_pairs = if s.long_runs.is_some() { MAX_PAIRS } else { MAX_WAITED_PAIRS };
@@ -1094,7 +1094,7 @@ pub fn add_outputs(s: &mut Session, rasters: Vec<Raster>, dates: usize) -> CmdRe
         let name = r.name.clone();
         let tif = raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
         let file: String = name.chars().map(|c| if c.is_alphanumeric() || matches!(c, '-' | '_' | '.') { c } else { '_' }).collect();
-        let layer = rustgis_map::raster::RasterLayer::from_bytes(r, format!("{file}.tif"), tif);
+        let layer = powergis_map::raster::RasterLayer::from_bytes(r, format!("{file}.tif"), tif);
         let out = super::raster::add_raster(s, &name, layer)?;
         layers.push(out["layer"].clone());
     }
@@ -1755,7 +1755,7 @@ pub fn reduce_start(s: &Session, p: &Value) -> Result<ReduceRun, String> {
     if let Some(&i) = steps.iter().find(|&&i| !date(i).is_finite()) {
         return Err(format!("the cube's date {} can't be read: give the dates (\"dates\")", i + 1));
     }
-    let part = |i: usize, f: &str| rustgis_data::time::format(date(i), f).parse::<u32>().unwrap_or(0);
+    let part = |i: usize, f: &str| powergis_data::time::format(date(i), f).parse::<u32>().unwrap_or(0);
     // Each step's group: its calendar year, its month, or the one group.
     let keys: Vec<u32> = steps
         .iter()
@@ -1770,7 +1770,7 @@ pub fn reduce_start(s: &Session, p: &Value) -> Result<ReduceRun, String> {
     found.dedup();
     let group_of: Vec<usize> = keys.iter().map(|k| found.binary_search(k).unwrap_or(0)).collect();
     // The outputs' names: the cube's label, the statistic and the period, or the name given.
-    let day = |i: usize| rustgis_data::time::format(date(i), "YYYY-MM-DD");
+    let day = |i: usize| powergis_data::time::format(date(i), "YYYY-MM-DD");
     // The earliest and the latest date, which a Zarr axis out of order doesn't put first and last.
     let earliest = steps.iter().copied().min_by(|x, y| date(*x).total_cmp(&date(*y)));
     let latest = steps.iter().copied().max_by(|x, y| date(*x).total_cmp(&date(*y)));
@@ -1801,7 +1801,7 @@ pub fn reduce_start(s: &Session, p: &Value) -> Result<ReduceRun, String> {
 }
 
 /// `cube.reduce`: the summary computed here (blocking), its progress told where only a shell waits
-/// on it (`rustgis-cli run`), its layers added, each kept in the project as a GeoTIFF.
+/// on it (`powergis-cli run`), its layers added, each kept in the project as a GeoTIFF.
 fn reduce_cmd(s: &mut Session, p: &Value) -> CmdResult {
     let run = reduce_start(s, p)?;
     let rasters = run_here(s.long_runs, "cube.reduce", run.total(), |cancel, done| run.run(cancel, done))?;
@@ -1825,7 +1825,7 @@ mod tests {
     /// Dates in names: a full date anywhere before a year alone; a year only standing apart.
     #[test]
     fn dates_in_names() {
-        let day = |d: &str| rustgis_data::time::parse_text(d);
+        let day = |d: &str| powergis_data::time::parse_text(d);
         assert_eq!(super::date_in_text("ndvi_2015-06-01"), day("2015-06-01"));
         assert_eq!(super::date_in_text("res2000_ndvi_20150601"), day("2015-06-01"));
         assert_eq!(super::date_in_text("NDVI 2015"), day("2015-01-01"));
@@ -1856,7 +1856,7 @@ mod tests {
     /// Slices an ulp apart are one grid; half a pixel apart, another.
     #[test]
     fn grids_within_a_hair_are_one() {
-        use rustgis_data::raster::GeoTransform;
+        use powergis_data::raster::GeoTransform;
         let a = GeoTransform { origin_x: -60.0, origin_y: 5.0, pixel_width: 0.25, pixel_height: -0.25 };
         let hair = GeoTransform { origin_x: -60.0 + 1e-12, ..a };
         let half = GeoTransform { origin_x: -60.125, ..a };
@@ -1869,7 +1869,7 @@ mod tests {
     #[test]
     fn a_stack_knows_its_size_before_reading() {
         use super::TimeCube;
-        use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+        use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
         use std::sync::Arc;
         let gt = GeoTransform { origin_x: -56.0, origin_y: -12.0, pixel_width: 0.01, pixel_height: -0.01 };
         let raster = |w: u32, h: u32| {
@@ -1887,7 +1887,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn slices_asked_in_order_come_in_order() {
-        use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+        use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
         use std::sync::Arc;
         use std::sync::atomic::AtomicBool;
         struct Slow(Vec<f64>);

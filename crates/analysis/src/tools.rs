@@ -1,9 +1,9 @@
 //! The tools.
 
 use geo::{BooleanOps, Contains, ConvexHull, InteriorPoint, Intersects, MultiPolygon, Orient, Relate, Simplify, orient::Direction};
-use rustgis_data::raster::Crs;
-use rustgis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value};
-use rustgis_geom::Extent;
+use powergis_data::raster::Crs;
+use powergis_data::{Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value};
+use powergis_geom::Extent;
 use serde_json::Value as Json;
 use std::borrow::Cow;
 use std::collections::{HashMap, HashSet, TryReserveError};
@@ -1078,7 +1078,7 @@ fn feature_lat(g: &Geometry) -> f64 {
 /// kilometres) in metres. Any other unit is an error, never kilometres (#406).
 fn to_metres(d: f64, units: &str) -> Result<f64, String> {
     let unit = if units.is_empty() { "Kilometers" } else { units };
-    rustgis_geom::distance_unit_metres(&unit.to_ascii_lowercase())
+    powergis_geom::distance_unit_metres(&unit.to_ascii_lowercase())
         .map(|factor| d * factor)
         .ok_or_else(|| format!("Units must be one of {} (not '{units}')", UNITS.join(", ")))
 }
@@ -1201,7 +1201,7 @@ fn part(g: &Geometry, mask: &MultiPolygon<f64>, inside: bool) -> Option<Geometry
                 .iter()
                 .copied()
                 .filter(|c| {
-                    let m = rustgis_geom::lonlat_to_merc(*c);
+                    let m = powergis_geom::lonlat_to_merc(*c);
                     mask.intersects(&geo::Point::new(m.x, m.y)) == inside
                 })
                 .collect();
@@ -1794,7 +1794,7 @@ fn convex_hull(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String> {
         let Some(g) = &f.geometry else { continue };
         let mut these = Vec::new();
         g.for_each_coord(|c| {
-            let m = rustgis_geom::lonlat_to_merc(c);
+            let m = powergis_geom::lonlat_to_merc(c);
             these.push(geo::Point::new(m.x, m.y));
         });
         if each {
@@ -1854,7 +1854,7 @@ fn vertex_point_bytes(own: &[Value], width: usize) -> u64 {
             allocations += 1;
         }
     }
-    let fixed = size_of::<rustgis_data::Feature>() + size_of::<Option<Geometry>>() + size_of::<Extent>();
+    let fixed = size_of::<powergis_data::Feature>() + size_of::<Option<Geometry>>() + size_of::<Extent>();
     u(fixed)
         .saturating_add(u(width).saturating_mul(u(size_of::<Value>())))
         .saturating_add(text)
@@ -1865,7 +1865,7 @@ fn vertex_point_bytes(own: &[Value], width: usize) -> u64 {
 /// [`vertex_point_bytes`]), each point copying `kept` of its feature's attributes into `width`.
 /// The memory is `None` when it isn't estimated.
 fn size_vertex_points<'a>(
-    feats: impl IntoIterator<Item = &'a rustgis_data::Feature>,
+    feats: impl IntoIterator<Item = &'a powergis_data::Feature>,
     kept: usize,
     width: usize,
     estimate: bool,
@@ -2001,7 +2001,7 @@ fn feature_vertices_to_points(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, 
             match vertex_row(own, kept, [fid.clone(), int(part), int(v.ring), int(index)]) {
                 Ok(attrs) => {
                     id += 1;
-                    points.push(rustgis_data::Feature { id, geometry: Some(Geometry::Point(c)), attrs });
+                    points.push(powergis_data::Feature { id, geometry: Some(Geometry::Point(c)), attrs });
                 }
                 Err(e) => failed = Some(e),
             }
@@ -2205,7 +2205,7 @@ fn select_by_location(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String> 
 
 fn select_by_attributes(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String> {
     let ds = input(inp, p, "input")?;
-    let hits = rustgis_data::query::select(s(p, "where"), ds)?;
+    let hits = powergis_data::query::select(s(p, "where"), ds)?;
     let n = hits.len();
     Ok(ToolResult {
         output: Output::Selection { layer: ds.name.clone(), rows: hits },
@@ -2258,7 +2258,7 @@ fn idw_interpolation(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String> {
     };
     let name = out_name(p, format!("{}_{field}_idw", ds.name));
     let r = crate::rasterops::idw(&pts, &extent, cell, power, 0, &name)?;
-    let bytes = rustgis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
+    let bytes = powergis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
     let msg = format!("IDW Interpolation: {} × {} cells from {} points", r.width, r.height, pts.len());
     Ok(ToolResult {
         output: Output::Layers(vec![OutputLayer::Raster { file_name: format!("{name}.tif"), name, bytes }]),
@@ -2393,8 +2393,8 @@ fn kriging_interpolation(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, Strin
 
     let name = out_name(p, format!("{}_{field}_kriging", ds.name));
     let r = crate::kriging::kriging(&pts, &extent, cell, &params, neighbours, &name)?;
-    let pred_bytes = rustgis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
-    let var_bytes = rustgis_data::raster::geotiff::write(&r, 1).map_err(|e| e.to_string())?;
+    let pred_bytes = powergis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
+    let var_bytes = powergis_data::raster::geotiff::write(&r, 1).map_err(|e| e.to_string())?;
     let var_name = format!("{name}_variance");
     let msg = format!("Ordinary Kriging ({}): {} × {} cells from {} points", model.as_str(), r.width, r.height, pts.len());
     Ok(ToolResult {
@@ -2598,7 +2598,7 @@ fn kernel_density_tool(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String>
 
     let name = out_name(p, format!("{}_density", ds.name));
     let r = crate::density::kernel_density(&pts, Some(&grid_ext), cell_size, bandwidth, kernel, &name, crs)?;
-    let bytes = rustgis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
+    let bytes = powergis_data::raster::geotiff::write(&r, 0).map_err(|e| e.to_string())?;
 
     let msg = if skipped > 0 {
         format!(
@@ -2622,7 +2622,7 @@ fn kernel_density_tool(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String>
 /// same transform and non-finite-coordinate filtering as [`to_geo`] followed by [`merc_extent`].
 fn projected_extent(g: &Geometry) -> Extent {
     let mut ext = Extent::EMPTY;
-    g.for_each_coord(|c| ext.expand(rustgis_geom::lonlat_to_merc(c)));
+    g.for_each_coord(|c| ext.expand(powergis_geom::lonlat_to_merc(c)));
     ext
 }
 
@@ -3044,8 +3044,8 @@ fn export_features(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String> {
     let mut rs = rows(inp, p, "input", ds);
     let w = s(p, "where").trim();
     if !w.is_empty() {
-        let e = rustgis_data::query::parse(w, ds)?;
-        rs.retain(|r| rustgis_data::query::eval(&e, ds, *r));
+        let e = powergis_data::query::parse(w, ds)?;
+        rs.retain(|r| powergis_data::query::eval(&e, ds, *r));
     }
     let mut out = copy_schema(ds, out_name(p, format!("{}_Export", ds.name)), ds.geometry_type);
     for r in rs {
@@ -3357,7 +3357,7 @@ impl Nearby<'_, '_> {
     ) -> Option<(usize, f64)> {
         let mut measured = std::collections::HashMap::new();
         let mut reach = match self.index.cell_size() {
-            Some(cell) => (cell.to_radians() * rustgis_geom::EARTH_RADIUS_M).max(MIN_REACH_M),
+            Some(cell) => (cell.to_radians() * powergis_geom::EARTH_RADIUS_M).max(MIN_REACH_M),
             None => f64::INFINITY,
         };
         let mut near = loop {
@@ -3383,7 +3383,7 @@ impl Nearby<'_, '_> {
 /// geometries come with their Web Mercator forms, where the test and the overlay work.
 fn shared_point(a: &Geometry, a_geo: &geo::Geometry<f64>, b: &Geometry, b_geo: &geo::Geometry<f64>) -> Option<Coord> {
     use geo::LinesIter;
-    let back = |c: geo::Coord<f64>| rustgis_geom::merc_to_lonlat(Coord::new(c.x, c.y));
+    let back = |c: geo::Coord<f64>| powergis_geom::merc_to_lonlat(Coord::new(c.x, c.y));
     // Points answer with their own coordinates, not ones back from Web Mercator.
     let point_on = |pts: &Geometry, other: &geo::Geometry<f64>| -> Option<Option<Coord>> {
         let pts: &[Coord] = match pts {
@@ -3392,7 +3392,7 @@ fn shared_point(a: &Geometry, a_geo: &geo::Geometry<f64>, b: &Geometry, b_geo: &
             _ => return None,
         };
         Some(pts.iter().copied().find(|c| {
-            let m = rustgis_geom::lonlat_to_merc(*c);
+            let m = powergis_geom::lonlat_to_merc(*c);
             other.intersects(&geo::Point::new(m.x, m.y))
         }))
     };
@@ -3985,7 +3985,7 @@ fn zonal_stats(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String> {
             };
             attrs.push(val);
         }
-        out.features.push(rustgis_data::Feature { id: f.id, geometry: f.geometry.clone(), attrs });
+        out.features.push(powergis_data::Feature { id: f.id, geometry: f.geometry.clone(), attrs });
     }
 
     let n_features = out.features.len();
@@ -4182,7 +4182,7 @@ fn join_field_tool(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String> {
     let (out, report) = crate::attribute_join::join_field(&target_ref, &source_ref, &opts)?;
     messages.push(report.message(&target.name));
 
-    let output = if out.geometry_type == rustgis_data::GeometryType::None { Output::Table(out) } else { Output::Layer(out) };
+    let output = if out.geometry_type == powergis_data::GeometryType::None { Output::Table(out) } else { Output::Layer(out) };
 
     Ok(ToolResult { output, messages })
 }
@@ -4190,7 +4190,7 @@ fn join_field_tool(inp: &dyn Inputs, p: &Json) -> Result<ToolResult, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::Feature;
+    use powergis_data::Feature;
     use std::collections::HashMap;
 
     struct Map(HashMap<String, Dataset>);
@@ -4205,7 +4205,7 @@ mod tests {
 
     struct RasterMap<'a> {
         datasets: HashMap<String, Dataset>,
-        rasters: HashMap<String, &'a rustgis_data::raster::Raster>,
+        rasters: HashMap<String, &'a powergis_data::raster::Raster>,
     }
 
     impl<'a> Inputs for RasterMap<'a> {
@@ -4277,7 +4277,7 @@ mod tests {
                 for r in rings {
                     assert!(r.len() >= 4);
                     assert_eq!(r.first(), r.last());
-                    assert!(rustgis_data::geometry::ring_area(r).abs() > 1e-14);
+                    assert!(powergis_data::geometry::ring_area(r).abs() > 1e-14);
                 }
             }
             let source = to_multipolygon(&original).unwrap();
@@ -4729,7 +4729,7 @@ mod tests {
         }
     }
 
-    /// `touches_files` in rustgis-engine lets tasks, models and notebooks from files set a built-in
+    /// `touches_files` in powergis-engine lets tasks, models and notebooks from files set a built-in
     /// tool's `output` when it names a new layer. Layer outputs remain plain text; the explicit
     /// `vectorToPmtiles` file output is handled separately by the engine.
     #[test]
@@ -4778,7 +4778,7 @@ mod tests {
                             code
                         }
                     };
-                    // The standard library's files and paths, and rustgis-data's writers that take a path
+                    // The standard library's files and paths, and powergis-data's writers that take a path
                     // (its byte writers, such as GeoTIFF's, return bytes and are fine).
                     let reaches =
                         ["fs::", "std::fs", "File::", "io::Write", "OpenOptions", "std::path", "write_path", "write_atomic", "gpkg::write"];
@@ -4806,7 +4806,7 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn no_layer_tool_writes_its_output_as_a_file() {
-        let dir = std::env::temp_dir().join(format!("rustgis-tool-output-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-tool-output-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let m = inputs();
         let mut tested = 0;
@@ -4885,10 +4885,10 @@ mod tests {
         let samples: Vec<(Coord, f64)> = line
             .windows(2)
             .flat_map(|w| {
-                let n = (rustgis_geom::haversine_m(w[0], w[1]) / step).ceil().max(1.0) as usize;
-                (0..=n).map(move |i| rustgis_geom::geodesic_interpolate(w[0], w[1], i as f64 / n as f64))
+                let n = (powergis_geom::haversine_m(w[0], w[1]) / step).ceil().max(1.0) as usize;
+                (0..=n).map(move |i| powergis_geom::geodesic_interpolate(w[0], w[1], i as f64 / n as f64))
             })
-            .map(|p| (p, rustgis_geom::haversine_m(c, p)))
+            .map(|p| (p, powergis_geom::haversine_m(c, p)))
             .collect();
         let nearest = samples.iter().map(|(_, d)| *d).fold(f64::INFINITY, f64::min);
         samples.iter().filter(|(_, d)| *d <= nearest * 1.012 + 1.0).map(|(p, _)| on_wgs84_m(c, *p) / 1000.0).fold(f64::INFINITY, f64::min)
@@ -4923,7 +4923,7 @@ mod tests {
         }
         let a = Coord::new(10.5, 46.5);
         for azimuth in [90.0, 0.0, 45.0] {
-            let line = [a, rustgis_geom::geodesic_destination(a, azimuth, 2_000.0)];
+            let line = [a, powergis_geom::geodesic_destination(a, azimuth, 2_000.0)];
             for c in buffered(Geometry::Line(vec![line.to_vec()]), 1.0).iter().flatten().flatten() {
                 // Sampled every 0.5 m along the line, the nearest sample is at most 0.03 mm further.
                 let d = km_to_every(*c, &line, 0.5) * 1000.0;
@@ -4935,7 +4935,7 @@ mod tests {
     /// Points along each edge of each ring at the fractions `ts`, as the tools draw edges: straight
     /// in Web Mercator.
     fn along_edges(polys: &[Vec<Vec<Coord>>], ts: &[f64]) -> Vec<Coord> {
-        use rustgis_geom::{lonlat_to_merc, merc_to_lonlat};
+        use powergis_geom::{lonlat_to_merc, merc_to_lonlat};
         polys
             .iter()
             .flatten()
@@ -4947,7 +4947,7 @@ mod tests {
     /// Points along the geodesic from `a` to `b` on WGS 84, at most 20 m apart.
     fn geodesic_samples(a: Coord, b: Coord) -> Vec<Coord> {
         use geo::InterpolatePoint;
-        let n = (rustgis_geom::haversine_m(a, b) / 20.0).ceil().max(1.0) as usize;
+        let n = (powergis_geom::haversine_m(a, b) / 20.0).ceil().max(1.0) as usize;
         (0..=n)
             .map(|k| geo::Geodesic.point_at_ratio_between(geo::Point::new(a.x, a.y), geo::Point::new(b.x, b.y), k as f64 / n as f64))
             .map(|p| Coord::new(p.x(), p.y()))
@@ -4963,7 +4963,7 @@ mod tests {
         let near = |range: std::ops::Range<usize>, step: usize| {
             range
                 .step_by(step)
-                .min_by(|&i, &j| rustgis_geom::haversine_m(c, samples[i]).total_cmp(&rustgis_geom::haversine_m(c, samples[j])))
+                .min_by(|&i, &j| powergis_geom::haversine_m(c, samples[i]).total_cmp(&powergis_geom::haversine_m(c, samples[j])))
         };
         let coarse = near(0..samples.len(), 50).unwrap_or(0);
         let i = near(coarse.saturating_sub(50)..(coarse + 51).min(samples.len()), 1).unwrap_or(coarse);
@@ -5136,7 +5136,7 @@ mod tests {
         let Output::Layers(out) = r.output else { panic!("expected layers") };
         let Some(OutputLayer::Raster { name, file_name, bytes }) = out.first() else { panic!("expected a raster: {out:?}") };
         assert_eq!(name, "pts_v_idw");
-        let g = rustgis_data::raster::read_bytes(file_name, bytes).unwrap_or_else(|e| panic!("{e}"));
+        let g = powergis_data::raster::read_bytes(file_name, bytes).unwrap_or_else(|e| panic!("{e}"));
         assert_eq!((g.width, g.height), (4, 4));
         // Every value lies between the inputs', nearest the point it sits closest to.
         let d = &g.bands[0].data;
@@ -5197,8 +5197,8 @@ mod tests {
                 assert_eq!(p_name, "pts_v_kriging");
                 assert_eq!(v_name, "pts_v_kriging_variance");
                 (
-                    rustgis_data::raster::read_bytes(p_file, p_bytes).unwrap_or_else(|e| panic!("{e}")),
-                    rustgis_data::raster::read_bytes(v_file, v_bytes).unwrap_or_else(|e| panic!("{e}")),
+                    powergis_data::raster::read_bytes(p_file, p_bytes).unwrap_or_else(|e| panic!("{e}")),
+                    powergis_data::raster::read_bytes(v_file, v_bytes).unwrap_or_else(|e| panic!("{e}")),
                 )
             }
             _ => panic!("expected two raster output layers: {out:?}"),
@@ -5225,7 +5225,7 @@ mod tests {
         // Source CRS metadata does not change the normalized longitude/latitude geometry.
         let Some(pts_layer) = m.0.get("pts") else { panic!("missing pts") };
         let mut proj_pts = pts_layer.clone();
-        proj_pts.crs = Some(rustgis_data::raster::Crs::WebMercator);
+        proj_pts.crs = Some(powergis_data::raster::Crs::WebMercator);
         let m_proj = Map(HashMap::from([("proj_pts".to_string(), proj_pts)]));
         let projected =
             crate::run("kriging", &m_proj, &serde_json::json!({"input": "proj_pts", "field": "v", "extent": "0,0,2,2", "pixelSize": 0.5}))
@@ -5268,7 +5268,7 @@ mod tests {
         .unwrap_or_else(|e| panic!("{e}"));
         let Output::Layers(dup_layers) = r_dup.output else { panic!("expected layers") };
         let pred = match &dup_layers[0] {
-            OutputLayer::Raster { file_name, bytes, .. } => rustgis_data::raster::read_bytes(file_name, bytes).unwrap(),
+            OutputLayer::Raster { file_name, bytes, .. } => powergis_data::raster::read_bytes(file_name, bytes).unwrap(),
             _ => panic!("expected raster"),
         };
         assert!(pred.bands[0].data.iter().all(|v| (19.99..=20.01).contains(v)), "{:?}", pred.bands[0].data);
@@ -5293,7 +5293,7 @@ mod tests {
         .unwrap_or_else(|e| panic!("{e}"));
         let Output::Layers(inter_layers) = r_inter.output else { panic!("expected layers") };
         let pred_inter = match &inter_layers[0] {
-            OutputLayer::Raster { file_name, bytes, .. } => rustgis_data::raster::read_bytes(file_name, bytes).unwrap(),
+            OutputLayer::Raster { file_name, bytes, .. } => powergis_data::raster::read_bytes(file_name, bytes).unwrap(),
             _ => panic!("expected raster"),
         };
         assert!((pred_inter.bands[0].data[0] - 20.0).abs() < 1e-4, "expected 20.0 at (0.5, 0.5), got {}", pred_inter.bands[0].data[0]);
@@ -5339,7 +5339,7 @@ mod tests {
         let (name, r) = match &layers[0] {
             OutputLayer::Raster { name, file_name, bytes } => {
                 assert_eq!(file_name, "stations_kde.tif");
-                (name.clone(), rustgis_data::raster::geotiff::read(std::io::Cursor::new(bytes), name).unwrap())
+                (name.clone(), powergis_data::raster::geotiff::read(std::io::Cursor::new(bytes), name).unwrap())
             }
             _ => panic!("expected OutputLayer::Raster"),
         };
@@ -5371,7 +5371,7 @@ mod tests {
         );
 
         let OutputLayer::Raster { bytes: auto_bytes, .. } = &layers_auto[0] else { panic!("expected OutputLayer::Raster") };
-        let r_auto = rustgis_data::raster::geotiff::read(std::io::Cursor::new(auto_bytes), "stations_density").unwrap();
+        let r_auto = powergis_data::raster::geotiff::read(std::io::Cursor::new(auto_bytes), "stations_density").unwrap();
         let expected_origin_x = pt_extent.min_x - expected_bw;
         assert!(
             (r_auto.transform.origin_x - expected_origin_x).abs() < 1e-4,
@@ -5616,9 +5616,9 @@ mod tests {
         let bytes_multi = extract_raster_bytes(res_multi.output);
         let bytes_two_pts = extract_raster_bytes(res_two_pts.output);
 
-        let r_single = rustgis_data::raster::geotiff::read(std::io::Cursor::new(&bytes_single), "s").unwrap();
-        let r_multi = rustgis_data::raster::geotiff::read(std::io::Cursor::new(&bytes_multi), "m").unwrap();
-        let r_two_pts = rustgis_data::raster::geotiff::read(std::io::Cursor::new(&bytes_two_pts), "t").unwrap();
+        let r_single = powergis_data::raster::geotiff::read(std::io::Cursor::new(&bytes_single), "s").unwrap();
+        let r_multi = powergis_data::raster::geotiff::read(std::io::Cursor::new(&bytes_multi), "m").unwrap();
+        let r_two_pts = powergis_data::raster::geotiff::read(std::io::Cursor::new(&bytes_two_pts), "t").unwrap();
 
         // MultiPoint with 2 parts must produce exact same output as 2 independent points each with weight 2.0
         assert_eq!(r_multi.bands[0].data, r_two_pts.bands[0].data, "MultiPoint must match two independent point features");
@@ -5692,7 +5692,7 @@ mod tests {
         let m_bump = Map(HashMap::from([("bump_ds".to_string(), bump_ds)]));
         let res_bump = crate::run("kernelDensity", &m_bump, &serde_json::json!({"input": "bump_ds"})).unwrap();
         let bytes_bump = extract_raster_bytes(res_bump.output);
-        let r_bump = rustgis_data::raster::geotiff::read(std::io::Cursor::new(&bytes_bump), "b").unwrap();
+        let r_bump = powergis_data::raster::geotiff::read(std::io::Cursor::new(&bytes_bump), "b").unwrap();
         let left_point_x = 500000.0;
         let grid_min_x = r_bump.transform.origin_x;
         assert!(
@@ -6903,7 +6903,7 @@ mod tests {
         // (50, 50) is nearest the third square's far corner, (11, 11), on the ground.
         let (fid, d, x, y) = near_fields(&out, 2);
         assert_eq!(fid, Some(3));
-        let want = rustgis_geom::wgs84_distance_m(Coord::new(50.0, 50.0), Coord::new(11.0, 11.0));
+        let want = powergis_geom::wgs84_distance_m(Coord::new(50.0, 50.0), Coord::new(11.0, 11.0));
         assert!((d.unwrap() - want).abs() < 1e-4 * want, "{d:?} vs {want}");
         assert!((x.unwrap() - 11.0).abs() < 1e-7 && (y.unwrap() - 11.0).abs() < 1e-7, "{x:?} {y:?}");
     }
@@ -7011,7 +7011,7 @@ mod tests {
         // The eleventh (10°) is as near the tenth as the twelfth: the tenth wins.
         let (fid, d, _, _) = near_fields(&out, 10);
         assert_eq!(fid, Some(10));
-        let degree = rustgis_geom::wgs84_distance_m(Coord::new(0.0, 0.0), Coord::new(1.0, 0.0)) / 1000.0;
+        let degree = powergis_geom::wgs84_distance_m(Coord::new(0.0, 0.0), Coord::new(1.0, 0.0)) / 1000.0;
         assert!((d.unwrap() - degree).abs() < 1e-6 * degree, "{d:?} km vs {degree} km");
         // The far point's search widens until it reaches the last of the row, 81° away.
         assert_eq!(near_fields(&out, 20).0, Some(20));
@@ -7026,7 +7026,7 @@ mod tests {
         let out = layer(crate::run("near", &m, &serde_json::json!({"input": "a", "near": "b", "units": "Meters"})).unwrap());
         let (fid, d, x, y) = near_fields(&out, 0);
         assert_eq!(fid, Some(2), "0.2° away across ±180°, not 1.9° on this side");
-        let want = rustgis_geom::wgs84_distance_m(Coord::new(179.9, 0.0), Coord::new(-179.9, 0.0));
+        let want = powergis_geom::wgs84_distance_m(Coord::new(179.9, 0.0), Coord::new(-179.9, 0.0));
         assert!((d.unwrap() - want).abs() < 1e-6 * want, "{d:?} vs {want}");
         assert!((x.unwrap() + 179.9).abs() < 1e-7 && y.unwrap().abs() < 1e-7, "{x:?} {y:?}");
     }
@@ -7064,7 +7064,7 @@ mod tests {
         // A degree north of the first road's middle: the point below it, about 110.6 km away.
         let (fid, d, x, y) = near_fields(&run(serde_json::json!({"input": "pts", "near": "roads"})), 0);
         assert_eq!(fid, Some(1));
-        let want = rustgis_geom::wgs84_distance_m(Coord::new(0.0, 1.0), Coord::new(0.0, 0.0)) / 1000.0;
+        let want = powergis_geom::wgs84_distance_m(Coord::new(0.0, 1.0), Coord::new(0.0, 0.0)) / 1000.0;
         assert!((d.unwrap() - want).abs() < 1e-4 * want, "{d:?} vs {want}");
         // Found on the plane's straight edge, within 0.01 % of the distance of the geodesic's point.
         assert!(x.unwrap().abs() < 1e-4 && y.unwrap().abs() < 1e-4, "{x:?} {y:?}");
@@ -7227,9 +7227,9 @@ mod tests {
         let Some(pts_layer) = m.0.get("pts") else { panic!("missing pts") };
         let Some(polys_layer) = m.0.get("polys") else { panic!("missing polys") };
         let mut pts_crs = pts_layer.clone();
-        pts_crs.crs = Some(rustgis_data::raster::Crs::LonLat);
+        pts_crs.crs = Some(powergis_data::raster::Crs::LonLat);
         let mut polys_crs = polys_layer.clone();
-        polys_crs.crs = Some(rustgis_data::raster::Crs::WebMercator);
+        polys_crs.crs = Some(powergis_data::raster::Crs::WebMercator);
         let m_crs = Map(HashMap::from([("polys".to_string(), polys_crs), ("pts".to_string(), pts_crs)]));
         for (params, expected) in [
             (serde_json::json!({"target": "pts", "join": "polys"}), &ds1),
@@ -7361,7 +7361,7 @@ mod tests {
         let run = |params: serde_json::Value| layer(crate::run("spatialJoin", &m, &params).unwrap_or_else(|e| panic!("{e}")));
         let num_at = |ds: &Dataset, row: usize, f: &str| ds.value(row, ds.field_index(f).unwrap()).as_f64();
         // Distances on WGS 84, as the join measures them (#888).
-        let hav = |a: (f64, f64), b: (f64, f64)| rustgis_geom::wgs84_distance_m(Coord::new(a.0, a.1), Coord::new(b.0, b.1));
+        let hav = |a: (f64, f64), b: (f64, f64)| powergis_geom::wgs84_distance_m(Coord::new(a.0, a.1), Coord::new(b.0, b.1));
 
         // Closest, unlimited: the nearest stop, across the antimeridian and over the pole too.
         let closest =
@@ -7434,8 +7434,8 @@ mod tests {
             probes.push(point(x, y), vec![]);
         }
         let brute = |x: f64, y: f64| {
-            let d = |f: &rustgis_data::Feature| match &f.geometry {
-                Some(Geometry::Point(c)) => rustgis_geom::wgs84_distance_m(Coord::new(x, y), *c),
+            let d = |f: &powergis_data::Feature| match &f.geometry {
+                Some(Geometry::Point(c)) => powergis_geom::wgs84_distance_m(Coord::new(x, y), *c),
                 _ => f64::INFINITY,
             };
             let best = many.features.iter().min_by(|a, b| d(a).total_cmp(&d(b))).map(|f| f.attrs[0].clone());
@@ -8026,16 +8026,16 @@ mod tests {
                 }
             }
         }
-        let gt = rustgis_data::raster::GeoTransform { origin_x: 0.0, origin_y: 10.0, pixel_width: 1.0, pixel_height: -1.0 };
-        let raster = rustgis_data::raster::Raster::new(
+        let gt = powergis_data::raster::GeoTransform { origin_x: 0.0, origin_y: 10.0, pixel_width: 1.0, pixel_height: -1.0 };
+        let raster = powergis_data::raster::Raster::new(
             "elev",
             w,
             h,
             vec![b1_data, b2_data],
             gt,
-            rustgis_data::raster::Crs::LonLat,
+            powergis_data::raster::Crs::LonLat,
             Some(-9999.0),
-            rustgis_data::raster::ColorHint::Gray,
+            powergis_data::raster::ColorHint::Gray,
             "Float32",
         )
         .unwrap();
@@ -8221,7 +8221,7 @@ mod tests {
         let p1 = Coord::new(3.0, 9.0);
         let merc_geom = Geometry::Polygon(vec![vec![vec![p0, Coord::new(p1.x, p0.y), p1, Coord::new(p0.x, p1.y), p0]]]);
         let mut merc_poly_ds = Dataset::new("merc_zones", GeometryType::Polygon, vec![Field::new("id", FieldType::Integer)]);
-        merc_poly_ds.crs = Some(rustgis_data::raster::Crs::WebMercator);
+        merc_poly_ds.crs = Some(powergis_data::raster::Crs::WebMercator);
         merc_poly_ds.push(Some(merc_geom.clone()), vec![Value::Int(1)]);
 
         let m_merc = RasterMap {
@@ -8239,7 +8239,7 @@ mod tests {
         )
         .unwrap();
         let out_merc = layer(res_merc);
-        assert_eq!(out_merc.crs, Some(rustgis_data::raster::Crs::WebMercator));
+        assert_eq!(out_merc.crs, Some(powergis_data::raster::Crs::WebMercator));
         assert_eq!(out_merc.features[0].geometry, Some(merc_geom));
         let merc_count = out_merc.field_index("elev_count").unwrap();
         let merc_mean = out_merc.field_index("elev_mean").unwrap();
@@ -8248,7 +8248,7 @@ mod tests {
 
         // 11. Source CRS metadata does not change already-normalized geometry.
         let mut bad_crs_ds = Dataset::new("bad_crs", GeometryType::Polygon, vec![]);
-        bad_crs_ds.crs = Some(rustgis_data::raster::Crs::Epsg(60000));
+        bad_crs_ds.crs = Some(powergis_data::raster::Crs::Epsg(60000));
         bad_crs_ds.push(Some(sq_geom(1.0, 7.0, 3.0, 9.0)), vec![]);
         let m_bad_crs = RasterMap {
             datasets: HashMap::from([("bad_crs".to_string(), bad_crs_ds)]),
@@ -8265,7 +8265,7 @@ mod tests {
             vec![hole_p0, Coord::new(hole_p1.x, hole_p0.y), hole_p1, Coord::new(hole_p0.x, hole_p1.y), hole_p0], // valid hole
         ]]);
         let mut drop_ext_ds = Dataset::new("drop_ext", GeometryType::Polygon, vec![Field::new("id", FieldType::Integer)]);
-        drop_ext_ds.crs = Some(rustgis_data::raster::Crs::WebMercator);
+        drop_ext_ds.crs = Some(powergis_data::raster::Crs::WebMercator);
         drop_ext_ds.push(Some(bad_ext_geom), vec![Value::Int(1)]);
         let m_drop_ext = RasterMap {
             datasets: HashMap::from([("drop_ext".to_string(), drop_ext_ds)]),
@@ -8288,7 +8288,7 @@ mod tests {
             Coord::new(f64::NAN, p0.y),
         ]]]);
         let mut nan_ext_ds = Dataset::new("nan_ext", GeometryType::Polygon, vec![Field::new("id", FieldType::Integer)]);
-        nan_ext_ds.crs = Some(rustgis_data::raster::Crs::WebMercator);
+        nan_ext_ds.crs = Some(powergis_data::raster::Crs::WebMercator);
         nan_ext_ds.push(Some(nan_ext_geom), vec![Value::Int(1)]);
         let m_nan_ext = RasterMap {
             datasets: HashMap::from([("nan_ext".to_string(), nan_ext_ds)]),
@@ -8312,7 +8312,7 @@ mod tests {
             vec![merc_hole0, Coord::new(merc_hole1.x, merc_hole0.y), merc_hole1, Coord::new(merc_hole0.x, merc_hole1.y), merc_hole0],
         ]]);
         let mut hole_ds = Dataset::new("merc_hole", GeometryType::Polygon, vec![Field::new("id", FieldType::Integer)]);
-        hole_ds.crs = Some(rustgis_data::raster::Crs::WebMercator);
+        hole_ds.crs = Some(powergis_data::raster::Crs::WebMercator);
         hole_ds.push(Some(valid_hole_geom), vec![Value::Int(1)]);
         let m_hole = RasterMap {
             datasets: HashMap::from([("merc_hole".to_string(), hole_ds)]),
@@ -8329,7 +8329,7 @@ mod tests {
 
     #[test]
     fn zonal_stats_attribute_padding_and_alignment_regression() {
-        use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+        use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
 
         let (w, h) = (4u32, 4u32);
         let data: Vec<f32> = (1..=16).map(|v| v as f32).collect();
@@ -8444,7 +8444,7 @@ mod tests {
 
     #[test]
     fn zonal_stats_partial_feature_failures_regression() {
-        use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+        use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
 
         let (w, h) = (4u32, 4u32);
         let data: Vec<f32> = (1..=16).map(|v| v as f32).collect();
@@ -8508,7 +8508,7 @@ mod tests {
 
     #[test]
     fn parse_bands_and_stats_validation_regression() {
-        use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+        use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
 
         let (w, h) = (2u32, 2u32);
         let data: Vec<f32> = vec![1.0, 2.0, 3.0, 4.0];

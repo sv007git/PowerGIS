@@ -1,5 +1,5 @@
 //! Exact-coordinate polygon moves use the ordinary design-rule and undo transaction.
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{Dataset, Feature, Field, FieldType, Geometry, GeometryType, Value as Cell, VertexId},
     geom::Coord,

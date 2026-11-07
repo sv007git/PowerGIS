@@ -1,14 +1,14 @@
 //! Repeatable UI-thread pan/zoom benchmark with planetary tiles served from memory.
 //! GPU presentation/readback is excluded. Run with an optional maximum UI-frame cost:
-//! `cargo run -p rustgis-ui-egui --example planet_bench -- 50`.
-use rustgis_ui_egui::RustGisApp;
-use rustgis_ui_egui::rustgis_engine::{
+//! `cargo run -p powergis-ui-egui --example planet_bench -- 50`.
+use powergis_ui_egui::powergisApp;
+use powergis_ui_egui::powergis_engine::{
     geom::{Coord, lonlat_to_merc},
-    render::rustgis_tiles,
+    render::powergis_tiles,
 };
 use serde_json::json;
 
-fn settle(h: &mut egui_kittest::Harness<'_, RustGisApp>) -> Result<(), Box<dyn std::error::Error>> {
+fn settle(h: &mut egui_kittest::Harness<'_, powergisApp>) -> Result<(), Box<dyn std::error::Error>> {
     for _ in 0..40 {
         h.step();
     }
@@ -26,7 +26,7 @@ fn settle(h: &mut egui_kittest::Harness<'_, RustGisApp>) -> Result<(), Box<dyn s
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut bytes = std::io::Cursor::new(Vec::new());
     image::RgbaImage::from_fn(256, 256, |x, y| image::Rgba([x as u8, y as u8, 90, 255])).write_to(&mut bytes, image::ImageFormat::Png)?;
-    rustgis_tiles::cache::set_fetcher(move |_, done| done(Ok(bytes.get_ref().clone())));
+    powergis_tiles::cache::set_fetcher(move |_, done| done(Ok(bytes.get_ref().clone())));
     let setup = egui_wgpu::WgpuSetup::CreateNew(egui_wgpu::WgpuSetupCreateNew::without_display_handle());
     let instance = pollster::block_on(setup.new_instance());
     let rs = pollster::block_on(egui_wgpu::RenderState::create(
@@ -38,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut worst: f64 = 0.0;
     for projection in ["mercator", "globe"] {
         for gpu in [false, true] {
-            let mut app = RustGisApp::with_sample();
+            let mut app = powergisApp::with_sample();
             app.set_render_state(Some(rs.clone()));
             app.run("map.body", json!({"name": "moon"}))?;
             app.run("map.projection", json!({"type": projection}))?;
@@ -52,7 +52,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .with_step_dt(1.0 / 60.0)
                 .with_max_steps(10_000)
                 .build_ui_state(
-                    |ui, app: &mut RustGisApp| {
+                    |ui, app: &mut powergisApp| {
                         let ctx = ui.ctx().clone();
                         ctx.input_mut(|i| i.max_texture_side = 8192);
                         app.logic(&ctx);

@@ -181,7 +181,7 @@ pub fn read(file_name: &str, text: &str) -> Result<Vec<(Dataset, ReadReport)>> {
 mod tests {
     use super::*;
     use crate::{Geometry, GeometryType};
-    use rustgis_geom::Coord;
+    use powergis_geom::Coord;
 
     // The TopoJSON specification's example: a point, a line and a polygon, quantized.
     const TOPO: &str = r#"{"type":"Topology","transform":{"scale":[0.0005000500050005,0.00010001000100010001],"translate":[100,0]},

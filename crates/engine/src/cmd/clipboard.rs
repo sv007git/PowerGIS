@@ -3,7 +3,7 @@
 //! Copied features are held by the session (with their schema) and also returned as GeoJSON, which
 //! the app puts on the system clipboard; paste takes either.
 
-use rustgis_data::{Dataset, Feature, FieldType, GeometryType, Value as Attr};
+use powergis_data::{Dataset, Feature, FieldType, GeometryType, Value as Attr};
 use serde_json::{Value, json};
 
 use super::{need_layer, need_selection, ps};
@@ -49,7 +49,7 @@ fn copy(s: &mut Session) -> CmdResult {
     let mut data = Dataset::new(l.name.clone(), l.geometry_type(), l.dataset.fields.clone());
     data.features = l.selection.iter().filter_map(|r| l.dataset.features.get(*r).cloned()).collect();
     let n = data.features.len();
-    let text = rustgis_data::io::to_geojson(&data).to_string();
+    let text = powergis_data::io::to_geojson(&data).to_string();
     let layer = l.name.clone();
     s.clipboard = Some(Clipboard { data });
     s.notify(format!("Copied {n} features from {layer}"), false);
@@ -85,7 +85,7 @@ fn clip(s: &Session, p: &Value) -> Result<Dataset, String> {
         Some(t) if t.len() > MAX_TEXT => Err("the pasted text is too large".into()),
         Some(t) => {
             let (ds, _) =
-                rustgis_data::io::read_geojson(t, "Pasted").map_err(|e| format!("the pasted text isn't GeoJSON features: {e}"))?;
+                powergis_data::io::read_geojson(t, "Pasted").map_err(|e| format!("the pasted text isn't GeoJSON features: {e}"))?;
             if ds.features.is_empty() { Err("the pasted text has no features".into()) } else { Ok(ds) }
         }
         None => s.clipboard.as_ref().map(|c| c.data.clone()).ok_or_else(|| "nothing has been copied".to_string()),
@@ -120,7 +120,7 @@ fn paste(s: &mut Session, p: &Value) -> CmdResult {
     // `graphics.add` and `graphics.edit` add one when it is first set. Other features pasted with
     // or without them add none, though they have a `kind` or a field so named of their own.
     if l.graphics {
-        use rustgis_map::graphics::{FIELDS, SHAPES, kind};
+        use powergis_map::graphics::{FIELDS, SHAPES, kind};
         let rows: Vec<usize> = (0..src.features.len()).filter(|r| SHAPES.contains(&kind(&src, *r))).collect();
         for (name, ty) in FIELDS {
             if src.field_index(name).is_some_and(|fi| rows.iter().any(|r| !src.value(*r, fi).is_null())) {

@@ -1,13 +1,13 @@
 //! Times map renders (for the GPU, building its scene: the draw itself isn't timed) of a vector tile style (OpenFreeMap Liberty) while panning and zooming:
-//! `cargo run --release -p rustgis-render --example vector_tile_bench`. Needs the network.
-use rustgis_geom::{Coord, lonlat_to_merc};
-use rustgis_map::{Camera, Map, TileKind, TileLayer};
-use rustgis_render::{Backend, View, render_backend, rustgis_tiles};
+//! `cargo run --release -p powergis-render --example vector_tile_bench`. Needs the network.
+use powergis_geom::{Coord, lonlat_to_merc};
+use powergis_map::{Camera, Map, TileKind, TileLayer};
+use powergis_render::{Backend, View, render_backend, powergis_tiles};
 
 fn main() {
     let mut m = Map::new("m");
     m.graticule = false;
-    m.basemap = rustgis_map::Basemap::Blank;
+    m.basemap = powergis_map::Basemap::Blank;
     m.tiles.push(TileLayer::new("Liberty", TileKind::Style, "https://tiles.openfreemap.org/styles/liberty"));
     let view = |lon: f64, res: f64| View {
         width: 1400.0,
@@ -25,10 +25,10 @@ fn main() {
             for v in zooms.iter().chain(&pans) {
                 render_backend(&mut m, v, Backend::Cpu);
             }
-            if rustgis_tiles::cache::in_flight() == 0 {
+            if powergis_tiles::cache::in_flight() == 0 {
                 break;
             }
-            rustgis_tiles::cache::wait(std::time::Duration::from_secs(5));
+            powergis_tiles::cache::wait(std::time::Duration::from_secs(5));
         }
         for backend in [Backend::Cpu, Backend::Gpu] {
             let ms = |views: &[View], m: &mut Map| {

@@ -1,6 +1,6 @@
 //! Compact attribute-table geometry calculator, bound to the table's layer.
-use crate::{RustGisApp, theme::Tokens};
-use rustgis_engine::{
+use crate::{powergisApp, theme::Tokens};
+use powergis_engine::{
     Session,
     data::FieldType,
     geometry_calc::{properties, units},
@@ -67,7 +67,7 @@ fn choice(ui: &mut egui::Ui, id: &str, value: &mut String, choices: &[(&str, &st
 }
 
 /// Shows the dialog while it is open and runs `edit.calculateGeometry` on Calculate.
-pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn show(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(mut f) = app.dialogs.geometry.take() else { return };
     let Some(l) = app.session.map().layer(f.layer) else {
         app.dialogs.open = None;

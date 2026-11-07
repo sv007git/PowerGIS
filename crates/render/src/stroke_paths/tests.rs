@@ -1,6 +1,6 @@
 use super::*;
 use crate::{Extent, View};
-use rustgis_map::{Camera, Rgba};
+use powergis_map::{Camera, Rgba};
 
 #[test]
 fn cached_pixels_equal_sequential_strokes_including_overlap_and_alpha() {
@@ -23,9 +23,9 @@ fn cached_pixels_equal_sequential_strokes_including_overlap_and_alpha() {
         };
         let mut expected = Pixmap::new((600.0 * ppp) as u32, (400.0 * ppp) as u32).unwrap();
         let mut actual = expected.clone();
-        let symbol = Symbol::default_for(rustgis_data::GeometryType::Polyline, 0);
-        for join in [rustgis_map::LineJoin::Round, rustgis_map::LineJoin::Miter, rustgis_map::LineJoin::Bevel] {
-            for cap in [rustgis_map::LineCap::Round, rustgis_map::LineCap::Square, rustgis_map::LineCap::Butt] {
+        let symbol = Symbol::default_for(powergis_data::GeometryType::Polyline, 0);
+        for join in [powergis_map::LineJoin::Round, powergis_map::LineJoin::Miter, powergis_map::LineJoin::Bevel] {
+            for cap in [powergis_map::LineCap::Round, powergis_map::LineCap::Square, powergis_map::LineCap::Butt] {
                 expected.fill(tiny_skia::Color::WHITE);
                 actual.fill(tiny_skia::Color::WHITE);
                 let strokes = [
@@ -103,7 +103,7 @@ fn path_storage_is_reused_and_large_paths_are_not_retained() {
         bursts: Default::default(),
     };
     let mut image = Pixmap::new(600, 400).unwrap();
-    let symbol = Symbol::default_for(rustgis_data::GeometryType::Polyline, 0);
+    let symbol = Symbol::default_for(powergis_data::GeometryType::Polyline, 0);
     let strokes = [LineStroke { offset: 0.5, width: Some(0.5), ..Default::default() }];
     let mut paths = Paths::default();
     let mut allocation = None;

@@ -41,7 +41,8 @@ pub struct Sparse {
 }
 
 /// What a container of a file's parts ([`Sparse::container`]) starts with.
-const CONTAINER_MAGIC: &[u8; 16] = b"PowerGIS parts 1\n";
+const CONTAINER_MAGIC: &[u8; 17] = b"PowerGIS parts 1\n";
+const LEGACY_CONTAINER_MAGIC: &[u8; 16] = b"RustGIS parts 1\n";
 /// The most parts a container may hold.
 const MAX_PARTS: u64 = 1 << 20;
 
@@ -81,7 +82,7 @@ impl Sparse {
 
     /// Whether `bytes` are a container of a file's parts.
     pub fn is_container(bytes: &[u8]) -> bool {
-        bytes.starts_with(CONTAINER_MAGIC)
+        bytes.starts_with(CONTAINER_MAGIC) || bytes.starts_with(LEGACY_CONTAINER_MAGIC)
     }
 
     /// The parts a container holds; `None` for anything else or a damaged one.
@@ -91,7 +92,9 @@ impl Sparse {
             *rest = tail;
             Some(u64::from_le_bytes(*head))
         }
-        let mut rest = bytes.strip_prefix(CONTAINER_MAGIC.as_slice())?;
+        let mut rest = bytes
+            .strip_prefix(CONTAINER_MAGIC.as_slice())
+            .or_else(|| bytes.strip_prefix(LEGACY_CONTAINER_MAGIC.as_slice()))?;
         let len = u64_(&mut rest)?;
         let n = u64_(&mut rest)?;
         if n > MAX_PARTS {
@@ -158,7 +161,7 @@ impl Read for Sparse {
                     let end = self.pos.saturating_add(buf.len() as u64);
                     *m = Some((self.pos, self.len.map_or(end, |len| end.min(len))));
                 }
-                Err(std::io::Error::other("rustgis: bytes not read yet"))
+                Err(std::io::Error::other("powergis: bytes not read yet"))
             }
         }
     }

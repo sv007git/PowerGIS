@@ -9,7 +9,7 @@ PublisherUrl: https://github.com/opengeos
 PublisherSupportUrl: https://github.com/opengeos/PowerGIS/issues
 Author: PowerGIS contributors
 PackageName: PowerGIS
-PackageUrl: https://rustgis.app
+PackageUrl: https://powergis.app
 License: Apache-2.0
 LicenseUrl: https://github.com/opengeos/PowerGIS/blob/main/LICENSE
 Copyright: Copyright the PowerGIS contributors
@@ -17,9 +17,9 @@ ShortDescription: Fast, free and open-source GIS for mapping, analyzing and shar
 Description: |-
   PowerGIS is a geographic information system in pure Rust: maps and layers, symbology, labels,
   editing, geoprocessing with over 1,000 GeoLibre and Whitebox tools, page layouts and export, an
-  AI Assistant and sandboxed plugins. It includes rustgis-cli for scripting every command and an
+  AI Assistant and sandboxed plugins. It includes powergis-cli for scripting every command and an
   MCP server for AI agents.
-Moniker: rustgis
+Moniker: powergis
 Tags:
 - gis
 - geospatial
@@ -31,6 +31,6 @@ Tags:
 ReleaseNotesUrl: https://github.com/opengeos/PowerGIS/releases/tag/v0.1.0
 Documentations:
 - DocumentLabel: User guide
-  DocumentUrl: https://rustgis.app/user-guide/
+  DocumentUrl: https://powergis.app/user-guide/
 ManifestType: defaultLocale
 ManifestVersion: 1.12.0

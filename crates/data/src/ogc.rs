@@ -70,7 +70,7 @@ fn last(mut values: Vec<String>, n: usize) -> Vec<String> {
 /// 2,000).
 const MAX_DOCUMENT_TIME_VALUES: usize = 50_000;
 
-/// The most steps the time slider takes (`rustgis_map::time::MAX_STEPS`).
+/// The most steps the time slider takes (`powergis_map::time::MAX_STEPS`).
 const MAX_SLIDER_STEPS: usize = 20_000;
 
 /// The date formats a layer's times may be written in, as `{date:…}` takes them: years, compact
@@ -4124,7 +4124,7 @@ mod tests {
         assert_eq!(
             template,
             "https://maps.example.org/wms?map=demo&SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=roads&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng&TRANSPARENT=TRUE\
-             #rustgis-warp={z}/{x}/{y};crs=3857;in=-10,35,20,60;sys=4326|n|EPSG:4326;map=east"
+             #powergis-warp={z}/{x}/{y};crs=3857;in=-10,35,20,60;sys=4326|n|EPSG:4326;map=east"
         );
         // Drawn in Web Mercator as it comes; its other system (latitude first, WMS 1.3.0's
         // EPSG:4326) kept for a map drawn in it.

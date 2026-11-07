@@ -1,25 +1,25 @@
 //! A repair dialog must not replace another archive after its captured index changes.
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     map::{TileKind, TileLayer},
 };
-use rustgis_ui_egui::RustGisApp;
+use powergis_ui_egui::powergisApp;
 use serde_json::json;
 
-fn harness() -> egui_kittest::Harness<'static, RustGisApp> {
+fn harness() -> egui_kittest::Harness<'static, powergisApp> {
     let mut session = Session::new(Project::default());
     for file in ["first", "second"] {
-        let mut tile = TileLayer::new("Archive", TileKind::PmTiles, format!("/tmp/rustgis-repair-{file}.pmtiles"));
+        let mut tile = TileLayer::new("Archive", TileKind::PmTiles, format!("/tmp/powergis-repair-{file}.pmtiles"));
         tile.error = Some("The archive moved".into());
         session.map_mut().tiles.push(tile);
     }
     let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(1000.0, 720.0)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
         },
-        RustGisApp::new(session),
+        powergisApp::new(session),
     );
     h.state_mut().run("ui.dialog", json!({"name":"repairTiles", "index":0})).unwrap();
     h.run_steps(3);

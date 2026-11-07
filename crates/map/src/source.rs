@@ -14,8 +14,8 @@
 use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, OnceLock};
 
-use rustgis_data::source::{Batch, FeatureSource, Request, SourceInfo};
-use rustgis_geom::Extent;
+use powergis_data::source::{Batch, FeatureSource, Request, SourceInfo};
+use powergis_geom::Extent;
 use serde::{Deserialize, Serialize};
 
 mod render_lod;
@@ -47,7 +47,7 @@ pub struct SourceLayer {
     pub table: Option<String>,
     /// A Shapefile's source CRS override, reapplied when its path is reopened.
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    pub shapefile_crs: Option<rustgis_data::raster::Crs>,
+    pub shapefile_crs: Option<powergis_data::raster::Crs>,
     /// The original file, kept in the project when there is no path (a browser upload).
     #[serde(default, skip_serializing_if = "Option::is_none", with = "crate::raster::b64")]
     pub embedded: Option<Arc<Vec<u8>>>,
@@ -124,7 +124,7 @@ pub struct PostgisOrigin {
     pub table: String,
     /// The geometry family read, for a column of mixed types.
     #[serde(default)]
-    pub family: Option<rustgis_data::source::Family>,
+    pub family: Option<powergis_data::source::Family>,
     /// The coordinate system given for a geometry that doesn't say.
     #[serde(default)]
     pub crs: Option<String>,
@@ -186,7 +186,7 @@ pub struct GpkgEdit {
 
 /// How a loaded row is told apart from the same row edited: a hash of its geometry and
 /// attributes (FNV-1a over their JSON, the same in every build).
-pub fn row_hash(f: &rustgis_data::Feature) -> u64 {
+pub fn row_hash(f: &powergis_data::Feature) -> u64 {
     /// FNV-1a over the bytes written to it, kept as they come (no buffer per row).
     struct Fnv(u64);
     impl std::io::Write for Fnv {
@@ -278,11 +278,11 @@ impl<'de> Deserialize<'de> for Versions {
 #[derive(Debug, Default)]
 pub struct RowChanges {
     /// Features of loaded rows that differ from them, with the rows' versions.
-    pub updates: Vec<(rustgis_data::Feature, i64)>,
+    pub updates: Vec<(powergis_data::Feature, i64)>,
     /// Loaded rows no feature holds any more: their keys and versions.
     pub deletes: Vec<(u64, i64)>,
     /// Features of no loaded row.
-    pub inserts: Vec<rustgis_data::Feature>,
+    pub inserts: Vec<powergis_data::Feature>,
     /// Where each of `inserts` is among the features.
     pub insert_rows: Vec<usize>,
 }
@@ -296,7 +296,7 @@ impl RowChanges {
 impl Versions {
     /// What changed in `features` since the rows were read. A feature whose id is a loaded row's
     /// is that row (once: a copy with the same id is new).
-    pub fn changes(&self, features: &[rustgis_data::Feature]) -> RowChanges {
+    pub fn changes(&self, features: &[powergis_data::Feature]) -> RowChanges {
         let mut out = RowChanges::default();
         let mut seen = std::collections::HashSet::new();
         for (i, f) in features.iter().enumerate() {
@@ -318,7 +318,7 @@ impl Versions {
 }
 
 /// The loaded rows' new baseline after a save or load.
-pub fn versions_of(features: &[rustgis_data::Feature], old: &Versions, saved: &std::collections::HashMap<u64, i64>) -> Versions {
+pub fn versions_of(features: &[powergis_data::Feature], old: &Versions, saved: &std::collections::HashMap<u64, i64>) -> Versions {
     let mut seen = std::collections::HashSet::new();
     features
         .iter()
@@ -338,7 +338,7 @@ pub struct MysqlOrigin {
     pub table: String,
     /// The geometry family read, for a column of mixed types.
     #[serde(default)]
-    pub family: Option<rustgis_data::source::Family>,
+    pub family: Option<powergis_data::source::Family>,
     /// The coordinate system given for a geometry whose SRID is 0.
     #[serde(default)]
     pub crs: Option<String>,
@@ -353,7 +353,7 @@ pub struct SqlServerOrigin {
     pub table: String,
     /// The geometry family read, for a column of mixed types.
     #[serde(default)]
-    pub family: Option<rustgis_data::source::Family>,
+    pub family: Option<powergis_data::source::Family>,
     /// The coordinate system given for a geometry whose SRID is 0.
     #[serde(default)]
     pub crs: Option<String>,
@@ -375,7 +375,7 @@ pub struct DuckdbOrigin {
     #[serde(default)]
     pub crs: Option<String>,
     /// The geometry family of the result this layer shows.
-    pub family: rustgis_data::source::Family,
+    pub family: powergis_data::source::Family,
 }
 
 /// Where a layer read through GDAL came from.
@@ -384,7 +384,7 @@ pub struct GdalOrigin {
     pub path: String,
     pub layer: String,
     #[serde(default)]
-    pub family: Option<rustgis_data::source::Family>,
+    pub family: Option<powergis_data::source::Family>,
     /// The coordinate system given for a file that doesn't say.
     #[serde(default)]
     pub crs: Option<String>,
@@ -407,19 +407,19 @@ impl std::fmt::Debug for SourceLayer {
 /// A query is never run again here: a project file is hostile input, and a query can read any file
 /// and send it to any address. Its user runs it again.
 #[cfg(not(target_arch = "wasm32"))]
-fn rerun(d: &DuckdbOrigin) -> rustgis_data::Result<std::path::PathBuf> {
-    use rustgis_data::source::duckdb;
+fn rerun(d: &DuckdbOrigin) -> powergis_data::Result<std::path::PathBuf> {
+    use powergis_data::source::duckdb;
     let out = match (&d.table, d.database.as_deref().map(duckdb::Database::parse)) {
         // A project names its server, so it never connects on its own: it would send the user's
         // own PostgreSQL credentials (PGPASSWORD, ~/.pgpass) to whatever host the file says.
         (Some(_), Some(duckdb::Database::Postgres(_))) => {
-            return Err(rustgis_data::DataError::Format(
+            return Err(powergis_data::DataError::Format(
                 "the table's result is no longer in the cache: add it again (Home › Add › Add Data › Database…)".into(),
             ));
         }
         (Some(t), Some(db)) => duckdb::convert_table_of(&db, &duckdb::find_table_of(&db, t)?, d.crs.as_deref())?,
         _ => {
-            return Err(rustgis_data::DataError::Format(
+            return Err(powergis_data::DataError::Format(
                 "the query's result is no longer in the cache: run the query again (Add Data From SQL)".into(),
             ));
         }
@@ -428,34 +428,34 @@ fn rerun(d: &DuckdbOrigin) -> rustgis_data::Result<std::path::PathBuf> {
         .into_iter()
         .find(|p| p.family == d.family)
         .map(|p| p.path)
-        .ok_or_else(|| rustgis_data::DataError::Format(format!("the query returns no {} any more", d.family.label())))
+        .ok_or_else(|| powergis_data::DataError::Format(format!("the query returns no {} any more", d.family.label())))
 }
 
 /// Adds the manual reconnect hint without losing a refused-password classification.
 #[cfg(not(target_arch = "wasm32"))]
-fn database_open_error(e: rustgis_data::DataError) -> rustgis_data::DataError {
+fn database_open_error(e: powergis_data::DataError) -> powergis_data::DataError {
     match e {
-        rustgis_data::DataError::Login(message) => {
-            rustgis_data::DataError::Login(format!("{message} (connect again with Home › Add › Add Data › Database…, giving its password)"))
+        powergis_data::DataError::Login(message) => {
+            powergis_data::DataError::Login(format!("{message} (connect again with Home › Add › Add Data › Database…, giving its password)"))
         }
-        e => rustgis_data::DataError::Format(format!("{e} (connect again with Home › Add › Add Data › Database…, giving its password)")),
+        e => powergis_data::DataError::Format(format!("{e} (connect again with Home › Add › Add Data › Database…, giving its password)")),
     }
 }
 
 /// Connects to a PostGIS layer's table again (a project opening). Only a password given this
 /// session is sent: a project file names its server, which must never get the user's own
 /// credentials (`PGPASSWORD`, the password file) just for being opened.
-fn open_postgis(pg: &PostgisOrigin) -> rustgis_data::Result<Box<dyn FeatureSource>> {
+fn open_postgis(pg: &PostgisOrigin) -> powergis_data::Result<Box<dyn FeatureSource>> {
     #[cfg(target_arch = "wasm32")]
     {
         let _ = pg;
-        Err(rustgis_data::DataError::Format("PostGIS databases are read in the desktop app".into()))
+        Err(powergis_data::DataError::Format("PostGIS databases are read in the desktop app".into()))
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::{duckdb::Database, postgis};
+        use powergis_data::source::{duckdb::Database, postgis};
         let Database::Postgres(dsn) = Database::parse(&pg.database) else {
-            return Err(rustgis_data::DataError::Format(format!("{}: not a PostgreSQL connection", pg.database)));
+            return Err(powergis_data::DataError::Format(format!("{}: not a PostgreSQL connection", pg.database)));
         };
         let conn = postgis::connect(&dsn, false).map_err(database_open_error)?;
         let table = postgis::find_table(&conn, &pg.table)?;
@@ -465,17 +465,17 @@ fn open_postgis(pg: &PostgisOrigin) -> rustgis_data::Result<Box<dyn FeatureSourc
 
 /// Connects to a MySQL or MariaDB layer's table again (a project opening). Only a password given
 /// this session is sent, never `MYSQL_PWD`, as for [`open_postgis`].
-fn open_mysql(my: &MysqlOrigin) -> rustgis_data::Result<Box<dyn FeatureSource>> {
+fn open_mysql(my: &MysqlOrigin) -> powergis_data::Result<Box<dyn FeatureSource>> {
     #[cfg(target_arch = "wasm32")]
     {
         let _ = my;
-        Err(rustgis_data::DataError::Format("MySQL and MariaDB databases are read in the desktop app".into()))
+        Err(powergis_data::DataError::Format("MySQL and MariaDB databases are read in the desktop app".into()))
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::{duckdb::Database, mysql};
+        use powergis_data::source::{duckdb::Database, mysql};
         let Database::Mysql(address) = Database::parse(&my.database) else {
-            return Err(rustgis_data::DataError::Format(format!("{}: not a MySQL or MariaDB connection", my.database)));
+            return Err(powergis_data::DataError::Format(format!("{}: not a MySQL or MariaDB connection", my.database)));
         };
         let conn = mysql::connect(&address, false).map_err(database_open_error)?;
         let table = mysql::find_table(&conn, &my.table)?;
@@ -485,17 +485,17 @@ fn open_mysql(my: &MysqlOrigin) -> rustgis_data::Result<Box<dyn FeatureSource>> 
 
 /// Connects to a SQL Server layer's table again (a project opening). Only a password given
 /// this session is sent, never `SQLCMDPASSWORD`, as for [`open_postgis`].
-fn open_sqlserver(ms: &SqlServerOrigin) -> rustgis_data::Result<Box<dyn FeatureSource>> {
+fn open_sqlserver(ms: &SqlServerOrigin) -> powergis_data::Result<Box<dyn FeatureSource>> {
     #[cfg(target_arch = "wasm32")]
     {
         let _ = ms;
-        Err(rustgis_data::DataError::Format("SQL Server databases are read in the desktop app".into()))
+        Err(powergis_data::DataError::Format("SQL Server databases are read in the desktop app".into()))
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::{duckdb::Database, sqlserver};
+        use powergis_data::source::{duckdb::Database, sqlserver};
         let Database::Sqlserver(address) = Database::parse(&ms.database) else {
-            return Err(rustgis_data::DataError::Format(format!("{}: not a SQL Server connection", ms.database)));
+            return Err(powergis_data::DataError::Format(format!("{}: not a SQL Server connection", ms.database)));
         };
         let conn = sqlserver::connect(&address, false).map_err(database_open_error)?;
         let table = sqlserver::find_table(&conn, &ms.table)?;
@@ -577,7 +577,7 @@ impl SourceLayer {
             #[cfg(not(target_arch = "wasm32"))]
             {
                 let layer = table.unwrap_or(&g.layer);
-                let fresh = rustgis_data::source::gdal::convert_one(std::path::Path::new(path), layer, g.family, g.crs.as_deref())
+                let fresh = powergis_data::source::gdal::convert_one(std::path::Path::new(path), layer, g.family, g.crs.as_deref())
                     .map_err(|e| format!("{path}: {e}"))?
                     .ok_or_else(|| format!("{path}: {layer} has no features"))?;
                 new.path = Some(fresh.display().to_string());
@@ -600,7 +600,7 @@ impl SourceLayer {
             new.path = Some(path.into());
             new.table = table.map(String::from).or_else(|| self.table.clone());
             if path.to_ascii_lowercase().ends_with(".gpkg")
-                && let Ok(layers) = rustgis_data::source::layers(std::path::Path::new(path))
+                && let Ok(layers) = powergis_data::source::layers(std::path::Path::new(path))
             {
                 let list = layers.join(", ");
                 if new.table.is_none() && layers.len() > 1 {
@@ -634,8 +634,8 @@ impl SourceLayer {
         &self,
         projection: &str,
         level: i32,
-        calculate: impl FnOnce() -> rustgis_data::Result<bool>,
-    ) -> rustgis_data::Result<bool> {
+        calculate: impl FnOnce() -> powergis_data::Result<bool>,
+    ) -> powergis_data::Result<bool> {
         let Some(handle) = &self.handle else { return calculate() };
         // Calculations insert only on success, so an escaped source panic leaves a valid
         // cache. Recover the guard so later frames can cache successful decisions again.
@@ -682,7 +682,7 @@ impl SourceLayer {
     /// Opens the source again (after a project loads). A source by its web address is opened off
     /// the frame: `Ok` while it is (see [`SourceLayer::is_pending`]), open once it has landed.
     pub fn open(&mut self) -> Result<(), String> {
-        if let Some(url) = self.path.clone().filter(|p| rustgis_data::source::is_remote_name(p)) {
+        if let Some(url) = self.path.clone().filter(|p| powergis_data::source::is_remote_name(p)) {
             return self.open_remote(&url);
         }
         let src = if let Some(pg) = &self.postgis {
@@ -693,7 +693,7 @@ impl SourceLayer {
             open_sqlserver(ms)
         } else if let Some(bytes) = &self.embedded {
             let name = self.file_name.as_deref().unwrap_or("layer.parquet");
-            rustgis_data::source::open_shared(name, bytes.clone(), self.table.as_deref())
+            powergis_data::source::open_shared(name, bytes.clone(), self.table.as_deref())
         } else if let Some(p) = &self.path {
             #[cfg(not(target_arch = "wasm32"))]
             let overridden = self.shapefile_crs.filter(|_| p.to_ascii_lowercase().ends_with(".shp"));
@@ -701,28 +701,28 @@ impl SourceLayer {
                 #[cfg(not(target_arch = "wasm32"))]
                 if let Some(crs) = overridden {
                     let name = std::path::Path::new(p).file_stem().and_then(|s| s.to_str()).unwrap_or("layer");
-                    rustgis_data::source::shp::ShpSource::open_path_in(std::path::Path::new(p), name, Some(crs))
+                    powergis_data::source::shp::ShpSource::open_path_in(std::path::Path::new(p), name, Some(crs))
                         .map(|src| Box::new(src) as Box<dyn FeatureSource>)
                 } else {
-                    rustgis_data::source::open_path(std::path::Path::new(p), self.table.as_deref())
+                    powergis_data::source::open_path(std::path::Path::new(p), self.table.as_deref())
                 }
                 #[cfg(target_arch = "wasm32")]
-                rustgis_data::source::open_path(std::path::Path::new(p), self.table.as_deref())
+                powergis_data::source::open_path(std::path::Path::new(p), self.table.as_deref())
             };
             match (opened, &self.gdal) {
                 // The converted copy is gone (a cleared cache, another machine): convert again.
                 #[cfg(not(target_arch = "wasm32"))]
                 // (Only when it is missing: a copy that's there but unreadable is reported as is.)
                 (Err(_), Some(g)) if !std::path::Path::new(p).exists() => {
-                    match rustgis_data::source::gdal::convert_one(std::path::Path::new(&g.path), &g.layer, g.family, g.crs.as_deref()) {
+                    match powergis_data::source::gdal::convert_one(std::path::Path::new(&g.path), &g.layer, g.family, g.crs.as_deref()) {
                         Ok(Some(fresh)) => {
-                            let r = rustgis_data::source::open_path(&fresh, None);
+                            let r = powergis_data::source::open_path(&fresh, None);
                             if r.is_ok() {
                                 self.path = Some(fresh.display().to_string());
                             }
                             r
                         }
-                        Ok(None) => Err(rustgis_data::DataError::Format(format!("{}: the layer has no features", g.path))),
+                        Ok(None) => Err(powergis_data::DataError::Format(format!("{}: the layer has no features", g.path))),
                         Err(e) => Err(e),
                     }
                 }
@@ -730,7 +730,7 @@ impl SourceLayer {
                     #[cfg(not(target_arch = "wasm32"))]
                     (Err(_), Some(d)) if !std::path::Path::new(p).exists() => match rerun(d) {
                         Ok(fresh) => {
-                            let r = rustgis_data::source::open_path(&fresh, None);
+                            let r = powergis_data::source::open_path(&fresh, None);
                             if r.is_ok() {
                                 self.path = Some(fresh.display().to_string());
                             }
@@ -753,7 +753,7 @@ impl SourceLayer {
                 Ok(())
             }
             Err(e) => {
-                self.login = matches!(e, rustgis_data::DataError::Login(_));
+                self.login = matches!(e, powergis_data::DataError::Login(_));
                 let e = e.to_string();
                 self.error = Some(e.clone());
                 Err(e)
@@ -768,7 +768,7 @@ impl SourceLayer {
             // A file that can't be read in place is downloaded whole into the same slot, by the
             // first copy to see it; the others wait on that download rather than start their own.
             let claimed = slot.lock().ok().is_some_and(|mut s| {
-                let whole = matches!(&*s, Some(Err(e)) if e.contains(rustgis_data::source::remote::READ_WHOLE));
+                let whole = matches!(&*s, Some(Err(e)) if e.contains(powergis_data::source::remote::READ_WHOLE));
                 if whole {
                     *s = None;
                 }
@@ -787,14 +787,14 @@ impl SourceLayer {
                 }
             };
         }
-        match rustgis_data::source::open_url_now(url) {
+        match powergis_data::source::open_url_now(url) {
             Ok(s) => self.opened(Ok(Arc::from(s))),
-            Err(e) if e.to_string().contains(rustgis_data::source::remote::READ_WHOLE) => self.open_whole(url, Arc::new(Mutex::new(None))),
-            Err(e) if e.to_string().contains(rustgis_data::source::remote::NEED) => {
+            Err(e) if e.to_string().contains(powergis_data::source::remote::READ_WHOLE) => self.open_whole(url, Arc::new(Mutex::new(None))),
+            Err(e) if e.to_string().contains(powergis_data::source::remote::NEED) => {
                 let slot: Opening = Arc::new(Mutex::new(None));
                 let land = slot.clone();
                 self.opening = Some(slot);
-                rustgis_data::source::open_url(
+                powergis_data::source::open_url(
                     url,
                     Box::new(move |r| {
                         if let Ok(mut s) = land.lock() {
@@ -820,14 +820,14 @@ impl SourceLayer {
         let name = url.split(['?', '#']).next().unwrap_or(url).rsplit('/').next().unwrap_or("layer").to_string();
         let table = self.table.clone();
         let url = url.to_string();
-        rustgis_data::source::remote::fetch_whole(
+        powergis_data::source::remote::fetch_whole(
             &url.clone(),
             Box::new(move |r| {
                 let r = match r {
-                    Ok(bytes) => rustgis_data::source::open_shared(&name, Arc::new(bytes), table.as_deref())
+                    Ok(bytes) => powergis_data::source::open_shared(&name, Arc::new(bytes), table.as_deref())
                         .map(Arc::from)
                         .map_err(|e| format!("{url}: {e}")),
-                    Err(rustgis_data::source::remote::Failed::Other(e)) => Err(format!("{url}: {e}")),
+                    Err(powergis_data::source::remote::Failed::Other(e)) => Err(format!("{url}: {e}")),
                     Err(e) => Err(format!("{url}: couldn't be downloaded ({e:?})")),
                 };
                 if let Ok(mut s) = land.lock() {
@@ -879,15 +879,15 @@ impl SourceLayer {
 
     /// Every feature of the source, up to the read limit (a source by its web address fetching
     /// what that needs, on the desktop).
-    pub fn read_all(&self) -> Result<(rustgis_data::Dataset, rustgis_data::ReadReport), String> {
+    pub fn read_all(&self) -> Result<(powergis_data::Dataset, powergis_data::ReadReport), String> {
         let h = self.handle.clone().ok_or("the layer's source isn't open")?;
         #[cfg(not(target_arch = "wasm32"))]
         if h.remote().is_some() {
-            return rustgis_data::source::materialize(&rustgis_data::source::Fetching(h)).map_err(|e| e.to_string());
+            return powergis_data::source::materialize(&powergis_data::source::Fetching(h)).map_err(|e| e.to_string());
         }
-        let r = rustgis_data::source::materialize(h.as_ref()).map_err(|e| e.to_string());
+        let r = powergis_data::source::materialize(h.as_ref()).map_err(|e| e.to_string());
         match r {
-            Err(e) if e.contains(rustgis_data::source::remote::NEED) => {
+            Err(e) if e.contains(powergis_data::source::remote::NEED) => {
                 Err("the web app reads a file by its address a view at a time: download it to load it whole".into())
             }
             r => r,
@@ -978,9 +978,9 @@ impl SourceLayer {
                 std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                     window::read_mode(h2.as_ref(), &req, budget, &projection, estimate, full_read, fields)
                 }))
-                .unwrap_or_else(|_| Err(rustgis_data::DataError::Format("the read failed unexpectedly".into())))
+                .unwrap_or_else(|_| Err(powergis_data::DataError::Format("the read failed unexpectedly".into())))
             });
-            rustgis_data::source::remote::drive(
+            powergis_data::source::remote::drive(
                 file,
                 work,
                 Box::new(move |r| {
@@ -998,7 +998,7 @@ impl SourceLayer {
             let r = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 window::read_mode(h.as_ref(), &req, budget, &projection, estimate, full_read, fields)
             }))
-            .unwrap_or_else(|_| Err(rustgis_data::DataError::Format("the read failed unexpectedly".into())))
+            .unwrap_or_else(|_| Err(powergis_data::DataError::Format("the read failed unexpectedly".into())))
             .map_err(|e| e.to_string());
             if let Ok(mut slot) = p.result.lock() {
                 *slot = Some(r);
@@ -1006,7 +1006,7 @@ impl SourceLayer {
         };
         #[cfg(not(target_arch = "wasm32"))]
         if !block {
-            let spawned = std::thread::Builder::new().name("rustgis-source".into()).spawn(move || {
+            let spawned = std::thread::Builder::new().name("powergis-source".into()).spawn(move || {
                 job();
                 GENERATION.fetch_add(1, Ordering::Relaxed);
                 if let Some(w) = waker().lock().ok().and_then(|w| w.clone()) {
@@ -1121,10 +1121,10 @@ mod tests {
     /// Reopening this same layer must invalidate populated decisions even without `reset`.
     #[test]
     fn reopening_a_populated_thinning_cache_uses_the_new_handle() {
-        let mut ds = rustgis_data::Dataset::new("source", rustgis_data::GeometryType::Point, vec![]);
-        ds.push(Some(rustgis_data::Geometry::Point(rustgis_geom::Coord::new(0.0, 0.0))), vec![]);
-        let bytes = std::sync::Arc::new(rustgis_data::source::fgb::write(&ds).unwrap());
-        let handle = rustgis_data::source::open_shared("source.fgb", bytes.clone(), None).unwrap();
+        let mut ds = powergis_data::Dataset::new("source", powergis_data::GeometryType::Point, vec![]);
+        ds.push(Some(powergis_data::Geometry::Point(powergis_geom::Coord::new(0.0, 0.0))), vec![]);
+        let bytes = std::sync::Arc::new(powergis_data::source::fgb::write(&ds).unwrap());
+        let handle = powergis_data::source::open_shared("source.fgb", bytes.clone(), None).unwrap();
         let mut source = super::SourceLayer::from_bytes("source.fgb", bytes, None, handle);
         assert!(!source.cached_thinning("mercator", 0, || Ok(false)).unwrap());
         let old_handle = source.handle.clone().unwrap();
@@ -1161,7 +1161,7 @@ mod tests {
     /// The hash is FNV-1a over the row's JSON, the same as the projects saved with it hold.
     #[test]
     fn row_hashes_are_fnv_over_the_rows_json() {
-        use rustgis_data::{Coord, Feature, Geometry, Value};
+        use powergis_data::{Coord, Feature, Geometry, Value};
         let f = Feature {
             id: 3,
             geometry: Some(Geometry::Point(Coord { x: 1.5, y: -2.0 })),
@@ -1176,7 +1176,7 @@ mod tests {
 
     #[test]
     fn changes_are_what_differs_from_the_rows_as_read() {
-        use rustgis_data::{Coord, Feature, Geometry, Value};
+        use powergis_data::{Coord, Feature, Geometry, Value};
         let row = |id: u64, name: &str| Feature {
             id,
             geometry: Some(Geometry::Point(Coord { x: id as f64, y: 1.0 })),

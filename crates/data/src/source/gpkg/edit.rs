@@ -9,7 +9,7 @@ use rusqlite::config::DbConfig;
 use rusqlite::functions::FunctionFlags;
 use rusqlite::types::{Value as Sql, ValueRef};
 use rusqlite::{Connection, OpenFlags, TransactionBehavior, params, params_from_iter};
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 use std::sync::{
@@ -587,7 +587,7 @@ impl FeatureWrites {
 fn watch_feature_writes(conn: &Connection, table: &str, key: &str, residents: HashMap<i64, bool>) -> Result<Arc<FeatureWrites>> {
     let state = Arc::new(FeatureWrites { count: AtomicU64::new(0), allowed: AtomicBool::new(true), residents: Mutex::new(residents) });
     let observed = state.clone();
-    conn.create_scalar_function("rustgis_feature_write", 2, FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_INNOCUOUS, move |ctx| {
+    conn.create_scalar_function("powergis_feature_write", 2, FunctionFlags::SQLITE_UTF8 | FunctionFlags::SQLITE_INNOCUOUS, move |ctx| {
         if !observed.allowed.load(Ordering::Relaxed) {
             return Err(rusqlite::Error::UserFunctionError(Box::new(std::io::Error::other(
                 "metadata or spatial-index triggers cannot change feature rows after the saved snapshot",
@@ -617,8 +617,8 @@ fn watch_feature_writes(conn: &Connection, table: &str, key: &str, residents: Ha
         ("DELETE", format!("OLD.{key}"), "NULL".to_string()),
     ] {
         conn.execute_batch(&format!(
-            "CREATE TEMP TRIGGER rustgis_observe_{event} AFTER {event} ON main.{table}
-             BEGIN SELECT rustgis_feature_write({old}, {new}); END;"
+            "CREATE TEMP TRIGGER powergis_observe_{event} AFTER {event} ON main.{table}
+             BEGIN SELECT powergis_feature_write({old}, {new}); END;"
         ))
         .map_err(err)?;
     }
@@ -790,7 +790,7 @@ fn maintain_rtree(conn: &Connection, rtree: Option<&str>, key: i64, extent: &Ext
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_geom::Coord;
+    use powergis_geom::Coord;
 
     const REVISION: &str = "2026-01-01T00:00:00.000Z";
 

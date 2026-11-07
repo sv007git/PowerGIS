@@ -4,10 +4,10 @@
 //! `boundaries.add`, so the layers are added like any command's.
 
 use egui::vec2;
-use rustgis_engine::render::rustgis_tiles::{boundaries, cache, overpass};
+use powergis_engine::render::powergis_tiles::{boundaries, cache, overpass};
 use serde_json::{Value, json};
 
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -64,7 +64,7 @@ fn fetch(url: &str) -> Answer {
 }
 
 /// Lands the answers.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let Some((_, slot)) = &app.ui.portals.waiting else { return };
     let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
         ctx.request_repaint_after(std::time::Duration::from_millis(100));
@@ -113,7 +113,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
     }
 }
 
-fn status(app: &RustGisApp, ui: &mut egui::Ui) {
+fn status(app: &powergisApp, ui: &mut egui::Ui) {
     if app.ui.portals.waiting.is_some() {
         ui.horizontal(|ui| {
             ui.spinner();
@@ -130,7 +130,7 @@ fn status(app: &RustGisApp, ui: &mut egui::Ui) {
 }
 
 /// OpenStreetMap: a preset or tag filters, downloaded for the map's extent.
-pub fn osm(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn osm(app: &mut powergisApp, ui: &mut egui::Ui) {
     ui.label(egui::RichText::new(tl!("OpenStreetMap data where the map is, from an Overpass server: a preset, or tag filters such as amenity=cafe, shop. The area can be up to about 50 × 50 km. © OpenStreetMap contributors (ODbL).")).weak());
     let busy = app.ui.portals.waiting.is_some();
     egui::Grid::new("osm").num_columns(2).spacing(vec2(10.0, 8.0)).show(ui, |ui| {
@@ -166,7 +166,7 @@ pub fn osm(app: &mut RustGisApp, ui: &mut egui::Ui) {
         if !st.server.trim().is_empty() {
             p["url"] = json!(st.server.trim());
         }
-        let url = rustgis_engine::cmd::portals::osm_query(&app.session, &p).and_then(|q| {
+        let url = powergis_engine::cmd::portals::osm_query(&app.session, &p).and_then(|q| {
             // The box the request was for, so the answer is read for the same one.
             p["bbox"] = json!(q.bbox);
             q.url(Some(app.ui.portals.server.as_str()))
@@ -183,7 +183,7 @@ pub fn osm(app: &mut RustGisApp, ui: &mut egui::Ui) {
 }
 
 /// Boundaries: a country's administrative areas at a level, from geoBoundaries.
-pub fn boundaries(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn boundaries(app: &mut powergisApp, ui: &mut egui::Ui) {
     ui.label(egui::RichText::new(tl!("A country's administrative boundaries from geoBoundaries (CC BY 4.0): the country itself (ADM0), its first-level divisions (ADM1, such as states) and finer ones.")).weak());
     let busy = app.ui.portals.waiting.is_some();
     // The country list, asked for once.

@@ -6,11 +6,11 @@
 //! works on every platform and in the browser.
 
 use egui::Key;
-use rustgis_engine::Registry;
+use powergis_engine::Registry;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use crate::RustGisApp;
+use crate::powergisApp;
 
 pub(crate) const MAX_PREF_BYTES: usize = 100_000;
 const MAX_PREF_CHANGES: usize = 1_000;
@@ -232,7 +232,7 @@ impl Keymap {
     /// The defaults, with the shortcut a command declares itself ([`CommandSpec::key`]) where
     /// its key is free.
     ///
-    /// [`CommandSpec::key`]: rustgis_engine::CommandSpec::key
+    /// [`CommandSpec::key`]: powergis_engine::CommandSpec::key
     pub fn new(registry: &Registry) -> Self {
         let mut map = Keymap::default();
         for spec in &registry.commands {
@@ -365,13 +365,13 @@ pub fn is_clipboard(chord: Chord) -> bool {
 
 /// The first shortcut of `command` with `params` as shown to the user (a clipboard command's
 /// fixed key included), or empty for none.
-pub fn shortcut_text(ctx: &egui::Context, app: &RustGisApp, command: &str, params: &Value) -> String {
+pub fn shortcut_text(ctx: &egui::Context, app: &powergisApp, command: &str, params: &Value) -> String {
     let clipboard = || CLIPBOARD.iter().find(|(_, c)| *c == command).and_then(|(keys, _)| Chord::parse(keys));
     app.ui.keymap.keys_for(command, params).next().or_else(clipboard).map(|c| c.shown(ctx)).unwrap_or_default()
 }
 
 /// What a binding runs, translated: the command's label, or the map tool it picks.
-pub fn label(app: &RustGisApp, command: &str, params: &Value) -> String {
+pub fn label(app: &powergisApp, command: &str, params: &Value) -> String {
     if command == "tool.set"
         && let Some(tool) = params.get("tool").and_then(Value::as_str)
     {
@@ -381,7 +381,7 @@ pub fn label(app: &RustGisApp, command: &str, params: &Value) -> String {
     if let Some(spec) = app.session.registry.get(command) {
         return tl!(spec.label).to_string();
     }
-    if let Some(c) = rustgis_engine::plugins::command(command) {
+    if let Some(c) = powergis_engine::plugins::command(command) {
         return c.plugin.manifest.translate(app.lang().code(), &c.decl.label).to_string();
     }
     let ui = UI_LABELS.iter().copied().chain(crate::chrome::UI_COMMANDS.iter().map(|&(id, label, _)| (id, label)));
@@ -419,7 +419,7 @@ mod tests {
     #[test]
     fn removed_registry_shortcut_stays_removed_after_preference_reload() {
         let registry =
-            Registry { commands: vec![rustgis_engine::CommandSpec::new("test.action", "Test", "", |_, _| Ok(Value::Null)).key("F8")] };
+            Registry { commands: vec![powergis_engine::CommandSpec::new("test.action", "Test", "", |_, _| Ok(Value::Null)).key("F8")] };
         let defaults = Keymap::new(&registry);
         let chord = Chord::parse("F8").unwrap();
         assert_eq!(defaults.command_for(chord).unwrap().command, "test.action");
@@ -488,10 +488,10 @@ mod tests {
     /// the page), the clipboard's and keys the app doesn't use are left to it.
     #[test]
     fn the_app_takes_its_shortcuts_from_the_browser() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let keys = app.command_keys();
         let takes = |key: &str, code: &str, cmd: bool, alt: bool, shift: bool| {
-            crate::RustGisApp::takes_browser_key(&keys, key, code, cmd, alt, shift)
+            crate::powergisApp::takes_browser_key(&keys, key, code, cmd, alt, shift)
         };
         assert!(takes("d", "KeyD", true, false, false), "⌘D: duplicate, not bookmark");
         assert!(takes("y", "KeyY", true, false, false), "⌘Y: redo, not history");
@@ -512,7 +512,7 @@ mod tests {
     /// when a shortcut is rebound.
     #[test]
     fn the_shortcuts_fingerprint_follows_the_keymap() {
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         let before = app.shortcuts_fingerprint();
         assert_eq!(before, app.shortcuts_fingerprint(), "stable while nothing changes");
         let mod_d = Chord::parse("Mod+D");
@@ -521,7 +521,7 @@ mod tests {
         };
         b.chord = Chord { command: true, alt: false, shift: false, key: Key::J };
         assert_ne!(before, app.shortcuts_fingerprint());
-        assert!(crate::RustGisApp::takes_browser_key(&app.command_keys(), "j", "KeyJ", true, false, false));
+        assert!(crate::powergisApp::takes_browser_key(&app.command_keys(), "j", "KeyJ", true, false, false));
         // The same key given another command, or other parameters, changes it too.
         let moved = app.shortcuts_fingerprint();
         let j = Chord { command: true, alt: false, shift: false, key: Key::J };
@@ -565,7 +565,7 @@ mod tests {
         let c = Chord::parse("Mod+Shift+S");
         assert_eq!(c.map(|c| c.text(true)).as_deref(), Some("⇧⌘S"));
         assert_eq!(c.map(|c| c.text(false)).as_deref(), Some("Ctrl+Shift+S"));
-        let app = RustGisApp::with_sample();
+        let app = powergisApp::with_sample();
         let ctx = egui::Context::default();
         use egui::os::OperatingSystem as Os;
         for (os, undo) in [(Os::Mac, "⌘Z"), (Os::IOS, "⌘Z"), (Os::Windows, "Ctrl+Z")] {
@@ -596,7 +596,7 @@ mod tests {
     #[test]
     fn clipboard_keys_stay_events() {
         // Copy, Cut and Paste declare Mod+C/X/V: binding them too would run each twice.
-        let app = RustGisApp::with_sample();
+        let app = powergisApp::with_sample();
         assert!(app.ui.keymap.bindings.iter().all(|b| !is_clipboard(b.chord)));
         assert!(!shortcut_text(&egui::Context::default(), &app, "edit.copy", &Value::Null).is_empty(), "but Copy still shows its key");
         // A command's own key joins the defaults only where it is free.

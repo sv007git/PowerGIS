@@ -15,7 +15,7 @@ use std::sync::atomic::{AtomicBool, Ordering::SeqCst};
 use std::sync::{Arc, Mutex};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
 
-use rustgis_engine::Session;
+use powergis_engine::Session;
 use serde_json::{Value, json};
 
 use crate::mcp::Server;
@@ -165,7 +165,7 @@ impl FileBridge {
         write_atomic(&inner.dir, READY, &ready.to_string())?;
         let watch = Arc::clone(&inner);
         std::thread::Builder::new()
-            .name("rustgis-file-bridge".into())
+            .name("powergis-file-bridge".into())
             .spawn(move || {
                 // A change runs once the file has stayed the same for a tick: an agent still
                 // writing it (truncated, then filled) doesn't get half its script run.
@@ -375,7 +375,7 @@ fn write_atomic(dir: &Path, name: &str, text: &str) -> Result<(), String> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_engine::Project;
+    use powergis_engine::Project;
 
     fn sample() -> Session {
         let mut s = Session::new(Project::default());

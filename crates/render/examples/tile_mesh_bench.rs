@@ -1,11 +1,11 @@
 //! Times making a vector tile style's meshes (see `tile_mesh`), against drawing its tile
 //! pictures, single-threaded as in the browser:
-//! `cargo run --release -p rustgis-render --example tile_mesh_bench`. Needs the network.
-use rustgis_geom::{Coord, lonlat_to_merc};
-use rustgis_render::rustgis_tiles::cache::Payload;
-use rustgis_render::rustgis_tiles::shapes::{shapes, vector_tiles};
-use rustgis_render::rustgis_tiles::{Frame, Kind, Spec, draw, template};
-use rustgis_render::tile_mesh::tessellate;
+//! `cargo run --release -p powergis-render --example tile_mesh_bench`. Needs the network.
+use powergis_geom::{Coord, lonlat_to_merc};
+use powergis_render::powergis_tiles::cache::Payload;
+use powergis_render::powergis_tiles::shapes::{shapes, vector_tiles};
+use powergis_render::powergis_tiles::{Frame, Kind, Spec, draw, template};
+use powergis_render::tile_mesh::tessellate;
 
 fn main() {
     let spec = Spec {
@@ -29,7 +29,7 @@ fn main() {
         let m_per_px = 2.0 * template::HALF_WORLD / (512.0 * zoom.exp2());
         let frame = Frame { left: c.x - f64::from(w) / 2.0 * m_per_px, top: c.y + f64::from(h) / 2.0 * m_per_px, m_per_px, ppp: 1.0 };
         let view =
-            rustgis_geom::Extent::new(frame.left, frame.top - f64::from(h) * m_per_px, frame.left + f64::from(w) * m_per_px, frame.top);
+            powergis_geom::Extent::new(frame.left, frame.top - f64::from(h) * m_per_px, frame.left + f64::from(w) * m_per_px, frame.top);
         // Every tile fetched first.
         let Some(mut pm) = tiny_skia::Pixmap::new(w, h) else { return };
         // A minute at most a view.
@@ -39,7 +39,7 @@ fn main() {
             {
                 break;
             }
-            rustgis_render::rustgis_tiles::cache::wait(std::time::Duration::from_secs(5));
+            powergis_render::powergis_tiles::cache::wait(std::time::Duration::from_secs(5));
         }
         let Some(v) = vector_tiles(&spec, &frame, &view, None, None) else {
             println!("{name}: drawn as pictures");
@@ -57,7 +57,7 @@ fn main() {
         let ms = t.elapsed().as_secs_f64() * 1000.0;
         println!(
             "{name}: {tiles} tiles in {ms:.0} ms on one thread, {vertices} vertices, {indices} indices, {:.1} MB",
-            (vertices * std::mem::size_of::<rustgis_render::gpu_scene::TileMeshVertex>() + indices * 4) as f64 / 1e6
+            (vertices * std::mem::size_of::<powergis_render::gpu_scene::TileMeshVertex>() + indices * 4) as f64 / 1e6
         );
     }
 }

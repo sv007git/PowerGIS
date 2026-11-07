@@ -227,7 +227,7 @@ pub struct ViewSettings {
 /// An animation keyframe: a view, and the seconds taken to reach it from the previous one.
 #[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 pub struct Keyframe {
-    pub center: rustgis_geom::Coord,
+    pub center: powergis_geom::Coord,
     pub scale: f64,
     #[serde(default = "two")]
     pub seconds: f64,

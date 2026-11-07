@@ -67,7 +67,7 @@ impl AgentSpec {
 
 /// What the agent is told before the task.
 const BRIEF: &str = "You are working for PowerGIS's AI assistant, on the map the user has open in PowerGIS. PowerGIS's MCP \
-server `rustgis` acts on that map: list_layers, read_features, view_map, search_commands, run_command, search_tools, \
+server `powergis` acts on that map: list_layers, read_features, view_map, search_commands, run_command, search_tools, \
 describe_tool, run_tool, search_docs, read_doc. Use your own tools for what PowerGIS can't do (calling a web API, running a \
 script). Save what you make in your working folder as files PowerGIS reads (GeoJSON, CSV with coordinates, GeoPackage, \
 GeoTIFF) and add them to the map with run_command layer.addData {\"path\": …}, so the user sees them. The user approves \
@@ -237,7 +237,7 @@ impl Session {
                 "protocolVersion": PROTOCOL_VERSION,
                 // PowerGIS reads and writes no files and runs no terminals for the agent: it uses its own.
                 "clientCapabilities": {"fs": {"readTextFile": false, "writeTextFile": false}, "terminal": false},
-                "clientInfo": {"name": "rustgis", "title": "PowerGIS", "version": env!("CARGO_PKG_VERSION")}
+                "clientInfo": {"name": "powergis", "title": "PowerGIS", "version": env!("CARGO_PKG_VERSION")}
             }),
         );
         (s, init)
@@ -323,7 +323,7 @@ impl Session {
                 out.push(rpc(
                     NEW,
                     "session/new",
-                    json!({"cwd": self.cwd, "mcpServers": [{"name": "rustgis", "command": command, "args": args, "env": []}]}),
+                    json!({"cwd": self.cwd, "mcpServers": [{"name": "powergis", "command": command, "args": args, "env": []}]}),
                 ));
             }
             (Some(NEW), Phase::Starting) => {

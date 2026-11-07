@@ -15,7 +15,7 @@ use std::sync::Arc;
 use egui::{RichText, vec2};
 use serde_json::{Value, json};
 
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 /// NASA's Global Imagery Browse Services, in Web Mercator.
 pub const NASA_GIBS: &str = "https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/1.0.0/WMTSCapabilities.xml";
@@ -72,10 +72,10 @@ pub struct State {
 
 /// The document of the service at `url` (of `kind`: `wmts`, `arcgis`), asked for the first time
 /// it's wanted and read with `service.layers` when it lands.
-fn listing(app: &mut RustGisApp, url: &str, kind: &'static str) -> Look {
+fn listing(app: &mut powergisApp, url: &str, kind: &'static str) -> Look {
     let state = &mut app.ui.web_services;
     let doc = state.docs.entry(url.to_string()).or_insert_with(|| {
-        let caps = rustgis_engine::data::ogc::capabilities_url(url, Some(kind));
+        let caps = powergis_engine::data::ogc::capabilities_url(url, Some(kind));
         Doc::Waiting(crate::fetch_into(&caps))
     });
     if let Doc::Waiting(slot) = doc {
@@ -103,17 +103,17 @@ fn listing(app: &mut RustGisApp, url: &str, kind: &'static str) -> Look {
 
 /// Forgets the services' documents that failed, so they're asked for again: a panel reopened
 /// retries what a passing network error (or a busy server) refused.
-pub fn forget_failed(app: &mut RustGisApp) {
+pub fn forget_failed(app: &mut powergisApp) {
     forget_failed_under(app, "");
 }
 
 /// Forgets the failed documents whose addresses start with `prefix` (one service's).
-fn forget_failed_under(app: &mut RustGisApp, prefix: &str) {
+fn forget_failed_under(app: &mut powergisApp, prefix: &str) {
     app.ui.web_services.docs.retain(|url, d| !(matches!(d, Doc::Failed(_)) && url.starts_with(prefix)));
 }
 
 /// Adds a service's layer now, or once its document is read.
-fn add_layer(app: &mut RustGisApp, url: &str, kind: &'static str, layer: &str, name: &str) {
+fn add_layer(app: &mut powergisApp, url: &str, kind: &'static str, layer: &str, name: &str) {
     // The date as it was when Add was clicked, or the time slider's (`service.add`'s "slider").
     let date = fixed_or_slider(app.ui.web_services.fixed, &app.ui.web_services.date);
     app.ui.web_services.adding.push((url.to_string(), kind, layer.to_string(), name.to_string(), date));
@@ -132,7 +132,7 @@ pub(crate) fn fixed_or_slider(fixed: bool, date: &str) -> String {
 }
 
 /// Adds the layers whose documents have arrived. Run by every panel each frame.
-fn poll(app: &mut RustGisApp) {
+fn poll(app: &mut powergisApp) {
     let waiting = std::mem::take(&mut app.ui.web_services.adding);
     for (url, kind, layer, name, date) in waiting {
         match listing(app, &url, kind) {
@@ -156,7 +156,7 @@ fn poll(app: &mut RustGisApp) {
 }
 
 /// Notes what an Add did.
-fn done(app: &mut RustGisApp, r: Result<String, String>) {
+fn done(app: &mut powergisApp, r: Result<String, String>) {
     app.ui.web_services.note = Some(match r {
         Ok(name) => (true, crate::i18n::fmt("Added {name}", &[("name", &name)])),
         Err(e) => (false, e),
@@ -165,7 +165,7 @@ fn done(app: &mut RustGisApp, r: Result<String, String>) {
 }
 
 /// Keeps the frames coming while documents or layers are on their way.
-fn repaint_while_waiting(app: &RustGisApp, ui: &egui::Ui) {
+fn repaint_while_waiting(app: &powergisApp, ui: &egui::Ui) {
     let s = &app.ui.web_services;
     if !s.adding.is_empty() || s.docs.values().any(|d| matches!(d, Doc::Waiting(_))) {
         ui.ctx().request_repaint_after(std::time::Duration::from_millis(100));
@@ -173,7 +173,7 @@ fn repaint_while_waiting(app: &RustGisApp, ui: &egui::Ui) {
 }
 
 /// Starts a panel's search with `words` (`ui.dialog`'s `"search"`): `dialog` names the panel.
-pub fn set_search(app: &mut RustGisApp, dialog: &str, words: &str) {
+pub fn set_search(app: &mut powergisApp, dialog: &str, words: &str) {
     let key = match dialog {
         "nasaEarthdata" => "gibs",
         "enviroAtlas" => "enviroatlas",
@@ -185,7 +185,7 @@ pub fn set_search(app: &mut RustGisApp, dialog: &str, words: &str) {
 }
 
 /// A panel's search box (`what` names the panel); its words, lower case.
-fn search_box(app: &mut RustGisApp, ui: &mut egui::Ui, what: &'static str, hint: &str) -> Vec<String> {
+fn search_box(app: &mut powergisApp, ui: &mut egui::Ui, what: &'static str, hint: &str) -> Vec<String> {
     let text = app.ui.web_services.search.entry(what).or_default();
     ui.add(egui::TextEdit::singleline(text).hint_text(hint).desired_width(ui.available_width()));
     // `_` reads as a space, as in service names.
@@ -214,7 +214,7 @@ fn card<R>(ui: &mut egui::Ui, title: &str, meta: &str, buttons: impl FnOnce(&mut
 }
 
 /// The panel's last result and what's loading.
-fn status(app: &mut RustGisApp, ui: &mut egui::Ui, look: Option<&Look>) {
+fn status(app: &mut powergisApp, ui: &mut egui::Ui, look: Option<&Look>) {
     let t = crate::theme::Tokens::get(ui.ctx());
     match look {
         Some(Look::Loading) => {
@@ -262,7 +262,7 @@ fn text<'a>(v: &'a Value, k: &str) -> &'a str {
 
 /// NASA Earthdata: GIBS's layers grouped by mission or instrument (the name's first part), with a
 /// search and the date time-enabled layers are added at.
-pub fn nasa_earthdata(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn nasa_earthdata(app: &mut powergisApp, ui: &mut egui::Ui) {
     poll(app);
     ui.label(RichText::new(tl!("NASA's Global Imagery Browse Services (GIBS): over a thousand layers of satellite imagery and science data, most of them daily.")).weak());
     let words = search_box(app, ui, "gibs", tl!("Search layers (e.g. temperature)"));
@@ -388,7 +388,7 @@ fn service_of(l: &Value) -> Option<(String, String)> {
 
 /// EnviroAtlas: its folders, their services and the services' layers as a tree, each added on
 /// its own; a search looks through every folder's services.
-pub fn enviroatlas(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn enviroatlas(app: &mut powergisApp, ui: &mut egui::Ui) {
     poll(app);
     ui.label(
         RichText::new(tl!(
@@ -499,7 +499,7 @@ pub fn enviroatlas(app: &mut RustGisApp, ui: &mut egui::Ui) {
 
 /// A directory's service as a branch: Add adds its whole map (or image); opened, its layers each
 /// with an Add of their own. What to add, when a button was clicked.
-fn service_tree(app: &mut RustGisApp, ui: &mut egui::Ui, s: &Value) -> Option<(String, &'static str, String, String)> {
+fn service_tree(app: &mut powergisApp, ui: &mut egui::Ui, s: &Value) -> Option<(String, &'static str, String, String)> {
     let (url, kind) = service_of(s)?;
     // A folder inside a folder: a branch of its own, its services under it.
     if text(s, "name").ends_with('/') {
@@ -575,7 +575,7 @@ fn service_tree(app: &mut RustGisApp, ui: &mut egui::Ui, s: &Value) -> Option<(S
 
 /// FEMA's National Flood Hazard Layer: its layers, filtered, each added drawn alone (or its
 /// features); the whole map first.
-pub fn fema_nfhl(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn fema_nfhl(app: &mut powergisApp, ui: &mut egui::Ui) {
     poll(app);
     ui.label(RichText::new(tl!("FEMA's National Flood Hazard Layer: effective flood zones, floodways, base flood elevations, levees and map panels. Its flood layers are drawn only from zoom 15 (closer than about 1:36,000), its availability map only farther out.")).weak());
     let words = search_box(app, ui, "fema", tl!("Search layers…"));
@@ -635,7 +635,7 @@ pub fn fema_nfhl(app: &mut RustGisApp, ui: &mut egui::Ui) {
 // The National Map
 
 /// The National Map: its services by category, with a search, each added as tiles.
-pub fn national_map(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn national_map(app: &mut powergisApp, ui: &mut egui::Ui) {
     ui.label(RichText::new(tl!("USGS The National Map's map services (topographic maps, imagery, elevation, hydrography, boundaries and more) and a few partners'. Each is added as a tile layer.")).weak());
     let words = search_box(app, ui, "nationalmap", tl!("Search services…"));
     // The catalog is fixed: read once.
@@ -714,9 +714,9 @@ fn layers_of_key<'a>(v: &'a Value, k: &str) -> &'a [Value] {
 
 /// Fields of the World: a year and a score threshold, then the field boundaries or the field
 /// density added, with the score's colours.
-pub fn fields_of_the_world(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn fields_of_the_world(app: &mut powergisApp, ui: &mut egui::Ui) {
     ui.label(RichText::new(tl!("Agricultural field boundaries the Fields of the World model found in Sentinel-2 imagery, worldwide, a year at a time (2nd Edition, CC BY 4.0). These are model predictions, not surveyed parcels.")).weak());
-    let years = rustgis_engine::cmd::webdata::FIELDS_YEARS;
+    let years = powergis_engine::cmd::webdata::FIELDS_YEARS;
     let year = *app.ui.web_services.year.get_or_insert(*years.end());
     let mut picked = year;
     ui.horizontal(|ui| {

@@ -23,7 +23,7 @@ use std::cell::Cell;
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, MutexGuard, OnceLock, Weak};
 
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use tiny_skia::Pixmap;
 use web_time::{Duration, Instant};
 
@@ -487,7 +487,7 @@ mod tests {
                 Layer { name: "pois".into(), extent: 4096, features: vec![feature(GeomKind::Point, vec![vec![[2048.0, 2048.0]]], "cafe")] },
             ],
         };
-        let dir = std::env::temp_dir().join(format!("rustgis-picture-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-picture-{name}-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let path = dir.join("t.pmtiles");
         let new = crate::pmtiles::NewArchive {

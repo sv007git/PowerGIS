@@ -5,7 +5,7 @@
 use serde_json::{Value, json};
 
 use super::{b, ps};
-use crate::render::rustgis_tiles::{overture, sourcecoop};
+use crate::render::powergis_tiles::{overture, sourcecoop};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -145,7 +145,7 @@ fn sourcecoop_list(_s: &mut Session, p: &Value) -> CmdResult {
     let account = ps(p, "account").ok_or("account is required")?;
     let product = ps(p, "product").ok_or("product is required")?;
     let url = sourcecoop::list_url(account, product, ps(p, "path").unwrap_or(""), ps(p, "token"))?;
-    let listing = crate::render::rustgis_tiles::s3::parse_list(&fetch(&url)?)?;
+    let listing = crate::render::powergis_tiles::s3::parse_list(&fetch(&url)?)?;
     let account = sourcecoop::id(account)?;
     Ok(json!({
         "folders": listing.prefixes,
@@ -158,7 +158,7 @@ fn sourcecoop_list(_s: &mut Session, p: &Value) -> CmdResult {
 /// frame).
 #[cfg(not(target_arch = "wasm32"))]
 fn fetch(url: &str) -> Result<Vec<u8>, String> {
-    crate::render::rustgis_tiles::cache::download_blocking(url)
+    crate::render::powergis_tiles::cache::download_blocking(url)
 }
 
 #[cfg(target_arch = "wasm32")]

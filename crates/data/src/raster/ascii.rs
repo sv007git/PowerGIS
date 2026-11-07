@@ -93,7 +93,7 @@ mod tests {
             assert_eq!(r.value(0, 0, 0), Some(1.0));
             assert_eq!(r.value(0, 0, 1), Some(2.0));
             assert_eq!(r.cell_size(), (2.0, 3.0));
-            assert_eq!(r.pixel_at(rustgis_geom::Coord::new(11.0, 24.0)), Some((0, 0)));
+            assert_eq!(r.pixel_at(powergis_geom::Coord::new(11.0, 24.0)), Some((0, 0)));
             let upload = super::super::read_bytes("g.asc", corner.replace("{}", spacing).as_bytes()).unwrap();
             assert_eq!(upload.cell_size(), (2.0, 3.0));
         }

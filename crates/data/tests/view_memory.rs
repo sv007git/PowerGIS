@@ -1,7 +1,7 @@
 //! The default provider adapter bounds retained views without changing full-source reads.
 #![cfg(not(target_arch = "wasm32"))]
 
-use rustgis_data::{
+use powergis_data::{
     Coord, Dataset, Field, FieldType, Geometry, GeometryType, Value,
     source::{Request, memory},
 };
@@ -18,9 +18,9 @@ fn budgeted_views_keep_full_reads_for_geopackage_geoparquet_and_geojson() {
     let folder = tempfile::tempdir().unwrap();
     for extension in ["gpkg", "parquet", "geojson"] {
         let path = folder.path().join(format!("budget.{extension}"));
-        rustgis_data::io::write_path(&data, &path).unwrap();
-        let source = rustgis_data::source::open_path(&path, None).unwrap();
-        let request = Request { extent: Some(rustgis_geom::Extent::new(-1.0, -1.0, 1.0, 1.0)), ..Request::all() };
+        powergis_data::io::write_path(&data, &path).unwrap();
+        let source = powergis_data::source::open_path(&path, None).unwrap();
+        let request = Request { extent: Some(powergis_geom::Extent::new(-1.0, -1.0, 1.0, 1.0)), ..Request::all() };
         let full = source.read(&request).unwrap();
         let sample = source.read_budgeted(&request, 32 * 1024).unwrap();
         assert!(memory::features_bytes(&sample.features) <= 32 * 1024, "{extension}");
@@ -31,6 +31,6 @@ fn budgeted_views_keep_full_reads_for_geopackage_geoparquet_and_geojson() {
             assert!(full.features.contains(feature), "{extension}: sampled feature was changed");
         }
         assert_eq!(source.read(&request).unwrap().features, full.features, "{extension}");
-        assert_eq!(rustgis_data::source::materialize(source.as_ref()).unwrap().0.features.len(), 150);
+        assert_eq!(powergis_data::source::materialize(source.as_ref()).unwrap().0.features.len(), 150);
     }
 }

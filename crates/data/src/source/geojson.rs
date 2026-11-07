@@ -14,7 +14,7 @@ use std::path::{Path, PathBuf};
 use super::{Batch, FeatureSource, Reproject, Request, SourceInfo, clamp_limit, stride};
 use crate::io::{FeatureSink, Schema, declared_crs, geojson_attrs, geojson_geometry, geometry_to_lonlat};
 use crate::{DataError, Feature, GeometryType, Result};
-use rustgis_geom::Extent;
+use powergis_geom::Extent;
 use serde_json::Value as Json;
 
 fn bad(msg: impl std::fmt::Display) -> DataError {

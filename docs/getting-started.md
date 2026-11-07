@@ -2,16 +2,16 @@
 
 ## Open the app
 
-- **In the browser**: open [web.rustgis.app](https://web.rustgis.app). Nothing to install.
+- **In the browser**: open [web.powergis.app](https://web.powergis.app). Nothing to install.
 - **On the desktop**: [install](installation.md) PowerGIS and start it. On first launch it opens
   the World Atlas sample: countries, cities, rivers and lakes from Natural Earth.
 - **From source**:
 
 ```sh
-cargo run --release -p rustgis -- --sample    # always opens the World Atlas sample
-cargo run --release -p rustgis -- places.geojson
-cargo run --release -p rustgis -- atlas.rgis   # a saved project
-cargo run --release -p rustgis -- lesson.rgispkg   # a project package, opened unsaved
+cargo run --release -p powergis -- --sample    # always opens the World Atlas sample
+cargo run --release -p powergis -- places.geojson
+cargo run --release -p powergis -- atlas.rgis   # a saved project
+cargo run --release -p powergis -- lesson.rgispkg   # a project package, opened unsaved
 ```
 
 ## Five minutes with the World Atlas
@@ -67,7 +67,7 @@ project changes, not files already written. See [AI Assistant](user-guide/assist
 ## Next steps
 
 - The [User Guide](user-guide/index.md) walks through every part of the app.
-- [Command Line](cli.md) shows how to script PowerGIS with `rustgis-cli`.
+- [Command Line](cli.md) shows how to script PowerGIS with `powergis-cli`.
 - [Plugins](plugins.md) shows how to add tools from the plugin registry, or write your own.
 - [Python](python.md) covers sessions, rendering and the interactive notebook map.
 - [MCP](mcp.md) connects external AI agents to PowerGIS.

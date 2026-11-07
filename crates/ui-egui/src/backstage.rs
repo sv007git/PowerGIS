@@ -5,7 +5,7 @@ use serde_json::{Value, json};
 
 use crate::chrome::header_layout;
 use crate::theme::{BRAND, Tokens, regular, semibold};
-use crate::{RustGisApp, TitlebarMetrics, icons};
+use crate::{powergisApp, TitlebarMetrics, icons};
 
 const PAGES: [(&str, &str, &str); 6] = [
     ("open", "Start", "logo"),
@@ -22,7 +22,7 @@ fn nav_top_pad(titlebar: Option<TitlebarMetrics>) -> f32 {
     titlebar.map_or(16.0, |m| header_layout(Some(m)).height)
 }
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui) {
     let t = Tokens::get(ui.ctx());
     let top = nav_top_pad(app.ui.titlebar).round() as i8;
     egui::Panel::left("backstage_nav")
@@ -94,7 +94,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
 }
 
 /// Draws the project start choices; import cards dispatch commands without replacing the project.
-fn start(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+fn start(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     ui.horizontal(|ui| {
         let (r, _) = ui.allocate_exact_size(vec2(44.0, 44.0), Sense::hover());
         app.paint_logo(ui, r);

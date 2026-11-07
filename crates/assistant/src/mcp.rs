@@ -4,15 +4,15 @@
 //! ([`crate::docs`]).
 //!
 //! Sans I/O: [`Server::handle`] takes one JSON-RPC message and gives back the reply, so
-//! `rustgis-cli mcp` (standard input and output) and the tests drive the same code.
+//! `powergis-cli mcp` (standard input and output) and the tests drive the same code.
 //!
 //! The client asks its user before each tool call; the server adds its own floor. File and
 //! network access is refused unless the server was started allowing it, and the user's own
 //! automation (scripts, tasks, models, plugin management) is never run. Without access, the only
 //! network use left is drawing web tile layers that the project the user opened already has.
 
-use rustgis_engine::Session;
-use rustgis_engine::cmd::plugins::{Reach, reaches, user_only};
+use powergis_engine::Session;
+use powergis_engine::cmd::plugins::{Reach, reaches, user_only};
 use serde_json::{Value, json};
 
 use crate::provider::ToolCall;
@@ -57,7 +57,7 @@ pub struct Server {
     /// The skills offered as prompts ([`crate::skills`]).
     pub skills: Vec<crate::skills::Skill>,
     /// Whether the session is the project the user has open (the desktop app's relay), so
-    /// commands that replace it stay the user's. Off for `rustgis-cli mcp`'s own session.
+    /// commands that replace it stay the user's. Off for `powergis-cli mcp`'s own session.
     pub users_project: bool,
     /// Full access, which the user turned on in the desktop app: no command is refused, the
     /// user's own automation (scripts, tasks, models, plugin commands and management) included,
@@ -82,12 +82,12 @@ const INVALID_PARAMS: i64 = -32602;
 const RESOURCE_NOT_FOUND: i64 = -32002;
 
 /// Commands that replace the project. They are reserved to the user in the desktop app, to keep
-/// their work, and refused on its relay ([`Server::users_project`]); in `rustgis-cli mcp` the
+/// their work, and refused on its relay ([`Server::users_project`]); in `powergis-cli mcp` the
 /// session is the client's own.
 const PROJECT_COMMANDS: &[&str] = &["project.new", "project.open", "project.openText", "project.sample", "project.fromTemplate"];
 
 impl Server {
-    /// A server with the built-in skills. `rustgis-cli mcp` and the desktop's relay replace them
+    /// A server with the built-in skills. `powergis-cli mcp` and the desktop's relay replace them
     /// with the skills switched on (`skills::installed`): the user's, the plugins' and shared ones.
     pub fn new(allow_access: bool) -> Self {
         Self { allow_access, skills: crate::skills::built_in(), users_project: false, full_access: false }
@@ -164,7 +164,7 @@ impl Server {
             "resources/read" => {
                 let uri = params.get("uri").and_then(Value::as_str).ok_or((INVALID_PARAMS, "uri is required".to_string()))?;
                 let page =
-                    uri.strip_prefix("rustgis://docs/").and_then(docs::page).ok_or((RESOURCE_NOT_FOUND, format!("no resource '{uri}'")))?;
+                    uri.strip_prefix("powergis://docs/").and_then(docs::page).ok_or((RESOURCE_NOT_FOUND, format!("no resource '{uri}'")))?;
                 Ok(json!({"contents": [{"uri": uri, "mimeType": "text/markdown", "text": page.text}]}))
             }
             // Skills, as prompts: a client offers them to its user, or reads them for its model.
@@ -217,7 +217,7 @@ impl Server {
                 "the map isn't on screen in PowerGIS (a layout or the catalog is shown, or the window is hidden), so it was drawn offscreen",
             ),
             Some("screen") => {
-                Some("screen capture works only through the desktop app's MCP relay (rustgis-cli mcp --attach); drawn offscreen")
+                Some("screen capture works only through the desktop app's MCP relay (powergis-cli mcp --attach); drawn offscreen")
             }
             _ => None,
         };
@@ -241,14 +241,14 @@ impl Server {
         if call.name == "snapshot" {
             let path = save_path(&call.args)?;
             return (!self.allow_access).then(|| {
-                format!("snapshot was not saved to '{path}': it writes a file on this computer. The server allows that only when started with --yes (rustgis-cli mcp --yes).")
+                format!("snapshot was not saved to '{path}': it writes a file on this computer. The server allows that only when started with --yes (powergis-cli mcp --yes).")
             });
         }
         // A script is refused when any of its lines would be, before any of it runs. A script
         // that doesn't parse runs to say so.
         if call.name == "run" {
             let script = call.args.get("script").and_then(Value::as_str).unwrap_or("");
-            let lines = rustgis_engine::cmd::workflows::script_commands(script).ok()?;
+            let lines = powergis_engine::cmd::workflows::script_commands(script).ok()?;
             // An agent's undo is checked against the step on top before the script runs, so a
             // second undo in it could reach a step beneath, the user's: undo and redo run alone
             // (a script of that one line, as the file bridge sends, is checked like a command).
@@ -287,7 +287,7 @@ impl Server {
                 "'{id}' is reserved to the user (plugin management, scripts, tasks, models and the GeoLibre runner); run it in PowerGIS itself"
             ));
         }
-        let why = if id.starts_with(rustgis_engine::plugins::PREFIX) {
+        let why = if id.starts_with(powergis_engine::plugins::PREFIX) {
             "it runs a plugin's command"
         } else if id == "project.openText" {
             // A project can hold web tile layers, which drawing the map (view_map) fetches.
@@ -299,7 +299,7 @@ impl Server {
             }
         };
         (!self.allow_access)
-            .then(|| format!("'{id}' was not run: {why}. The server allows that only when started with --yes (rustgis-cli mcp --yes)."))
+            .then(|| format!("'{id}' was not run: {why}. The server allows that only when started with --yes (powergis-cli mcp --yes)."))
     }
 }
 
@@ -310,7 +310,7 @@ fn initialize(params: &Value, instructions: &str) -> Value {
     json!({
         "protocolVersion": version,
         "capabilities": {"tools": {"listChanged": false}, "resources": {"listChanged": false}, "prompts": {"listChanged": false}},
-        "serverInfo": {"name": "rustgis", "title": "PowerGIS", "version": env!("CARGO_PKG_VERSION")},
+        "serverInfo": {"name": "powergis", "title": "PowerGIS", "version": env!("CARGO_PKG_VERSION")},
         "instructions": instructions,
     })
 }
@@ -389,7 +389,7 @@ fn resource_list() -> Vec<Value> {
         .iter()
         .map(|p| {
             json!({
-                "uri": format!("rustgis://docs/{}", p.path),
+                "uri": format!("powergis://docs/{}", p.path),
                 "name": p.path,
                 "title": p.title(),
                 "description": format!("PowerGIS documentation: {} ({})", p.title(), p.url()),
@@ -403,7 +403,7 @@ fn view_map(s: &mut Session, a: &Value) -> Result<Value, String> {
     use base64::Engine;
     let size = |k: &str, default: f64| a.get(k).and_then(Value::as_f64).filter(|v| v.is_finite()).unwrap_or(default).clamp(64.0, MAX_VIEW);
     let (w, h) = (size("width", 1024.0), size("height", 640.0));
-    let png = rustgis_engine::cmd::share::map_png(s, Some(w), Some(h), None)?;
+    let png = powergis_engine::cmd::share::map_png(s, Some(w), Some(h), None)?;
     let m = s.map();
     let c = m.center_lonlat();
     let caption = format!(
@@ -443,9 +443,9 @@ pub fn render_snapshot(s: &mut Session, a: &Value, note: Option<&str>) -> Result
     let shape = if vw >= 1.0 && vh >= 1.0 { vh / vw } else { 0.625 };
     let width = asked.min(MAX_VIEW / shape.max(f64::MIN_POSITIVE)).max(64.0);
     let height = (width * shape).clamp(64.0, MAX_VIEW);
-    let png = rustgis_engine::cmd::share::map_png(s, Some(width), Some(height), None)?;
+    let png = powergis_engine::cmd::share::map_png(s, Some(width), Some(height), None)?;
     // Tiles still on their way are missing from it.
-    let settled = rustgis_engine::render::rustgis_tiles::cache::in_flight() == 0;
+    let settled = powergis_engine::render::powergis_tiles::cache::in_flight() == 0;
     snapshot_result(s, &png, "render", settled, a, note)
 }
 

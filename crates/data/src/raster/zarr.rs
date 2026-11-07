@@ -2177,11 +2177,11 @@ mod tests {
     }
 
     /// Stores zarr-python writes (`v2.zarr`: blosc LZ4 + shuffle, consolidated; `v3.zarr`: zstd),
-    /// in the folder RUSTGIS_TEST_ZARR names; skipped without it.
+    /// in the folder powergis_TEST_ZARR names; skipped without it.
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn stores_zarr_python_writes() {
-        let Ok(dir) = std::env::var("RUSTGIS_TEST_ZARR") else { return };
+        let Ok(dir) = std::env::var("powergis_TEST_ZARR") else { return };
         for store in ["v2.zarr", "v3.zarr"] {
             let path = std::path::Path::new(&dir).join(store);
             assert!(is_store(&path), "{store}");
@@ -2228,7 +2228,7 @@ mod tests {
 
     #[test]
     fn consolidated_null_is_not_consolidated() {
-        let dir = std::env::temp_dir().join(format!("rustgis-zarr-null-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-zarr-null-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("v")).unwrap();
         // zarr-python 3 writes `"consolidated_metadata": null`: the arrays' own files are read.

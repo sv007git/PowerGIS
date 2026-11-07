@@ -11,12 +11,12 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use rustgis_data::ogc::warp::{Grid, System, Warp};
-use rustgis_data::raster::Transformer;
-use rustgis_geom::Coord;
-use rustgis_map::TileLayer;
-use rustgis_map::projection::Flat;
-use rustgis_tiles::cache::{self, Payload, State, Want};
+use powergis_data::ogc::warp::{Grid, System, Warp};
+use powergis_data::raster::Transformer;
+use powergis_geom::Coord;
+use powergis_map::TileLayer;
+use powergis_map::projection::Flat;
+use powergis_tiles::cache::{self, Payload, State, Want};
 use tiny_skia::Pixmap;
 
 use crate::View;
@@ -65,14 +65,14 @@ pub(crate) fn of(t: &TileLayer, epsg: u16) -> Option<Request> {
         let transformer = match (system.epsg, epsg) {
             (3857, 3857) => None,
             // Web Mercator, on a map in another system (`usable` leaves it out: maps are in it).
-            (3857, _) => Some(rustgis_data::ogc::warp::transformer(3857)?),
-            (own, _) => Some(rustgis_tiles::warp::transformer(own)?),
+            (3857, _) => Some(powergis_data::ogc::warp::transformer(3857)?),
+            (own, _) => Some(powergis_tiles::warp::transformer(own)?),
         };
         Some(Request { warp: system.epsg != epsg, base, system, transformer })
     };
-    if !t.url.contains(rustgis_data::ogc::warp::MARK) {
+    if !t.url.contains(powergis_data::ogc::warp::MARK) {
         // Asked for in Web Mercator by its box.
-        let base = rustgis_map::tiles::sized(&t.url, "{nw}", "{nh}")
+        let base = powergis_map::tiles::sized(&t.url, "{nw}", "{nh}")
             .replace("{bbox-epsg-3857}", "{nbbox}")
             .replace("{width}", "{nw}")
             .replace("{height}", "{nh}");
@@ -167,7 +167,7 @@ fn kept() -> std::sync::MutexGuard<'static, Kept> {
 }
 
 /// Half the width of the Web Mercator world, metres: what a service draws in it.
-const HALF_WORLD: f64 = std::f64::consts::PI * rustgis_geom::MERCATOR_R;
+const HALF_WORLD: f64 = std::f64::consts::PI * powergis_geom::MERCATOR_R;
 
 /// The world a system's pictures are kept to (west, south, east, north): Web Mercator's square,
 /// longitude and latitude's; `None` for a projected system (its service says where it draws).
@@ -175,7 +175,7 @@ fn world_of(epsg: u16) -> Option<[f64; 4]> {
     if epsg == 3857 {
         return Some([-HALF_WORLD, -HALF_WORLD, HALF_WORLD, HALF_WORLD]);
     }
-    rustgis_data::raster::Crs::from_epsg(u32::from(epsg)).filter(|c| c.is_geographic()).map(|_| [-180.0, -90.0, 180.0, 90.0])
+    powergis_data::raster::Crs::from_epsg(u32::from(epsg)).filter(|c| c.is_geographic()).map(|_| [-180.0, -90.0, 180.0, 90.0])
 }
 
 /// A picture kept to its system's `world`: `None` where it reaches past the antimeridian (a
@@ -201,7 +201,7 @@ fn mercator_res(view: &View, flat: &Flat) -> Option<f64> {
     let (a, b) = (cam.to_map(w / 2.0, h / 2.0, w, h), cam.to_map(w / 2.0 + 1.0, h / 2.0, w, h));
     let (a, b) = match flat {
         Flat::Mercator => (a, b),
-        Flat::Custom(_) => (rustgis_geom::lonlat_to_merc(flat.inverse(a)?), rustgis_geom::lonlat_to_merc(flat.inverse(b)?)),
+        Flat::Custom(_) => (powergis_geom::lonlat_to_merc(flat.inverse(a)?), powergis_geom::lonlat_to_merc(flat.inverse(b)?)),
     };
     let r = (b.x - a.x).hypot(b.y - a.y);
     (r.is_finite() && r > 0.0).then_some(r)
@@ -220,7 +220,7 @@ pub(crate) fn draw(pm: &mut Pixmap, req: &Request, t: &TileLayer, view: &View, f
     let nothing = Some((false, None));
     // Not closer out than its service draws it (as its tiles).
     let Some(merc) = mercator_res(view, flat) else { return nothing };
-    if rustgis_tiles::template::zoom_for(merc, t.tile_size, rustgis_map::tiles::MAX_ZOOM) < t.min_zoom {
+    if powergis_tiles::template::zoom_for(merc, t.tile_size, powergis_map::tiles::MAX_ZOOM) < t.min_zoom {
         return nothing;
     }
     // Closer in than its finest zoom, its picture there is stretched (as its finest tiles are).
@@ -265,10 +265,10 @@ pub(crate) fn draw(pm: &mut Pixmap, req: &Request, t: &TileLayer, view: &View, f
     // Nothing asked for outside the layer's bounds, when known.
     let bounds = t.bounds.and_then(|[bw, bs, be, bn]| match &req.transformer {
         None => {
-            let (sw, ne) = (rustgis_geom::lonlat_to_merc(Coord::new(bw, bs)), rustgis_geom::lonlat_to_merc(Coord::new(be, bn)));
+            let (sw, ne) = (powergis_geom::lonlat_to_merc(Coord::new(bw, bs)), powergis_geom::lonlat_to_merc(Coord::new(be, bn)));
             Some([sw.x, sw.y, ne.x, ne.y])
         }
-        Some(tr) => rustgis_data::ogc::warp::native_box(tr, [bw, bs, be, bn]),
+        Some(tr) => powergis_data::ogc::warp::native_box(tr, [bw, bs, be, bn]),
     });
     if bounds.is_some_and(|l| l[0] > area[2] || l[2] < area[0] || l[1] > area[3] || l[3] < area[1]) {
         return nothing;
@@ -512,7 +512,7 @@ mod tests {
     fn zooms_are_in_the_layers_tile_size() {
         for z in 0..20 {
             assert!((zoom_res(z, 512) - zoom_res(z + 1, 256)).abs() < 1e-9 * zoom_res(z + 1, 256));
-            assert_eq!(rustgis_tiles::template::zoom_for(zoom_res(z, 512), 512, 22), z);
+            assert_eq!(powergis_tiles::template::zoom_for(zoom_res(z, 512), 512, 22), z);
         }
     }
 
@@ -587,7 +587,7 @@ mod tests {
     #[test]
     fn asked_for_by_its_own_address() {
         let wms = "https://m.example.org/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=a&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng&TRANSPARENT=TRUE";
-        let mut t = TileLayer::new("a", rustgis_map::TileKind::Raster, wms);
+        let mut t = TileLayer::new("a", powergis_map::TileKind::Raster, wms);
         assert!(of(&t, 3857).is_none(), "tiles unless asked");
         t.single_image = true;
         let r = of(&t, 3857).unwrap();
@@ -628,7 +628,7 @@ mod tests {
         );
         // A WMS that offers Web Mercator and other systems (swisstopo's), marked as drawn in Web
         // Mercator as it comes: one picture in Web Mercator, though only its others are listed.
-        t.url = "https://wms.geo.admin.ch/de/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=a&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng&TRANSPARENT=TRUE#rustgis-warp={z}/{x}/{y};crs=3857;in=3.3,44.0,14.2,49.2;sys=2056|e|EPSG:2056~4326|n|EPSG:4326;map=east".into();
+        t.url = "https://wms.geo.admin.ch/de/?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=a&STYLES=&CRS=EPSG:3857&BBOX={bbox-epsg-3857}&WIDTH=256&HEIGHT=256&FORMAT=image%2Fpng&TRANSPARENT=TRUE#powergis-warp={z}/{x}/{y};crs=3857;in=3.3,44.0,14.2,49.2;sys=2056|e|EPSG:2056~4326|n|EPSG:4326;map=east".into();
         let r = of(&t, 3857).expect("one picture in Web Mercator");
         assert_eq!(
             Warp::map_address(&r.base, &r.system, [1.0, 2.0, 3.0, 4.0], 800, 600),
@@ -639,7 +639,7 @@ mod tests {
         assert_eq!(of(&t, 2056).map(|r| (r.system.epsg, r.warp)), Some((2056, false)));
         assert_eq!(of(&t, 3035).map(|r| (r.system.epsg, r.warp)), Some((3857, true)));
         // A WMS offered only in LV95: in it on a Web Mercator map, warped.
-        t.url = "https://m.example.org/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=a&STYLES=&CRS={ncrs}&BBOX={nbbox}&WIDTH={nw}&HEIGHT={nh}&FORMAT=image%2Fpng#rustgis-warp={z}/{x}/{y};crs=2056;in=5.9,45.8,10.5,47.8;sys=2056|e|EPSG:2056;map=east".into();
+        t.url = "https://m.example.org/wms?SERVICE=WMS&VERSION=1.3.0&REQUEST=GetMap&LAYERS=a&STYLES=&CRS={ncrs}&BBOX={nbbox}&WIDTH={nw}&HEIGHT={nh}&FORMAT=image%2Fpng#powergis-warp={z}/{x}/{y};crs=2056;in=5.9,45.8,10.5,47.8;sys=2056|e|EPSG:2056;map=east".into();
         let r = of(&t, 3857).unwrap();
         assert!(r.system.epsg == 2056 && r.warp);
         assert!(Warp::map_address(&r.base, &r.system, [1.0, 2.0, 3.0, 4.0], 8, 6).contains("CRS=EPSG:2056&BBOX=1,2,3,4&WIDTH=8&HEIGHT=6"));

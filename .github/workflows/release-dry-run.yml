@@ -17,7 +17,7 @@
 #             it can, builds the static web-app zip, and writes SHA256SUMS;
 #             its publish job is skipped
 #
-# Deliberately not included: Deploy web.rustgis.app publishes on every push to
+# Deliberately not included: Deploy web.powergis.app publishes on every push to
 # `main`, so it is continuously covered, and dispatching it here would publish
 # the site for real.
 name: Release dry run

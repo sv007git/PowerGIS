@@ -16,7 +16,7 @@ use std::collections::{BTreeMap, BTreeSet};
 use std::mem::size_of;
 
 use geo::{BooleanOps, Coord as GC, LineString, Polygon, Rect, Validation};
-use rustgis_data::{Coord, Dataset, FieldType, Geometry, Value};
+use powergis_data::{Coord, Dataset, FieldType, Geometry, Value};
 
 use crate::{mvt, pmtiles};
 
@@ -266,8 +266,8 @@ fn input_size(ds: &Dataset) -> Result<usize, String> {
     let mut b = Budget { used: size_of::<Dataset>(), work: 0 };
     b.add(ds.name.capacity())?;
     b.add(ds.source.as_ref().map_or(0, String::capacity))?;
-    b.add(product(ds.features.capacity(), size_of::<rustgis_data::Feature>())?)?;
-    b.add(product(ds.fields.capacity(), size_of::<rustgis_data::Field>())?)?;
+    b.add(product(ds.features.capacity(), size_of::<powergis_data::Feature>())?)?;
+    b.add(product(ds.fields.capacity(), size_of::<powergis_data::Field>())?)?;
     for field in &ds.fields {
         b.add(field.name.capacity())?;
         b.add(field.alias.as_ref().map_or(0, String::capacity))?;
@@ -645,7 +645,7 @@ fn clip_segment(a: GC<f64>, b: GC<f64>, r: [f64; 4]) -> Option<(GC<f64>, GC<f64>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::{Feature, Field, GeometryType};
+    use powergis_data::{Feature, Field, GeometryType};
 
     fn dataset(geometry: Geometry) -> Dataset {
         let mut ds = Dataset::new("Deterministic export", geometry.kind(), vec![]);
@@ -852,7 +852,7 @@ mod tests {
         let normalized = coords(&[(15.0, 90.0), (15.0, -90.0), (15.0, 45.0)]);
         let mut ds = dataset(Geometry::MultiPoint(normalized.clone()));
         let a = export(&ds, &[], 0, 0, "polar")?;
-        ds.crs = Some(rustgis_data::raster::Crs::WebMercator);
+        ds.crs = Some(powergis_data::raster::Crs::WebMercator);
         let b = export(&ds, &[], 0, 0, "polar")?;
         assert_eq!(a.bytes, b.bytes);
         assert_eq!(ds.features[0].geometry, Some(Geometry::MultiPoint(normalized)));

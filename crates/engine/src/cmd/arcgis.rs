@@ -1,11 +1,11 @@
 //! Signing in to ArcGIS Online or an ArcGIS Enterprise portal, so its secured services can be
 //! read, and tokens given for an ArcGIS Server. Sessions are kept in memory for the session only,
-//! never in the project (see `rustgis_tiles::arcgis_auth`).
+//! never in the project (see `powergis_tiles::arcgis_auth`).
 
 use serde_json::{Value, json};
 
 use super::{f, ps};
-use crate::render::rustgis_tiles::arcgis_auth::{self, Info};
+use crate::render::powergis_tiles::arcgis_auth::{self, Info};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -33,7 +33,7 @@ fn info_json(i: &Info) -> Value {
     json!({
         "portal": i.portal,
         "username": i.username,
-        "expires": i.expires_at.map(crate::render::rustgis_tiles::earthdata::date_of),
+        "expires": i.expires_at.map(crate::render::powergis_tiles::earthdata::date_of),
         "renews": i.renews,
         "kind": if i.token { "token" } else { "signIn" },
     })
@@ -92,7 +92,7 @@ fn token(_s: &mut Session, p: &Value) -> CmdResult {
     let url = ps(p, "url").map(str::trim).filter(|u| !u.is_empty()).ok_or("url is required (an ArcGIS REST address)")?;
     let token = ps(p, "token").map(str::trim).filter(|t| !t.is_empty()).ok_or("token is required")?;
     let root = arcgis_auth::add_token(url, token)?;
-    crate::render::rustgis_tiles::cache::clear();
+    crate::render::powergis_tiles::cache::clear();
     Ok(json!({"server": root, "sessions": status()["sessions"]}))
 }
 
@@ -114,7 +114,7 @@ fn sign_out(_s: &mut Session, p: &Value) -> CmdResult {
     let (revocations, gone) = arcgis_auth::sign_out(portal.as_deref());
     // Tiles and documents read with the token are cached by address: they go with it.
     if gone > 0 {
-        crate::render::rustgis_tiles::cache::clear();
+        crate::render::powergis_tiles::cache::clear();
     }
     #[cfg(not(target_arch = "wasm32"))]
     arcgis_auth::revoke_all(revocations);

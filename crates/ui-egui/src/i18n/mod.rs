@@ -4,7 +4,7 @@
 //! translation shows in English, so coverage can grow one entry at a time.
 //!
 //! The `language` preference is `auto` by default: the UI follows the system's languages
-//! (`RUSTGIS_LANGUAGE`, then the OS or browser preferences) when there is a catalog, else English.
+//! (`powergis_LANGUAGE`, then the OS or browser preferences) when there is a catalog, else English.
 //! Settings › Language picks one by hand.
 //!
 //! The language set follows GeoLibre's, minus scripts egui can't yet shape or lay out
@@ -34,6 +34,7 @@ mod rtl;
 pub const AUTO: &str = "auto";
 
 /// Writing systems that need an extra font.
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Script {
     /// Latin, Cyrillic, Greek or Georgian: covered by the interface fonts.
@@ -47,6 +48,7 @@ pub enum Script {
 }
 
 /// Which CJK face reads best for a language (the glyph shapes differ by region).
+#[allow(dead_code)]
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum CjkFont {
     SimplifiedChinese,
@@ -62,28 +64,16 @@ pub struct LangInfo {
     /// The name in English (for the picker's tooltip).
     pub english: &'static str,
     pub script: Script,
+    #[allow(dead_code)]
     source: &'static str,
     catalog: OnceLock<HashMap<&'static str, &'static str>>,
     /// Catalog values in display form, for a language laid out back to front.
+    #[allow(dead_code)]
     visual: OnceLock<HashMap<&'static str, &'static str>>,
 }
 
-macro_rules! lang {
-    ($code:literal, $name:literal, $en:literal, $script:expr, $file:literal) => {
-        LangInfo {
-            code: $code,
-            name: $name,
-            english: $en,
-            script: $script,
-            source: include_str!($file),
-            catalog: OnceLock::new(),
-            visual: OnceLock::new(),
-        }
-    };
-}
-
-/// The registry. English first: it is the source language and the fallback.
-pub static LANGUAGES: [LangInfo; 19] = [
+/// The registry. English only: all other languages have been removed.
+pub static LANGUAGES: [LangInfo; 1] = [
     LangInfo {
         code: "en",
         name: "English",
@@ -93,24 +83,6 @@ pub static LANGUAGES: [LangInfo; 19] = [
         catalog: OnceLock::new(),
         visual: OnceLock::new(),
     },
-    lang!("de", "Deutsch", "German", Script::Alphabetic, "de.tsv"),
-    lang!("es", "Español", "Spanish", Script::Alphabetic, "es.tsv"),
-    lang!("fr", "Français", "French", Script::Alphabetic, "fr.tsv"),
-    lang!("it", "Italiano", "Italian", Script::Alphabetic, "it.tsv"),
-    lang!("nl", "Nederlands", "Dutch", Script::Alphabetic, "nl.tsv"),
-    lang!("pl", "Polski", "Polish", Script::Alphabetic, "pl.tsv"),
-    lang!("pt", "Português", "Portuguese", Script::Alphabetic, "pt.tsv"),
-    lang!("ru", "Русский", "Russian", Script::Alphabetic, "ru.tsv"),
-    lang!("tr", "Türkçe", "Turkish", Script::Alphabetic, "tr.tsv"),
-    lang!("az", "Azərbaycanca", "Azerbaijani", Script::Alphabetic, "az.tsv"),
-    lang!("id", "Bahasa Indonesia", "Indonesian", Script::Alphabetic, "id.tsv"),
-    lang!("vi", "Tiếng Việt", "Vietnamese", Script::Alphabetic, "vi.tsv"),
-    lang!("fa", "فارسی", "Persian (Farsi)", Script::Arabic, "fa.tsv"),
-    lang!("zh", "简体中文", "Chinese (Simplified)", Script::Cjk(CjkFont::SimplifiedChinese), "zh.tsv"),
-    lang!("ja", "日本語", "Japanese", Script::Cjk(CjkFont::Japanese), "ja.tsv"),
-    lang!("ko", "한국어", "Korean", Script::Cjk(CjkFont::Korean), "ko.tsv"),
-    lang!("ka", "ქართული", "Georgian", Script::Alphabetic, "ka.tsv"),
-    lang!("bn", "বাংলা", "Bengali", Script::Bengali, "bn.tsv"),
 ];
 
 fn unescape(s: &str) -> String {
@@ -257,7 +229,7 @@ pub fn system_lang() -> Lang {
     }
     static SYSTEM: OnceLock<usize> = OnceLock::new();
     let i = *SYSTEM.get_or_init(|| {
-        let from_env = std::env::var("RUSTGIS_LANGUAGE").ok().and_then(|v| lang_from_tag(&v));
+        let from_env = std::env::var("powergis_LANGUAGE").ok().and_then(|v| lang_from_tag(&v));
         let lang = from_env.or_else(|| {
             let tags: Vec<String> = sys_locale::get_locales().take(16).collect();
             first_supported(tags.iter().map(String::as_str))
@@ -354,7 +326,7 @@ fn leak_once(seen: &mut std::collections::HashSet<&'static str>, s: String) -> &
 
 /// `s` translated by a loaded plugin's `i18n`, in logical order and in display form.
 fn plugin_tr_pair(lang: Lang, s: &str) -> Option<(&'static str, &'static str)> {
-    let revision = rustgis_engine::plugins::revision();
+    let revision = powergis_engine::plugins::revision();
     PLUGIN_CACHE_MAP.with_borrow_mut(|(rev, code, map)| {
         if *rev != revision || *code != lang.code() || map.len() > PLUGIN_CACHE {
             *rev = revision;
@@ -364,7 +336,7 @@ fn plugin_tr_pair(lang: Lang, s: &str) -> Option<(&'static str, &'static str)> {
         if let Some(hit) = map.get(s) {
             return *hit;
         }
-        let found = rustgis_engine::plugins::translate(lang.code(), s).map(|t| {
+        let found = powergis_engine::plugins::translate(lang.code(), s).map(|t| {
             let shown = rtl::visual(&t);
             let raw = PLUGIN_RAW_STRINGS.with_borrow_mut(|seen| leak_once(seen, t));
             let vis = PLUGIN_STRINGS.with_borrow_mut(|seen| leak_once(seen, shown));

@@ -47,9 +47,9 @@ pub struct Converted {
     pub unprojected: bool,
 }
 
-/// A GDAL program (`ogr2ogr`, `ogrinfo`): from `RUSTGIS_GDAL_BIN` (a folder), else on the `PATH`.
+/// A GDAL program (`ogr2ogr`, `ogrinfo`): from `powergis_GDAL_BIN` (a folder), else on the `PATH`.
 pub fn program(name: &str) -> Option<PathBuf> {
-    external::program("RUSTGIS_GDAL_BIN", name)
+    external::program("powergis_GDAL_BIN", name)
 }
 
 /// Whether GDAL's programs are installed.
@@ -59,14 +59,14 @@ pub fn available() -> bool {
 
 fn missing() -> DataError {
     DataError::Unsupported(
-        "this format needs GDAL: install it (ogr2ogr and ogrinfo on the PATH, or RUSTGIS_GDAL_BIN naming their folder) and add the file again"
+        "this format needs GDAL: install it (ogr2ogr and ogrinfo on the PATH, or powergis_GDAL_BIN naming their folder) and add the file again"
             .into(),
     )
 }
 
-/// Where converted layers are kept: the platform's cache folder, or `RUSTGIS_GDAL_CACHE`.
+/// Where converted layers are kept: the platform's cache folder, or `powergis_GDAL_CACHE`.
 pub fn cache_dir() -> Option<PathBuf> {
-    external::cache_dir("RUSTGIS_GDAL_CACHE", "gdal")
+    external::cache_dir("powergis_GDAL_CACHE", "gdal")
 }
 
 /// A layer: its name, the one kind of geometry it holds (`None`: it mixes them), and its
@@ -343,7 +343,7 @@ mod tests {
         assert!(ours("0123456789abcdef.4242.tmp.fgb"));
         assert!(!ours("notes.fgb") && !ours("0123456789abcdef.txt") && !ours("photo.jpg") && !ours("0123456789abcdef.x.tmp.fgb"));
         // The cache key's hash is stable.
-        assert_eq!(fnv1a(b"rustgis"), fnv1a(b"rustgis"));
+        assert_eq!(fnv1a(b"powergis"), fnv1a(b"powergis"));
         assert_ne!(fnv1a(b"a"), fnv1a(b"b"));
     }
 
@@ -375,7 +375,7 @@ mod tests {
         if !available() {
             return;
         }
-        let dir = std::env::temp_dir().join(format!("rustgis-gdal-surfaces-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-gdal-surfaces-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let csv = dir.join("mixed.csv");
         std::fs::write(
@@ -415,7 +415,7 @@ mod tests {
         if !available() {
             return;
         }
-        let dir = std::env::temp_dir().join(format!("rustgis-gdal-test-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-gdal-test-{}", std::process::id()));
         std::fs::create_dir_all(&dir).unwrap();
         let kml = dir.join("mixed.kml");
         std::fs::write(

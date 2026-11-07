@@ -7,7 +7,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use serde_json::{Value, json};
 
-use super::model::{CustomerProfile, GridAssetType, GridEdge, GridNode, SmartMeter, UserRole};
+use super::model::{CustomerProfile, GridEdge, GridNode, SmartMeter, UserRole};
 
 /// Complete electrical distribution network state in memory.
 #[derive(Clone, Debug, Default, PartialEq)]
@@ -58,6 +58,21 @@ impl ElectricalNetwork {
     /// Adds a response crew.
     pub fn add_crew(&mut self, crew: super::model::Crew) {
         self.crews.insert(crew.crew_code.clone(), crew);
+    }
+
+    /// Adds a recorded fault.
+    pub fn add_fault(&mut self, fault: super::model::FaultRecord) {
+        self.faults.insert(fault.fault_number.clone(), fault);
+    }
+
+    /// Adds a crew dispatch assignment.
+    pub fn add_assignment(&mut self, assignment: super::model::CrewAssignment) {
+        self.assignments.push(assignment);
+    }
+
+    /// Adds meter telemetry.
+    pub fn add_telemetry(&mut self, t: super::model::MeterTelemetry) {
+        self.telemetry.insert(t.meter_number.clone(), t);
     }
 
     /// Rebuilds graph adjacency indices from edges.

@@ -10,13 +10,13 @@
 //! and in a `gp.run` line's `"params"` what the tool's parameter takes by its kind (`tool_value`),
 //! as the tool's form offers it. Typing aids beside it: a command's parameters added on accept
 //! (`template`), and braces, brackets and quotes that close themselves (`brace`).
-//! Quoted text is read by one rule everywhere (`rustgis_engine::Quotes`), the one the colours use.
+//! Quoted text is read by one rule everywhere (`powergis_engine::Quotes`), the one the colours use.
 
 use egui::text::{CCursor, CCursorRange};
 use egui::widgets::text_edit::{TextEditOutput, TextEditState};
 use egui::{Id, Key, Modifiers, Ui};
-use rustgis_engine::Quotes;
-use rustgis_engine::cmd::workflows::refused_in_script;
+use powergis_engine::Quotes;
+use powergis_engine::cmd::workflows::refused_in_script;
 
 /// The most suggestions the list shows.
 const MAX_ITEMS: usize = 10;
@@ -402,12 +402,12 @@ fn line_of<'a>(script: &'a str, h: &Hint) -> Option<&'a str> {
 /// The keys of the parameters `desc` describes, entry by entry, each with its alternatives
 /// (`"lon" | "x"`), and the entry's text as described.
 fn entries(desc: &str) -> Vec<(Vec<String>, String)> {
-    let params = rustgis_engine::param_list(desc).unwrap_or_default();
+    let params = powergis_engine::param_list(desc).unwrap_or_default();
     params
         .iter()
         .map(|p| {
             let entry = format!("{{{}}}", p.text);
-            let keys = rustgis_engine::param_keys(&entry).filter(|k| !k.is_empty()).unwrap_or(vec![p.key]);
+            let keys = powergis_engine::param_keys(&entry).filter(|k| !k.is_empty()).unwrap_or(vec![p.key]);
             (keys.into_iter().map(str::to_string).collect(), p.text.to_string())
         })
         .collect()
@@ -426,7 +426,7 @@ fn complete_keys(id: &str, desc: &str, line: &str, start: usize, end: usize, wor
 /// The keys of `entries` (each entry's alternatives together) that complete `word`, as
 /// `complete_keys` offers them; `line` is the object they go in, from its `{`.
 fn offer_keys(of: Of, entries: Vec<Vec<String>>, line: &str, start: usize, end: usize, word: &str) -> Option<Offer> {
-    let given = rustgis_engine::param_keys(line).unwrap_or_default();
+    let given = powergis_engine::param_keys(line).unwrap_or_default();
     let items: Vec<String> = entries
         .into_iter()
         .filter(|keys| !keys.iter().any(|k| given.contains(&k.as_str())))
@@ -464,8 +464,8 @@ fn named_in(script: &str, h: &Hint) -> Option<(Named, String)> {
 /// The layer a line's object (`line`, from its `{`) acts on, as Run finds it: by its `"layer"`
 /// (a name, or an id written as text), the active layer without one. None for a layer that
 /// isn't there, or one given otherwise (a number, an escaped name): not the active layer then.
-fn line_layer<'a>(session: &'a rustgis_engine::Session, line: &str) -> Option<&'a rustgis_engine::map::Layer> {
-    let given = rustgis_engine::param_keys(line).is_some_and(|keys| keys.contains(&"layer"));
+fn line_layer<'a>(session: &'a powergis_engine::Session, line: &str) -> Option<&'a powergis_engine::map::Layer> {
+    let given = powergis_engine::param_keys(line).is_some_and(|keys| keys.contains(&"layer"));
     let p = match value_of(line, "layer") {
         Some(name) => serde_json::json!({ "layer": name }),
         None if given => return None,
@@ -479,7 +479,7 @@ fn line_layer<'a>(session: &'a rustgis_engine::Session, line: &str) -> Option<&'
 /// keys their entries describe; in a `gp.run` line the tool ids for its `"tool"` and the tool's
 /// keys and values (`tool_value`) in its `"params"`, in a `task.addStep` line the command ids for
 /// its `"command"` and that command's keys in its `"params"`.
-fn offer_at(script: &str, at: usize, ids: &[String], session: &rustgis_engine::Session) -> Option<Offer> {
+fn offer_at(script: &str, at: usize, ids: &[String], session: &powergis_engine::Session) -> Option<Offer> {
     if let Some((start, word)) = word_at(script, at) {
         return complete(start, at, &word, ids);
     }
@@ -492,12 +492,12 @@ fn offer_at(script: &str, at: usize, ids: &[String], session: &rustgis_engine::S
         }
         if let Some((_, what)) = named(&hint.id).filter(|(names, _)| key == *names) {
             return match what {
-                Named::Tool => value_ids(start, at, &word, rustgis_engine::analysis::tools().map(|t| t.id), Of::ToolIds),
+                Named::Tool => value_ids(start, at, &word, powergis_engine::analysis::tools().map(|t| t.id), Of::ToolIds),
                 // Those `task.addStep` takes, by its own rule (not a script's: it adds the step, it
                 // doesn't run it).
                 Named::Command => {
                     let steps =
-                        session.registry.commands.iter().map(|c| c.id).filter(|id| rustgis_engine::cmd::items::can_be_step(session, id));
+                        session.registry.commands.iter().map(|c| c.id).filter(|id| powergis_engine::cmd::items::can_be_step(session, id));
                     value_ids(start, at, &word, steps, Of::CommandIds)
                 }
             };
@@ -552,7 +552,7 @@ fn offer_at(script: &str, at: usize, ids: &[String], session: &rustgis_engine::S
                 // (`layer.geocode`; by its name, as `line_layer` reads a layer), else the line's
                 // layer's.
                 let table =
-                    takes(session, &hint.id, "table") && rustgis_engine::param_keys(line).is_some_and(|keys| keys.contains(&"table"));
+                    takes(session, &hint.id, "table") && powergis_engine::param_keys(line).is_some_and(|keys| keys.contains(&"table"));
                 let (d, of) = if table {
                     let t = crate::panes::input_table(session, &value_of(line, "table")?)?;
                     (&t.dataset, Of::TableFields(t.id))
@@ -588,7 +588,7 @@ fn offer_at(script: &str, at: usize, ids: &[String], session: &rustgis_engine::S
     if nested.key == "params" && named(&h.id).is_some() {
         return match named_in(script, &h)? {
             (Named::Tool, name) => {
-                let tool = rustgis_engine::analysis::tool(&name)?;
+                let tool = powergis_engine::analysis::tool(&name)?;
                 let entries = tool.params.iter().map(|p| vec![p.name.to_string()]).collect();
                 offer_keys(Of::ToolKeys(tool.id.to_string()), entries, &object, start, at, &word)
             }
@@ -605,15 +605,15 @@ fn offer_at(script: &str, at: usize, ids: &[String], session: &rustgis_engine::S
 /// fields it takes of the layer or table the tool's first layer parameter names (before or after
 /// it); or its choices. None for another kind: a number, a bool, a path, a text, several layers in
 /// one string.
-fn tool_value(script: &str, at: usize, session: &rustgis_engine::Session) -> Option<Offer> {
+fn tool_value(script: &str, at: usize, session: &powergis_engine::Session) -> Option<Offer> {
     use crate::panes::{takes_field, takes_layer};
-    use rustgis_engine::analysis::ParamKind as K;
+    use powergis_engine::analysis::ParamKind as K;
     let (h, Scan { nested, .. }, _) = scan_at(script, at)?;
     let brace = h.brace + nested.filter(|n| n.key == "params")?.brace;
     let (Named::Tool, name) = named_in(script, &h)? else {
         return None;
     };
-    let tool = rustgis_engine::analysis::tool(&name)?;
+    let tool = powergis_engine::analysis::tool(&name)?;
     // The `"params"` object, read as a line's object from its `{`.
     let text = script.get(byte_at(script, brace)?..byte_at(script, at)?)?;
     // Field lists accept a single name as well as names within an array.
@@ -632,7 +632,7 @@ fn tool_value(script: &str, at: usize, session: &rustgis_engine::Session) -> Opt
             let layers = map.layers.iter().filter(|l| map.layer_by_name(&l.name).is_some_and(|f| f.id == l.id) && takes_layer(p.kind, l));
             let all = &session.project.tables;
             let tables = all.iter().enumerate().filter(|(i, t)| {
-                p.kind == K::Layer && map.layer_by_name(&t.name).is_none() && rustgis_engine::project::find_table(all, &t.name) == Some(*i)
+                p.kind == K::Layer && map.layer_by_name(&t.name).is_none() && powergis_engine::project::find_table(all, &t.name) == Some(*i)
             });
             let names = layers.map(|l| l.name.as_str()).chain(tables.map(|(_, t)| t.name.as_str()));
             value_ids(start, at, &word, names, Of::Layers)
@@ -726,16 +726,16 @@ fn value_ids<'a>(start: usize, end: usize, word: &str, ids: impl Iterator<Item =
 /// What the help beside a list says about item `item` of `of`: for a key, the line describing its
 /// parameter (`"size"?: number`) and a longer help under it (a tool's, when it has one); for a
 /// layer, what it holds, for a table its rows; for a field, its type and its alias.
-fn item_help(session: &rustgis_engine::Session, of: &Of, item: &str) -> Option<(String, Option<String>)> {
+fn item_help(session: &powergis_engine::Session, of: &Of, item: &str) -> Option<(String, Option<String>)> {
     let described = |desc: &str| entries(desc).into_iter().find(|(keys, _)| keys.iter().any(|k| k == item)).map(|(_, text)| (text, None));
-    let field = |d: &rustgis_engine::data::Dataset| {
+    let field = |d: &powergis_engine::data::Dataset| {
         d.fields.iter().find(|f| f.name == item).map(|f| (tl!(f.ty.label()).to_string(), f.alias.clone()))
     };
     match of {
         Of::CommandKeys(id) => described(&params_of(session, id)?),
         Of::SubKeys { id, key: entry } => described(&sub_desc(&params_of(session, id)?, entry)?),
         Of::ToolKeys(id) => {
-            let p = rustgis_engine::analysis::tool(id)?.params.iter().find(|p| p.name == item)?;
+            let p = powergis_engine::analysis::tool(id)?.params.iter().find(|p| p.name == item)?;
             Some((param_line(p), (!p.help.is_empty()).then(|| tl!(p.help).to_string())))
         }
         Of::Layers => {
@@ -769,7 +769,7 @@ fn item_help(session: &rustgis_engine::Session, of: &Of, item: &str) -> Option<(
             Some((crate::i18n::fmt("{width} × {height} mm", &[("width", &l.width.to_string()), ("height", &l.height.to_string())]), None))
         }
         Of::Tables => {
-            let t = session.project.tables.get(rustgis_engine::project::find_table(&session.project.tables, item)?)?;
+            let t = session.project.tables.get(powergis_engine::project::find_table(&session.project.tables, item)?)?;
             Some((crate::i18n::fmt("{n} rows", &[("n", &t.features.len().to_string())]), None))
         }
         Of::Classes(id) => {
@@ -783,8 +783,8 @@ fn item_help(session: &rustgis_engine::Session, of: &Of, item: &str) -> Option<(
 
 /// The icon beside item `item` of a list of `of`: a layer's kind, as the Layers pane shows it, or
 /// a field's; none for ids and keys.
-fn item_icon(session: &rustgis_engine::Session, of: Option<&Of>, item: &str) -> Option<&'static str> {
-    use rustgis_engine::data::GeometryType;
+fn item_icon(session: &powergis_engine::Session, of: Option<&Of>, item: &str) -> Option<&'static str> {
+    use powergis_engine::data::GeometryType;
     match of? {
         Of::Layers => {
             let Some(l) = session.map().layer_by_name(item) else {
@@ -815,8 +815,8 @@ fn json_text(text: &str) -> String {
 /// A tool's parameter as the help shows it, as a command's parameters are described: its key
 /// (`?` when it may be left out), what it takes, its name and its default
 /// (`"units"?: "Kilometers" | "Miles" — Units, default "Kilometers"`).
-fn param_line(p: &rustgis_engine::analysis::ParamSpec) -> String {
-    use rustgis_engine::analysis::ParamKind as K;
+fn param_line(p: &powergis_engine::analysis::ParamSpec) -> String {
+    use powergis_engine::analysis::ParamKind as K;
     // In logical order (`tl_raw!`): `fmt` puts the finished line in display form.
     let choices;
     let takes = match p.kind {
@@ -854,7 +854,7 @@ fn param_line(p: &rustgis_engine::analysis::ParamSpec) -> String {
 
 /// The help for tool `t`, as `help` gives a command's: its signature, name, summary, parameters
 /// one per line (`param_line`), and its toolbox.
-fn tool_help(t: &rustgis_engine::analysis::ToolSpec) -> Help {
+fn tool_help(t: &powergis_engine::analysis::ToolSpec) -> Help {
     Help {
         id: t.id.to_string(),
         keys: signature(t.params.iter().map(|p| (p.name, !p.required))),
@@ -868,9 +868,9 @@ fn tool_help(t: &rustgis_engine::analysis::ToolSpec) -> Help {
 /// The help by the cursor at char `at` of `script`, in line `h`'s braces: in a `gp.run` line's
 /// `"params"`, the tool's it runs, in a `task.addStep` line's, the command's it adds (when the
 /// line names one there is); elsewhere the line's command's.
-fn help_at(session: &rustgis_engine::Session, script: &str, at: usize, h: &Hint) -> Option<Help> {
+fn help_at(session: &powergis_engine::Session, script: &str, at: usize, h: &Hint) -> Option<Help> {
     let inner = || match named_in(script, h).filter(|_| nested_at(script, at, h).as_deref() == Some("params"))? {
-        (Named::Tool, name) => rustgis_engine::analysis::tool(&name).map(tool_help),
+        (Named::Tool, name) => powergis_engine::analysis::tool(&name).map(tool_help),
         (Named::Command, name) => help(session, &name),
     };
     inner().or_else(|| help(session, &h.id))
@@ -878,10 +878,10 @@ fn help_at(session: &rustgis_engine::Session, script: &str, at: usize, h: &Hint)
 
 /// `script_ids`, kept until the loaded plugins or the session's commands change (the built-in
 /// commands don't while the app runs; their count tells another session's registry apart).
-fn script_ids_cached(ui: &Ui, session: &rustgis_engine::Session) -> std::sync::Arc<Vec<String>> {
+fn script_ids_cached(ui: &Ui, session: &powergis_engine::Session) -> std::sync::Arc<Vec<String>> {
     type Kept = ((u64, usize), std::sync::Arc<Vec<String>>);
     let key = Id::unique("script_complete_ids");
-    let now = (rustgis_engine::plugins::revision(), session.registry.commands.len());
+    let now = (powergis_engine::plugins::revision(), session.registry.commands.len());
     if let Some((was, ids)) = ui.data(|d| d.get_temp::<Kept>(key))
         && was == now
     {
@@ -894,9 +894,9 @@ fn script_ids_cached(ui: &Ui, session: &rustgis_engine::Session) -> std::sync::A
 
 /// The ids a script can run: the built-in commands and enabled plugins' (`plugin:…`), less those a
 /// script refuses.
-pub fn script_ids(session: &rustgis_engine::Session) -> Vec<String> {
+pub fn script_ids(session: &powergis_engine::Session) -> Vec<String> {
     let builtin = session.registry.commands.iter().map(|c| c.id.to_string());
-    let plugins = rustgis_engine::plugins::commands().into_iter().map(|c| c.id);
+    let plugins = powergis_engine::plugins::commands().into_iter().map(|c| c.id);
     builtin.chain(plugins).filter(|id| !refused_in_script(id)).collect()
 }
 
@@ -918,18 +918,18 @@ pub struct Help {
 
 /// The help for command `id`, as Command Search names and places it (translated); None for an id
 /// no command has.
-pub fn help(session: &rustgis_engine::Session, id: &str) -> Option<Help> {
+pub fn help(session: &powergis_engine::Session, id: &str) -> Option<Help> {
     let lang = crate::i18n::current().code();
     let (label, about, location, desc) = match session.registry.get(id) {
         Some(c) => (tl!(c.label).to_string(), String::new(), crate::i18n::location(c.location), c.params.to_string()),
         None => {
-            let c = rustgis_engine::plugins::command(id)?;
+            let c = powergis_engine::plugins::command(id)?;
             let m = &c.plugin.manifest;
             let location = format!("{} › {}", tl!("Plugins"), m.translate(lang, &m.name));
             (m.translate(lang, &c.decl.label).to_string(), m.translate(lang, &c.decl.help).to_string(), location, c.decl.params.clone())
         }
     };
-    let params = rustgis_engine::param_list(&desc).unwrap_or_default();
+    let params = powergis_engine::param_list(&desc).unwrap_or_default();
     let keys = signature(params.iter().map(|p| (p.key, p.optional)));
     Some(Help { id: id.to_string(), keys, label, about, params: params.iter().map(|p| p.text.to_string()).collect(), location })
 }
@@ -942,23 +942,23 @@ fn signature<'a>(keys: impl Iterator<Item = (&'a str, bool)>) -> String {
 }
 
 /// The parameter description of command `id`: a built-in command's, or an enabled plugin's.
-fn params_of(session: &rustgis_engine::Session, id: &str) -> Option<String> {
+fn params_of(session: &powergis_engine::Session, id: &str) -> Option<String> {
     match session.registry.get(id) {
         Some(c) => Some(c.params.to_string()),
-        None => rustgis_engine::plugins::command(id).map(|c| c.decl.params),
+        None => powergis_engine::plugins::command(id).map(|c| c.decl.params),
     }
 }
 
 /// Whether command `id`'s parameter description names top-level key `key`.
-fn takes(session: &rustgis_engine::Session, id: &str, key: &str) -> bool {
-    params_of(session, id).is_some_and(|desc| rustgis_engine::param_keys(&desc).is_some_and(|keys| keys.contains(&key)))
+fn takes(session: &powergis_engine::Session, id: &str, key: &str) -> bool {
+    params_of(session, id).is_some_and(|desc| powergis_engine::param_keys(&desc).is_some_and(|keys| keys.contains(&key)))
 }
 
 /// Whether key `key` of command `id` takes fields, as its description's type says: `field`,
 /// `[fields]`, `[field, …]`, `field | [fields]`…; with whether only numeric ones
 /// (`[numeric fields]`) and whether in a list (a `[`). None for any other type
 /// (`[related fields]`, `[names]`).
-fn field_type(session: &rustgis_engine::Session, id: &str, key: &str) -> Option<(bool, bool)> {
+fn field_type(session: &powergis_engine::Session, id: &str, key: &str) -> Option<(bool, bool)> {
     let (_, text) = entries(&params_of(session, id)?).into_iter().find(|(keys, _)| keys.iter().any(|k| k == key))?;
     entry_field_type(&text)
 }
@@ -978,7 +978,7 @@ fn entry_field_type(entry: &str) -> Option<(bool, bool)> {
 /// for a command with no parameters, or a description that isn't an object (no keys to start
 /// from).
 pub fn template(desc: &str) -> (String, usize) {
-    let params = rustgis_engine::param_list(desc).unwrap_or_default();
+    let params = powergis_engine::param_list(desc).unwrap_or_default();
     if params.is_empty() {
         return (String::new(), 0);
     }
@@ -1200,7 +1200,7 @@ pub fn show(
     out: &TextEditOutput,
     visible: egui::Rect,
     script: &str,
-    session: &rustgis_engine::Session,
+    session: &powergis_engine::Session,
 ) -> Option<(Offer, String)> {
     let mut list = load(ui, box_id);
     // The window left (another app took the focus, the box keeps its own): the list closes, as a
@@ -1220,7 +1220,7 @@ pub fn show(
         // A cursor, not a selection: with text selected, Enter and Tab act on it as usual.
         let at = out.cursor_range.filter(|r| r.is_empty()).map(|r| r.primary.index.0);
         let text = egui::util::hash(script);
-        let with = (rustgis_engine::plugins::revision(), session.revision, session.active_layer);
+        let with = (powergis_engine::plugins::revision(), session.revision, session.active_layer);
         let kept = Worked::get(&list.worked, at, text, &with);
         match kept {
             Some(offer) => offer,
@@ -1325,7 +1325,7 @@ pub fn show(
             match &offer.of {
                 // A tool: its help, as a command's.
                 Some(Of::ToolIds) => {
-                    if let Some(t) = item.and_then(|id| rustgis_engine::analysis::tool(id)) {
+                    if let Some(t) = item.and_then(|id| powergis_engine::analysis::tool(id)) {
                         ui.add_space(GAP);
                         draw_help(ui, &tool_help(t), help_width);
                     }
@@ -1362,14 +1362,14 @@ pub fn show(
 /// (its line's `{…}`), floating by the cursor, so the signature and parameters stay in view while
 /// they're typed. Not with text selected, a cursor out of view, the window left, or once Escape
 /// closed it (until the cursor leaves those braces).
-pub fn hint(ui: &Ui, box_id: Id, out: &TextEditOutput, visible: egui::Rect, script: &str, session: &rustgis_engine::Session) {
+pub fn hint(ui: &Ui, box_id: Id, out: &TextEditOutput, visible: egui::Rect, script: &str, session: &powergis_engine::Session) {
     let mut list = load(ui, box_id);
     let focused = out.response.response.has_focus() && ui.input(|i| i.focused);
     let at = out.cursor_range.filter(|r| focused && list.open.is_none() && r.is_empty()).map(|r| r.primary.index.0);
     // Its own hash of the script, not the list's: it mustn't depend on how `show` ran this frame.
     let text = egui::util::hash(script);
     // The help is translated, and a plugin's command comes and goes with its plugin.
-    let with = (crate::i18n::current().code(), rustgis_engine::plugins::revision());
+    let with = (crate::i18n::current().code(), powergis_engine::plugins::revision());
     let kept = Worked::get(&list.hint.worked, at, text, &with);
     let found = match kept {
         Some(found) => found,
@@ -1417,7 +1417,7 @@ pub fn hint(ui: &Ui, box_id: Id, out: &TextEditOutput, visible: egui::Rect, scri
 /// nothing follows the word on its line (a line that has parameters keeps them: only its id
 /// changes), the cursor where the first value goes; as one undo step of the box (its own undo
 /// takes the pick back), and gives the box the focus again.
-pub fn accept(ui: &Ui, box_id: Id, script: &mut String, offer: &Offer, item: &str, session: &rustgis_engine::Session) {
+pub fn accept(ui: &Ui, box_id: Id, script: &mut String, offer: &Offer, item: &str, session: &powergis_engine::Session) {
     let chars: Vec<char> = script.chars().collect();
     let (Some(before), Some(mut after)) = (chars.get(..offer.start), chars.get(offer.end..)) else { return };
     let value = offer.of.as_ref().is_some_and(Of::is_value);
@@ -1648,12 +1648,12 @@ mod tests {
     }
 
     /// The pane with an empty script, its box focused.
-    fn pane() -> egui_kittest::Harness<'static, crate::RustGisApp> {
+    fn pane() -> egui_kittest::Harness<'static, crate::powergisApp> {
         use egui_kittest::kittest::Queryable;
         // Without the interface fonts (`theme::install_fonts`) egui's faces have no "→".
         let mut h = egui_kittest::Harness::builder().allow_missing_glyphs().with_size(egui::vec2(500.0, 700.0)).build_ui_state(
-            |ui, app: &mut crate::RustGisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
-            crate::RustGisApp::with_sample(),
+            |ui, app: &mut crate::powergisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
+            crate::powergisApp::with_sample(),
         );
         h.run();
         h.get_by_role(egui::accesskit::Role::MultilineTextInput).focus();
@@ -1661,7 +1661,7 @@ mod tests {
         h
     }
 
-    fn type_in(h: &mut egui_kittest::Harness<'static, crate::RustGisApp>, text: &str) {
+    fn type_in(h: &mut egui_kittest::Harness<'static, crate::powergisApp>, text: &str) {
         h.event(egui::Event::Text(text.into()));
         h.run();
     }
@@ -1925,10 +1925,10 @@ mod tests {
     /// The ids the pane offers leave out what a script refuses (the one rule, `refused_in_script`).
     #[test]
     fn script_ids_leave_out_what_a_script_refuses() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let ids = super::script_ids(&app.session);
         assert!(ids.iter().any(|i| i == "map.zoomFull"));
-        assert!(!ids.iter().any(|i| rustgis_engine::cmd::workflows::refused_in_script(i)), "no script.*, ui.*, notebook.run");
+        assert!(!ids.iter().any(|i| powergis_engine::cmd::workflows::refused_in_script(i)), "no script.*, ui.*, notebook.run");
     }
 
     /// With text selected there's no list: Enter and Tab act on the selection as usual.
@@ -2001,7 +2001,7 @@ mod tests {
     /// location last.
     #[test]
     fn help_shows_the_signature_first() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let h = super::help(&app.session, "labels.style").unwrap();
         assert!(h.keys.starts_with(" {layer?, class?, size?"), "{}", h.keys);
         assert_eq!(h.label, "Text Symbol");
@@ -2039,7 +2039,7 @@ mod tests {
         let mut h = pane();
         type_in(&mut h, "labels.");
         let items = super::offer("labels.", 7, &super::script_ids(&h.state().session)).unwrap().items;
-        let sig = |h: &egui_kittest::Harness<'static, crate::RustGisApp>, id: &str| {
+        let sig = |h: &egui_kittest::Harness<'static, crate::powergisApp>, id: &str| {
             super::help(&h.state().session, id).map(|x| format!("{}{}", x.id, x.keys)).unwrap()
         };
         // The pointer over the third item: the help follows it.
@@ -2063,8 +2063,8 @@ mod tests {
         use egui_kittest::kittest::Queryable;
         let width = 380.0;
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(width, 700.0)).build_ui_state(
-            |ui, app: &mut crate::RustGisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
-            crate::RustGisApp::with_sample(),
+            |ui, app: &mut crate::powergisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
+            crate::powergisApp::with_sample(),
         );
         h.run();
         h.get_by_role(egui::accesskit::Role::MultilineTextInput).focus();
@@ -2085,8 +2085,8 @@ mod tests {
         use egui_kittest::kittest::Queryable;
         let (width, height) = (380.0, 300.0);
         let mut h = egui_kittest::Harness::builder().with_size(egui::vec2(width, height)).build_ui_state(
-            |ui, app: &mut crate::RustGisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
-            crate::RustGisApp::with_sample(),
+            |ui, app: &mut crate::powergisApp| crate::analysispane::script_pane(app, ui, &crate::theme::Tokens::light()),
+            crate::powergisApp::with_sample(),
         );
         h.run();
         h.get_by_role(egui::accesskit::Role::MultilineTextInput).focus();
@@ -2328,7 +2328,7 @@ mod tests {
     /// elsewhere on the line does.
     #[test]
     fn the_key_being_typed_is_not_given() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let keys = |s: &str, at: usize| super::offer_at(s, at, &[], &app.session).map(|o| o.items).unwrap_or_default();
         let s = r#"map.goToXY {"lat": 5}"#;
         assert_eq!(keys(s, 16), ["lat"], "a closed key can be changed");
@@ -2479,7 +2479,7 @@ mod tests {
     /// command's `"params"`.
     #[test]
     fn a_tools_keys_are_offered_in_params() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let keys = |s: &str| super::offer_at(s, s.chars().count(), &[], &app.session).map(|o| o.items).unwrap_or_default();
         assert_eq!(keys(r#"gp.run {"tool": "buffer", "params": {""#), ["input", "distance", "units", "dissolve", "output"]);
         assert_eq!(keys(r#"gp.run {"params": {"input": "Cities", "d"#), Vec::<String>::new(), "no tool yet");
@@ -2507,7 +2507,7 @@ mod tests {
     /// its default when it has one.
     #[test]
     fn a_tools_parameter_reads_as_described() {
-        let buffer = rustgis_engine::analysis::tool("buffer").unwrap();
+        let buffer = powergis_engine::analysis::tool("buffer").unwrap();
         let line = |name: &str| super::param_line(buffer.params.iter().find(|p| p.name == name).unwrap());
         assert_eq!(line("input"), r#""input": layer — Input Features"#);
         assert_eq!(line("distance"), r#""distance": number — Distance, default 100"#);
@@ -2525,7 +2525,7 @@ mod tests {
         use egui_kittest::kittest::Queryable;
         let mut h = pane();
         type_in(&mut h, r#"gp.run {"tool": "buffer", "#);
-        let tool = super::tool_help(rustgis_engine::analysis::tool("buffer").unwrap());
+        let tool = super::tool_help(powergis_engine::analysis::tool("buffer").unwrap());
         let sig = format!("{}{}", tool.id, tool.keys);
         let run = super::help(&h.state().session, "gp.run").unwrap();
         h.get_by_label(&format!("{}{}", run.id, run.keys));
@@ -2561,13 +2561,13 @@ mod tests {
     /// value is offered for another key or another command.
     #[test]
     fn tool_ids_are_offered_for_gp_runs_tool() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let offer = |s: &str| super::offer_at(s, s.chars().count(), &[], &app.session);
         let o = offer(r#"gp.run {"tool": "BUF"#).unwrap();
         assert_eq!((o.items.first().map(String::as_str), o.of), (Some("buffer"), Some(super::Of::ToolIds)));
         assert!(o.items.iter().all(|id| id.to_lowercase().starts_with("buf")));
         let all = offer(r#"gp.run {"tool": ""#).map(|o| o.items).unwrap_or_default();
-        let ids: std::collections::HashSet<&str> = rustgis_engine::analysis::tools().map(|t| t.id).collect();
+        let ids: std::collections::HashSet<&str> = powergis_engine::analysis::tools().map(|t| t.id).collect();
         assert_eq!(all.len(), ids.len(), "every tool, once");
         assert!(offer(r#"gp.run {"tool": "zzz"#).is_none());
         assert!(offer(r#"labels.style {"where": ""#).is_none(), "another key's value");
@@ -2580,8 +2580,8 @@ mod tests {
     /// isn't given by name, nor at the second level.
     #[test]
     fn layers_and_fields_are_offered_for_their_values() {
-        let mut app = crate::RustGisApp::with_sample();
-        let offer = |app: &crate::RustGisApp, s: &str| super::offer_at(s, s.chars().count(), &[], &app.session);
+        let mut app = crate::powergisApp::with_sample();
+        let offer = |app: &crate::powergisApp, s: &str| super::offer_at(s, s.chars().count(), &[], &app.session);
         let names: Vec<String> = app.session.map().layers.iter().map(|l| l.name.clone()).collect();
         let o = offer(&app, r#"labels.style {"layer": ""#).unwrap();
         assert_eq!((o.items, o.of), (names, Some(super::Of::Layers)));
@@ -2618,9 +2618,9 @@ mod tests {
     /// are another layer's), nor for a type that isn't a field.
     #[test]
     fn keys_that_take_fields_offer_them_in_arrays_too() {
-        use rustgis_engine::data::{Dataset, Field, FieldType, GeometryType};
-        let mut app = crate::RustGisApp::with_sample();
-        let offer = |app: &crate::RustGisApp, s: &str| super::offer_at(s, s.chars().count(), &[], &app.session);
+        use powergis_engine::data::{Dataset, Field, FieldType, GeometryType};
+        let mut app = crate::powergisApp::with_sample();
+        let offer = |app: &crate::powergisApp, s: &str| super::offer_at(s, s.chars().count(), &[], &app.session);
         let cities = app.session.map().layer_by_name("Cities").unwrap();
         let id = cities.id;
         let fields: Vec<String> = cities.dataset.fields.iter().map(|f| f.name.clone()).collect();
@@ -2681,7 +2681,7 @@ mod tests {
     #[test]
     fn layers_and_fields_have_help_and_icons() {
         use super::{Of, item_help, item_icon};
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let s = &app.session;
         let cities = s.map().layer_by_name("Cities").unwrap();
         let (text, _) = item_help(s, &Of::Layers, "Cities").unwrap();
@@ -2702,10 +2702,10 @@ mod tests {
     /// number, nor in another command's `"params"`.
     #[test]
     fn a_tools_values_are_offered_by_kind() {
-        use rustgis_engine::data::{Dataset, Field, FieldType, GeometryType};
-        let mut app = crate::RustGisApp::with_sample();
-        let offer = |app: &crate::RustGisApp, s: &str| super::offer_at(s, s.chars().count(), &[], &app.session);
-        let names = |app: &crate::RustGisApp, keep: fn(&rustgis_engine::map::Layer) -> bool| -> Vec<String> {
+        use powergis_engine::data::{Dataset, Field, FieldType, GeometryType};
+        let mut app = crate::powergisApp::with_sample();
+        let offer = |app: &crate::powergisApp, s: &str| super::offer_at(s, s.chars().count(), &[], &app.session);
+        let names = |app: &crate::powergisApp, keep: fn(&powergis_engine::map::Layer) -> bool| -> Vec<String> {
             app.session.map().layers.iter().filter(|l| keep(l)).map(|l| l.name.clone()).collect()
         };
         let polygons = names(&app, |l| l.geometry_type() == GeometryType::Polygon);
@@ -2796,8 +2796,8 @@ mod tests {
     #[test]
     fn a_tools_values_have_help_and_icons() {
         use super::{Of, item_help, item_icon};
-        use rustgis_engine::data::{Dataset, Field, FieldType, GeometryType};
-        let mut app = crate::RustGisApp::with_sample();
+        use powergis_engine::data::{Dataset, Field, FieldType, GeometryType};
+        let mut app = crate::powergisApp::with_sample();
         app.session.project.add_table(Dataset::new("Stats", GeometryType::None, vec![Field::new("total", FieldType::Integer)]));
         let s = &app.session;
         assert_eq!(item_help(s, &Of::Layers, "Stats").map(|h| h.0), Some("Table · 0 rows".into()));
@@ -2830,14 +2830,14 @@ mod tests {
         assert_eq!(h.state().workflow.script, r#"labels.style {"layer": "Big \"lakes\"""#);
     }
 
-    fn named_objects(app: &mut crate::RustGisApp) {
-        use rustgis_engine::data::{Dataset, GeometryType};
+    fn named_objects(app: &mut crate::powergisApp) {
+        use powergis_engine::data::{Dataset, GeometryType};
         app.session.map_mut().name = "Atlas".into();
-        app.session.project.layouts.push(rustgis_engine::map::layout::Layout::new("Sheet", 297.0, 210.0));
+        app.session.project.layouts.push(powergis_engine::map::layout::Layout::new("Sheet", 297.0, 210.0));
         let mut dataset = Dataset::new("Stats", GeometryType::None, vec![]);
         dataset.push(None, vec![]);
         dataset.push(None, vec![]);
-        app.session.project.tables.push(rustgis_engine::project::Table { id: 1, dataset });
+        app.session.project.tables.push(powergis_engine::project::Table { id: 1, dataset });
         app.session
             .run("labels.class.add", &serde_json::json!({"layer": "Cities", "name": "Large", "where": "pop_max > 1000000"}))
             .unwrap();
@@ -2847,9 +2847,9 @@ mod tests {
     #[test]
     fn project_names_are_offered_only_for_commands_that_take_them() {
         use super::Of;
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         named_objects(&mut app);
-        let offer = |app: &crate::RustGisApp, text: &str| super::offer_at(text, text.chars().count(), &[], &app.session);
+        let offer = |app: &crate::powergisApp, text: &str| super::offer_at(text, text.chars().count(), &[], &app.session);
         for (text, name, of) in [
             (r#"bookmark.add {"map": "at"#, "Atlas", Of::Maps),
             (r#"layout.page {"layout": "sh"#, "Sheet", Of::Layouts),
@@ -2870,12 +2870,12 @@ mod tests {
 
     #[test]
     fn project_name_duplicates_follow_the_commands_lookup_rules() {
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         named_objects(&mut app);
         let mut map = app.session.map().clone();
         map.name = "ATLAS".into();
         app.session.project.maps.push(map);
-        app.session.project.layouts.push(rustgis_engine::map::layout::Layout::new("SHEET", 1.0, 1.0));
+        app.session.project.layouts.push(powergis_engine::map::layout::Layout::new("SHEET", 1.0, 1.0));
         let mut table = app.session.project.tables[0].clone();
         table.id = 2;
         app.session.project.tables.push(table.clone());
@@ -2891,10 +2891,10 @@ mod tests {
 
     #[test]
     fn class_values_follow_the_lines_layer_and_leave_default_out_when_refused() {
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         named_objects(&mut app);
         app.session.run("labels.class.rename", &serde_json::json!({"layer": "Cities", "class": "Default", "name": "Base"})).unwrap();
-        let offer = |app: &crate::RustGisApp, text: &str| super::offer_at(text, text.chars().count(), &[], &app.session);
+        let offer = |app: &crate::powergisApp, text: &str| super::offer_at(text, text.chars().count(), &[], &app.session);
         assert_eq!(offer(&app, r#"labels.style {"class": ""#).unwrap().items, ["Large", "Base"]);
         assert_eq!(offer(&app, r#"labels.style {"layer": "Cities", "class": "la"#).unwrap().items, ["Large"]);
         let text = r#"labels.style {"class": ""#;
@@ -2913,7 +2913,7 @@ mod tests {
     #[test]
     fn project_values_have_their_own_help_and_icons() {
         use super::{Of, item_help, item_icon};
-        let mut app = crate::RustGisApp::with_sample();
+        let mut app = crate::powergisApp::with_sample();
         named_objects(&mut app);
         let s = &app.session;
         let city = s.map().layer_by_name("Cities").unwrap().id;
@@ -2967,7 +2967,7 @@ mod tests {
         use egui_kittest::kittest::Queryable;
         let mut h = pane();
         type_in(&mut h, r#"gp.run {"tool": "buf"#);
-        let tool = super::tool_help(rustgis_engine::analysis::tool("buffer").unwrap());
+        let tool = super::tool_help(powergis_engine::analysis::tool("buffer").unwrap());
         h.get_by_label(&format!("{}{}", tool.id, tool.keys));
         h.key_press(egui::Key::Enter);
         h.run();
@@ -3002,7 +3002,7 @@ mod tests {
     /// entry that describes none.
     #[test]
     fn a_second_level_objects_keys_are_offered() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let offer = |s: &str| super::offer_at(s, s.chars().count(), &[], &app.session);
         let keys = |s: &str| offer(s).map(|o| o.items).unwrap_or_default();
         assert_eq!(keys(r#"topology.rules {"add": {""#), ["rule", "layer", "by"]);
@@ -3027,7 +3027,7 @@ mod tests {
     /// cursor there is that command's.
     #[test]
     fn a_steps_command_and_its_keys_are_offered() {
-        let app = crate::RustGisApp::with_sample();
+        let app = crate::powergisApp::with_sample();
         let ids = super::script_ids(&app.session);
         let offer = |s: &str| super::offer_at(s, s.chars().count(), &ids, &app.session);
         let o = offer(r#"task.addStep {"command": "LABELS.ST"#).unwrap();

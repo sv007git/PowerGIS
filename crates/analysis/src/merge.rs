@@ -1,6 +1,6 @@
 //! Append vector layers without changing their geometry or losing attribute types.
 use crate::{Inputs, Output, ToolResult};
-use rustgis_data::{Coord, Dataset, Field, Geometry, GeometryType, Value};
+use powergis_data::{Coord, Dataset, Field, Geometry, GeometryType, Value};
 use serde_json::Value as Json;
 use std::collections::TryReserveError;
 

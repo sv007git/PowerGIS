@@ -6,7 +6,7 @@
 //! are made per level (a tolerance of 2^level projection units) on first use and kept, a few
 //! at a time; the renderer picks the level just under a device pixel at the view's zoom.
 
-use rustgis_data::{Coord, Geometry};
+use powergis_data::{Coord, Geometry};
 
 /// The tolerance, in device pixels, a thinned copy keeps within.
 pub const THIN_PX: f64 = 1.0;
@@ -50,7 +50,7 @@ pub(crate) struct Display {
     pub level: i32,
     pub whole_layer_eligible: bool,
     pub geometries: Vec<Option<Geometry>>,
-    pub extents: Vec<rustgis_geom::Extent>,
+    pub extents: Vec<powergis_geom::Extent>,
     pub bytes: usize,
 }
 
@@ -66,9 +66,9 @@ pub fn project_thinned(g: &Geometry, flat: &crate::projection::Flat, tol: f64) -
         return thin(&flat.project(g), tol);
     }
     flat.project(&thin_with(g, |run| {
-        let latitude = run.iter().filter(|c| c.is_finite()).fold(0.0f64, |lat, c| lat.max(c.y.abs().min(rustgis_geom::MAX_LAT)));
+        let latitude = run.iter().filter(|c| c.is_finite()).fold(0.0f64, |lat, c| lat.max(c.y.abs().min(powergis_geom::MAX_LAT)));
         // |dx| + |dy| in degrees times this derivative bounds projected Euclidean distance.
-        let per_degree = rustgis_geom::MERCATOR_R * std::f64::consts::PI / 180.0 / latitude.to_radians().cos();
+        let per_degree = powergis_geom::MERCATOR_R * std::f64::consts::PI / 180.0 / latitude.to_radians().cos();
         thin_run(run, tol / per_degree)
     }))
 }
@@ -77,7 +77,7 @@ pub fn project_thinned(g: &Geometry, flat: &crate::projection::Flat, tol: f64) -
 /// Original extents are transformed separately so thinning cannot change culling or splats.
 /// Both the geometry and its extent table fit in the optional display-cache budget.
 pub(crate) fn display(
-    features: &[rustgis_data::Feature],
+    features: &[powergis_data::Feature],
     revision: u64,
     level: i32,
     budget: usize,
@@ -89,7 +89,7 @@ pub(crate) fn display(
     if !whole_layer_eligible && eligible <= THIN_ABOVE {
         return None;
     }
-    let extent_bytes = features.len().checked_mul(std::mem::size_of::<rustgis_geom::Extent>())?;
+    let extent_bytes = features.len().checked_mul(std::mem::size_of::<powergis_geom::Extent>())?;
     let geometries = project_budgeted(features, level, budget.checked_sub(extent_bytes)?)?;
     let all: usize = features.iter().filter_map(|f| f.geometry.as_ref()).map(vertices).sum();
     let kept: usize = geometries.iter().flatten().map(vertices).sum();
@@ -100,13 +100,13 @@ pub(crate) fn display(
     let extents = features
         .iter()
         .map(|f| {
-            let e = f.geometry.as_ref().map_or(rustgis_geom::Extent::EMPTY, Geometry::extent);
+            let e = f.geometry.as_ref().map_or(powergis_geom::Extent::EMPTY, Geometry::extent);
             if e.is_empty() {
                 e
             } else {
-                rustgis_geom::Extent::from_points(
-                    rustgis_geom::lonlat_to_merc(Coord::new(e.min_x, e.min_y)),
-                    rustgis_geom::lonlat_to_merc(Coord::new(e.max_x, e.max_y)),
+                powergis_geom::Extent::from_points(
+                    powergis_geom::lonlat_to_merc(Coord::new(e.min_x, e.min_y)),
+                    powergis_geom::lonlat_to_merc(Coord::new(e.max_x, e.max_y)),
                 )
             }
         })
@@ -117,7 +117,7 @@ pub(crate) fn display(
 
 /// Builds only Mercator display geometry within `budget`. Callers apply their own eligibility
 /// and saving rules; exact consumers already have extents and need no second extent table.
-pub(crate) fn project_budgeted(features: &[rustgis_data::Feature], level: i32, budget: usize) -> Option<Vec<Option<Geometry>>> {
+pub(crate) fn project_budgeted(features: &[powergis_data::Feature], level: i32, budget: usize) -> Option<Vec<Option<Geometry>>> {
     let mut bytes = features.len().checked_mul(std::mem::size_of::<Option<Geometry>>())?;
     if bytes > budget {
         return None;
@@ -136,7 +136,7 @@ pub(crate) fn project_budgeted(features: &[rustgis_data::Feature], level: i32, b
 
 /// Heap allocation held by a geometry's vectors (the enum itself is in its containing array).
 fn heap_bytes(g: &Geometry) -> usize {
-    rustgis_data::source::memory::geometry_bytes(g)
+    powergis_data::source::memory::geometry_bytes(g)
 }
 
 pub(crate) fn cache_bytes(geoms: &Vec<Option<Geometry>>) -> usize {

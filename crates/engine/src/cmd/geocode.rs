@@ -1,11 +1,11 @@
 //! Geocoding: finding a place by name, and turning a table's addresses into points.
 
-use rustgis_data::{Feature, Field, FieldType, Geometry, GeometryType, Value as Attr};
-use rustgis_geom::{Coord, Extent};
+use powergis_data::{Feature, Field, FieldType, Geometry, GeometryType, Value as Attr};
+use powergis_geom::{Coord, Extent};
 use serde_json::{Value, json};
 
 use super::{f, ps};
-use crate::render::rustgis_tiles::geocode::{Geocoder, Place};
+use crate::render::powergis_tiles::geocode::{Geocoder, Place};
 use crate::{CmdResult, CommandSpec as C, Session};
 
 pub fn commands() -> Vec<C> {
@@ -50,7 +50,7 @@ fn find_place(s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let places = crate::render::rustgis_tiles::geocode::search_blocking(&g, query, limit)?;
+        let places = crate::render::powergis_tiles::geocode::search_blocking(&g, query, limit)?;
         if super::b(p, "go").unwrap_or(true)
             && let Some(first) = places.first()
         {
@@ -62,7 +62,7 @@ fn find_place(s: &mut Session, p: &Value) -> CmdResult {
 
 /// The table or layer whose addresses are geocoded: `table` names a standalone table; `layer` a
 /// layer, or a table when no layer has its name.
-fn source<'a>(s: &'a Session, p: &Value) -> Result<&'a rustgis_data::Dataset, String> {
+fn source<'a>(s: &'a Session, p: &Value) -> Result<&'a powergis_data::Dataset, String> {
     let table = |n: &str| s.project.tables.iter().find(|t| t.name == n).map(|t| &t.dataset);
     if p.get("table").is_some_and(|t| !t.is_null()) {
         let i = s.table_index(p)?;
@@ -145,8 +145,8 @@ pub fn check_batch(g: &Geocoder, distinct: usize) -> Result<(), String> {
 /// null when nothing was found).
 fn given_places(v: &Value) -> Result<std::collections::HashMap<String, Option<Place>>, String> {
     let o = v.as_object().ok_or("places is an object from address to {lon, lat, name}")?;
-    if o.len() > rustgis_tiles_max() {
-        return Err(format!("places: {} answers, up to {} per run", o.len(), rustgis_tiles_max()));
+    if o.len() > powergis_tiles_max() {
+        return Err(format!("places: {} answers, up to {} per run", o.len(), powergis_tiles_max()));
     }
     Ok(o.iter()
         .map(|(k, v)| {
@@ -164,8 +164,8 @@ fn given_places(v: &Value) -> Result<std::collections::HashMap<String, Option<Pl
         .collect())
 }
 
-fn rustgis_tiles_max() -> usize {
-    crate::render::rustgis_tiles::geocode::MAX_BATCH
+fn powergis_tiles_max() -> usize {
+    crate::render::powergis_tiles::geocode::MAX_BATCH
 }
 
 fn geocode(s: &mut Session, p: &Value) -> CmdResult {
@@ -202,7 +202,7 @@ fn geocode(s: &mut Session, p: &Value) -> CmdResult {
         col.push('_');
     }
     fields.push(Field::new(col, FieldType::Text));
-    let mut ds = rustgis_data::Dataset::new(name, GeometryType::Point, fields);
+    let mut ds = powergis_data::Dataset::new(name, GeometryType::Point, fields);
     let (mut matched, mut unmatched) = (0usize, 0usize);
     for (i, (feat, address)) in src.features.iter().zip(&rows).enumerate() {
         let place = found.get(address).and_then(Option::as_ref);
@@ -244,7 +244,7 @@ fn lookup(g: &Geocoder, distinct: &[String]) -> Result<Lookup, String> {
         if i > 0 {
             std::thread::sleep(std::time::Duration::from_millis(g.spacing_ms()));
         }
-        match crate::render::rustgis_tiles::geocode::search_blocking(g, a, 1) {
+        match crate::render::powergis_tiles::geocode::search_blocking(g, a, 1) {
             Ok(places) => {
                 succeeded += 1;
                 in_a_row = 0;

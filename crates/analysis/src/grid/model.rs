@@ -3,7 +3,7 @@
 //! Models substations, feeders, line segments, transformers, poles, smart meters,
 //! customers, telemetry, faults, crews, risk assessments, and power flow metrics.
 
-use rustgis_geom::Coord;
+use powergis_geom::Coord;
 use serde::{Deserialize, Serialize};
 
 /// The asset category in an electrical distribution grid.

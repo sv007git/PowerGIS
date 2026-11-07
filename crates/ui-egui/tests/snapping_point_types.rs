@@ -1,13 +1,13 @@
 //! Actual map gestures share the engine's Point/MultiPoint target switches.
 use egui::{Event, Modifiers, PointerButton, Pos2};
 use egui_kittest::Harness;
-use rustgis_engine::{
+use powergis_engine::{
     Project, Session,
     data::{Dataset, Feature, Geometry, VertexId},
     geom::{Coord, merc_to_lonlat},
     map::design::Snapping,
 };
-use rustgis_ui_egui::RustGisApp;
+use powergis_ui_egui::powergisApp;
 use serde_json::json;
 
 /// Keeps synthetic feature coordinates in longitude/latitude while laying them out in metres.
@@ -23,7 +23,7 @@ fn add(session: &mut Session, name: &str, geometry: Geometry) -> u32 {
 }
 
 /// Shows one selected source and an independent target in the application's actual map view.
-fn harness(source: Geometry, target: Geometry, vertex: bool, bearing: f64) -> Harness<'static, RustGisApp> {
+fn harness(source: Geometry, target: Geometry, vertex: bool, bearing: f64) -> Harness<'static, powergisApp> {
     let mut session = Session::new(Project::new("Point target switches"));
     let id = add(&mut session, "Editable source", source);
     add(&mut session, "Snap targets", target);
@@ -35,12 +35,12 @@ fn harness(source: Geometry, target: Geometry, vertex: bool, bearing: f64) -> Ha
     session.map_mut().camera.res = 1.;
     session.map_mut().camera.set_bearing(bearing);
     session.map_mut().editing.snapping = Snapping { enabled: true, tolerance_px: 8., vertex, edge: !vertex, end: false };
-    let mut app = RustGisApp::new(session);
+    let mut app = powergisApp::new(session);
     app.run("tool.set", json!({"tool":"editVertices"})).unwrap();
     app.ui.tab = "Edit".into();
     app.session.clear_history();
     let mut h = Harness::builder().with_accessibility_check(false).with_size(egui::vec2(1480., 900.)).with_max_steps(64).build_ui_state(
-        |ui, app: &mut RustGisApp| {
+        |ui, app: &mut powergisApp| {
             let ctx = ui.ctx().clone();
             app.logic(&ctx);
             app.ui(ui);
@@ -59,7 +59,7 @@ fn line() -> Geometry {
 }
 
 /// Converts a fixture coordinate using the actual map rectangle and camera bearing.
-fn screen(h: &Harness<'_, RustGisApp>, at: Coord) -> Pos2 {
+fn screen(h: &Harness<'_, powergisApp>, at: Coord) -> Pos2 {
     let rect = h.state().map.view_rect.unwrap().0;
     let map = h.state().session.map();
     let (x, y) = map.camera.to_screen(map.to_map(at).unwrap(), rect.width() as f64, rect.height() as f64);
@@ -67,7 +67,7 @@ fn screen(h: &Harness<'_, RustGisApp>, at: Coord) -> Pos2 {
 }
 
 /// Holds the primary button while moving through real pointer events past the drag threshold.
-fn drag(h: &mut Harness<'_, RustGisApp>, from: Pos2, to: Pos2) {
+fn drag(h: &mut Harness<'_, powergisApp>, from: Pos2, to: Pos2) {
     h.event(Event::PointerMoved(from));
     h.event(Event::PointerButton { pos: from, button: PointerButton::Primary, pressed: true, modifiers: Modifiers::NONE });
     h.step();
@@ -78,7 +78,7 @@ fn drag(h: &mut Harness<'_, RustGisApp>, from: Pos2, to: Pos2) {
 }
 
 /// Releases the pointer and processes the single edit or point-creation command.
-fn release(h: &mut Harness<'_, RustGisApp>, at: Pos2) {
+fn release(h: &mut Harness<'_, powergisApp>, at: Pos2) {
     h.event(Event::PointerButton { pos: at, button: PointerButton::Primary, pressed: false, modifiers: Modifiers::NONE });
     for _ in 0..3 {
         h.step();
@@ -86,7 +86,7 @@ fn release(h: &mut Harness<'_, RustGisApp>, at: Pos2) {
 }
 
 /// Reads a stored source node, which a drag preview must leave untouched.
-fn first(h: &Harness<'_, RustGisApp>) -> Coord {
+fn first(h: &Harness<'_, powergisApp>) -> Coord {
     h.state().session.map().layers[0].dataset.features[0].geometry.as_ref().unwrap().vertex(VertexId::new(0, 0, 0)).unwrap()
 }
 
@@ -96,7 +96,7 @@ fn near(actual: Coord, expected: Coord) {
 }
 
 /// Finds the map's painted magenta snap ring without exposing the application's private cache.
-fn marker(h: &Harness<'_, RustGisApp>) -> Option<Pos2> {
+fn marker(h: &Harness<'_, powergisApp>) -> Option<Pos2> {
     /// Searches nested paint lists for the existing seven-point snap-ring style.
     fn find(shape: &egui::Shape) -> Option<Pos2> {
         match shape {

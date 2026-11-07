@@ -6,8 +6,8 @@
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
-use rustgis_data::ogc::warp::{GRID, MARK, Plan, Warp};
-use rustgis_data::raster::Transformer;
+use powergis_data::ogc::warp::{GRID, MARK, Plan, Warp};
+use powergis_data::raster::Transformer;
 use tiny_skia::Pixmap;
 
 use crate::cache::{self, Payload, State, Want};
@@ -30,8 +30,8 @@ pub(crate) fn direct(url: &str) -> Option<&str> {
 
 /// The transformer of a system, made once (they are read from a table of definitions).
 pub fn transformer(epsg: u16) -> Option<Arc<Transformer>> {
-    rustgis_data::ogc::warp::usable(u32::from(epsg))?;
-    rustgis_data::ogc::warp::transformer(u32::from(epsg))
+    powergis_data::ogc::warp::usable(u32::from(epsg))?;
+    powergis_data::ogc::warp::transformer(u32::from(epsg))
 }
 
 /// How long a map tile made without a picture that failed is kept, so it isn't made again for
@@ -254,7 +254,7 @@ fn sample(img: &Pixmap, u: f64, v: f64) -> Option<[u8; 4]> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use rustgis_data::ogc::warp::{Matrix, Part};
+    use powergis_data::ogc::warp::{Matrix, Part};
 
     #[test]
     fn pictures_a_service_does_not_have() {
@@ -264,10 +264,10 @@ mod tests {
 
     #[test]
     fn addresses() {
-        let wms = "https://m.example.org/wms?CRS=EPSG:3857&BBOX=1,2,3,4#rustgis-warp=3/1/2;crs=3857;sys=2056|e|EPSG:2056;map=east";
+        let wms = "https://m.example.org/wms?CRS=EPSG:3857&BBOX=1,2,3,4#powergis-warp=3/1/2;crs=3857;sys=2056|e|EPSG:2056;map=east";
         assert!(is_warp(wms));
         assert_eq!(direct(wms), Some("https://m.example.org/wms?CRS=EPSG:3857&BBOX=1,2,3,4"));
-        let warped = "https://m.example.org/wms?CRS=EPSG:2056#rustgis-warp=3/1/2;crs=2056;map=east";
+        let warped = "https://m.example.org/wms?CRS=EPSG:2056#powergis-warp=3/1/2;crs=2056;map=east";
         assert!(is_warp(warped) && direct(warped).is_none());
         assert!(!is_warp("https://t.example.org/3/1/2.png") && direct("https://t.example.org/3/1/2.png").is_none());
     }

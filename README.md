@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="https://assets.rustgis.app/images/logo.svg" alt="PowerGIS logo: a rust-coloured cog framing a segmented globe with an orbit" width="160">
+  <img src="https://assets.powergis.app/images/logo.svg" alt="PowerGIS logo: a rust-coloured cog framing a segmented globe with an orbit" width="160">
 </p>
 
 <h1 align="center">PowerGIS</h1>
@@ -14,21 +14,21 @@
   <img alt="Written in Rust" src="https://img.shields.io/badge/written%20in-Rust-b84a2c?style=flat-square&logo=rust&logoColor=white">
   <img alt="License: Apache-2.0" src="https://img.shields.io/badge/license-Apache--2.0-2563eb?style=flat-square">
   <img alt="19 languages" src="https://img.shields.io/badge/languages-19-0e9384?style=flat-square">
-  <a href="https://plugins.rustgis.app"><img alt="Plugins" src="https://img.shields.io/badge/plugins-registry-7c3aed?style=flat-square"></a>
-  <a href="https://pypi.org/project/rustgis/"><img alt="PyPI" src="https://img.shields.io/pypi/v/rustgis?style=flat-square&logo=python&logoColor=white&label=pypi"></a>
-  <a href="https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg"></a>
+  <a href="https://plugins.powergis.app"><img alt="Plugins" src="https://img.shields.io/badge/plugins-registry-7c3aed?style=flat-square"></a>
+  <a href="https://pypi.org/project/powergis/"><img alt="PyPI" src="https://img.shields.io/pypi/v/powergis?style=flat-square&logo=python&logoColor=white&label=pypi"></a>
+  <a href="https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/powergis-python/examples/getting-started.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg"></a>
   <a href="https://doi.org/10.5281/zenodo.23633281"><img alt="DOI" src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.23633281-1682d4?style=flat-square"></a>
 </p>
 
 <p align="center">
-  <a href="https://web.rustgis.app"><img alt="Launch the PowerGIS web app" src="https://img.shields.io/badge/Launch-web%20app-b84a2c?style=for-the-badge&logo=webassembly&logoColor=white" height="36"></a>
+  <a href="https://web.powergis.app"><img alt="Launch the PowerGIS web app" src="https://img.shields.io/badge/Launch-web%20app-b84a2c?style=for-the-badge&logo=webassembly&logoColor=white" height="36"></a>
   <a href="https://github.com/opengeos/PowerGIS/releases/latest"><img alt="Download the desktop app" src="https://img.shields.io/badge/Download-desktop%20app-2563eb?style=for-the-badge&logo=github&logoColor=white" height="36"></a>
-  <a href="https://rustgis.app"><img alt="Read the documentation" src="https://img.shields.io/badge/Read-the%20docs-0e9384?style=for-the-badge&logo=materialformkdocs&logoColor=white" height="36"></a>
+  <a href="https://powergis.app"><img alt="Read the documentation" src="https://img.shields.io/badge/Read-the%20docs-0e9384?style=for-the-badge&logo=materialformkdocs&logoColor=white" height="36"></a>
   <a href="https://apps.microsoft.com/detail/9ppjw8h561lq?mode=direct"><img alt="Get it from Microsoft" src="https://get.microsoft.com/images/en-us%20dark.svg" height="36"></a>
 </p>
 
 <p align="center">
-  <img src="https://assets.rustgis.app/images/hero.webp" alt="PowerGIS with the Home tab of the ribbon open. The Layers pane lists Cities, Rivers, Lakes and Countries with their legends; the map shows the world in the Equal Earth projection, countries shaded by population, sized city dots and country labels." width="100%">
+  <img src="https://assets.powergis.app/images/hero.webp" alt="PowerGIS with the Home tab of the ribbon open. The Layers pane lists Cities, Rivers, Lakes and Countries with their legends; the map shows the world in the Equal Earth projection, countries shaded by population, sized city dots and country labels." width="100%">
 </p>
 
 ## Why PowerGIS
@@ -36,13 +36,13 @@
 - **Fast and small.** One native program, drawn on the GPU, with no runtime to install and no
   server to run.
 - **Runs everywhere.** The same app on Windows, macOS and Linux, and compiled to WebAssembly at
-  [web.rustgis.app](https://web.rustgis.app) with nothing to install.
+  [web.powergis.app](https://web.powergis.app) with nothing to install.
 - **Local and private.** Your files are read and written on your machine, and nothing is uploaded
   on its own. The network is used only when you ask for it: web basemaps, plugins, the GeoLibre
   tools and the AI model you pick, which receives your questions and the data it reads to answer
   them.
 - **Everything is a command.** Every button in the ribbon is a command with an id. Script it from
-  `rustgis-cli`, chain it in notebooks and models, use completion in the Script pane, or ask the
+  `powergis-cli`, chain it in notebooks and models, use completion in the Script pane, or ask the
   AI Assistant to run it for you.
 - **Familiar.** A ribbon laid out in the order of the work (Home, Data, Style, Edit, Analyze,
   View, Publish), Layers and Browser panes, an attribute table, and undo for every change.
@@ -53,40 +53,40 @@
 
 <table>
 <tr>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/symbology-table.webp" alt="The Style tab with the Symbology pane showing graduated colours and colour schemes; the larger African countries are selected in cyan on the map and highlighted in the attribute table below" width="100%"><p align="center"><sub><b>Symbology and tables.</b> Graduated colours, with the selection synced to the table.</sub></p></td>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/assistant.webp" alt="The AI Assistant pane: asked for the five most populous African countries, it read the Countries table, selected them and zoomed to them" width="100%"><p align="center"><sub><b>AI Assistant.</b> Ask about your data or tell the map what to do.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/symbology-table.webp" alt="The Style tab with the Symbology pane showing graduated colours and colour schemes; the larger African countries are selected in cyan on the map and highlighted in the attribute table below" width="100%"><p align="center"><sub><b>Symbology and tables.</b> Graduated colours, with the selection synced to the table.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/assistant.webp" alt="The AI Assistant pane: asked for the five most populous African countries, it read the Countries table, selected them and zoomed to them" width="100%"><p align="center"><sub><b>AI Assistant.</b> Ask about your data or tell the map what to do.</sub></p></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/buffer-history.webp" alt="The Analyze tab with a gallery of geoprocessing tools and the Tools pane showing Buffer; dissolved 300 km buffers around African cities" width="100%"><p align="center"><sub><b>Analysis.</b> A tool gallery, the Tools pane and 1,000+ GeoLibre tools.</sub></p></td>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/raster.webp" alt="A shaded-relief elevation model of the Sierra Nevada with the Style tab open" width="100%"><p align="center"><sub><b>Rasters.</b> GeoTIFF and COG, with stretch, RGB and shaded-relief styles.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/buffer-history.webp" alt="The Analyze tab with a gallery of geoprocessing tools and the Tools pane showing Buffer; dissolved 300 km buffers around African cities" width="100%"><p align="center"><sub><b>Analysis.</b> A tool gallery, the Tools pane and 1,000+ GeoLibre tools.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/raster.webp" alt="A shaded-relief elevation model of the Sierra Nevada with the Style tab open" width="100%"><p align="center"><sub><b>Rasters.</b> GeoTIFF and COG, with stretch, RGB and shaded-relief styles.</sub></p></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/globe.webp" alt="The World Atlas drawn on a 3D globe with the View tab open" width="100%"><p align="center"><sub><b>Globe and projections.</b> A 3D globe, Equal Earth, Robinson or any EPSG code.</sub></p></td>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/tiles.webp" alt="An OpenFreeMap vector style over Paris, with the Basemap gallery listing the built-in basemaps and the web tile layer" width="100%"><p align="center"><sub><b>Web basemaps.</b> XYZ, WMS and vector tiles, and MapLibre styles.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/globe.webp" alt="The World Atlas drawn on a 3D globe with the View tab open" width="100%"><p align="center"><sub><b>Globe and projections.</b> A 3D globe, Equal Earth, Robinson or any EPSG code.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/tiles.webp" alt="An OpenFreeMap vector style over Paris, with the Basemap gallery listing the built-in basemaps and the web tile layer" width="100%"><p align="center"><sub><b>Web basemaps.</b> XYZ, WMS and vector tiles, and MapLibre styles.</sub></p></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/layout.webp" alt="A landscape A4 page layout with a map frame, title, legend, north arrow and scale bar, and the Publish tab open" width="100%"><p align="center"><sub><b>Layouts.</b> Map frames, legends, scale bars, map series and PDF export.</sub></p></td>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/plugins.webp" alt="The Plugin Manager browsing the plugin registry, listing Basemaps, Hello PowerGIS, Map Explorer and Vector Toolkit with their permissions" width="100%"><p align="center"><sub><b>Plugins.</b> Install sandboxed plugins from <a href="https://plugins.rustgis.app">plugins.rustgis.app</a>.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/layout.webp" alt="A landscape A4 page layout with a map frame, title, legend, north arrow and scale bar, and the Publish tab open" width="100%"><p align="center"><sub><b>Layouts.</b> Map frames, legends, scale bars, map series and PDF export.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/plugins.webp" alt="The Plugin Manager browsing the plugin registry, listing Basemaps, Hello PowerGIS, Map Explorer and Vector Toolkit with their permissions" width="100%"><p align="center"><sub><b>Plugins.</b> Install sandboxed plugins from <a href="https://plugins.powergis.app">plugins.powergis.app</a>.</sub></p></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/modelbuilder.webp" alt="ModelBuilder after a run: Cities buffered by 300 km clip the Rivers, and Countries are dissolved by continent; every node is ticked and the results are on the map" width="100%"><p align="center"><sub><b>ModelBuilder.</b> Chain tools on a node canvas and run them in one go.</sub></p></td>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/web-data.webp" alt="The Sentinel-2 Explorer in the Web Data pane over Bern: the clearest recent scenes as cards with previews, their footprints drawn on the map" width="100%"><p align="center"><sub><b>Web Data.</b> STAC, Overture Maps, NASA and open-data portals, where the map is.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/modelbuilder.webp" alt="ModelBuilder after a run: Cities buffered by 300 km clip the Rivers, and Countries are dissolved by continent; every node is ticked and the results are on the map" width="100%"><p align="center"><sub><b>ModelBuilder.</b> Chain tools on a node canvas and run them in one go.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/web-data.webp" alt="The Sentinel-2 Explorer in the Web Data pane over Bern: the clearest recent scenes as cards with previews, their footprints drawn on the map" width="100%"><p align="center"><sub><b>Web Data.</b> STAC, Overture Maps, NASA and open-data portals, where the map is.</sub></p></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/terrain.webp" alt="Mount Rainier in USGS imagery draped over elevation tiles, the map tilted 65°" width="100%"><p align="center"><sub><b>Terrain.</b> Tilt the map and drape it over elevation.</sub></p></td>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/mars-globe.webp" alt="Mars on the 3D globe, on the Viking mosaic, with Valles Marineris across the middle" width="100%"><p align="center"><sub><b>Other worlds.</b> The Moon, Mars and nine more bodies, on their own basemaps.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/terrain.webp" alt="Mount Rainier in USGS imagery draped over elevation tiles, the map tilted 65°" width="100%"><p align="center"><sub><b>Terrain.</b> Tilt the map and drape it over elevation.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/mars-globe.webp" alt="Mars on the 3D globe, on the Viking mosaic, with Valles Marineris across the middle" width="100%"><p align="center"><sub><b>Other worlds.</b> The Moon, Mars and nine more bodies, on their own basemaps.</sub></p></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/extrusion.webp" alt="Countries extruded by population on a map tilted 55° and turned 20°, lit and shaded, with labels on their roofs" width="100%"><p align="center"><sub><b>Extrusion.</b> Stand features up by a field, lit and shaded.</sub></p></td>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/time-slider.webp" alt="The Time Slider under the map at 2018, showing a layer of dated events cumulatively, with a bar for each year" width="100%"><p align="center"><sub><b>Time Slider.</b> Step dated features and imagery through time.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/extrusion.webp" alt="Countries extruded by population on a map tilted 55° and turned 20°, lit and shaded, with labels on their roofs" width="100%"><p align="center"><sub><b>Extrusion.</b> Stand features up by a field, lit and shaded.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/time-slider.webp" alt="The Time Slider under the map at 2018, showing a layer of dated events cumulatively, with a bar for each year" width="100%"><p align="center"><sub><b>Time Slider.</b> Step dated features and imagery through time.</sub></p></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/dark.webp" alt="PowerGIS in dark mode with the View tab open over a map of Europe on the Midnight basemap" width="100%"><p align="center"><sub><b>Dark mode</b> and the View tab's effects, panes and linked views.</sub></p></td>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/backstage.webp" alt="The Project backstage with cards to start a blank map, the World Atlas sample, or open a project" width="100%"><p align="center"><sub><b>Projects.</b> Start blank, from the World Atlas sample, or open a project.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/dark.webp" alt="PowerGIS in dark mode with the View tab open over a map of Europe on the Midnight basemap" width="100%"><p align="center"><sub><b>Dark mode</b> and the View tab's effects, panes and linked views.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.powergis.app/images/backstage.webp" alt="The Project backstage with cards to start a blank map, the World Atlas sample, or open a project" width="100%"><p align="center"><sub><b>Projects.</b> Start blank, from the World Atlas sample, or open a project.</sub></p></td>
 </tr>
 </table>
 
-Every screenshot is PowerGIS itself, rendered offscreen by `cargo run -p rustgis-ui-egui --example ui_shot`.
+Every screenshot is PowerGIS itself, rendered offscreen by `cargo run -p powergis-ui-egui --example ui_shot`.
 
 ## Features
 
@@ -103,28 +103,28 @@ Every screenshot is PowerGIS itself, rendered offscreen by `cargo run -p rustgis
 | **Imagery** | Ortho and reality mapping, pixel classification (k-means, minimum distance, a trainable neural network), mensuration, hosted imagery tiles |
 | **Layouts and reports** | Page layouts with map frames, legends, scale bars, grids and map series; publication sheets and figures in one command, format panes, guides, snapping and element locks; reports with groups, statistics, charts and subreports; presentations (HTML slideshow, PDF); notebooks (Jupyter in and out) |
 | **Sharing** | PNG export at any DPI; PDF; web map pages, OGC API Features collections, MapLibre styles, glTF scenes, locators; project, map and mobile map packages; offline areas with sync |
-| **AI Assistant** | Ask about your data or tell the map what to do in plain language, with Anthropic, OpenAI (a key, or your ChatGPT plan by signing in), Gemini, OpenRouter, Ollama or any OpenAI-compatible model; also `rustgis-cli ask`, and an [MCP server](docs/mcp.md) (`rustgis-cli mcp`) for Claude Code, Cursor, VS Code and other agents |
-| **Plugins** | Sandboxed WebAssembly [plugins](docs/plugins.md) add commands, tools and ribbon tabs; install them from [plugins.rustgis.app](https://plugins.rustgis.app) on the desktop, command line and web |
+| **AI Assistant** | Ask about your data or tell the map what to do in plain language, with Anthropic, OpenAI (a key, or your ChatGPT plan by signing in), Gemini, OpenRouter, Ollama or any OpenAI-compatible model; also `powergis-cli ask`, and an [MCP server](docs/mcp.md) (`powergis-cli mcp`) for Claude Code, Cursor, VS Code and other agents |
+| **Plugins** | Sandboxed WebAssembly [plugins](docs/plugins.md) add commands, tools and ribbon tabs; install them from [plugins.powergis.app](https://plugins.powergis.app) on the desktop, command line and web |
 | **Interface** | Layers, Browser and Data Sources panes as tabs, command search (Ctrl+K), keyboard shortcuts, dark mode, a customizable ribbon and Quick Access Toolbar, linked side-by-side maps, 19 languages |
 
-The [user guide](https://rustgis.app/user-guide/) covers each area in detail,
-[Comparison](https://rustgis.app/comparison/) sets PowerGIS beside GeoLibre, QGIS and ArcGIS, and
+The [user guide](https://powergis.app/user-guide/) covers each area in detail,
+[Comparison](https://powergis.app/comparison/) sets PowerGIS beside GeoLibre, QGIS and ArcGIS, and
 [ROADMAP.md](ROADMAP.md) lists what's next.
 
 ## Get PowerGIS
 
-- **Web app**: open **[web.rustgis.app](https://web.rustgis.app)**. The same ribbon and tools,
+- **Web app**: open **[web.powergis.app](https://web.powergis.app)**. The same ribbon and tools,
   with the browser's file picker for data and projects, and downloads for Save and Export.
 - **Desktop**: download the app for Windows, macOS or Linux from
-  [downloads.rustgis.app](https://downloads.rustgis.app) or the
+  [downloads.powergis.app](https://downloads.powergis.app) or the
   [latest release](https://github.com/opengeos/PowerGIS/releases/latest) (see
   [Installation](docs/installation.md) for the files and first-run notes).
 - **Microsoft Store**: get PowerGIS from the
   [Microsoft Store](https://apps.microsoft.com/detail/9ppjw8h561lq) on Windows 10 and 11, which
   installs it in one click and keeps it up to date.
 - **Package managers**: `winget install OpenGeos.PowerGIS`,
-  `brew install --cask opengeos/rustgis/rustgis`, `yay -S rustgis-bin` (AUR), or
-  `sudo dnf copr enable giswqs/rustgis && sudo dnf install rustgis` (Fedora).
+  `brew install --cask opengeos/powergis/powergis`, `yay -S powergis-bin` (AUR), or
+  `sudo dnf copr enable giswqs/powergis && sudo dnf install powergis` (Fedora).
 - **From source**: `cargo run --release -p powergis` (Rust 1.90 or later).
 
 ## Quick start
@@ -149,19 +149,19 @@ claude mcp add powergis -- powergis-cli mcp --sample   # PowerGIS as an MCP serv
 
 See [Command Line](docs/cli.md) for more.
 
-Python: the same engine and commands in-process (`pip install rustgis`), and the app itself in a
+Python: the same engine and commands in-process (`pip install powergis`), and the app itself in a
 Jupyter notebook.
 
 ```python
-import rustgis
-s = rustgis.Session(sample=True)
+import powergis
+s = powergis.Session(sample=True)
 s.run("gp.run", tool="buffer", params={"input": "Cities", "distance": 100})
 s.to_png("map.png")
 gdf = s.layer("Cities_Buffer").to_geopandas()
 ```
 
-See [Python](docs/python.md) and the [getting-started notebook](apps/rustgis-python/examples/getting-started.ipynb)
-([open in Colab](https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb)).
+See [Python](docs/python.md) and the [getting-started notebook](apps/powergis-python/examples/getting-started.ipynb)
+([open in Colab](https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/powergis-python/examples/getting-started.ipynb)).
 
 ## Architecture
 
@@ -169,17 +169,17 @@ Layered crates, each depending only on the ones below it:
 
 | Layer | Crate | Job |
 |---|---|---|
-| L0 | `rustgis-geom` | coordinates, extents, Web Mercator, geodesic distance/area, scale |
-| L1 | `rustgis-data` | features and typed attributes; GeoJSON, CSV, Shapefile, KML, GPX and more; GeoPackage, GeoParquet, FlatGeobuf, LiDAR, PostGIS and MySQL providers; GDAL formats and DuckDB queries through their programs; SQL where clauses; rasters (GeoTIFF, ASCII grid, Zarr) and their coordinate systems |
-| L2 | `rustgis-map`, `rustgis-analysis` | layers, symbology, labeling, camera, basemaps; geoprocessing (on `geo`) |
-| L2 | `rustgis-tiles` | web map tiles: XYZ/TMS/WMS, Mapbox Vector Tiles, PMTiles and MBTiles archives, MapLibre styles, the tile cache |
-| L3 | `rustgis-render` | tiny-skia renderer, label placement, PNG export, fonts |
-| L3 | `rustgis-plugins` | sandboxed WebAssembly plugins and the plugin registry |
-| L3 | `rustgis-geolibre` | the GeoLibre tool suite as geoprocessing tools |
-| L4 | `rustgis-engine` | session, undo, command registry, sample project |
-| L5 | `rustgis-assistant` | the AI Assistant: a chat agent that acts through commands |
-| L6 | `rustgis-ui-egui` | the ribbon front end (swappable) |
-| apps | `rustgis`, `rustgis-cli`, `rustgis-web`, `rustgis-python` | desktop, command line, browser (WebAssembly), the `rustgis` Python package |
+| L0 | `powergis-geom` | coordinates, extents, Web Mercator, geodesic distance/area, scale |
+| L1 | `powergis-data` | features and typed attributes; GeoJSON, CSV, Shapefile, KML, GPX and more; GeoPackage, GeoParquet, FlatGeobuf, LiDAR, PostGIS and MySQL providers; GDAL formats and DuckDB queries through their programs; SQL where clauses; rasters (GeoTIFF, ASCII grid, Zarr) and their coordinate systems |
+| L2 | `powergis-map`, `powergis-analysis` | layers, symbology, labeling, camera, basemaps; geoprocessing (on `geo`) |
+| L2 | `powergis-tiles` | web map tiles: XYZ/TMS/WMS, Mapbox Vector Tiles, PMTiles and MBTiles archives, MapLibre styles, the tile cache |
+| L3 | `powergis-render` | tiny-skia renderer, label placement, PNG export, fonts |
+| L3 | `powergis-plugins` | sandboxed WebAssembly plugins and the plugin registry |
+| L3 | `powergis-geolibre` | the GeoLibre tool suite as geoprocessing tools |
+| L4 | `powergis-engine` | session, undo, command registry, sample project |
+| L5 | `powergis-assistant` | the AI Assistant: a chat agent that acts through commands |
+| L6 | `powergis-ui-egui` | the ribbon front end (swappable) |
+| apps | `powergis`, `powergis-cli`, `powergis-web`, `powergis-python` | desktop, command line, browser (WebAssembly), the `powergis` Python package |
 
 `cargo xtask ci` runs formatting, clippy, the tests and the layering check. Contributor and
 agent notes: [AGENTS.md](AGENTS.md).
@@ -191,7 +191,7 @@ PowerGIS is free and open source, and stays that way. If it is useful to you or 
 - [**GitHub Sponsors**](https://github.com/sponsors/giswqs): monthly or one-time, billed through your GitHub account.
 - [**Buy Me a Coffee**](https://buymeacoffee.com/giswqs): a quick one-off contribution, no account required.
 
-See the [Become a Sponsor](https://rustgis.app/sponsor/) page for what sponsorship supports and for other, free ways to help.
+See the [Become a Sponsor](https://powergis.app/sponsor/) page for what sponsorship supports and for other, free ways to help.
 
 ## Citation
 
@@ -201,15 +201,15 @@ If you use PowerGIS in your work, please cite it. PowerGIS is archived on [Zenod
 
 > Wu, Q., Rincón Albarracín, J. G., Filho, E., Hofbauer, D., Fitzgerald, M., & Strebel, D. (2026). PowerGIS: A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data. Zenodo. <https://doi.org/10.5281/zenodo.23633281>
 
-You can also use GitHub's **"Cite this repository"** button (which reads [`CITATION.cff`](CITATION.cff)) to copy a ready-made APA or BibTeX entry. See the [How to Cite](https://rustgis.app/citation/) page for more formats.
+You can also use GitHub's **"Cite this repository"** button (which reads [`CITATION.cff`](CITATION.cff)) to copy a ready-made APA or BibTeX entry. See the [How to Cite](https://powergis.app/citation/) page for more formats.
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=opengeos%2Frustgis&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=opengeos%2Fpowergis&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=opengeos/rustgis&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=opengeos/rustgis&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=opengeos/rustgis&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=opengeos/powergis&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=opengeos/powergis&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=opengeos/powergis&type=date&legend=top-left" />
  </picture>
 </a>
 
@@ -226,7 +226,7 @@ EPSG dataset; and the Rust crates it is made of, among them [egui](https://githu
 [geo](https://github.com/georust/geo), [proj4rs](https://crates.io/crates/proj4rs),
 [tiff](https://github.com/image-rs/image-tiff), Apache Arrow and Parquet,
 [rusqlite](https://github.com/rusqlite/rusqlite) and [wasmi](https://github.com/wasmi-labs/wasmi).
-See the [acknowledgements](https://rustgis.app/acknowledgements/) for the full list, and
+See the [acknowledgements](https://powergis.app/acknowledgements/) for the full list, and
 [ATTRIBUTION.md](ATTRIBUTION.md) for every asset's source and licence.
 
 ## Disclaimer

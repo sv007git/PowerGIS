@@ -7,14 +7,14 @@
 //! View Unplaced) are on the ribbon only, and Convert on the ribbon and the layer's menu.
 
 use egui::{Align2, CornerRadius, Rect, RichText, Sense, Stroke, Ui, pos2, vec2};
-use rustgis_engine::map::symbology::{
+use powergis_engine::map::symbology::{
     DEFAULT_LABEL_CLASS, HALO_WIDTH, LABEL_SIZE, LabelClass, Labeling, MAX_LABEL_CLASSES, label_class_name,
 };
-use rustgis_engine::map::{LabelPlacement, Layer, Rgba};
-use rustgis_engine::render::families;
+use powergis_engine::map::{LabelPlacement, Layer, Rgba};
+use powergis_engine::render::families;
 use serde_json::{Value, json};
 
-use crate::RustGisApp;
+use crate::powergisApp;
 use crate::textform::LABEL_W;
 use crate::theme::{Tokens, c32, regular, rgba, semibold};
 use crate::widgets::text_w;
@@ -29,7 +29,7 @@ const GRID: [[LabelPlacement; 3]; 3] = [
 /// The viewer distances the Closest and Farthest limits offer, in metres (as the ribbon's).
 const DISTANCES: [f64; 5] = [1_000.0, 10_000.0, 100_000.0, 1_000_000.0, 10_000_000.0];
 
-pub fn show(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
+pub fn show(app: &mut powergisApp, ui: &mut Ui, t: &Tokens) {
     let Some(l) = app.session.active_layer.and_then(|id| app.session.map().layer(id)).cloned() else {
         ui.label(RichText::new(tl!("Select a layer in the Layers pane.")).color(t.text_dim));
         return;
@@ -199,18 +199,18 @@ fn shown(c: &Class) -> String {
 /// `l` as a layer of this map of this project: another map, or another project, may reuse its id.
 /// A map goes by its place and its name, as Define Projection's does: deleting a map moves the
 /// next one into its place, and a copy keeps its layer ids.
-pub(crate) fn layer_key(app: &RustGisApp, l: &Layer) -> egui::Id {
+pub(crate) fn layer_key(app: &powergisApp, l: &Layer) -> egui::Id {
     egui::Id::unique((app.session.opened, app.session.project.active_map, app.session.map().name.as_str(), l.id))
 }
 
 /// Where the class chosen on a layer is kept.
-fn chosen_key(app: &RustGisApp, l: &Layer) -> egui::Id {
+fn chosen_key(app: &powergisApp, l: &Layer) -> egui::Id {
     egui::Id::unique(("label_pane_class", layer_key(app, l)))
 }
 
 /// The class chosen on `l`, by the name it has now; Default when none is, or when the one chosen
 /// went away (an undo, a script, the Assistant).
-pub(crate) fn chosen<'a>(ui: &Ui, app: &RustGisApp, l: &'a Layer) -> Class<'a> {
+pub(crate) fn chosen<'a>(ui: &Ui, app: &powergisApp, l: &'a Layer) -> Class<'a> {
     let name = ui.data(|d| d.get_temp::<String>(chosen_key(app, l)));
     match name.and_then(|n| extras(l).find(|c| c.name.eq_ignore_ascii_case(&n))) {
         Some(it) => Class { it, name: Some(&it.name) },
@@ -220,7 +220,7 @@ pub(crate) fn chosen<'a>(ui: &Ui, app: &RustGisApp, l: &'a Layer) -> Class<'a> {
 
 /// The class chooser, the pane's and the ribbon's: a class chosen in either is chosen in both. Its
 /// id is made within the parent `Ui`, so the two don't clash.
-pub(crate) fn class_combo(app: &RustGisApp, ui: &mut Ui, l: &Layer, c: &Class, width: f32) -> egui::Response {
+pub(crate) fn class_combo(app: &powergisApp, ui: &mut Ui, l: &Layer, c: &Class, width: f32) -> egui::Response {
     egui::ComboBox::from_id_salt("label_pane_class")
         .selected_text(shown(c))
         .width(width)
@@ -238,7 +238,7 @@ pub(crate) fn class_combo(app: &RustGisApp, ui: &mut Ui, l: &Layer, c: &Class, w
         .response
 }
 
-fn choose(ui: &Ui, app: &RustGisApp, l: &Layer, name: Option<&str>) {
+fn choose(ui: &Ui, app: &powergisApp, l: &Layer, name: Option<&str>) {
     let key = chosen_key(app, l);
     ui.data_mut(|d| match name {
         Some(n) => {
@@ -250,8 +250,8 @@ fn choose(ui: &Ui, app: &RustGisApp, l: &Layer, name: Option<&str>) {
 
 /// Runs a label command from the pane on the active layer, the one it shows; a refusal shows as a
 /// notice. The commands don't name the layer, as the ribbon's don't: a step recorded from them
-/// (Record Task) then names it, so it replays on that layer by name (`RustGisApp::record_step`).
-fn run(app: &mut RustGisApp, id: &str, params: Value) -> Option<Value> {
+/// (Record Task) then names it, so it replays on that layer by name (`powergisApp::record_step`).
+fn run(app: &mut powergisApp, id: &str, params: Value) -> Option<Value> {
     app.run(id, params).map_err(|e| app.session.notify(e, true)).ok()
 }
 
@@ -262,7 +262,7 @@ fn grid(ui: &mut Ui, id: &str, add: impl FnOnce(&mut Ui)) {
 /// The chosen class's field and SQL clause (#618) on one page, as ArcGIS Pro's Class tab shows the
 /// fields above the expression: what the label shows, then the features it labels. Named Content,
 /// not Class, as the class itself is the one chosen in the card above the tabs.
-fn content(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class, t: &Tokens) {
+fn content(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class, t: &Tokens) {
     field(app, ui, l, c);
     ui.add_space(4.0);
     heading(ui, "SQL Query");
@@ -289,7 +289,7 @@ struct Renaming {
 /// The pane's header for the chosen class (#858): its chooser, a row with New, Rename, Move Up,
 /// Move Down and Remove for it (#722), and Visible. Default, last in the list, can be renamed or
 /// hidden, but not removed or moved.
-fn classes(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class, t: &Tokens) {
+fn classes(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class, t: &Tokens) {
     let rename_key = egui::Id::unique("label_pane_rename");
     let owner = egui::Id::unique((layer_key(app, l), c.name));
     // A rename started on another class or layer (chosen since, or by an undo), or left when the
@@ -375,7 +375,7 @@ fn classes(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class, t: &Tokens) 
 
 /// The box the chosen class is renamed in: Enter (or clicking away) renames it, Escape leaves it as
 /// it was. A name refused (empty, or another class's) keeps the box open, with the notice saying why.
-fn rename_box(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class, key: egui::Id, label: egui::Id, mut r: Renaming) {
+fn rename_box(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class, key: egui::Id, label: egui::Id, mut r: Renaming) {
     let keys = egui::EventFilter { escape: true, ..Default::default() };
     let edit = ui.add(egui::TextEdit::singleline(&mut r.text).desired_width(180.0).event_filter(keys)).labelled_by(label);
     if !r.focused {
@@ -434,7 +434,7 @@ pub(crate) fn end_search(ui: &Ui, id: egui::Id) {
 
 /// The field the class labels with, chosen as the font is: the box shows it (or says it is gone,
 /// as a style or a service can leave it), and the list has a search for a layer with many.
-fn field(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+fn field(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
     let fields = &l.dataset.fields;
     let cur = &c.it.field;
     // A layer without fields leaves its classes on none.
@@ -478,7 +478,7 @@ fn field(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
 
 /// The class's SQL clause: its labels, and their style, go only to the features that match it;
 /// none takes every feature.
-fn sql(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class, t: &Tokens) {
+fn sql(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class, t: &Tokens) {
     let labels = &l.labels;
     // One note, about what decides the labels first: labels off, then a hidden class, then
     // other visible classes (those the map draws, Default included). Each is a whole sentence,
@@ -499,10 +499,10 @@ fn sql(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class, t: &Tokens) {
     // Counted among the features the layer draws at the map's scale, as its labels are.
     let scale = app.session.map().scale();
     let count = |w: &str| -> Result<(usize, usize), String> {
-        let e = rustgis_engine::data::query::parse(w, &l.dataset)?;
+        let e = powergis_engine::data::query::parse(w, &l.dataset)?;
         let rows = l.drawn_rows(scale);
         let of = rows.iter().filter(|r| **r).count();
-        let n = rows.iter().enumerate().filter(|(i, r)| **r && rustgis_engine::data::query::eval(&e, &l.dataset, *i)).count();
+        let n = rows.iter().enumerate().filter(|(i, r)| **r && powergis_engine::data::query::eval(&e, &l.dataset, *i)).count();
         Ok((n, of))
     };
     // A draft belongs to this class of this layer.
@@ -517,7 +517,7 @@ fn sql(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class, t: &Tokens) {
     run(app, "labels.class.update", c.params(applied));
 }
 
-fn text_symbol(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+fn text_symbol(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
     grid(ui, "symbol", |ui| {
         font(app, ui, l, c);
         ui.end_row();
@@ -577,7 +577,7 @@ fn text_symbol(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
 
 /// A rectangle behind the text: its fill and outline (each may be none), the outline's width, how
 /// far it reaches past the text, and its corners' radius.
-fn background(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+fn background(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
     ui.label("");
     let mut on = c.it.background.is_some();
     if ui.checkbox(&mut on, tl!("Background")).on_hover_text(tl!("A rectangle behind the text.")).changed() {
@@ -591,7 +591,7 @@ fn background(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
             let mut none = cur.is_none();
             if ui.checkbox(&mut none, tl!("None")).changed() {
                 // Back on in the default's colour (and an outline as wide, if it had none).
-                let d = rustgis_engine::map::LabelBackground::default();
+                let d = powergis_engine::map::LabelBackground::default();
                 let change = match (part, none) {
                     (Part::Fill, true) => json!({"fill": ""}),
                     (Part::Fill, false) => json!({"fill": d.fill.map(|f| f.hex())}),
@@ -611,7 +611,7 @@ fn background(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
     }
     let id = l.id;
     // A number of the background's, dragged live and set by `labels.style` once let go.
-    let number = |app: &mut RustGisApp, ui: &mut Ui, label: &str, cur: f32, range: std::ops::RangeInclusive<f64>, key: &'static str| {
+    let number = |app: &mut powergisApp, ui: &mut Ui, label: &str, cur: f32, range: std::ops::RangeInclusive<f64>, key: &'static str| {
         let input_label = ui.label(tl!(label));
         let mut v = f64::from(cur);
         let r = ui.add(egui::DragValue::new(&mut v).range(range.clone()).speed(0.05).suffix(" pt")).labelled_by(input_label.id);
@@ -645,7 +645,7 @@ fn background(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
         );
         ui.end_row();
     };
-    use rustgis_engine::map::symbology::{BACKGROUND_PADDING, BACKGROUND_STROKE};
+    use powergis_engine::map::symbology::{BACKGROUND_PADDING, BACKGROUND_STROKE};
     if b.stroke.is_some() {
         number(app, ui, "Outline width", b.stroke_width, BACKGROUND_STROKE, "strokeWidth");
     }
@@ -656,15 +656,15 @@ fn background(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
 
 /// Wrapping: a character the text breaks at (typed, set once the field is left), a longest line
 /// in characters (0: none), and how the lines line up.
-fn wrapping(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
-    use rustgis_engine::map::layout::TextAlign;
-    use rustgis_engine::map::symbology::MAX_WRAP_LENGTH;
+fn wrapping(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+    use powergis_engine::map::layout::TextAlign;
+    use powergis_engine::map::symbology::MAX_WRAP_LENGTH;
     let input_label = ui.label(tl!("Wrap at"));
     let key = layer_key(app, l).with(("label_pane_wrap_char", c.name));
     let current = c.it.wrap_char.clone().unwrap_or_default();
     let mut buf = ui.data(|d| d.get_temp::<String>(key)).unwrap_or_else(|| current.clone());
     let r = ui
-        .add(egui::TextEdit::singleline(&mut buf).char_limit(rustgis_engine::map::symbology::MAX_WRAP_CHAR).desired_width(60.0))
+        .add(egui::TextEdit::singleline(&mut buf).char_limit(powergis_engine::map::symbology::MAX_WRAP_CHAR).desired_width(60.0))
         .labelled_by(input_label.id)
         .on_hover_text(tl!("A line break wherever this occurs, left out (a space puts each word on its own line)."));
     if r.has_focus() {
@@ -713,9 +713,9 @@ fn wrapping(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
 }
 
 /// The space between the letters, in points (negative: tighter).
-fn letter_spacing(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+fn letter_spacing(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
     let input_label = ui.label(tl!("Letter spacing"));
-    let (lo, hi) = (rustgis_engine::map::layout::MIN_LETTER_SPACING, rustgis_engine::map::layout::MAX_LETTER_SPACING);
+    let (lo, hi) = (powergis_engine::map::layout::MIN_LETTER_SPACING, powergis_engine::map::layout::MAX_LETTER_SPACING);
     let mut spacing = f64::from(c.it.spacing);
     let r = ui.add(egui::DragValue::new(&mut spacing).range(lo..=hi).speed(0.05).suffix(" pt")).labelled_by(input_label.id);
     let id = l.id;
@@ -738,7 +738,7 @@ fn letter_spacing(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
 
 /// The halo's colour (automatic: white or dark, whichever stands out from the text) and width:
 /// the thin halo, or one of its own width in points.
-fn halo_style(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+fn halo_style(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
     ui.label(tl!("Halo color"));
     ui.horizontal(|ui| {
         let mut auto = c.it.halo_color.is_none();
@@ -791,7 +791,7 @@ const MAX_FONTS_SHOWN: usize = 200;
 /// The installed family the labels are drawn in: the label font, or one picked from the
 /// installed families (found by typing part of the name). A family this machine lacks, from a
 /// project made on another, is shown as missing and drawn in the label font.
-fn font(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+fn font(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
     let input_label = ui.label(tl!("Font"));
     let search_id = layer_key(app, l).with("label_pane_font_search");
     let picked = family_picker(ui, "label_pane_font", search_id, c.it.font.as_deref());
@@ -857,9 +857,9 @@ pub(crate) fn family_picker(ui: &mut Ui, salt: impl std::hash::Hash + std::fmt::
     Picked { response, chosen }
 }
 
-fn position(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+fn position(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
     let cur = c.it.placement;
-    let pick = |app: &mut RustGisApp, ui: &mut Ui, pl: LabelPlacement| {
+    let pick = |app: &mut powergisApp, ui: &mut Ui, pl: LabelPlacement| {
         if ui.add_sized(vec2(92.0, 22.0), egui::Button::selectable(cur == pl, tl!(pl.label())).truncate()).clicked() && cur != pl {
             run(app, "labels.placement", c.params(json!({"position": pl.code()})));
         }
@@ -875,7 +875,7 @@ fn position(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
         }
     });
     // Points: the other places round the point, tried when the label's own is taken (#1011).
-    if l.geometry_type() == rustgis_engine::data::GeometryType::Point {
+    if l.geometry_type() == powergis_engine::data::GeometryType::Point {
         ui.add_space(4.0);
         let mut on = c.it.other_positions;
         let help = tl!("When its place is taken, the label tries the other places round the point, corners first.");
@@ -884,7 +884,7 @@ fn position(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
         }
     }
     // Lines: the text along them, straight or bending with them.
-    if l.geometry_type() == rustgis_engine::data::GeometryType::Polyline {
+    if l.geometry_type() == powergis_engine::data::GeometryType::Polyline {
         ui.add_space(4.0);
         ui.label(RichText::new(tl!("Along lines")).size(11.5));
         ui.horizontal(|ui| {
@@ -901,8 +901,8 @@ fn position(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
 
 /// Along a line, a label every so many points, spaced out from the one at its middle; off, the one
 /// at its middle.
-fn repeat(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
-    use rustgis_engine::map::symbology::LABEL_REPEAT;
+fn repeat(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+    use powergis_engine::map::symbology::LABEL_REPEAT;
     let id = l.id;
     grid(ui, "repeat", |ui| {
         let input_label = ui.label(tl!("Repeat"));
@@ -934,7 +934,7 @@ fn repeat(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
                 v,
                 |app, x| {
                     if let Some(k) = app.session.map_mut().layer_mut(id).and_then(|l| class_mut(&mut l.labels, c.name)) {
-                        k.repeat = rustgis_engine::map::symbology::label_repeat(x);
+                        k.repeat = powergis_engine::map::symbology::label_repeat(x);
                     }
                 },
                 |app, x| {
@@ -947,8 +947,8 @@ fn repeat(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
 }
 
 /// How far the label moves from where its placement puts it, right and down, in points.
-fn offset(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
-    use rustgis_engine::map::symbology::LABEL_OFFSET;
+fn offset(app: &mut powergisApp, ui: &mut Ui, l: &Layer, c: &Class) {
+    use powergis_engine::map::symbology::LABEL_OFFSET;
     let id = l.id;
     let cur = c.it.offset;
     grid(ui, "offset", |ui| {
@@ -985,7 +985,7 @@ fn offset(app: &mut RustGisApp, ui: &mut Ui, l: &Layer, c: &Class) {
     });
 }
 
-fn visibility(app: &mut RustGisApp, ui: &mut Ui, c: &Class) {
+fn visibility(app: &mut powergisApp, ui: &mut Ui, c: &Class) {
     grid(ui, "range", |ui| {
         for (label, cur, key) in [("Out Beyond", c.it.min_scale, "min"), ("In Beyond", c.it.max_scale, "max")] {
             let input_label = ui.label(tl!(label));
@@ -1091,11 +1091,11 @@ fn set_picked(k: &mut LabelClass, part: Part, c: Option<Rgba>) {
 
 /// Previews a colour pick on its layer's class (`None`: Default) until `finish_color_drag` commits
 /// the completed gesture.
-pub(crate) fn color_drag(app: &mut RustGisApp, ui: &Ui, l: &Layer, class: Option<&str>, color: Rgba) {
+pub(crate) fn color_drag(app: &mut powergisApp, ui: &Ui, l: &Layer, class: Option<&str>, color: Rgba) {
     pick_drag(app, ui, l, class, Part::Text, color);
 }
 
-fn pick_drag(app: &mut RustGisApp, ui: &Ui, l: &Layer, class: Option<&str>, part: Part, color: Rgba) {
+fn pick_drag(app: &mut powergisApp, ui: &Ui, l: &Layer, class: Option<&str>, part: Part, color: Rgba) {
     let key = egui::Id::unique(COLOR_DRAG);
     let mut pending = ui.data(|d| d.get_temp::<ColorDrag>(key));
     // One left pending on another layer, class or colour (the selection changed mid-pick, from
@@ -1118,7 +1118,7 @@ fn pick_drag(app: &mut RustGisApp, ui: &Ui, l: &Layer, class: Option<&str>, part
 /// it still ends if the pane closes meanwhile. A change made with no pointer down (typed in the
 /// picker's hex field, or with the keyboard) ends on the frame it is made: each is its own undo
 /// step, and none is lost, as in the Symbology pane's class colours.
-pub(crate) fn finish_color_drag(app: &mut RustGisApp, ui: &Ui) {
+pub(crate) fn finish_color_drag(app: &mut powergisApp, ui: &Ui) {
     // Still dragging: the pointer is down and the window has focus (a release outside a window
     // that lost focus may never arrive).
     if ui.input(|i| i.pointer.primary_down() && i.focused) {
@@ -1136,7 +1136,7 @@ pub(crate) fn finish_color_drag(app: &mut RustGisApp, ui: &Ui) {
 }
 
 /// Puts the pre-pick colour back and runs the pick's labels.style: one undo step.
-fn apply_color_drag(app: &mut RustGisApp, drag: ColorDrag) {
+fn apply_color_drag(app: &mut powergisApp, drag: ColorDrag) {
     // A layer or class removed mid-pick took its preview with it: there is nothing to restore or
     // style.
     let Some(k) = app.session.map_mut().layer_mut(drag.layer).and_then(|l| class_mut(&mut l.labels, drag.class.as_deref())) else {
@@ -1165,29 +1165,29 @@ fn apply_color_drag(app: &mut RustGisApp, drag: ColorDrag) {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use egui_kittest::kittest::{NodeT, Queryable};
-    use rustgis_engine::map::Rgba;
+    use powergis_engine::map::Rgba;
     use serde_json::json;
 
-    use crate::{RightPane, RustGisApp};
+    use crate::{RightPane, powergisApp};
 
-    fn layer_id(app: &RustGisApp, name: &str) -> u32 {
+    fn layer_id(app: &powergisApp, name: &str) -> u32 {
         app.session.map().layers.iter().find(|l| l.name == name).unwrap().id
     }
 
-    fn with_cities() -> RustGisApp {
+    fn with_cities() -> powergisApp {
         // Keep the font picker ready before the harness checks its role or settles the layout.
         super::families::installed();
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let id = layer_id(&app, "Cities");
         app.session.run("layer.select", &json!({"layer": id})).unwrap();
         app
     }
 
-    fn harness(app: RustGisApp) -> egui_kittest::Harness<'static, RustGisApp> {
+    fn harness(app: powergisApp) -> egui_kittest::Harness<'static, powergisApp> {
         // The pane's fonts (its semibold heading) are installed on the first frame, as the app does.
         let mut fonts = false;
         egui_kittest::Harness::builder().with_size(egui::vec2(360.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -1201,7 +1201,7 @@ mod tests {
     }
 
     /// Opens the pane's tab for `topic` (#858).
-    fn open_tab(h: &mut egui_kittest::Harness<'static, RustGisApp>, topic: &str) {
+    fn open_tab(h: &mut egui_kittest::Harness<'static, powergisApp>, topic: &str) {
         h.get_by_role_and_label(egui::accesskit::Role::Button, topic).click();
         h.run();
     }
@@ -1243,7 +1243,7 @@ mod tests {
         open_tab(&mut h, "Symbol");
         assert!(h.query_by_role_and_label(Role::SpinButton, "Letter spacing").is_some());
         assert!(h.query_by_role_and_label(Role::SpinButton, "Halo width").is_none(), "thin: no width to set");
-        let class = |h: &egui_kittest::Harness<'_, RustGisApp>| {
+        let class = |h: &egui_kittest::Harness<'_, powergisApp>| {
             let c = &h.state().session.map().layer_by_name("Cities").unwrap().labels.default;
             (c.halo_color, c.halo_width)
         };
@@ -1270,14 +1270,14 @@ mod tests {
     #[test]
     fn wrapping_and_the_repeat_along_lines_are_set_in_the_pane() {
         use egui::accesskit::Role;
-        use rustgis_engine::map::layout::TextAlign;
+        use powergis_engine::map::layout::TextAlign;
         super::families::installed();
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         let id = layer_id(&app, "Rivers");
         app.session.run("layer.select", &json!({"layer": id})).unwrap();
         let mut h = harness(app);
         h.run();
-        let class = |h: &egui_kittest::Harness<'_, RustGisApp>| h.state().session.map().layer(id).unwrap().labels.default.clone();
+        let class = |h: &egui_kittest::Harness<'_, powergisApp>| h.state().session.map().layer(id).unwrap().labels.default.clone();
         open_tab(&mut h, "Symbol");
         assert!(h.query_by_role_and_label(Role::SpinButton, "Wrap length").is_some());
         h.get_by_role_and_label(Role::TextInput, "Wrap at").focus();
@@ -1316,7 +1316,7 @@ mod tests {
         let mut h = harness(with_cities());
         h.run();
         open_tab(&mut h, "Position");
-        let on = |h: &egui_kittest::Harness<'_, RustGisApp>| {
+        let on = |h: &egui_kittest::Harness<'_, powergisApp>| {
             h.state().session.map().layer_by_name("Cities").unwrap().labels.default.other_positions
         };
         assert!(!on(&h));
@@ -1342,14 +1342,14 @@ mod tests {
         let mut h = harness(with_cities());
         h.run();
         open_tab(&mut h, "Symbol");
-        let background = |h: &egui_kittest::Harness<'_, RustGisApp>| {
+        let background = |h: &egui_kittest::Harness<'_, powergisApp>| {
             h.state().session.map().layer_by_name("Cities").unwrap().labels.default.background.clone()
         };
         assert_eq!(background(&h), None);
         assert!(h.query_by_role_and_label(Role::SpinButton, "Padding across").is_none(), "no background: no rows");
         h.get_by_label("Background").click();
         h.run();
-        assert_eq!(background(&h), Some(rustgis_engine::map::LabelBackground::default()));
+        assert_eq!(background(&h), Some(powergis_engine::map::LabelBackground::default()));
         for row in ["Outline width", "Padding across", "Padding up and down", "Corner radius"] {
             assert!(h.query_by_role_and_label(Role::SpinButton, row).is_some(), "{row}");
         }
@@ -1379,7 +1379,7 @@ mod tests {
 
     #[test]
     fn the_pane_command_needs_a_feature_layer() {
-        let mut app = RustGisApp::with_sample();
+        let mut app = powergisApp::with_sample();
         app.session.active_layer = None;
         assert!(app.run("ui.pane.labeling", json!(null)).is_err(), "no layer selected");
         let raster = app.session.map().layers.iter().find(|l| l.is_raster()).map(|l| l.id);
@@ -1420,14 +1420,14 @@ mod tests {
         let app = h.state();
         let l = app.session.map().layer(app.session.active_layer.unwrap()).unwrap();
         assert_ne!(l.labels.enabled, before.enabled, "the checkbox toggles labels");
-        assert_eq!(l.labels.default.placement, rustgis_engine::map::LabelPlacement::BelowRight);
+        assert_eq!(l.labels.default.placement, powergis_engine::map::LabelPlacement::BelowRight);
         assert_ne!(l.labels.default.bold, before.default.bold, "bold toggles");
         // Each change is its own command, so each undoes on its own.
         let app = h.state_mut();
         app.run("edit.undo", json!(null)).unwrap();
         let l = app.session.map().layer(app.session.active_layer.unwrap()).unwrap();
         assert_eq!(l.labels.default.bold, before.default.bold, "undo takes back the last change only");
-        assert_eq!(l.labels.default.placement, rustgis_engine::map::LabelPlacement::BelowRight);
+        assert_eq!(l.labels.default.placement, powergis_engine::map::LabelPlacement::BelowRight);
     }
 
     /// Record Task names the layer in a step made from the pane, as it does for the ribbon, so the
@@ -1461,11 +1461,11 @@ mod tests {
         app.ws.recording = Some(Vec::new());
         let cities = app.session.active_layer.unwrap();
         let countries = layer_id(&app, "Countries");
-        let color = |app: &RustGisApp, id| app.session.map().layer(id).unwrap().labels.default.color;
+        let color = |app: &powergisApp, id| app.session.map().layer(id).unwrap().labels.default.color;
         let (cities_before, countries_before) = (color(&app, cities), color(&app, countries));
         let steps = app.session.undo_depth();
         let mut h = egui_kittest::Harness::builder().build_ui_state(
-            |ui, (app, pick): &mut (RustGisApp, Option<Rgba>)| {
+            |ui, (app, pick): &mut (powergisApp, Option<Rgba>)| {
                 if let Some(c) = pick.take() {
                     let l = app.session.map().layer(app.session.active_layer.unwrap()).unwrap().clone();
                     super::color_drag(app, ui, &l, None, c);
@@ -1519,7 +1519,7 @@ mod tests {
         let steps = app.session.undo_depth();
         // The picker's colour each frame, if it reports one, as `text_symbol` hands it on.
         let mut h = egui_kittest::Harness::builder().build_ui_state(
-            |ui, (app, pick): &mut (RustGisApp, Option<Rgba>)| {
+            |ui, (app, pick): &mut (powergisApp, Option<Rgba>)| {
                 if let Some(c) = pick.take() {
                     let l = app.session.map().layer(app.session.active_layer.unwrap()).unwrap().clone();
                     super::color_drag(app, ui, &l, None, c);
@@ -1554,11 +1554,11 @@ mod tests {
         assert_eq!(app.session.map().layer(id).unwrap().labels.default.color, before, "one undo takes the whole pick back");
     }
 
-    fn clause(app: &RustGisApp) -> Option<String> {
+    fn clause(app: &powergisApp) -> Option<String> {
         app.session.map().layer(app.session.active_layer.unwrap()).unwrap().labels.default.where_.clone()
     }
 
-    fn type_clause(h: &mut egui_kittest::Harness<'static, RustGisApp>, text: &str) {
+    fn type_clause(h: &mut egui_kittest::Harness<'static, powergisApp>, text: &str) {
         h.get_by_role(egui::accesskit::Role::MultilineTextInput).focus();
         h.run();
         h.get_by_role(egui::accesskit::Role::MultilineTextInput).type_text(text);
@@ -1582,7 +1582,7 @@ mod tests {
         h.get_by_label("Check").click();
         h.run();
         let l = h.state().session.map().layer(h.state().session.active_layer.unwrap()).unwrap().clone();
-        let n = rustgis_engine::data::query::select("pop_max > 5000000", &l.dataset).unwrap().len();
+        let n = powergis_engine::data::query::select("pop_max > 5000000", &l.dataset).unwrap().len();
         let all = l.drawn_rows(h.state().session.map().scale()).iter().filter(|r| **r).count();
         h.get_by_label(&format!("Valid: {n} of {all} features match"));
         h.get_by_label("Apply").click();
@@ -1737,22 +1737,22 @@ mod tests {
         assert_eq!(last.params.get("class"), None);
     }
 
-    fn labels(app: &RustGisApp) -> rustgis_engine::map::symbology::Labeling {
+    fn labels(app: &powergisApp) -> powergis_engine::map::symbology::Labeling {
         app.session.map().layer(app.session.active_layer.unwrap()).unwrap().labels.clone()
     }
 
     /// The layer's class names, in the order they are listed.
-    fn names(app: &RustGisApp) -> Vec<String> {
+    fn names(app: &powergisApp) -> Vec<String> {
         labels(app).in_order().map(|c| c.name.clone()).collect()
     }
 
     /// The class the pane's chooser shows.
-    fn shown(h: &egui_kittest::Harness<'static, RustGisApp>, name: &str) -> bool {
+    fn shown(h: &egui_kittest::Harness<'static, powergisApp>, name: &str) -> bool {
         h.query_all_by_role(egui::accesskit::Role::ComboBox).any(|n| n.value().as_deref() == Some(name))
     }
 
     /// Chooses class `to` in the pane's chooser, which shows `from`.
-    fn pick_class(h: &mut egui_kittest::Harness<'static, RustGisApp>, from: &str, to: &str) {
+    fn pick_class(h: &mut egui_kittest::Harness<'static, powergisApp>, from: &str, to: &str) {
         h.query_all_by_role(egui::accesskit::Role::ComboBox).find(|n| n.value().as_deref() == Some(from)).unwrap().click();
         h.run();
         h.get_by_label(to).click();
@@ -1771,7 +1771,7 @@ mod tests {
         let mut h = harness(app);
         h.run();
         assert!(shown(&h, "gone (not in the layer)"));
-        let search = |h: &mut egui_kittest::Harness<'static, RustGisApp>, text: &str| {
+        let search = |h: &mut egui_kittest::Harness<'static, powergisApp>, text: &str| {
             h.get_by_role_and_label(Role::ComboBox, "Field").click();
             h.run();
             h.get_by_role(Role::TextInput).focus();
@@ -1806,8 +1806,8 @@ mod tests {
     #[test]
     fn a_layer_without_fields_has_no_label_field() {
         use egui::accesskit::Role;
-        use rustgis_engine::data::{Dataset, GeometryType};
-        let mut app = RustGisApp::with_sample();
+        use powergis_engine::data::{Dataset, GeometryType};
+        let mut app = powergisApp::with_sample();
         let id = app.session.map_mut().add_dataset(Dataset::new("Bare", GeometryType::Point, vec![]));
         app.session.run("layer.select", &json!({"layer": id})).unwrap();
         let mut h = harness(app);
@@ -1838,7 +1838,7 @@ mod tests {
         h.run();
         let l = labels(h.state());
         let big = l.class("Big").unwrap();
-        assert_eq!((big.placement, big.bold), (rustgis_engine::map::LabelPlacement::BelowRight, !before.bold));
+        assert_eq!((big.placement, big.bold), (powergis_engine::map::LabelPlacement::BelowRight, !before.bold));
         assert_eq!((l.default.placement, l.default.bold), (before.placement, before.bold), "Default is left as it was");
         pick_class(&mut h, "Big", "Default");
         h.get_by_label("Halo").click();
@@ -1881,7 +1881,7 @@ mod tests {
         let l = labels(h.state());
         let named = l.class("Named").unwrap();
         assert_eq!(named.italic, !before.italic);
-        assert_eq!(named.placement, rustgis_engine::map::LabelPlacement::Curved);
+        assert_eq!(named.placement, powergis_engine::map::LabelPlacement::Curved);
         assert_eq!(named.font, None);
         assert_eq!((l.default.italic, l.default.placement, l.default.font), (before.italic, before.placement, before.font));
         assert_eq!(h.state().session.undo_depth(), steps + 3);
@@ -1899,14 +1899,14 @@ mod tests {
         use egui::accesskit::Role;
         let mut h = harness(with_cities());
         h.run();
-        let search_for = |h: &mut egui_kittest::Harness<'static, RustGisApp>, tab: &str, list: &str, text: &str| {
+        let search_for = |h: &mut egui_kittest::Harness<'static, powergisApp>, tab: &str, list: &str, text: &str| {
             open_tab(h, tab);
             let before = h.query_all_by_role(Role::TextInput).count();
             h.get_by_role_and_label(Role::ComboBox, list).click();
             h.run();
             // (The list's search box is the input with no label: the tab's own have theirs, and can
             // come after it, as Wrap at does on Symbol.)
-            let search_box = |h: &egui_kittest::Harness<'static, RustGisApp>| {
+            let search_box = |h: &egui_kittest::Harness<'static, powergisApp>| {
                 h.query_all_by_role(Role::TextInput).find(|n| n.accesskit_node().label().is_none()).map(|n| n.accesskit_node().id())
             };
             let id = search_box(h).unwrap();
@@ -2081,7 +2081,7 @@ mod tests {
         let mut fonts = false;
         // Drawn only while it is the right pane in view, as the app does.
         let mut h = egui_kittest::Harness::builder().with_accessibility_check(false).with_size(egui::vec2(360.0, 900.0)).build_ui_state(
-            move |ui, app: &mut RustGisApp| {
+            move |ui, app: &mut powergisApp| {
                 if !fonts {
                     crate::theme::install_fonts(ui.ctx(), &[], None);
                     fonts = true;
@@ -2109,7 +2109,7 @@ mod tests {
     #[test]
     fn new_is_off_at_the_class_limit() {
         let mut app = with_cities();
-        for i in 0..rustgis_engine::map::symbology::MAX_LABEL_CLASSES {
+        for i in 0..powergis_engine::map::symbology::MAX_LABEL_CLASSES {
             app.run("labels.class.add", json!({"name": format!("C{i}")})).unwrap();
         }
         let steps = app.session.undo_depth();
@@ -2164,7 +2164,7 @@ mod tests {
         app.ws.recording = Some(Vec::new());
         let before = labels(&app).default.color;
         let mut h = egui_kittest::Harness::builder().build_ui_state(
-            |ui, (app, pick): &mut (RustGisApp, Option<(Option<&'static str>, Rgba)>)| {
+            |ui, (app, pick): &mut (powergisApp, Option<(Option<&'static str>, Rgba)>)| {
                 if let Some((class, c)) = pick.take() {
                     let l = app.session.map().layer(app.session.active_layer.unwrap()).unwrap().clone();
                     super::color_drag(app, ui, &l, class, c);

@@ -5,7 +5,7 @@
 //! - `notices [--check]`: writes the third-party licence notices the packages ship (see
 //!   `notices.rs`), or checks they are up to date (exit code 2 when they are not).
 //! - `web-pwa <dir>`: writes the web app's service worker into a `trunk build` output directory
-//!   (`dist/web`) from the template `apps/rustgis-web/sw.js`, listing the built files to cache.
+//!   (`dist/web`) from the template `apps/powergis-web/sw.js`, listing the built files to cache.
 
 mod notices;
 
@@ -41,7 +41,7 @@ fn layers() -> Result<(), String> {
             if *level < 6 && UI_ONLY.contains(&name) {
                 errs.push(format!("{krate} (L{level}) depends on UI crate {name}"));
             }
-            if let Some(dep) = name.strip_prefix("rustgis-")
+            if let Some(dep) = name.strip_prefix("powergis-")
                 && let Some((_, dl)) = LAYERS.iter().find(|(k, _)| *k == dep)
                 && dl >= level
             {
@@ -128,7 +128,7 @@ fn js_string(s: &str) -> String {
 /// The service worker for a web build: the template with its file list and version filled in.
 fn web_sw(template: &str, files: &[String], version: &str) -> Result<String, String> {
     if !template.contains("\"__VERSION__\"") || !template.contains("__SHELL__") {
-        return Err("apps/rustgis-web/sw.js: the __VERSION__ or __SHELL__ placeholder is missing".into());
+        return Err("apps/powergis-web/sw.js: the __VERSION__ or __SHELL__ placeholder is missing".into());
     }
     let list = format!("[\n{}\n]", files.iter().map(|f| format!("  {},", js_string(f))).collect::<Vec<_>>().join("\n"));
     Ok(template.replace("\"__VERSION__\"", &js_string(version)).replace("__SHELL__", &list))
@@ -136,7 +136,7 @@ fn web_sw(template: &str, files: &[String], version: &str) -> Result<String, Str
 
 fn web_pwa(dir: Option<String>) -> Result<(), String> {
     let dir = std::path::PathBuf::from(dir.ok_or("usage: cargo xtask web-pwa <trunk build output, e.g. dist/web>")?);
-    let template = std::fs::read_to_string(root().join("apps/rustgis-web/sw.js")).map_err(|e| format!("apps/rustgis-web/sw.js: {e}"))?;
+    let template = std::fs::read_to_string(root().join("apps/powergis-web/sw.js")).map_err(|e| format!("apps/powergis-web/sw.js: {e}"))?;
     let (files, version) = web_shell(&dir, &template)?;
     let sw = web_sw(&template, &files, &version)?;
     std::fs::write(dir.join("sw.js"), sw).map_err(|e| format!("{}: {e}", dir.display()))?;
@@ -187,18 +187,18 @@ mod tests {
 
     #[test]
     fn web_sw_fills_the_real_template() {
-        let template = include_str!("../../apps/rustgis-web/sw.js");
-        let files = vec!["index.html".to_string(), "rustgis-web-1a2b.js".to_string(), "odd\"name\\.wasm".to_string()];
+        let template = include_str!("../../apps/powergis-web/sw.js");
+        let files = vec!["index.html".to_string(), "powergis-web-1a2b.js".to_string(), "odd\"name\\.wasm".to_string()];
         let sw = web_sw(template, &files, "00ff").unwrap();
         assert!(!sw.contains("__VERSION__") && !sw.contains("__SHELL__"));
         assert!(sw.contains("const VERSION = \"00ff\";"));
-        assert!(sw.contains("  \"index.html\",\n  \"rustgis-web-1a2b.js\",\n  \"odd\\\"name\\\\.wasm\",\n]"));
+        assert!(sw.contains("  \"index.html\",\n  \"powergis-web-1a2b.js\",\n  \"odd\\\"name\\\\.wasm\",\n]"));
         assert!(web_sw("no placeholders", &files, "00ff").is_err());
     }
 
     #[test]
     fn web_shell_lists_the_app_files_and_versions_them() {
-        let dir = std::env::temp_dir().join(format!("rustgis-xtask-web-shell-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("powergis-xtask-web-shell-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("snippets/x")).unwrap();
         std::fs::create_dir_all(dir.join(".stage")).unwrap();

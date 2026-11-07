@@ -6,11 +6,11 @@
 use std::collections::HashMap;
 
 use egui::vec2;
-use rustgis_engine::data::raster::{Crs, geotiff, zarr};
-use rustgis_engine::render::rustgis_tiles::cache;
+use powergis_engine::data::raster::{Crs, geotiff, zarr};
+use powergis_engine::render::powergis_tiles::cache;
 use serde_json::{Value, json};
 
-use crate::{RustGisApp, Slot, i18n};
+use crate::{powergisApp, Slot, i18n};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -78,7 +78,7 @@ fn take(slot: &Answer) -> Option<Result<Vec<u8>, String>> {
 }
 
 /// Moves fetches along, and acts when a batch is in.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let st = &mut app.ui.zarr;
     if !st.busy() {
         return;
@@ -92,7 +92,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
             false
         }
         Some(Err(e)) => {
-            if !rustgis_engine::cmd::zarr::is_absent(&e) {
+            if !powergis_engine::cmd::zarr::is_absent(&e) {
                 failed = Some(format!("{k}: {e}"));
             } else if cache::http_status(&e) == Some(403) {
                 forbidden += 1;
@@ -181,7 +181,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
     }
 }
 
-pub(crate) fn connect(app: &mut RustGisApp) {
+pub(crate) fn connect(app: &mut powergisApp) {
     let st = &mut app.ui.zarr;
     let a = st.address.trim().trim_end_matches('/').to_string();
     st.error = None;
@@ -223,7 +223,7 @@ fn first_temperature(info: &Value) -> usize {
 }
 
 /// The dialog. Returns whether it should close.
-pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+pub fn dialog(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     ui.label(
         egui::RichText::new(crate::tl!(
             "A Zarr store (format 2 or 3) by its web address, with consolidated metadata, or a folder on this computer. A variable's map is read for the steps picked of its other dimensions, such as time."
@@ -254,7 +254,7 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 
 /// The store's variables and their other dimensions' steps, and Add to Map: the dialog's body, and
 /// the Web Data pane's for a dataset it opens (Dynamical).
-pub fn picker(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn picker(app: &mut powergisApp, ui: &mut egui::Ui) {
     // Beside the dimensions' names.
     let wide = (ui.available_width() - 230.0).clamp(120.0, 380.0);
     // A Web Data dataset (a forecast or analysis archive: `title` is set while the Web Data pane
@@ -368,12 +368,12 @@ pub fn picker(app: &mut RustGisApp, ui: &mut egui::Ui) {
 }
 
 /// Adds the slice: through the command for a folder, or fetches its chunks first for a web store.
-fn add(app: &mut RustGisApp, sel: zarr::Selection, labels: &[String]) {
+fn add(app: &mut powergisApp, sel: zarr::Selection, labels: &[String]) {
     let st = &mut app.ui.zarr;
     st.error = None;
     let name = match &st.title {
-        Some(t) => format!("{t} {}", rustgis_engine::cmd::zarr::layer_name("", &sel, labels)),
-        None => rustgis_engine::cmd::zarr::layer_name(&st.root, &sel, labels),
+        Some(t) => format!("{t} {}", powergis_engine::cmd::zarr::layer_name("", &sel, labels)),
+        None => powergis_engine::cmd::zarr::layer_name(&st.root, &sel, labels),
     };
     // Following the time slider: the engine reads each step itself, a folder's or a web store's.
     if st.follow && cfg!(not(target_arch = "wasm32")) {

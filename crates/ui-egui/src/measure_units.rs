@@ -1,5 +1,5 @@
 //! Display units for measurements and distance controls. Inputs stay in metres or square metres.
-use rustgis_engine::geom;
+use powergis_engine::geom;
 
 /// Keep nonzero measurements visible when rounding to whole units would erase them.
 fn whole_or_small(value: f64) -> String {
@@ -36,7 +36,7 @@ pub fn elevation(m: f64, imperial: bool) -> String {
     if imperial {
         crate::i18n::fmt("{distance} ft", &[("distance", &whole_or_small(m / geom::METRES_PER_FOOT))])
     } else {
-        crate::i18n::fmt("{distance} m", &[("distance", &rustgis_engine::map::symbology::fmt_num(m))])
+        crate::i18n::fmt("{distance} m", &[("distance", &powergis_engine::map::symbology::fmt_num(m))])
     }
 }
 

@@ -5,9 +5,9 @@
 
 use egui::epaint::Vertex;
 use egui::{Color32, Mesh, Painter, Rect, Shape, TextureFilter, TextureHandle, TextureOptions, TextureWrapMode, pos2, vec2};
-use rustgis_engine::geom::{Coord, Extent, extent_to_merc, merc_to_lonlat};
-use rustgis_engine::map::{Globe, Map, Rgba};
-use rustgis_engine::render::{self, GLOBE_GLOW, STAR_TILE, View};
+use powergis_engine::geom::{Coord, Extent, extent_to_merc, merc_to_lonlat};
+use powergis_engine::map::{Globe, Map, Rgba};
+use powergis_engine::render::{self, GLOBE_GLOW, STAR_TILE, View};
 
 use crate::theme::c32;
 
@@ -241,8 +241,8 @@ impl GlobeDrape {
 
 #[cfg(test)]
 mod tests {
-    use rustgis_engine::geom::lonlat_to_merc;
-    use rustgis_engine::map::{Camera, Projection};
+    use powergis_engine::geom::lonlat_to_merc;
+    use powergis_engine::map::{Camera, Projection};
 
     use super::*;
 

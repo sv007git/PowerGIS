@@ -1,11 +1,11 @@
 //! Export a styled raster as Web Mercator PNG tiles in a PMTiles archive.
 
-use rustgis_geom::{Coord, MERCATOR_R, extent_to_merc};
-use rustgis_map::{camera::Camera, projection::Flat, raster::RasterLayer};
+use powergis_geom::{Coord, MERCATOR_R, extent_to_merc};
+use powergis_map::{camera::Camera, projection::Flat, raster::RasterLayer};
 use serde_json::json;
 use tiny_skia::Pixmap;
 
-use crate::rustgis_tiles::pmtiles::{self, NewArchive, TileType};
+use crate::powergis_tiles::pmtiles::{self, NewArchive, TileType};
 use crate::{View, raster};
 
 const MAX_TILES: u64 = 512;
@@ -41,7 +41,7 @@ pub fn export(layer: &RasterLayer, min_zoom: u8, max_zoom: u8, opacity: f32) -> 
     {
         return Err("the raster must have bounds within one Web Mercator world".into());
     }
-    let e = rustgis_geom::Extent::new(e.min_x, e.min_y.max(-MAX_LAT), e.max_x, e.max_y.min(MAX_LAT));
+    let e = powergis_geom::Extent::new(e.min_x, e.min_y.max(-MAX_LAT), e.max_x, e.max_y.min(MAX_LAT));
     let m = extent_to_merc(&e);
     let half = std::f64::consts::PI * MERCATOR_R;
     let mut ranges = Vec::new();
@@ -106,8 +106,8 @@ pub fn export(layer: &RasterLayer, min_zoom: u8, max_zoom: u8, opacity: f32) -> 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::rustgis_tiles::cache::{self, Payload, State, Want};
-    use rustgis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
+    use crate::powergis_tiles::cache::{self, Payload, State, Want};
+    use powergis_data::raster::{ColorHint, Crs, GeoTransform, Raster};
 
     #[test]
     fn tile_ranges_respect_exact_and_near_boundaries() {
@@ -140,7 +140,7 @@ mod tests {
         .unwrap_or_else(|e| panic!("{e}"));
         let mut layer = RasterLayer::from_path(raster, "test.tif");
         let data = export(&layer, 0, 1, 1.0).unwrap_or_else(|e| panic!("{e}"));
-        let path = std::env::temp_dir().join(format!("rustgis-raster-tiles-{}.pmtiles", std::process::id()));
+        let path = std::env::temp_dir().join(format!("powergis-raster-tiles-{}.pmtiles", std::process::id()));
         std::fs::write(&path, data).unwrap_or_else(|e| panic!("{e}"));
         let archive = path.to_string_lossy();
         let info = pmtiles::info_blocking(&archive, std::time::Duration::from_secs(10)).unwrap_or_else(|e| panic!("{e}"));
@@ -153,7 +153,7 @@ mod tests {
         let Payload::Image(image) = payload.as_ref() else { panic!("tile was not an image") };
         assert_eq!((image.width(), image.height()), (256, 256));
         assert!(image.data().as_chunks::<4>().0.iter().any(|p| p[3] != 0));
-        let faded_path = std::env::temp_dir().join(format!("rustgis-raster-tiles-faded-{}.pmtiles", std::process::id()));
+        let faded_path = std::env::temp_dir().join(format!("powergis-raster-tiles-faded-{}.pmtiles", std::process::id()));
         std::fs::write(&faded_path, export(&layer, 0, 0, 0.25).unwrap_or_else(|e| panic!("{e}"))).unwrap_or_else(|e| panic!("{e}"));
         let faded_url = format!("pmtiles:0/0/0@{}", faded_path.display());
         let _ = cache::get(&faded_url, Want::Image);

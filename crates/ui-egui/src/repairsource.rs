@@ -1,8 +1,8 @@
 //! Repair a layer's linked file or a local tile archive without replacing its configuration.
-use crate::RustGisApp;
+use crate::powergisApp;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::theme::Tokens;
-use rustgis_engine::Session;
+use powergis_engine::Session;
 #[cfg(not(target_arch = "wasm32"))]
 use serde_json::json;
 
@@ -20,7 +20,7 @@ pub struct Form {
     opened: u64,
     map: (usize, String),
     /// An index is not an identity: closing on a different archive prevents accidental retargeting.
-    archive: Option<(String, rustgis_engine::map::TileKind)>,
+    archive: Option<(String, powergis_engine::map::TileKind)>,
     name: String,
     saved: String,
     read_error: Option<String>,
@@ -97,7 +97,7 @@ impl Form {
         self.error = None;
         self.listing = Some((path.clone(), slot));
         std::thread::spawn(move || {
-            let mut session = Session::new(rustgis_engine::Project::default());
+            let mut session = Session::new(powergis_engine::Project::default());
             let result = session.run("info.fileLayers", &json!({"path": path.trim()}));
             *out.lock().unwrap_or_else(|e| e.into_inner()) = Some(result);
             ctx.request_repaint();
@@ -133,7 +133,7 @@ impl Form {
 }
 
 /// Shows the captured source and runs the appropriate undoable repair command.
-pub fn show(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn show(app: &mut powergisApp, ctx: &egui::Context) {
     let Some(f) = app.dialogs.repair.take() else {
         app.dialogs.open = None;
         return;

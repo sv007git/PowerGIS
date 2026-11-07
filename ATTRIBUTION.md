@@ -3,7 +3,7 @@
 Every asset file in this repository, with its source and licence. The licences of the Rust
 crates PowerGIS is built from, with their copyright notices, are in
 [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt) (the Python package's in
-[apps/rustgis-python/THIRD-PARTY-LICENSES.txt](apps/rustgis-python/THIRD-PARTY-LICENSES.txt)),
+[apps/powergis-python/THIRD-PARTY-LICENSES.txt](apps/powergis-python/THIRD-PARTY-LICENSES.txt)),
 which every package ships next to LICENSE. They are generated from `Cargo.lock` by
 `cargo xtask notices` (it needs `cargo install --locked --features cli cargo-about@0.9.2`);
 `deny.toml` lists the licences a dependency may have. The code and data PowerGIS's own crates
@@ -15,8 +15,8 @@ of use.
 
 | File | Author / source | Licence |
 |---|---|---|
-| Sample data (`countries`, `countries_chn`, `cities`, `rivers`, `lakes` GeoJSON), embedded at build time from [rustgis-assets](https://github.com/opengeos/rustgis-assets/tree/main/data) | Natural Earth 1:110m, attributes trimmed; `countries_chn` is Natural Earth's China point of view (1:10m, simplified) | Public domain |
-| QGIS screenshot (`qgis-world-atlas.webp` in [rustgis-assets](https://github.com/opengeos/rustgis-assets/tree/main/images)), on the [PowerGIS and QGIS](docs/comparison/qgis.md) page | Taken by the PowerGIS project: [QGIS](https://qgis.org) 4.2 showing the Natural Earth sample data above | QGIS is GPL-2.0-or-later; the data is public domain |
+| Sample data (`countries`, `countries_chn`, `cities`, `rivers`, `lakes` GeoJSON), embedded at build time from [powergis-assets](https://github.com/opengeos/powergis-assets/tree/main/data) | Natural Earth 1:110m, attributes trimmed; `countries_chn` is Natural Earth's China point of view (1:10m, simplified) | Public domain |
+| QGIS screenshot (`qgis-world-atlas.webp` in [powergis-assets](https://github.com/opengeos/powergis-assets/tree/main/images)), on the [PowerGIS and QGIS](docs/comparison/qgis.md) page | Taken by the PowerGIS project: [QGIS](https://qgis.org) 4.2 showing the Natural Earth sample data above | QGIS is GPL-2.0-or-later; the data is public domain |
 | QGIS test corpus (`crates/map/testdata/qgis/generated/`: styles, projects and their sample data) | Dominik Strebel ([@pick2510](https://github.com/pick2510)) for the PowerGIS project: written by [QGIS](https://qgis.org) 4.2.3 through its API, from `generate.py` there; the data is made up | Apache-2.0 |
 | Analysis reference corpus (`crates/analysis/tests/reference/`: layers and expected results) | Written for the PowerGIS project from `generate.py` there: the layers are made up; the expected results were computed by [GEOS](https://libgeos.org) 3.13.1 through [Shapely](https://shapely.readthedocs.io) 2.1.2, and distances, buffers, areas and lengths by GeographicLib in [PROJ](https://proj.org) 9.5.1 through [pyproj](https://pyproj4.github.io/pyproj/) 3.7.2, run only to write them (GEOS is LGPL-2.1, Shapely BSD-3-Clause, PROJ and pyproj MIT; none is included in or linked into PowerGIS) | Apache-2.0 |
 
@@ -82,6 +82,6 @@ Icons are original vector drawings in code (`crates/ui-egui/src/icons.rs`). Font
 bundled: the interface uses an installed system sans-serif when one is found, otherwise the
 Ubuntu Light face that ships inside `epaint_default_fonts` (Ubuntu Font Licence 1.0). For an
 interface language in a script those faces lack, the web app downloads one from
-[rustgis-assets](https://github.com/opengeos/rustgis-assets/tree/main/fonts), where each font's
+[powergis-assets](https://github.com/opengeos/powergis-assets/tree/main/fonts), where each font's
 licence is kept beside it: Noto Sans SC, JP or KR for Chinese, Japanese or Korean, and Vazirmatn
 for Arabic script (both SIL Open Font License 1.1).

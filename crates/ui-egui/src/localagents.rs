@@ -1,5 +1,5 @@
 //! Agents on this computer (desktop): the assistant hands a task to a coding agent the user has
-//! (Claude Code, Codex, Gemini CLI…) through ACP ([`rustgis_assistant::acp`]). The agent reaches
+//! (Claude Code, Codex, Gemini CLI…) through ACP ([`powergis_assistant::acp`]). The agent reaches
 //! the open map through the app's MCP relay with a token for this run only, works in a folder of
 //! its own that is kept for the user, and asks the user (through the assistant pane) before
 //! acting.
@@ -14,8 +14,8 @@ use std::sync::mpsc::{SyncSender, sync_channel};
 use std::sync::{Arc, Mutex, OnceLock};
 use std::time::Duration;
 
-use rustgis_assistant::acp;
-use rustgis_assistant::framing::{Error as FramingError, MAX_LINE, Oversize, read_message_max};
+use powergis_assistant::acp;
+use powergis_assistant::framing::{Error as FramingError, MAX_LINE, Oversize, read_message_max};
 
 /// Windows' flag for a console program started without a console window.
 #[cfg(windows)]
@@ -37,7 +37,7 @@ pub struct Run {
     child: Arc<Mutex<Option<Child>>>,
     pid: u32,
     /// Its relay token: revoked when the run is dropped.
-    _grant: rustgis_assistant::relay::Grant,
+    _grant: powergis_assistant::relay::Grant,
 }
 
 /// Queue one bounded line without ever waiting for the agent's pipe.
@@ -121,13 +121,13 @@ fn work_folder_in(base: &std::path::Path, agent: &str) -> Result<PathBuf, String
 impl Run {
     /// Starts `spec` (with `command`, from [`acp::command`]) on `task`, reaching the map through
     /// `relay` with a token of its own.
-    /// `cli` is `rustgis-cli`, which serves the map to the agent over MCP; `work` is the folder
+    /// `cli` is `powergis-cli`, which serves the map to the agent over MCP; `work` is the folder
     /// it works in ([`work_folder`]).
     pub fn start(
         spec: &'static acp::AgentSpec,
         command: &[String],
         task: &str,
-        relay: &rustgis_assistant::relay::Relay,
+        relay: &powergis_assistant::relay::Relay,
         cli: &std::path::Path,
         work: PathBuf,
         auto: bool,
@@ -293,7 +293,7 @@ impl Run {
         self.session.lock().map(|s| s.finished()).unwrap_or(true)
     }
 
-    pub fn map_approvals(&self) -> Vec<rustgis_assistant::relay::Approval> {
+    pub fn map_approvals(&self) -> Vec<powergis_assistant::relay::Approval> {
         self._grant.pending()
     }
 
@@ -328,7 +328,7 @@ pub(crate) fn finish_stops() {
 impl Drop for Run {
     fn drop(&mut self) {
         let (pid, child, session, stdin) = (self.pid, self.child.clone(), self.session.clone(), self.stdin.clone());
-        let worker = std::thread::Builder::new().name("rustgis-agent-stop".into()).spawn(move || stop_process(pid, child, session, stdin));
+        let worker = std::thread::Builder::new().name("powergis-agent-stop".into()).spawn(move || stop_process(pid, child, session, stdin));
         match worker {
             Ok(worker) => {
                 let mut jobs = stop_jobs().lock().unwrap_or_else(|e| e.into_inner());
@@ -393,13 +393,13 @@ mod tests {
     use std::io::{BufRead, Write};
     use std::time::{Duration, Instant};
 
-    use rustgis_assistant::acp::{AgentSpec, Choice, Event};
+    use powergis_assistant::acp::{AgentSpec, Choice, Event};
     use serde_json::{Value, json};
 
     use super::Run;
 
     /// The argument that makes this binary the fake agent (also a test filter matching nothing).
-    const CHILD_MARK: &str = "rustgis-acp-child-mode";
+    const CHILD_MARK: &str = "powergis-acp-child-mode";
 
     /// The fake agent: ACP over standard input and output. A task with ASK asks for permission
     /// first; one with HANG works until it's cancelled; any other is done at once.
@@ -505,7 +505,7 @@ mod tests {
     /// Two tasks of one agent within the same second get folders of their own.
     #[test]
     fn work_folders_never_collide() {
-        let base = std::env::temp_dir().join(format!("rustgis-work-folders-{}", std::process::id()));
+        let base = std::env::temp_dir().join(format!("powergis-work-folders-{}", std::process::id()));
         let a = super::work_folder_in(&base, "goose").unwrap();
         let b = super::work_folder_in(&base, "goose").unwrap();
         assert_ne!(a, b);
@@ -515,7 +515,7 @@ mod tests {
 
     #[test]
     fn an_agent_thread_works_takes_follow_ups_asks_and_stops() {
-        let relay = rustgis_assistant::relay::Relay::start(0).unwrap();
+        let relay = powergis_assistant::relay::Relay::start(0).unwrap();
         let exe = std::env::current_exe().unwrap();
         let command: Vec<String> = [
             exe.display().to_string().as_str(),
@@ -528,7 +528,7 @@ mod tests {
         .iter()
         .map(|s| s.to_string())
         .collect();
-        let work = std::env::temp_dir().join(format!("rustgis-acp-test-{}", std::process::id()));
+        let work = std::env::temp_dir().join(format!("powergis-acp-test-{}", std::process::id()));
         std::fs::create_dir_all(&work).unwrap();
         let spec = AgentSpec::from_id("goose").unwrap();
         let run = Run::start(spec, &command, "Say hi", &relay, &exe, work.clone(), false, egui::Context::default()).unwrap();
@@ -578,7 +578,7 @@ mod tests {
     #[test]
     fn dropping_a_reaped_agent_never_signals_a_reused_id() {
         use std::os::unix::process::CommandExt;
-        let relay = rustgis_assistant::relay::Relay::start(0).unwrap();
+        let relay = powergis_assistant::relay::Relay::start(0).unwrap();
         let exe = std::env::current_exe().unwrap();
         let command = vec![
             exe.display().to_string(),
@@ -588,7 +588,7 @@ mod tests {
             "--nocapture".into(),
             "--test-threads=1".into(),
         ];
-        let work = std::env::temp_dir().join(format!("rustgis-acp-reaped-{}", std::process::id()));
+        let work = std::env::temp_dir().join(format!("powergis-acp-reaped-{}", std::process::id()));
         std::fs::create_dir_all(&work).unwrap();
         let mut run =
             Run::start(AgentSpec::from_id("goose").unwrap(), &command, "Hi", &relay, &exe, work.clone(), false, egui::Context::default())
@@ -615,7 +615,7 @@ mod tests {
 
     #[test]
     fn stop_does_not_wait_for_a_blocked_stdin_writer() {
-        let relay = rustgis_assistant::relay::Relay::start(0).unwrap();
+        let relay = powergis_assistant::relay::Relay::start(0).unwrap();
         let exe = std::env::current_exe().unwrap();
         let command = vec![
             exe.display().to_string(),
@@ -625,7 +625,7 @@ mod tests {
             "--nocapture".into(),
             "--test-threads=1".into(),
         ];
-        let work = std::env::temp_dir().join(format!("rustgis-acp-blocked-{}", std::process::id()));
+        let work = std::env::temp_dir().join(format!("powergis-acp-blocked-{}", std::process::id()));
         std::fs::create_dir_all(&work).unwrap();
         let run = Run::start(
             AgentSpec::from_id("goose").unwrap(),
@@ -673,8 +673,8 @@ mod tests {
     #[cfg(target_os = "linux")]
     #[test]
     fn stop_terminates_descendants_after_leader_exit_without_reusing_its_identity() {
-        let relay = rustgis_assistant::relay::Relay::start(0).unwrap();
-        let base = std::env::temp_dir().join(format!("rustgis-acp-descendant-{}", std::process::id()));
+        let relay = powergis_assistant::relay::Relay::start(0).unwrap();
+        let base = std::env::temp_dir().join(format!("powergis-acp-descendant-{}", std::process::id()));
         let work = super::work_folder_in(&base, "test").unwrap();
         let command = vec!["/bin/sh".into(), "-c".into(), "sleep 30 >/dev/null 2>&1 & echo $! > descendant.pid; exit 0".into()];
         let run = Run::start(

@@ -1,4 +1,4 @@
-//! Character markers ([`Marker::Char`](rustgis_map::Marker::Char)): a character of an installed
+//! Character markers ([`Marker::Char`](powergis_map::Marker::Char)): a character of an installed
 //! family as a marker's outline, placed as QGIS places a font marker: the em is the marker's size,
 //! the character's advance is centred on the point and its baseline is half the font's ascent
 //! below it. A family the machine lacks, or one without the character, draws it in the label font.
@@ -7,7 +7,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex, OnceLock};
 
 use ab_glyph::{Font, OutlineCurve};
-use rustgis_map::Glyph;
+use powergis_map::Glyph;
 use tiny_skia::{Path, PathBuilder};
 
 /// The most characters kept, and the most curves read from one (a crafted font's glyph).

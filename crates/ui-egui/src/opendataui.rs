@@ -7,12 +7,12 @@
 //! service opens Add From Service connected to it.
 
 use egui::vec2;
-use rustgis_engine::render::rustgis_tiles::cache;
-use rustgis_engine::render::rustgis_tiles::portal::{DEM_DATASETS, Dataset, Portal, Use};
-use rustgis_engine::render::rustgis_tiles::usgis::{self, Search, Set};
+use powergis_engine::render::powergis_tiles::cache;
+use powergis_engine::render::powergis_tiles::portal::{DEM_DATASETS, Dataset, Portal, Use};
+use powergis_engine::render::powergis_tiles::usgis::{self, Search, Set};
 use serde_json::json;
 
-use crate::{RustGisApp, Slot};
+use crate::{powergisApp, Slot};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -181,7 +181,7 @@ fn fetch(url: &str) -> Answer {
 }
 
 /// Lands the search's answer, a dataset's listing and the results' pictures.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     poll_listing(app, ctx);
     poll_thumbs(app, ctx);
     poll_probes(app, ctx);
@@ -230,7 +230,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
     }
 }
 
-fn poll_listing(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll_listing(app: &mut powergisApp, ctx: &egui::Context) {
     let Some((_, _, _, slot)) = &app.ui.opendata.listing else { return };
     let Some(r) = slot.lock().unwrap_or_else(|e| e.into_inner()).take() else {
         ctx.request_repaint_after(std::time::Duration::from_millis(100));
@@ -253,7 +253,7 @@ fn poll_listing(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Lands the Zarr stores' checks: a dataset without one is shown as such.
-fn poll_probes(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll_probes(app: &mut powergisApp, ctx: &egui::Context) {
     let st = &mut app.ui.opendata;
     let mut landed = Vec::new();
     st.probes.retain(|(i, slot)| match slot.lock().unwrap_or_else(|e| e.into_inner()).take() {
@@ -278,7 +278,7 @@ fn poll_probes(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Lands the pictures fetched, as textures.
-fn poll_thumbs(app: &mut RustGisApp, ctx: &egui::Context) {
+fn poll_thumbs(app: &mut powergisApp, ctx: &egui::Context) {
     let mut waiting = false;
     for (url, thumb) in app.ui.opendata.thumbs.iter_mut() {
         let Thumb::Loading(slot) = thumb else { continue };
@@ -302,7 +302,7 @@ fn poll_thumbs(app: &mut RustGisApp, ctx: &egui::Context) {
 /// Fills the pane from `ui.searchOpenData`'s parameters (`service`, `portal`, `url`, `query`,
 /// `view`, `type`) and, with a query (or for a service that needs none), starts the search. A
 /// service opens the pane on it alone.
-pub fn start(app: &mut RustGisApp, p: &serde_json::Value) {
+pub fn start(app: &mut powergisApp, p: &serde_json::Value) {
     let text = |k: &str| p.get(k).and_then(serde_json::Value::as_str).map(str::trim);
     let svc = text("service").and_then(service);
     let st = &mut app.ui.opendata;
@@ -378,7 +378,7 @@ fn params(st: &State) -> serde_json::Value {
 }
 
 /// Starts a search for the pane's choices, or (`more`) its next page.
-fn search(app: &mut RustGisApp, more: bool) {
+fn search(app: &mut powergisApp, more: bool) {
     if more {
         let Some((portal, url, area, query, source)) = app.ui.opendata.next.take() else { return };
         let slot = fetch(&url);
@@ -386,7 +386,7 @@ fn search(app: &mut RustGisApp, more: bool) {
         return;
     }
     let p = params(&app.ui.opendata);
-    match rustgis_engine::cmd::portals::portal_query(&app.session, &p) {
+    match powergis_engine::cmd::portals::portal_query(&app.session, &p) {
         Ok((portal, query, area, limit)) => {
             let url = portal.search_url(&query, area, limit);
             let slot = fetch(&url);
@@ -407,7 +407,7 @@ fn search(app: &mut RustGisApp, more: bool) {
 }
 
 /// Starts listing a dataset's files or layers.
-fn list_files(app: &mut RustGisApp, i: usize) {
+fn list_files(app: &mut powergisApp, i: usize) {
     let st = &app.ui.opendata;
     let Some(url) = st.found.get(i).and_then(|d| d.listing.clone()) else { return };
     match Portal::new(Some(st.portal), None) {
@@ -459,7 +459,7 @@ enum Act {
 
 /// The pane: a portal (or the service's catalog), a search, and the datasets found as cards with
 /// their pictures and actions.
-pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
+pub fn dialog(app: &mut powergisApp, ui: &mut egui::Ui) {
     let t = crate::theme::Tokens::get(ui.ctx());
     let svc = app.ui.opendata.service.and_then(service);
     ui.label(egui::RichText::new(tl!(about(svc.map(|s| s.id)))).color(t.text_dim));

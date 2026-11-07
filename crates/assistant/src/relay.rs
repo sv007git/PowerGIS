@@ -1,15 +1,15 @@
 //! A loopback relay: an MCP client drives the session of the desktop app that is already open.
 //!
 //! The app starts a listener with its `ui.mcpRelay` command (off until then), and
-//! `rustgis-cli mcp --attach` connects to it. The relay is the same [`crate::mcp`] protocol as
-//! `rustgis-cli mcp`, one JSON-RPC message per line, so there is no second command protocol:
+//! `powergis-cli mcp --attach` connects to it. The relay is the same [`crate::mcp`] protocol as
+//! `powergis-cli mcp`, one JSON-RPC message per line, so there is no second command protocol:
 //! every action reaches the open [`Session`] through [`Session::run`], one undo step per command,
 //! exactly as the private-session server does.
 //!
 //! Safety: the listener binds 127.0.0.1 only ([`Relay::bind`] refuses any other address before
 //! opening a socket). Each run draws a token from the operating system's random source and writes
 //! it to a private file ([`token_path`]); a connection is dropped unless its first message is the
-//! relay's `rustgis/attach` carrying that token. The attach's `access` flag then decides what that
+//! relay's `powergis/attach` carrying that token. The attach's `access` flag then decides what that
 //! connection allows; the existing [`Server::refusal`] policy still runs per call.
 //!
 //! Limits: connections, unauthenticated connections, queued messages, the first line before the
@@ -25,7 +25,7 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, SyncSender, sync_channel};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::time::{Duration, Instant};
 
-use rustgis_engine::Session;
+use powergis_engine::Session;
 use serde_json::Value;
 
 use crate::framing::{self, MAX_LINE, Oversize, read_message_max};
@@ -34,13 +34,13 @@ use crate::mcp::{Server, expects_reply};
 mod http;
 pub use http::{HTTP_PATH, HTTP_PORT, HTTP_PORT_ENV, default_http_port, http_token, http_token_path};
 
-/// The port `rustgis-cli mcp --attach` connects to unless it names another. (GeoLibre's runner
+/// The port `powergis-cli mcp --attach` connects to unless it names another. (GeoLibre's runner
 /// is 8766; the relay takes the next one.)
 pub const DEFAULT_PORT: u16 = 8767;
 
 /// The environment variable that changes the relay's default port, for the app and
-/// `rustgis-cli mcp --attach` alike (a second app, or a port another program holds).
-pub const PORT_ENV: &str = "RUSTGIS_MCP_PORT";
+/// `powergis-cli mcp --attach` alike (a second app, or a port another program holds).
+pub const PORT_ENV: &str = "powergis_MCP_PORT";
 
 /// The port the relay listens on, and `--attach` connects to, unless one is named:
 /// [`PORT_ENV`] when it's set, else [`DEFAULT_PORT`]. A value that isn't a port is an error
@@ -96,10 +96,10 @@ const APPROVAL_WAIT: Duration = Duration::from_secs(15 * 60);
 /// client's next line check whether the relay was stopped.
 const STOP_POLL: Duration = Duration::from_millis(25);
 
-/// The connection message: `{"jsonrpc":"2.0","method":"rustgis/attach","params":{"access":bool,
+/// The connection message: `{"jsonrpc":"2.0","method":"powergis/attach","params":{"access":bool,
 /// "token":"…"}}`. It carries no commands; it proves the client is this user's own (`token`,
 /// read from [`token_path`]) and says what its `--yes` allows, before its first call.
-const ATTACH: &str = "rustgis/attach";
+const ATTACH: &str = "powergis/attach";
 
 /// The states of a queued request. The connection and the app race for it: the first to move
 /// it out of `PENDING` decides. A cancelled request never runs.
@@ -278,7 +278,7 @@ impl Shared {
     }
 }
 
-/// A run-scoped token ([`Relay::grant`]): its file, for `rustgis-cli mcp --attach PORT
+/// A run-scoped token ([`Relay::grant`]): its file, for `powergis-cli mcp --attach PORT
 /// --token-file FILE`. Dropping it revokes the token, removes the file and closes the
 /// connections that attached with it.
 pub struct Grant {
@@ -383,12 +383,12 @@ impl std::fmt::Debug for Relay {
     }
 }
 
-/// The folder that holds the run tokens. `$XDG_RUNTIME_DIR/rustgis` when that is an absolute
+/// The folder that holds the run tokens. `$XDG_RUNTIME_DIR/powergis` when that is an absolute
 /// path to a folder (the per-user runtime folder); otherwise a folder named for the user in the
 /// system's temporary folder. [`token_path`] and [`read_token`] use the same folder.
 pub fn token_dir() -> PathBuf {
     if let Some(runtime) = std::env::var_os("XDG_RUNTIME_DIR").map(PathBuf::from).filter(|p| p.is_absolute() && p.is_dir()) {
-        return runtime.join("rustgis");
+        return runtime.join("powergis");
     }
     let user: String = std::env::var("USER")
         .or_else(|_| std::env::var("USERNAME"))
@@ -397,17 +397,17 @@ pub fn token_dir() -> PathBuf {
         .filter(|c| c.is_ascii_alphanumeric() || *c == '-' || *c == '_')
         .collect();
     let user = if user.is_empty() { "user".to_string() } else { user };
-    std::env::temp_dir().join(format!("rustgis-mcp-{user}"))
+    std::env::temp_dir().join(format!("powergis-mcp-{user}"))
 }
 
 /// The token file for `port`, in [`token_dir`]. The relay writes it when it starts (readable by
-/// this user only) and removes it when it stops; `rustgis-cli mcp --attach` reads it through
+/// this user only) and removes it when it stops; `powergis-cli mcp --attach` reads it through
 /// [`read_token`], so no token ever travels through a command line, an argument or the clipboard.
 pub fn token_path(port: u16) -> PathBuf {
     token_dir().join(format!("{port}.token"))
 }
 
-/// Reads the token the running relay on `port` wrote, for `rustgis-cli mcp --attach`. The folder
+/// Reads the token the running relay on `port` wrote, for `powergis-cli mcp --attach`. The folder
 /// and file must be this user's: a regular file, not a symlink, both owned by the user running
 /// this process, and private to that user (no group or other access).
 pub fn read_token(port: u16) -> Result<String, String> {
@@ -590,7 +590,7 @@ impl Relay {
         let owner = Arc::new(Owner { shared, port, audit: Mutex::new(None), last: Mutex::new(None) });
         let accepting = Arc::clone(&owner.shared);
         std::thread::Builder::new()
-            .name("rustgis-mcp-relay".into())
+            .name("powergis-mcp-relay".into())
             .spawn(move || accept_loop(listener, accepting))
             .map_err(|e| format!("the MCP relay could not start: {e}"))?;
         Ok(Self { owner })
@@ -648,7 +648,7 @@ impl Relay {
             "started_at": crate::chatgpt::rfc3339(i64::try_from(started).unwrap_or(0)),
             "version": env!("CARGO_PKG_VERSION"),
             "token_file": shared.token_file,
-            "attach": format!("rustgis-cli mcp --attach {}", shared.port),
+            "attach": format!("powergis-cli mcp --attach {}", shared.port),
             // MCP over HTTP, once it runs (the file is written again when it starts).
             "http_url": lock(&shared.http_port).map(|p| format!("http://127.0.0.1:{p}{}", http::HTTP_PATH)),
             "http_token_file": lock(&shared.http_port).and(http_token_path()),
@@ -955,7 +955,7 @@ pub(crate) fn selects_layer(line: &str) -> bool {
     messages.iter().filter_map(|m| m.get("params").and_then(|p| p.get("arguments"))).any(|a| {
         a.get("command").and_then(Value::as_str) == Some("layer.select")
             || a.get("script").and_then(Value::as_str).is_some_and(|s| {
-                rustgis_engine::cmd::workflows::script_commands(s).is_ok_and(|lines| lines.iter().any(|(_, id, _)| id == "layer.select"))
+                powergis_engine::cmd::workflows::script_commands(s).is_ok_and(|lines| lines.iter().any(|(_, id, _)| id == "layer.select"))
             })
     })
 }
@@ -1080,7 +1080,7 @@ fn admit(stream: TcpStream, shared: &Arc<Shared>) {
         }
         streams.insert(slot.id, clone);
     }
-    let spawned = std::thread::Builder::new().name("rustgis-mcp-relay-connection".into()).spawn(move || connection(stream, &mut slot));
+    let spawned = std::thread::Builder::new().name("powergis-mcp-relay-connection".into()).spawn(move || connection(stream, &mut slot));
     if let Err(e) = spawned {
         log::warn!("MCP relay: {e}");
     }
@@ -1472,7 +1472,7 @@ mod tests {
     use std::io::{BufRead, BufReader, Write};
     use std::sync::atomic::AtomicUsize;
 
-    use rustgis_engine::{Project, Session};
+    use powergis_engine::{Project, Session};
     use serde_json::json;
 
     use super::*;
@@ -1576,9 +1576,9 @@ mod tests {
         read_token(relay.port()).unwrap()
     }
 
-    /// Attaches a client the way `rustgis-cli mcp --attach` does.
+    /// Attaches a client the way `powergis-cli mcp --attach` does.
     fn attach(client: &mut TcpStream, relay: &Relay, access: bool) {
-        let hello = json!({"jsonrpc": "2.0", "method": "rustgis/attach", "params": {"access": access, "token": token(relay)}});
+        let hello = json!({"jsonrpc": "2.0", "method": "powergis/attach", "params": {"access": access, "token": token(relay)}});
         writeln!(client, "{hello}").unwrap();
         client.flush().unwrap();
     }
@@ -1645,7 +1645,7 @@ mod tests {
         let mut s = sample();
         // A wrong token: the connection is closed and nothing was queued.
         let mut client = TcpStream::connect(("127.0.0.1", relay.port())).unwrap();
-        let bad = json!({"jsonrpc": "2.0", "method": "rustgis/attach", "params": {"access": true, "token": "not-the-token"}});
+        let bad = json!({"jsonrpc": "2.0", "method": "powergis/attach", "params": {"access": true, "token": "not-the-token"}});
         writeln!(client, "{bad}").unwrap();
         client.flush().unwrap();
         let mut input = BufReader::new(client.try_clone().unwrap());
@@ -1705,7 +1705,7 @@ mod tests {
         let mut s = sample();
         let mut client = TcpStream::connect(("127.0.0.1", relay.port())).unwrap();
         attach(&mut client, &relay, false);
-        let out = std::env::temp_dir().join(format!("rustgis-relay-test-{}.png", std::process::id()));
+        let out = std::env::temp_dir().join(format!("powergis-relay-test-{}.png", std::process::id()));
         let call = json!({"jsonrpc": "2.0", "id": 2, "method": "tools/call", "params": {
             "name": "run_command",
             "arguments": {"command": "share.exportMap", "params": {"path": out.display().to_string()}}
@@ -1978,7 +1978,7 @@ mod tests {
         let relay = Relay::bind_with(SocketAddr::from(([127, 0, 0, 1], 0)), Duration::from_secs(60), Duration::from_secs(60)).unwrap();
         let mut client = TcpStream::connect(("127.0.0.1", relay.port())).unwrap();
         let hello =
-            json!({"jsonrpc": "2.0", "method": "rustgis/attach", "params": {"access": false, "token": token(&relay), "timeout_s": 1}});
+            json!({"jsonrpc": "2.0", "method": "powergis/attach", "params": {"access": false, "token": token(&relay), "timeout_s": 1}});
         writeln!(client, "{hello}").unwrap();
         writeln!(client, "{}", add_sample_call(1)).unwrap();
         client.flush().unwrap();
@@ -2087,7 +2087,7 @@ mod tests {
         std::thread::sleep(Duration::from_millis(50));
         assert_eq!(relay.poll(&mut s), 0);
         assert_eq!(s.map().layers.len(), layers, "nothing runs while the screen is captured");
-        let png = rustgis_engine::cmd::share::map_png(&mut s, Some(80.0), Some(50.0), None).unwrap();
+        let png = powergis_engine::cmd::share::map_png(&mut s, Some(80.0), Some(50.0), None).unwrap();
         relay.finish_screen(&mut s, Ok(png), true);
         assert!(relay.screen_request().is_none());
         let meta = snapshot_meta(&reply(&client));
@@ -2152,7 +2152,7 @@ mod tests {
         relay.set_screen(true);
         let mut client = TcpStream::connect(("127.0.0.1", relay.port())).unwrap();
         attach(&mut client, &relay, false);
-        let out = std::env::temp_dir().join(format!("rustgis-snap-{}.png", std::process::id()));
+        let out = std::env::temp_dir().join(format!("powergis-snap-{}.png", std::process::id()));
         writeln!(client, "{}", snapshot_call(1, json!({"save_path": out.display().to_string()}))).unwrap();
         client.flush().unwrap();
         settle(&relay, &mut s);
@@ -2201,7 +2201,7 @@ mod tests {
 
     /// Attaches with any token, asking for file and network access or not.
     fn attach_with(client: &mut TcpStream, token: &str, access: bool) {
-        let hello = json!({"jsonrpc": "2.0", "method": "rustgis/attach", "params": {"access": access, "token": token}});
+        let hello = json!({"jsonrpc": "2.0", "method": "powergis/attach", "params": {"access": access, "token": token}});
         writeln!(client, "{hello}").unwrap();
         client.flush().unwrap();
     }
@@ -2224,7 +2224,7 @@ mod tests {
     fn relay_app_lets_agents_use_files_without_yes() {
         let relay = Relay::start(0).unwrap();
         let mut s = sample();
-        let out = std::env::temp_dir().join(format!("rustgis-relay-app-access-{}.png", std::process::id()));
+        let out = std::env::temp_dir().join(format!("powergis-relay-app-access-{}.png", std::process::id()));
         let _ = std::fs::remove_file(&out);
         let mut client = TcpStream::connect(("127.0.0.1", relay.port())).unwrap();
         attach(&mut client, &relay, false);
@@ -2254,7 +2254,7 @@ mod tests {
     fn relay_grants_are_scoped_and_revocable() {
         let relay = Relay::start(0).unwrap();
         let mut s = sample();
-        let out = std::env::temp_dir().join(format!("rustgis-relay-grant-{}.png", std::process::id()));
+        let out = std::env::temp_dir().join(format!("powergis-relay-grant-{}.png", std::process::id()));
         let _ = std::fs::remove_file(&out);
         let full = relay.grant(true).unwrap();
         let map_only = relay.grant(false).unwrap();
@@ -2306,7 +2306,7 @@ mod tests {
     fn relay_revocation_reaches_queued_requests_and_spares_reattached_connections() {
         let relay = Relay::start(0).unwrap();
         let mut s = sample();
-        let out = std::env::temp_dir().join(format!("rustgis-relay-queued-{}.png", std::process::id()));
+        let out = std::env::temp_dir().join(format!("powergis-relay-queued-{}.png", std::process::id()));
         let _ = std::fs::remove_file(&out);
         let grant = relay.grant(true).unwrap();
         let mut client = TcpStream::connect(("127.0.0.1", relay.port())).unwrap();
@@ -2475,7 +2475,7 @@ mod tests {
     #[test]
     fn relative_token_file_uses_its_current_directory() {
         use std::os::unix::fs::{DirBuilderExt, OpenOptionsExt, PermissionsExt};
-        if std::env::var_os("RUSTGIS_TEST_RELATIVE_TOKEN").is_some() {
+        if std::env::var_os("powergis_TEST_RELATIVE_TOKEN").is_some() {
             let file = std::path::Path::new("grant.token");
             assert_eq!(read_token_file(file).unwrap(), "synthetic-token");
             std::fs::set_permissions(file, std::fs::Permissions::from_mode(0o644)).unwrap();
@@ -2491,14 +2491,14 @@ mod tests {
             return;
         }
         // A child process isolates the current directory from tests running in parallel.
-        let dir = std::env::temp_dir().join(format!("rustgis-relative-token-{}", random_token().unwrap()));
+        let dir = std::env::temp_dir().join(format!("powergis-relative-token-{}", random_token().unwrap()));
         std::fs::DirBuilder::new().mode(0o700).create(&dir).unwrap();
         let mut file = std::fs::OpenOptions::new().write(true).create_new(true).mode(0o600).open(dir.join("grant.token")).unwrap();
         file.write_all(b"synthetic-token").unwrap();
         drop(file);
         let status = std::process::Command::new(std::env::current_exe().unwrap())
             .args(["--exact", "relay::tests::relative_token_file_uses_its_current_directory", "--nocapture"])
-            .env("RUSTGIS_TEST_RELATIVE_TOKEN", "1")
+            .env("powergis_TEST_RELATIVE_TOKEN", "1")
             .current_dir(&dir)
             .status()
             .unwrap();

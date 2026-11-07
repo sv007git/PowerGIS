@@ -2,14 +2,14 @@
 //! public servers ask), through the tile cache's downloads (a thread natively, fetch on the web).
 
 use egui::vec2;
-use rustgis_engine::render::rustgis_tiles::{
+use powergis_engine::render::powergis_tiles::{
     cache,
     geocode::{Geocoder, Place},
 };
 use serde_json::{Map, Value, json};
 use web_time::Instant;
 
-use crate::{RustGisApp, Slot, i18n};
+use crate::{powergisApp, Slot, i18n};
 
 type Answer = Slot<Result<Vec<u8>, String>>;
 
@@ -53,7 +53,7 @@ fn take(slot: &Answer) -> Option<Result<Vec<u8>, String>> {
 }
 
 /// Lands searches and moves geocoding runs along.
-pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
+pub fn poll(app: &mut powergisApp, ctx: &egui::Context) {
     let st = &mut app.ui.geocode;
     if let Some((g, slot)) = &st.search {
         match take(slot) {
@@ -133,7 +133,7 @@ pub fn poll(app: &mut RustGisApp, ctx: &egui::Context) {
 }
 
 /// Find Place: a search box, then the places found; one picked is zoomed to.
-pub fn find_place(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+pub fn find_place(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     let mut go = false;
     ui.horizontal(|ui| {
         let r = ui.add(egui::TextEdit::singleline(&mut app.dialogs.a).hint_text(tl!("A place or an address")).desired_width(330.0));
@@ -176,7 +176,7 @@ pub fn find_place(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
     let attribution = egui::RichText::new(tl!("Search results © OpenStreetMap contributors")).small().weak();
     ui.label(attribution);
     if let Some(p) = picked.and_then(|i| app.ui.geocode.places.get(i)).cloned() {
-        rustgis_engine::cmd::geocode::go_to_place(&mut app.session, &p);
+        powergis_engine::cmd::geocode::go_to_place(&mut app.session, &p);
         app.map.invalidate();
         return true;
     }
@@ -185,7 +185,7 @@ pub fn find_place(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 
 /// The geocoder choice shared by both dialogs: OpenStreetMap's Nominatim, Photon, or a server of
 /// one's own.
-fn provider(app: &mut RustGisApp, ui: &mut egui::Ui) {
+fn provider(app: &mut powergisApp, ui: &mut egui::Ui) {
     if !matches!(app.dialogs.mode, "nominatim" | "photon") {
         app.dialogs.mode = "nominatim";
     }
@@ -210,7 +210,7 @@ fn provider(app: &mut RustGisApp, ui: &mut egui::Ui) {
 
 /// Geocode Addresses: a table or layer, its address fields and the geocoder; the run goes on
 /// after the dialog closes, a request at a time.
-pub fn geocode(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
+pub fn geocode(app: &mut powergisApp, ui: &mut egui::Ui) -> bool {
     ui.label(egui::RichText::new(tl!("Turns a table's addresses into points: each row's address fields are joined with commas (such as street, city, country) and looked up. The public servers take up to 100 addresses a run, one a second; a server of your own takes more.")).weak());
     // A table is picked by its id, since names can repeat: `dialogs.flag` says the choice is a
     // table, and `dialogs.layer` then holds its id.
@@ -269,11 +269,11 @@ pub fn geocode(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
             params["url"] = json!(app.dialogs.b.trim());
         }
         let g = Geocoder::new(Some(app.dialogs.mode), Some(app.dialogs.b.as_str()))?;
-        let (_, queue) = rustgis_engine::cmd::geocode::addresses(&app.session, &params)?;
+        let (_, queue) = powergis_engine::cmd::geocode::addresses(&app.session, &params)?;
         if queue.is_empty() {
             return Err(tl!("The address fields are empty in every row.").to_string());
         }
-        rustgis_engine::cmd::geocode::check_batch(&g, queue.len())?;
+        powergis_engine::cmd::geocode::check_batch(&g, queue.len())?;
         app.session.notify(i18n::fmt("Geocoding {n} addresses…", &[("n", &queue.len().to_string())]), false);
         app.ui.geocode.job =
             Some(Job { g, params, queue, next: 0, found: Map::new(), waiting: None, sent: None, failed: 0, in_a_row: 0, error: None });

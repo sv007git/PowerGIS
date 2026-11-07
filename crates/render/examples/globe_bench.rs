@@ -1,9 +1,9 @@
 //! Times map renders of the sample layers, flat and globe, with parts turned off one by one:
-//! `cargo run --release -p rustgis-render --example globe_bench`.
-use rustgis_data::io::read_geojson;
-use rustgis_geom::{Coord, lonlat_to_merc};
-use rustgis_map::{Camera, Map, Projection};
-use rustgis_render::{View, render, sample_data};
+//! `cargo run --release -p powergis-render --example globe_bench`.
+use powergis_data::io::read_geojson;
+use powergis_geom::{Coord, lonlat_to_merc};
+use powergis_map::{Camera, Map, Projection};
+use powergis_render::{View, render, sample_data};
 
 fn main() {
     let mut m = Map::new("m");
@@ -23,7 +23,7 @@ fn main() {
         ("all", Box::new(|_| {})),
         ("no labels", Box::new(|m: &mut Map| m.layers.iter_mut().for_each(|l| l.labels.enabled = false))),
         ("+ no graticule", Box::new(|m: &mut Map| m.graticule = false)),
-        ("+ blank basemap", Box::new(|m: &mut Map| m.basemap = rustgis_map::Basemap::Blank)),
+        ("+ blank basemap", Box::new(|m: &mut Map| m.basemap = powergis_map::Basemap::Blank)),
         ("+ no layers", Box::new(|m: &mut Map| m.layers.iter_mut().for_each(|l| l.visible = false))),
     ];
     for (name, f) in variants {

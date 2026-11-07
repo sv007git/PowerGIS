@@ -2,9 +2,9 @@
 
 use std::path::Path;
 
-use rustgis_data::{GeometryType, photo};
-use rustgis_map::symbology::{ClassRef, ClassStyle, LABEL_SIZE, MAX_STROKES};
-use rustgis_map::{ClassMethod, Glyph, LineCap, LineJoin, LineMark, LineMarkers, LineStroke, Marker, Placements, Ramp, Renderer, Rgba};
+use powergis_data::{GeometryType, photo};
+use powergis_map::symbology::{ClassRef, ClassStyle, LABEL_SIZE, MAX_STROKES};
+use powergis_map::{ClassMethod, Glyph, LineCap, LineJoin, LineMark, LineMarkers, LineStroke, Marker, Placements, Ramp, Renderer, Rgba};
 use serde_json::{Value, json};
 
 use super::{b, f, need_feature_layer, need_layer, ps, uint};
@@ -98,7 +98,7 @@ pub fn commands() -> Vec<C> {
             .params(r#"{"layer"?: name|id | [name|id] (default: the layer selection), "to": position (0 = top; past the end, the bottom). Several keep their order, the topmost landing at "to" as one layer would, and go only to the top or the bottom (one in a group, to its group's): with 4 layers and 2 of them, 2 or more is the bottom, 1 is refused}"#),
         C::new("layer.zoomTo", "Zoom To Layer", "Layers", |s, p| {
             let ids = layer_ids(s, p)?;
-            let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(rustgis_geom::Extent::EMPTY, |e, l| e.union(&l.shown_extent()));
+            let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(powergis_geom::Extent::EMPTY, |e, l| e.union(&l.shown_extent()));
             if e.is_empty() {
                 return Err(if ids.len() > 1 { "the layers have no features" } else { "the layer has no features" }.into());
             }
@@ -133,7 +133,7 @@ pub fn commands() -> Vec<C> {
             let explicit_alpha = hex.trim().trim_start_matches('#').len() == 8;
             with(s, p, |l| {
                 let g = l.geometry_type();
-                let fill = |sym: &rustgis_map::Symbol| {
+                let fill = |sym: &powergis_map::Symbol| {
                     let mut out = sym.with_fill(c, g);
                     if g == GeometryType::Polygon {
                         // The outline is its own setting (`layer.outline`); only the fill changes.
@@ -159,7 +159,7 @@ pub fn commands() -> Vec<C> {
                     // Symbols are shared by geometry families. A polygon-only fill override
                     // leaves point markers and line strokes (including their markers) intact.
                     // A streamed layer may have other families outside the loaded window.
-                    let fill = rustgis_map::fills::FillLayer { color: Some(Rgba::rgb(0, 0, 0).with_alpha(0)), ..Default::default() };
+                    let fill = powergis_map::fills::FillLayer { color: Some(Rgba::rgb(0, 0, 0).with_alpha(0)), ..Default::default() };
                     l.fill_layers = vec![fill];
                     match &mut l.renderer {
                         Renderer::Unique { class_fills, other_fills, .. } => {
@@ -225,7 +225,7 @@ pub fn commands() -> Vec<C> {
                     return Err(format!("'{f}' is not a numeric field"));
                 }
             }
-            l.marker_rotation = field.map(|field| rustgis_map::MarkerRotation { field, counterclockwise });
+            l.marker_rotation = field.map(|field| powergis_map::MarkerRotation { field, counterclockwise });
             Ok(Value::Null)
         })
         .when(need_points)
@@ -292,7 +292,7 @@ pub fn commands() -> Vec<C> {
         .when(need_layer)
         .params(r#"{"layer"?, "min"?: scale (out beyond), "max"?: scale (in beyond)}"#),
         C::new("layer.referenceScale", "Reference Scale", "Style › Drawing", |s, p| {
-            let (lo, hi) = rustgis_map::REFERENCE_SCALES;
+            let (lo, hi) = powergis_map::REFERENCE_SCALES;
             let scale = match p.get("scale") {
                 None | Some(Value::Null) => None,
                 Some(Value::String(t)) if t.eq_ignore_ascii_case("current") => {
@@ -358,7 +358,7 @@ pub fn commands() -> Vec<C> {
             let (halo, bold, italic) = (b(p, "halo"), b(p, "bold"), b(p, "italic"));
             // A family by name, whether or not this machine has it: the project may be drawn on
             // one that does. Blank goes back to the label font.
-            let font = ps(p, "font").map(rustgis_map::symbology::font_name);
+            let font = ps(p, "font").map(powergis_map::symbology::font_name);
             // A halo's own colour ("" or null: one standing out from the text), its width in points
             // (null: the thin halo), and the letter spacing.
             let halo_color = match p.get("haloColor") {
@@ -367,8 +367,8 @@ pub fn commands() -> Vec<C> {
                 Some(Value::String(c)) if c.trim().is_empty() => Some(None),
                 Some(_) => Some(Some(s.get_color(p, "haloColor")?.ok_or("haloColor must be #RRGGBB or #RRGGBBAA")?)),
             };
-            let hw = rustgis_map::symbology::HALO_WIDTH;
-            let sp = (rustgis_map::layout::MIN_LETTER_SPACING, rustgis_map::layout::MAX_LETTER_SPACING);
+            let hw = powergis_map::symbology::HALO_WIDTH;
+            let sp = (powergis_map::layout::MIN_LETTER_SPACING, powergis_map::layout::MAX_LETTER_SPACING);
             let halo_width = match p.get("haloWidth") {
                 None => None,
                 Some(Value::Null) => Some(None),
@@ -390,7 +390,7 @@ pub fn commands() -> Vec<C> {
             let wrap_char = match p.get("wrapChar") {
                 None => None,
                 Some(Value::Null) => Some(None),
-                Some(Value::String(c)) => Some(rustgis_map::symbology::wrap_char(c)),
+                Some(Value::String(c)) => Some(powergis_map::symbology::wrap_char(c)),
                 Some(_) => return Err("wrapChar must be text (\"\" for none)".into()),
             };
             let wrap_length = match p.get("wrapLength") {
@@ -398,14 +398,14 @@ pub fn commands() -> Vec<C> {
                 Some(Value::Null) => Some(0),
                 Some(_) => {
                     let n = f(p, "wrapLength").filter(|n| *n >= 0.0).ok_or("wrapLength must be a number of characters (0 for none)")?;
-                    Some(n.min(f64::from(rustgis_map::symbology::MAX_WRAP_LENGTH)) as u32)
+                    Some(n.min(f64::from(powergis_map::symbology::MAX_WRAP_LENGTH)) as u32)
                 }
             };
             let line_align = match ps(p, "lineAlign") {
                 None if p.get("lineAlign").is_some() => return Err("lineAlign must be left, center or right".into()),
                 None => None,
                 Some(a) => Some(
-                    rustgis_map::layout::TextAlign::ALL
+                    powergis_map::layout::TextAlign::ALL
                         .into_iter()
                         .find(|t| t.code().eq_ignore_ascii_case(a.trim()))
                         .ok_or_else(|| format!("unknown lineAlign '{a}' (left, center or right)"))?,
@@ -461,7 +461,7 @@ pub fn commands() -> Vec<C> {
             if !q.is_empty()
                 && let Some(l) = s.map().layer(id)
             {
-                rustgis_data::query::parse(&q, &l.dataset)?;
+                powergis_data::query::parse(&q, &l.dataset)?;
             }
             with(s, p, |l| l.definition_query = if q.is_empty() { None } else { Some(q.clone()) })
         })
@@ -565,7 +565,7 @@ fn symbol_by(s: &mut Session, p: &Value) -> CmdResult {
             if matches!(key, "size" | "angle") && l.geometry_type() != GeometryType::Point {
                 return Err(format!("{key} works on point layers"));
             }
-            rustgis_data::query::parse(t, &l.dataset).map_err(|e| format!("{key}: {e}"))?;
+            powergis_data::query::parse(t, &l.dataset).map_err(|e| format!("{key}: {e}"))?;
         }
         let slot = match key {
             "size" => &mut by.size,
@@ -631,8 +631,8 @@ fn line_strokes(s: &mut Session, p: &Value) -> CmdResult {
             format!(
                 "stroke {}: dash is a list of 1 to {} lengths in points (dash, gap, …), each 0 to {}, not all 0",
                 i + 1,
-                rustgis_map::symbology::MAX_DASH_STEPS,
-                rustgis_map::symbology::MAX_DASH_STEP
+                powergis_map::symbology::MAX_DASH_STEPS,
+                powergis_map::symbology::MAX_DASH_STEP
             )
         };
         // A pattern out of range is an error here, so a script learns of it; a project file's is
@@ -642,7 +642,7 @@ fn line_strokes(s: &mut Session, p: &Value) -> CmdResult {
             Some(Value::Array(a)) => {
                 let steps: Vec<f32> =
                     a.iter().map(|v| v.as_f64().map(|x| x.clamp(-1e6, 1e6) as f32)).collect::<Option<_>>().ok_or_else(bad_dash)?;
-                Some(rustgis_map::symbology::Dash::new(&steps).ok_or_else(bad_dash)?)
+                Some(powergis_map::symbology::Dash::new(&steps).ok_or_else(bad_dash)?)
             }
             Some(_) => return Err(bad_dash()),
         };
@@ -675,7 +675,7 @@ fn line_strokes(s: &mut Session, p: &Value) -> CmdResult {
 /// `layer.fillLayers`: a polygon layer's stacked fills (or a class's own, with `value`, `index`
 /// or `other`), bottom first; `[]` goes back to the symbol's single fill.
 fn fill_layers(s: &mut Session, p: &Value) -> CmdResult {
-    use rustgis_map::fills::{FillLayer, FillPattern, GradientPoint, GradientShape, MAX_FILLS, Spread, Stop, Stops};
+    use powergis_map::fills::{FillLayer, FillPattern, GradientPoint, GradientShape, MAX_FILLS, Spread, Stop, Stops};
     let class = class_ref(p)?;
     let list = p.get("fills").and_then(Value::as_array).ok_or("fills is a list of fills ([] for the symbol's single fill)")?;
     if list.len() > MAX_FILLS {
@@ -753,7 +753,7 @@ fn fill_layers(s: &mut Session, p: &Value) -> CmdResult {
                 let color2 = hex("color2")?.unwrap_or(Rgba::rgb(255, 255, 255));
                 let stops = match o.get("stops") {
                     None | Some(Value::Null) => Stops::default(),
-                    Some(Value::Array(a)) if a.len() <= rustgis_map::fills::MAX_STOPS => {
+                    Some(Value::Array(a)) if a.len() <= powergis_map::fills::MAX_STOPS => {
                         let mut list = Vec::with_capacity(a.len());
                         for st in a {
                             let bad = || format!("fill {n}: each stop is [0..1, \"#RRGGBB\" or \"#RRGGBBAA\"]");
@@ -765,7 +765,7 @@ fn fill_layers(s: &mut Session, p: &Value) -> CmdResult {
                         Stops::new(list)
                     }
                     Some(_) => {
-                        return Err(format!("fill {n}: stops is a list of at most {} [0..1, \"#RRGGBB\"]", rustgis_map::fills::MAX_STOPS));
+                        return Err(format!("fill {n}: stops is a list of at most {} [0..1, \"#RRGGBB\"]", powergis_map::fills::MAX_STOPS));
                     }
                 };
                 let flag = |k: &str| -> Result<bool, String> {
@@ -778,8 +778,8 @@ fn fill_layers(s: &mut Session, p: &Value) -> CmdResult {
                 let discrete = flag("discrete")?;
                 if kind == "shapeburst" {
                     let blur = num("blur", 0.0)?;
-                    if !(0.0..=f32::from(rustgis_map::fills::MAX_BURST_BLUR)).contains(&blur) {
-                        return Err(format!("fill {n}: blur is 0 to {}", rustgis_map::fills::MAX_BURST_BLUR));
+                    if !(0.0..=f32::from(powergis_map::fills::MAX_BURST_BLUR)).contains(&blur) {
+                        return Err(format!("fill {n}: blur is 0 to {}", powergis_map::fills::MAX_BURST_BLUR));
                     }
                     let distance = match o.get("distance") {
                         None | Some(Value::Null) => None,
@@ -941,7 +941,7 @@ pub(crate) fn s_req<'a>(p: &'a Value, k: &str) -> Result<&'a str, String> {
 }
 
 /// Applies `f` to the layer named by `p` (default: active layer).
-pub(crate) fn with(s: &mut Session, p: &Value, f: impl FnOnce(&mut rustgis_map::Layer)) -> CmdResult {
+pub(crate) fn with(s: &mut Session, p: &Value, f: impl FnOnce(&mut powergis_map::Layer)) -> CmdResult {
     let id = s.layer_id(p)?;
     let l = s.map_mut().layer_mut(id).ok_or("no such layer")?;
     f(l);
@@ -949,7 +949,7 @@ pub(crate) fn with(s: &mut Session, p: &Value, f: impl FnOnce(&mut rustgis_map::
 }
 
 /// Adds a dataset to the active map, selects it and returns its id.
-pub fn add_dataset(s: &mut Session, mut ds: rustgis_data::Dataset) -> u32 {
+pub fn add_dataset(s: &mut Session, mut ds: powergis_data::Dataset) -> u32 {
     // Unique layer names keep name-based parameters unambiguous.
     let base = ds.name.clone();
     let mut i = 1;
@@ -985,7 +985,7 @@ pub(crate) fn add_photos_to(s: &mut Session, name: &str, feed: impl FnOnce(&mut 
     // The reader took no more than there is room for; `take` keeps that so if it ever changes.
     let added = ds.features.len().min(room);
     let extent =
-        ds.features.iter().take(added).filter_map(|f| f.geometry.as_ref()).fold(rustgis_geom::Extent::EMPTY, |e, g| e.union(&g.extent()));
+        ds.features.iter().take(added).filter_map(|f| f.geometry.as_ref()).fold(powergis_geom::Extent::EMPTY, |e, g| e.union(&g.extent()));
     let id = match existing {
         Some(id) => {
             let l = s.map_mut().layer_mut(id).ok_or("no such layer")?;
@@ -1065,7 +1065,7 @@ fn add_photos(s: &mut Session, p: &Value) -> CmdResult {
 /// A file picked inside a File Geodatabase stands for the geodatabase (file dialogs pick files,
 /// not the folder): `layer.addData` adds it and `info.fileLayers` lists its layers.
 fn gdb_path(path: &str) -> std::borrow::Cow<'_, str> {
-    match rustgis_data::source::gdb_of(Path::new(path)) {
+    match powergis_data::source::gdb_of(Path::new(path)) {
         Some(d) => d.display().to_string().into(),
         None => path.into(),
     }
@@ -1076,15 +1076,15 @@ fn gdb_path(path: &str) -> std::borrow::Cow<'_, str> {
 #[cfg(not(target_arch = "wasm32"))]
 fn add_geodatabase(s: &mut Session, p: &Value, path: &str) -> CmdResult {
     let layer = ps(p, "layer").map(str::trim).filter(|l| !l.is_empty());
-    let read = match rustgis_data::filegdb::read_dir(Path::new(path), layer) {
+    let read = match powergis_data::filegdb::read_dir(Path::new(path), layer) {
         Ok(read) => read,
-        Err(e) if rustgis_data::source::gdal::available() => {
+        Err(e) if powergis_data::source::gdal::available() => {
             return add_gdal(s, p, path).map_err(|g| format!("{path}: {e}; through GDAL: {g}"));
         }
         Err(e) => return Err(format!("{path}: {e}")),
     };
     let reads =
-        read.layers.into_iter().map(|(dataset, report)| rustgis_data::io::LayerRead { dataset, report, styles: Vec::new() }).collect();
+        read.layers.into_iter().map(|(dataset, report)| powergis_data::io::LayerRead { dataset, report, styles: Vec::new() }).collect();
     // The tables read, then those it couldn't read (compressed, raster fields), through GDAL when it
     // is installed; else, or if GDAL can't either, said. The second go on whether the first added.
     let mut results: Vec<Value> = Vec::new();
@@ -1093,7 +1093,7 @@ fn add_geodatabase(s: &mut Session, p: &Value, path: &str) -> CmdResult {
         Ok(r) => results.push(r),
         Err(e) => failed.push(e),
     }
-    let gdal = rustgis_data::source::gdal::available();
+    let gdal = powergis_data::source::gdal::available();
     for (table, why) in read.unread {
         let mut q = p.clone();
         if let Some(o) = q.as_object_mut() {
@@ -1133,16 +1133,16 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
     let scan = super::raster::wants_scan(p, path)?;
     // A photo: a point in the photo layer (one without a GPS position is named and left out). In the
     // browser `add_photos` asks for an upload, so a JPEG isn't taken for a scan there either.
-    if !scan && rustgis_data::photo::is_photo_name(path) {
+    if !scan && powergis_data::photo::is_photo_name(path) {
         let name = ps(p, "name").map(str::trim).filter(|n| !n.is_empty()).unwrap_or(PHOTOS).to_string();
         return add_photos(s, &json!({"paths": [path], "name": name}));
     }
-    if rustgis_data::raster::is_raster_name(path) {
+    if powergis_data::raster::is_raster_name(path) {
         return super::raster::add_path(s, path, ps(p, "name").map(str::trim).filter(|n| !n.is_empty()), scan);
     }
     // A Zarr store's folder: its first variable, or the one "layer" names.
     #[cfg(not(target_arch = "wasm32"))]
-    if rustgis_data::raster::zarr::is_store(Path::new(path)) {
+    if powergis_data::raster::zarr::is_store(Path::new(path)) {
         let mut q = json!({"path": path});
         for (from, to) in [("layer", "variable"), ("name", "name"), ("crs", "crs")] {
             if let Some(v) = p.get(from) {
@@ -1152,13 +1152,13 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
         return super::zarr::add(s, &q);
     }
     #[cfg(not(target_arch = "wasm32"))]
-    if rustgis_data::raster::gdal::is_gdal_raster_name(path) {
+    if powergis_data::raster::gdal::is_gdal_raster_name(path) {
         return super::raster::add_gdal_path(s, p, path);
     }
     if path.to_ascii_lowercase().ends_with(".rgislyr") {
         return add_layer_file(s, path);
     }
-    if rustgis_data::source::is_source_name(path) {
+    if powergis_data::source::is_source_name(path) {
         return add_source(s, p, Origin::Path(path));
     }
     // A large GeoJSON FeatureCollection (any, with `"stream": true`) is read in place, streamed
@@ -1167,14 +1167,14 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
     #[cfg(not(target_arch = "wasm32"))]
     if is_geojson(path)
         && b(p, "stream").unwrap_or_else(|| {
-            std::fs::metadata(path).is_ok_and(|m| m.is_file() && m.len() > rustgis_data::source::geojson::IN_PLACE_ABOVE)
+            std::fs::metadata(path).is_ok_and(|m| m.is_file() && m.len() > powergis_data::source::geojson::IN_PLACE_ABOVE)
         })
     {
         let name = Path::new(path).file_stem().and_then(|n| n.to_str()).unwrap_or("layer");
-        match rustgis_data::source::geojson::GeoJsonSource::open_path(Path::new(path), name) {
+        match powergis_data::source::geojson::GeoJsonSource::open_path(Path::new(path), name) {
             Ok(src) => return add_source_with(s, p, Origin::Path(path), Some(Box::new(src))),
             // Not a FeatureCollection: read whole below.
-            Err(rustgis_data::DataError::Unsupported(_)) => {}
+            Err(powergis_data::DataError::Unsupported(_)) => {}
             Err(e) => return Err(format!("{path}: {e}")),
         }
     }
@@ -1188,16 +1188,16 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
     if path.to_ascii_lowercase().ends_with(".shp")
         && let Some(crs) = ps(p, "crs").map(str::trim).filter(|c| !c.is_empty())
     {
-        let crs = rustgis_data::raster::Crs::parse(crs)?;
+        let crs = powergis_data::raster::Crs::parse(crs)?;
         let name = Path::new(path).file_stem().and_then(|n| n.to_str()).unwrap_or("layer");
         let stream = b(p, "stream").unwrap_or_else(|| {
-            rustgis_data::source::shp::record_count(Path::new(path)).is_some_and(|n| n > rustgis_map::source::STREAM_ABOVE)
+            powergis_data::source::shp::record_count(Path::new(path)).is_some_and(|n| n > powergis_map::source::STREAM_ABOVE)
         });
         if stream {
-            let src = rustgis_data::source::shp::ShpSource::open_path_in(Path::new(path), name, Some(crs)).map_err(|e| e.to_string())?;
+            let src = powergis_data::source::shp::ShpSource::open_path_in(Path::new(path), name, Some(crs)).map_err(|e| e.to_string())?;
             return add_source_with(s, p, Origin::Path(path), Some(Box::new(src)));
         }
-        let mut read = rustgis_data::io::read_shapefile_in(Path::new(path), name, Some(crs)).map_err(|e| e.to_string())?;
+        let mut read = powergis_data::io::read_shapefile_in(Path::new(path), name, Some(crs)).map_err(|e| e.to_string())?;
         read.0.source = Some(path.to_string());
         return add_read(s, p, read);
     }
@@ -1205,7 +1205,7 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
     #[cfg(not(target_arch = "wasm32"))]
     if path.to_ascii_lowercase().ends_with(".shp")
         && b(p, "stream").unwrap_or_else(|| {
-            rustgis_data::source::shp::record_count(Path::new(path)).is_some_and(|n| n > rustgis_map::source::STREAM_ABOVE)
+            powergis_data::source::shp::record_count(Path::new(path)).is_some_and(|n| n > powergis_map::source::STREAM_ABOVE)
         })
     {
         return add_source(s, p, Origin::Path(path));
@@ -1223,13 +1223,13 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
         return super::tiles::add(s, &q);
     }
     // So is an MBTiles archive, read in place a tile at a time.
-    if rustgis_data::mbtiles::is_mbtiles_name(path) {
+    if powergis_data::mbtiles::is_mbtiles_name(path) {
         if cfg!(target_arch = "wasm32") {
             return Err(format!("{path}: in the web app, add the MBTiles file from this computer (Home › Add › Add Data)"));
         }
         let full = std::path::absolute(path).map(|p| p.display().to_string()).map_err(|e| format!("{path}: {e}"))?;
         // Read now, so a file that isn't an archive is said at once rather than when it draws.
-        crate::render::rustgis_tiles::mbtiles::info(&full)?;
+        crate::render::powergis_tiles::mbtiles::info(&full)?;
         let mut q = json!({"url": full, "kind": "mbtiles", "top": true});
         if let Some(n) = ps(p, "name") {
             q["name"] = json!(n);
@@ -1237,19 +1237,19 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
         return super::tiles::add(s, &q);
     }
     #[cfg(not(target_arch = "wasm32"))]
-    if rustgis_data::filegdb::is_geodatabase(Path::new(path)) {
+    if powergis_data::filegdb::is_geodatabase(Path::new(path)) {
         return add_geodatabase(s, p, path);
     }
     #[cfg(not(target_arch = "wasm32"))]
-    if rustgis_data::source::gdal::is_gdal_name(path) {
+    if powergis_data::source::gdal::is_gdal_name(path) {
         return add_gdal(s, p, path);
     }
     #[cfg(not(target_arch = "wasm32"))]
-    if rustgis_data::source::duckdb::is_duckdb_name(path) {
-        return add_tables(s, p, &rustgis_data::source::duckdb::Database::File(path.into()));
+    if powergis_data::source::duckdb::is_duckdb_name(path) {
+        return add_tables(s, p, &powergis_data::source::duckdb::Database::File(path.into()));
     }
     // A spreadsheet: one sheet ("layer"), read like delimited text.
-    if rustgis_data::sheets::is_sheet_name(path) {
+    if powergis_data::sheets::is_sheet_name(path) {
         let meta = std::fs::metadata(path).map_err(|e| format!("{path}: {e}"))?;
         if meta.len() > super::raster::MAX_UPLOAD_BYTES as u64 {
             return Err(format!("{path} is too large to open"));
@@ -1264,7 +1264,7 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
     if large_osm(path) {
         return add_gdal(s, p, path);
     }
-    if rustgis_data::io::is_multi_layer_name(path) {
+    if powergis_data::io::is_multi_layer_name(path) {
         let meta = std::fs::metadata(path).map_err(|e| format!("{path}: {e}"))?;
         if meta.len() > super::raster::MAX_UPLOAD_BYTES as u64 {
             return Err(format!("{path} is too large to open"));
@@ -1276,14 +1276,14 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
     let delimited = read_delimited(p, path, || {
         let meta = std::fs::metadata(path).map_err(|e| format!("{path}: {e}"))?;
         // The limit the text readers keep without options too.
-        if meta.len() > rustgis_data::io::MAX_BYTES {
+        if meta.len() > powergis_data::io::MAX_BYTES {
             return Err(format!("{path} is too large to open"));
         }
         std::fs::read(path).map_err(|e| format!("{path}: {e}"))
     })?;
     let read = match delimited {
         Some(read) => read,
-        None => rustgis_data::io::read_path(Path::new(path)).map_err(|e| format!("{path}: {e}"))?,
+        None => powergis_data::io::read_path(Path::new(path)).map_err(|e| format!("{path}: {e}"))?,
     };
     add_read(s, p, read)
 }
@@ -1294,45 +1294,45 @@ fn add_data(s: &mut Session, p: &Value) -> CmdResult {
 pub(crate) fn add_layers(s: &mut Session, p: &Value, file_name: &str, bytes: &[u8]) -> CmdResult {
     // A LandXML file in a coordinate system it doesn't say.
     let crs = ps(p, "crs").map(str::trim).filter(|c| !c.is_empty());
-    let landxml = rustgis_data::landxml::is_landxml_name(file_name)
+    let landxml = powergis_data::landxml::is_landxml_name(file_name)
         || (file_name.to_ascii_lowercase().ends_with(".xml")
-            && rustgis_data::landxml::looks_like_landxml(&String::from_utf8_lossy(bytes.get(..bytes.len().min(4096)).unwrap_or(bytes))));
+            && powergis_data::landxml::looks_like_landxml(&String::from_utf8_lossy(bytes.get(..bytes.len().min(4096)).unwrap_or(bytes))));
     let lower = file_name.to_ascii_lowercase();
     let kml = lower.ends_with(".kml") || lower.ends_with(".kmz");
     // A KML's ground overlays (pictures) are raster layers, added after its placemarks.
     let overlays = if kml && ps(p, "layer").is_none() { ground_overlays(s, file_name, bytes) } else { Vec::new() };
     // A DXF drawing: its coordinate system (it never says) and one of its own layers.
-    let dxf = rustgis_data::dxf::is_dxf_name(file_name);
+    let dxf = powergis_data::dxf::is_dxf_name(file_name);
     let mut reads = match crs.filter(|_| landxml) {
         _ if lower.ends_with(".zip") && crs.is_some() => {
-            let crs = crs.map(rustgis_data::raster::Crs::parse).transpose()?;
-            rustgis_data::io::read_zip_in(file_name, bytes, crs)
+            let crs = crs.map(powergis_data::raster::Crs::parse).transpose()?;
+            powergis_data::io::read_zip_in(file_name, bytes, crs)
                 .map_err(|e| e.to_string())?
                 .into_iter()
-                .map(|(dataset, report)| rustgis_data::io::LayerRead { dataset, report, styles: Vec::new() })
+                .map(|(dataset, report)| powergis_data::io::LayerRead { dataset, report, styles: Vec::new() })
                 .collect()
         }
         _ if dxf => {
-            let opts = rustgis_data::dxf::Options {
-                crs: crs.map(rustgis_data::raster::Crs::parse).transpose()?,
+            let opts = powergis_data::dxf::Options {
+                crs: crs.map(powergis_data::raster::Crs::parse).transpose()?,
                 layer: ps(p, "layer").map(str::trim).filter(|l| !l.is_empty()),
                 paper_space: b(p, "paperSpace").unwrap_or(false),
             };
-            rustgis_data::dxf::read(file_name, bytes, &opts)
+            powergis_data::dxf::read(file_name, bytes, &opts)
                 .map_err(|e| e.to_string())?
                 .into_iter()
-                .map(|(dataset, report)| rustgis_data::io::LayerRead { dataset, report, styles: Vec::new() })
+                .map(|(dataset, report)| powergis_data::io::LayerRead { dataset, report, styles: Vec::new() })
                 .collect()
         }
         Some(c) => {
-            let crs = rustgis_data::raster::Crs::parse(c)?;
-            rustgis_data::landxml::read(file_name, bytes, Some(crs))
+            let crs = powergis_data::raster::Crs::parse(c)?;
+            powergis_data::landxml::read(file_name, bytes, Some(crs))
                 .map_err(|e| e.to_string())?
                 .into_iter()
-                .map(|(dataset, report)| rustgis_data::io::LayerRead { dataset, report, styles: Vec::new() })
+                .map(|(dataset, report)| powergis_data::io::LayerRead { dataset, report, styles: Vec::new() })
                 .collect()
         }
-        None => match rustgis_data::io::read_layers(file_name, bytes) {
+        None => match powergis_data::io::read_layers(file_name, bytes) {
             Ok(r) => r,
             // A document of overlays only.
             Err(_) if !overlays.is_empty() => Vec::new(),
@@ -1359,8 +1359,8 @@ fn add_reads(
     s: &mut Session,
     p: &Value,
     file_name: &str,
-    reads: Vec<rustgis_data::io::LayerRead>,
-    overlays: Vec<(String, rustgis_data::raster::Raster)>,
+    reads: Vec<powergis_data::io::LayerRead>,
+    overlays: Vec<(String, powergis_data::raster::Raster)>,
 ) -> CmdResult {
     let mut added = Vec::new();
     let mut failed = Vec::new();
@@ -1408,8 +1408,8 @@ fn add_reads(
 
 /// A KML or KMZ's ground overlays as rasters: pictures inside a KMZ, or files beside a KML on
 /// disk (by a relative path that stays in its folder). Overlays that can't be drawn are said.
-fn ground_overlays(s: &mut Session, file_name: &str, bytes: &[u8]) -> Vec<(String, rustgis_data::raster::Raster)> {
-    let (found, undrawn) = match rustgis_data::kml::ground_overlays(file_name, bytes) {
+fn ground_overlays(s: &mut Session, file_name: &str, bytes: &[u8]) -> Vec<(String, powergis_data::raster::Raster)> {
+    let (found, undrawn) = match powergis_data::kml::ground_overlays(file_name, bytes) {
         Ok(v) => v,
         Err(_) => return Vec::new(),
     };
@@ -1436,7 +1436,7 @@ fn ground_overlays(s: &mut Session, file_name: &str, bytes: &[u8]) -> Vec<(Strin
             notes.push(format!("{} (its picture {href} isn't in the file or beside it)", g.name));
             continue;
         };
-        match rustgis_data::raster::from_image(&g.name, &picture, g.bbox, g.rotation) {
+        match powergis_data::raster::from_image(&g.name, &picture, g.bbox, g.rotation) {
             Ok(r) => out.push((g.name.clone(), r)),
             Err(e) => notes.push(format!("{} ({e})", g.name)),
         }
@@ -1452,8 +1452,8 @@ fn ground_overlays(s: &mut Session, file_name: &str, bytes: &[u8]) -> Vec<(Strin
 
 /// Draws a layer in the styles its file declares (KML): unique values of its `style` field, each
 /// style's colours and widths, the layer's default symbol for anything a style leaves unset.
-fn apply_styles(s: &mut Session, id: u32, styles: &[(String, rustgis_data::kml::Style)]) {
-    use rustgis_map::Symbol;
+fn apply_styles(s: &mut Session, id: u32, styles: &[(String, powergis_data::kml::Style)]) {
+    use powergis_map::Symbol;
     // A legend of hundreds of styles helps no one; such files keep the default symbol.
     if styles.is_empty() || styles.len() > 64 {
         return;
@@ -1527,69 +1527,69 @@ fn apply_styles(s: &mut Session, id: u32, styles: &[(String, rustgis_data::kml::
 fn file_layers(_s: &mut Session, p: &Value) -> CmdResult {
     let path = s_req(p, "path")?;
     let path = &*gdb_path(path);
-    let err = |e: rustgis_data::DataError| format!("{path}: {e}");
+    let err = |e: powergis_data::DataError| format!("{path}: {e}");
     // A geodatabase read without GDAL; through GDAL if it can't be and GDAL is installed.
     #[cfg(not(target_arch = "wasm32"))]
-    if rustgis_data::filegdb::is_geodatabase(Path::new(path)) {
-        match rustgis_data::filegdb::layers(Path::new(path)) {
+    if powergis_data::filegdb::is_geodatabase(Path::new(path)) {
+        match powergis_data::filegdb::layers(Path::new(path)) {
             Ok(layers) => return Ok(json!({"count": layers.len(), "layers": layers})),
-            Err(_) if rustgis_data::source::gdal::available() => {}
+            Err(_) if powergis_data::source::gdal::available() => {}
             Err(e) => return Err(err(e)),
         }
     }
     #[cfg(not(target_arch = "wasm32"))]
-    if rustgis_data::source::gdal::is_gdal_name(path) {
-        let layers = rustgis_data::source::gdal::layers(Path::new(path)).map_err(err)?;
+    if powergis_data::source::gdal::is_gdal_name(path) {
+        let layers = powergis_data::source::gdal::layers(Path::new(path)).map_err(err)?;
         return Ok(json!({"count": layers.len(), "layers": layers}));
     }
     #[cfg(not(target_arch = "wasm32"))]
-    if rustgis_data::source::duckdb::is_duckdb_name(path) {
-        let tables = rustgis_data::source::duckdb::tables(Path::new(path)).map_err(err)?;
+    if powergis_data::source::duckdb::is_duckdb_name(path) {
+        let tables = powergis_data::source::duckdb::tables(Path::new(path)).map_err(err)?;
         let layers: Vec<String> = tables.iter().map(|t| t.label()).collect();
         return Ok(json!({"count": layers.len(), "layers": layers}));
     }
-    if rustgis_data::source::is_source_name(path) {
-        let layers = rustgis_data::source::layers(Path::new(path)).map_err(err)?;
+    if powergis_data::source::is_source_name(path) {
+        let layers = powergis_data::source::layers(Path::new(path)).map_err(err)?;
         return Ok(json!({"count": layers.len(), "layers": layers}));
     }
     if !Path::new(path).is_file() {
         return Err(format!("{path}: no such file"));
     }
-    if rustgis_data::sheets::is_sheet_name(path) {
+    if powergis_data::sheets::is_sheet_name(path) {
         let meta = std::fs::metadata(path).map_err(|e| format!("{path}: {e}"))?;
         if meta.len() > super::raster::MAX_UPLOAD_BYTES as u64 {
             return Err(format!("{path} is too large to open"));
         }
         let bytes = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
-        let layers = rustgis_data::sheets::sheet_names(&bytes).map_err(err)?;
+        let layers = powergis_data::sheets::sheet_names(&bytes).map_err(err)?;
         return Ok(json!({"count": layers.len(), "layers": layers}));
     }
     #[cfg(not(target_arch = "wasm32"))]
     if large_osm(path) {
-        let layers = rustgis_data::source::gdal::layers(Path::new(path)).map_err(err)?;
+        let layers = powergis_data::source::gdal::layers(Path::new(path)).map_err(err)?;
         return Ok(json!({"count": layers.len(), "layers": layers}));
     }
     // A DXF drawing's own layers (the ones it draws on), picked with "layer".
-    if rustgis_data::dxf::is_dxf_name(path) {
+    if powergis_data::dxf::is_dxf_name(path) {
         let meta = std::fs::metadata(path).map_err(|e| format!("{path}: {e}"))?;
-        if meta.len() > rustgis_data::io::MAX_BYTES {
+        if meta.len() > powergis_data::io::MAX_BYTES {
             return Err(format!("{path} is too large to open"));
         }
         let bytes = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
-        let layers = rustgis_data::dxf::layers(path, &bytes).map_err(err)?;
+        let layers = powergis_data::dxf::layers(path, &bytes).map_err(err)?;
         return Ok(json!({"count": layers.len(), "layers": layers}));
     }
-    if rustgis_data::io::is_multi_layer_name(path) {
+    if powergis_data::io::is_multi_layer_name(path) {
         let meta = std::fs::metadata(path).map_err(|e| format!("{path}: {e}"))?;
         if meta.len() > super::raster::MAX_UPLOAD_BYTES as u64 {
             return Err(format!("{path} is too large to open"));
         }
         let bytes = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
-        let layers: Vec<String> = rustgis_data::io::read_layers(path, &bytes).map_err(err)?.into_iter().map(|l| l.dataset.name).collect();
+        let layers: Vec<String> = powergis_data::io::read_layers(path, &bytes).map_err(err)?.into_iter().map(|l| l.dataset.name).collect();
         return Ok(json!({"count": layers.len(), "layers": layers}));
     }
     let ext = Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
-    if !rustgis_data::io::READ_EXTENSIONS.contains(&ext.as_str()) && !rustgis_data::raster::is_raster_name(path) {
+    if !powergis_data::io::READ_EXTENSIONS.contains(&ext.as_str()) && !powergis_data::raster::is_raster_name(path) {
         return Err(format!("{path}: not a data file PowerGIS reads"));
     }
     let name = Path::new(path).file_stem().and_then(|n| n.to_str()).unwrap_or("layer");
@@ -1609,13 +1609,13 @@ pub(crate) enum Origin<'a> {
     Bytes(&'a str, std::sync::Arc<Vec<u8>>),
     /// A PostGIS table, always opened by the caller (desktop only).
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    Postgis(&'a rustgis_map::source::PostgisOrigin),
+    Postgis(&'a powergis_map::source::PostgisOrigin),
     /// A MySQL or MariaDB table, always opened by the caller (desktop only).
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    Mysql(&'a rustgis_map::source::MysqlOrigin),
+    Mysql(&'a powergis_map::source::MysqlOrigin),
     /// A SQL Server table, always opened by the caller (desktop only).
     #[cfg_attr(target_arch = "wasm32", allow(dead_code))]
-    Sqlserver(&'a rustgis_map::source::SqlServerOrigin),
+    Sqlserver(&'a powergis_map::source::SqlServerOrigin),
 }
 
 /// Most GeoPackage tables added at once.
@@ -1637,16 +1637,16 @@ fn add_source_with(
     s: &mut Session,
     p: &Value,
     origin: Origin<'_>,
-    mut opened: Option<Box<dyn rustgis_data::source::FeatureSource>>,
+    mut opened: Option<Box<dyn powergis_data::source::FeatureSource>>,
 ) -> CmdResult {
-    use rustgis_data::source;
+    use powergis_data::source;
     let label = match &origin {
         Origin::Path(p) | Origin::Bytes(p, _) => p.to_string(),
         Origin::Postgis(o) => o.database.clone(),
         Origin::Mysql(o) => o.database.clone(),
         Origin::Sqlserver(o) => o.database.clone(),
     };
-    let err = |e: rustgis_data::DataError| format!("{label}: {e}");
+    let err = |e: powergis_data::DataError| format!("{label}: {e}");
     // Tables past the cap, said in the result as well as in a notice, so the CLI, the MCP server
     // and the AI Assistant know the file holds more than was added.
     let mut skipped: Vec<String> = Vec::new();
@@ -1689,7 +1689,7 @@ fn add_source_with(
                 Origin::Path(path) => source::open_path(Path::new(path), table.as_deref()),
                 Origin::Bytes(name, bytes) => source::open_shared(name, bytes.clone(), table.as_deref()),
                 Origin::Postgis(_) | Origin::Mysql(_) | Origin::Sqlserver(_) => {
-                    Err(rustgis_data::DataError::Format("the table isn't open".into()))
+                    Err(powergis_data::DataError::Format("the table isn't open".into()))
                 }
             }
             .map_err(err)?,
@@ -1699,7 +1699,7 @@ fn add_source_with(
         // of points; its colours come from a sample of it.
         let lidar = info.format == "LiDAR";
         let style = if lidar { lidar_renderer(src.as_ref(), s.map().layers.len() as u32) } else { None };
-        let stream = b(p, "stream").unwrap_or(lidar || info.count.is_none_or(|c| c > rustgis_map::source::STREAM_ABOVE));
+        let stream = b(p, "stream").unwrap_or(lidar || info.count.is_none_or(|c| c > powergis_map::source::STREAM_ABOVE));
         // A name given applies to a single table.
         let name = match ps(p, "name").map(str::trim).filter(|n| !n.is_empty()) {
             Some(n) if ids.is_empty() => n.to_string(),
@@ -1709,16 +1709,16 @@ fn add_source_with(
             let mut layer = match &origin {
                 Origin::Path(path) => {
                     let full = std::path::absolute(path).map(|p| p.display().to_string()).unwrap_or_else(|_| path.to_string());
-                    rustgis_map::source::SourceLayer::from_path(full, table.clone(), src)
+                    powergis_map::source::SourceLayer::from_path(full, table.clone(), src)
                 }
-                Origin::Bytes(file, bytes) => rustgis_map::source::SourceLayer::from_bytes(*file, bytes.clone(), table.clone(), src),
-                Origin::Postgis(o) => rustgis_map::source::SourceLayer::from_postgis((*o).clone(), src),
-                Origin::Mysql(o) => rustgis_map::source::SourceLayer::from_mysql((*o).clone(), src),
-                Origin::Sqlserver(o) => rustgis_map::source::SourceLayer::from_sqlserver((*o).clone(), src),
+                Origin::Bytes(file, bytes) => powergis_map::source::SourceLayer::from_bytes(*file, bytes.clone(), table.clone(), src),
+                Origin::Postgis(o) => powergis_map::source::SourceLayer::from_postgis((*o).clone(), src),
+                Origin::Mysql(o) => powergis_map::source::SourceLayer::from_mysql((*o).clone(), src),
+                Origin::Sqlserver(o) => powergis_map::source::SourceLayer::from_sqlserver((*o).clone(), src),
             };
             if info.format == "Shapefile" {
                 layer.shapefile_crs =
-                    ps(p, "crs").map(str::trim).filter(|c| !c.is_empty()).map(rustgis_data::raster::Crs::parse).transpose()?;
+                    ps(p, "crs").map(str::trim).filter(|c| !c.is_empty()).map(powergis_data::raster::Crs::parse).transpose()?;
             }
             let unique = unique_name(s, &name);
             for n in &info.notes {
@@ -1755,7 +1755,7 @@ fn add_source_with(
         }
     }
     if empty_before {
-        let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(rustgis_geom::Extent::EMPTY, |e, l| e.union(&l.extent()));
+        let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(powergis_geom::Extent::EMPTY, |e, l| e.union(&l.extent()));
         if !e.is_empty() {
             s.zoom_to(&e);
         }
@@ -1797,12 +1797,12 @@ const ASPRS: [(i64, [u8; 3]); 13] = [
 
 /// A point cloud's style: small dots by ASPRS class when it has several, else by elevation; from a
 /// sample of its points.
-fn lidar_renderer(src: &dyn rustgis_data::source::FeatureSource, seed: u32) -> Option<Renderer> {
+fn lidar_renderer(src: &dyn powergis_data::source::FeatureSource, seed: u32) -> Option<Renderer> {
     let info = src.info();
-    let sample = src.read(&rustgis_data::source::Request { extent: None, limit: 100_000 }).ok()?;
-    let mut ds = rustgis_data::Dataset::new(info.name.clone(), GeometryType::Point, info.fields.clone());
+    let sample = src.read(&powergis_data::source::Request { extent: None, limit: 100_000 }).ok()?;
+    let mut ds = powergis_data::Dataset::new(info.name.clone(), GeometryType::Point, info.fields.clone());
     ds.features = sample.features.into();
-    let mut base = rustgis_map::Symbol::default_for(GeometryType::Point, seed);
+    let mut base = powergis_map::Symbol::default_for(GeometryType::Point, seed);
     base.size = 2.0;
     base.stroke_width = 0.0;
     let classes = ds.field_index("classification").map(|i| ds.unique_values(i, &[], 64).len()).unwrap_or(0);
@@ -1826,7 +1826,7 @@ fn lidar_renderer(src: &dyn rustgis_data::source::FeatureSource, seed: u32) -> O
 #[cfg(not(target_arch = "wasm32"))]
 fn past_cap_shapefile(path: &str, p: &Value) -> Option<Value> {
     let shp = Path::new(path);
-    let past = |f: &Path| std::fs::metadata(f).is_ok_and(|m| m.len() > rustgis_data::io::MAX_BYTES);
+    let past = |f: &Path| std::fs::metadata(f).is_ok_and(|m| m.len() > powergis_data::io::MAX_BYTES);
     if !path.to_ascii_lowercase().ends_with(".shp") || b(p, "stream").is_some() || !(past(shp) || past(&shp.with_extension("dbf"))) {
         return None;
     }
@@ -1840,8 +1840,8 @@ fn past_cap_shapefile(path: &str, p: &Value) -> Option<Value> {
 #[cfg(not(target_arch = "wasm32"))]
 fn large_osm(path: &str) -> bool {
     path.to_ascii_lowercase().ends_with(".pbf")
-        && std::fs::metadata(path).is_ok_and(|m| m.len() > rustgis_data::io::MAX_BYTES)
-        && rustgis_data::source::gdal::available()
+        && std::fs::metadata(path).is_ok_and(|m| m.len() > powergis_data::io::MAX_BYTES)
+        && powergis_data::source::gdal::available()
 }
 
 /// Adds a file GDAL reads (KML, GPX, File Geodatabase, DXF…): each layer is converted once into an
@@ -1851,7 +1851,7 @@ fn large_osm(path: &str) -> bool {
 fn add_gdal(s: &mut Session, p: &Value, path: &str) -> CmdResult {
     let crs = ps(p, "crs").map(str::trim).filter(|c| !c.is_empty());
     let (converted, failed) =
-        rustgis_data::source::gdal::convert(Path::new(path), ps(p, "layer"), crs).map_err(|e| format!("{path}: {e}"))?;
+        powergis_data::source::gdal::convert(Path::new(path), ps(p, "layer"), crs).map_err(|e| format!("{path}: {e}"))?;
     // Layers GDAL couldn't convert are said, so the file isn't taken for whole.
     for f in failed {
         s.notify(format!("{path}: {f}"), true);
@@ -1863,7 +1863,7 @@ fn add_gdal(s: &mut Session, p: &Value, path: &str) -> CmdResult {
             path: c.path,
             name: c.name,
             unprojected: c.unprojected,
-            origin: ConvertedOrigin::Gdal(rustgis_map::source::GdalOrigin {
+            origin: ConvertedOrigin::Gdal(powergis_map::source::GdalOrigin {
                 path: original.clone(),
                 layer: c.layer,
                 family: c.family,
@@ -1877,8 +1877,8 @@ fn add_gdal(s: &mut Session, p: &Value, path: &str) -> CmdResult {
 /// The database a command names in `database`, with the `password` given remembered for the
 /// session.
 #[cfg(not(target_arch = "wasm32"))]
-pub fn database_param(p: &Value) -> Option<rustgis_data::source::duckdb::Database> {
-    use rustgis_data::source::duckdb::{Database, remember_password};
+pub fn database_param(p: &Value) -> Option<powergis_data::source::duckdb::Database> {
+    use powergis_data::source::duckdb::{Database, remember_password};
     let d = ps(p, "database").map(str::trim).filter(|d| !d.is_empty())?;
     let db = match Database::parse(d) {
         Database::File(f) => Database::File(std::path::absolute(&f).unwrap_or(f)),
@@ -1895,9 +1895,9 @@ pub fn database_param(p: &Value) -> Option<rustgis_data::source::duckdb::Databas
 /// The database an SQL query names in `database` ([`database_param`]): a DuckDB file or a
 /// PostgreSQL connection, never a MySQL, MariaDB or SQL Server one (read live instead).
 #[cfg(not(target_arch = "wasm32"))]
-pub fn sql_database_param(p: &Value) -> Result<Option<rustgis_data::source::duckdb::Database>, String> {
+pub fn sql_database_param(p: &Value) -> Result<Option<powergis_data::source::duckdb::Database>, String> {
     match database_param(p) {
-        Some(rustgis_data::source::duckdb::Database::Mysql(_) | rustgis_data::source::duckdb::Database::Sqlserver(_)) => {
+        Some(powergis_data::source::duckdb::Database::Mysql(_) | powergis_data::source::duckdb::Database::Sqlserver(_)) => {
             Err("SQL queries don't run on MySQL, MariaDB or SQL Server databases: add their tables with Home › Add › Add Data › Database…"
                 .into())
         }
@@ -1920,7 +1920,7 @@ pub(super) fn database_tables(_s: &mut Session, p: &Value) -> CmdResult {
                 let live = live.map_err(|e| format!("{}: {e}", db.short()))?;
                 live.tables().map_err(|e| format!("{}: {e}", db.short()))?.iter().map(LiveTable::label).collect()
             }
-            None => rustgis_data::source::duckdb::tables_of(&db)
+            None => powergis_data::source::duckdb::tables_of(&db)
                 .map_err(|e| format!("{}: {e}", db.short()))?
                 .iter()
                 .map(|t| t.label())
@@ -1948,8 +1948,8 @@ fn add_database(s: &mut Session, p: &Value) -> CmdResult {
 /// Adds the tables of a database that have a geometry column (or the one `layer` names): a
 /// DuckDB file's each converted once into GeoParquet in the cache, a connection's afresh.
 #[cfg(not(target_arch = "wasm32"))]
-fn add_tables(s: &mut Session, p: &Value, db: &rustgis_data::source::duckdb::Database) -> CmdResult {
-    use rustgis_data::source::duckdb::{self, Database};
+fn add_tables(s: &mut Session, p: &Value, db: &powergis_data::source::duckdb::Database) -> CmdResult {
+    use powergis_data::source::duckdb::{self, Database};
     if let Some(live) = LiveDb::connect(db) {
         return add_live(s, p, db, live);
     }
@@ -1961,7 +1961,7 @@ fn add_tables(s: &mut Session, p: &Value, db: &rustgis_data::source::duckdb::Dat
         Database::Postgres(_) | Database::Mysql(_) | Database::Sqlserver(_) => (db.short(), db.label()),
     };
     let path = path.as_str();
-    let err = |e: rustgis_data::DataError| format!("{path}: {e}");
+    let err = |e: powergis_data::DataError| format!("{path}: {e}");
     let tables = match ps(p, "layer").map(str::trim).filter(|l| !l.is_empty()) {
         Some(l) => vec![duckdb::find_table_of(db, l).map_err(err)?],
         None => duckdb::tables_of(db).map_err(err)?,
@@ -1981,7 +1981,7 @@ fn add_tables(s: &mut Session, p: &Value, db: &rustgis_data::source::duckdb::Dat
         let out = match duckdb::convert_table_of(db, &t, crs) {
             Ok(o) => o,
             // Empty tables (common in a PostGIS database: its TIGER geocoder's) are left out quietly.
-            Err(rustgis_data::DataError::Format(m)) if !single && m == duckdb::NO_ROWS => {
+            Err(powergis_data::DataError::Format(m)) if !single && m == duckdb::NO_ROWS => {
                 empty += 1;
                 continue;
             }
@@ -1992,7 +1992,7 @@ fn add_tables(s: &mut Session, p: &Value, db: &rustgis_data::source::duckdb::Dat
             }
             Err(e) => return Err(err(e)),
         };
-        let origin = |family| rustgis_map::source::DuckdbOrigin {
+        let origin = |family| powergis_map::source::DuckdbOrigin {
             sql: None,
             database: Some(original.clone()),
             table: Some(t.label()),
@@ -2027,17 +2027,17 @@ fn add_tables(s: &mut Session, p: &Value, db: &rustgis_data::source::duckdb::Dat
 /// A database whose tables are read live: PostGIS, MySQL, MariaDB or SQL Server.
 #[cfg(not(target_arch = "wasm32"))]
 enum LiveDb {
-    Postgis(std::sync::Arc<rustgis_data::source::postgis::Conn>),
-    Mysql(std::sync::Arc<rustgis_data::source::mysql::Conn>),
-    Sqlserver(std::sync::Arc<rustgis_data::source::sqlserver::Conn>),
+    Postgis(std::sync::Arc<powergis_data::source::postgis::Conn>),
+    Mysql(std::sync::Arc<powergis_data::source::mysql::Conn>),
+    Sqlserver(std::sync::Arc<powergis_data::source::sqlserver::Conn>),
 }
 
 /// A geometry column of a [`LiveDb`]'s table.
 #[cfg(not(target_arch = "wasm32"))]
 enum LiveTable {
-    Postgis(rustgis_data::source::postgis::Table),
-    Mysql(rustgis_data::source::mysql::Table),
-    Sqlserver(rustgis_data::source::sqlserver::Table),
+    Postgis(powergis_data::source::postgis::Table),
+    Mysql(powergis_data::source::mysql::Table),
+    Sqlserver(powergis_data::source::sqlserver::Table),
 }
 
 #[cfg(not(target_arch = "wasm32"))]
@@ -2055,8 +2055,8 @@ impl LiveTable {
 impl LiveDb {
     /// Connects to a database read live (the user adding it, so the client's own credentials
     /// serve); `None` for a DuckDB file.
-    fn connect(db: &rustgis_data::source::duckdb::Database) -> Option<rustgis_data::Result<LiveDb>> {
-        use rustgis_data::source::{duckdb::Database, mysql, postgis, sqlserver};
+    fn connect(db: &powergis_data::source::duckdb::Database) -> Option<powergis_data::Result<LiveDb>> {
+        use powergis_data::source::{duckdb::Database, mysql, postgis, sqlserver};
         match db {
             Database::Postgres(dsn) => Some(postgis::connect(dsn, true).map(LiveDb::Postgis)),
             Database::Mysql(address) => Some(mysql::connect(address, true).map(LiveDb::Mysql)),
@@ -2065,8 +2065,8 @@ impl LiveDb {
         }
     }
 
-    fn tables(&self) -> rustgis_data::Result<Vec<LiveTable>> {
-        use rustgis_data::source::{mysql, postgis, sqlserver};
+    fn tables(&self) -> powergis_data::Result<Vec<LiveTable>> {
+        use powergis_data::source::{mysql, postgis, sqlserver};
         Ok(match self {
             LiveDb::Postgis(c) => postgis::tables(c)?.into_iter().map(LiveTable::Postgis).collect(),
             LiveDb::Mysql(c) => mysql::tables(c)?.into_iter().map(LiveTable::Mysql).collect(),
@@ -2074,8 +2074,8 @@ impl LiveDb {
         })
     }
 
-    fn find(&self, name: &str) -> rustgis_data::Result<LiveTable> {
-        use rustgis_data::source::{mysql, postgis, sqlserver};
+    fn find(&self, name: &str) -> powergis_data::Result<LiveTable> {
+        use powergis_data::source::{mysql, postgis, sqlserver};
         Ok(match self {
             LiveDb::Postgis(c) => LiveTable::Postgis(postgis::find_table(c, name)?),
             LiveDb::Mysql(c) => LiveTable::Mysql(mysql::find_table(c, name)?),
@@ -2083,30 +2083,30 @@ impl LiveDb {
         })
     }
 
-    fn families(&self, t: &LiveTable) -> rustgis_data::Result<Vec<rustgis_data::source::Family>> {
-        use rustgis_data::source::{mysql, postgis, sqlserver};
+    fn families(&self, t: &LiveTable) -> powergis_data::Result<Vec<powergis_data::source::Family>> {
+        use powergis_data::source::{mysql, postgis, sqlserver};
         match (self, t) {
             (LiveDb::Postgis(c), LiveTable::Postgis(t)) => postgis::families(c, t),
             (LiveDb::Mysql(c), LiveTable::Mysql(t)) => mysql::families(c, t),
             (LiveDb::Sqlserver(c), LiveTable::Sqlserver(t)) => sqlserver::families(c, t),
-            _ => Err(rustgis_data::DataError::Format("the table is of another database".into())),
+            _ => Err(powergis_data::DataError::Format("the table is of another database".into())),
         }
     }
 
     fn open(
         &self,
         t: &LiveTable,
-        family: rustgis_data::source::Family,
+        family: powergis_data::source::Family,
         crs: Option<&str>,
-    ) -> rustgis_data::Result<Box<dyn rustgis_data::source::FeatureSource>> {
-        use rustgis_data::source::{mysql, postgis, sqlserver};
+    ) -> powergis_data::Result<Box<dyn powergis_data::source::FeatureSource>> {
+        use powergis_data::source::{mysql, postgis, sqlserver};
         Ok(match (self, t) {
             (LiveDb::Postgis(c), LiveTable::Postgis(t)) => Box::new(postgis::PostgisSource::open(c.clone(), t.clone(), Some(family), crs)?),
             (LiveDb::Mysql(c), LiveTable::Mysql(t)) => Box::new(mysql::MysqlSource::open(c.clone(), t.clone(), Some(family), crs)?),
             (LiveDb::Sqlserver(c), LiveTable::Sqlserver(t)) => {
                 Box::new(sqlserver::SqlServerSource::open(c.clone(), t.clone(), Some(family), crs)?)
             }
-            _ => return Err(rustgis_data::DataError::Format("the table is of another database".into())),
+            _ => return Err(powergis_data::DataError::Format("the table is of another database".into())),
         })
     }
 }
@@ -2115,11 +2115,11 @@ impl LiveDb {
 /// column (or the one `layer` names), read live: large ones a view at a time, others loaded
 /// whole. A column of mixed geometry types becomes a layer per type.
 #[cfg(not(target_arch = "wasm32"))]
-fn add_live(s: &mut Session, p: &Value, db: &rustgis_data::source::duckdb::Database, live: rustgis_data::Result<LiveDb>) -> CmdResult {
-    use rustgis_data::source::duckdb::MAX_TABLES;
+fn add_live(s: &mut Session, p: &Value, db: &powergis_data::source::duckdb::Database, live: powergis_data::Result<LiveDb>) -> CmdResult {
+    use powergis_data::source::duckdb::MAX_TABLES;
     let label = db.short();
     let original = db.label();
-    let err = |e: rustgis_data::DataError| format!("{label}: {e}");
+    let err = |e: powergis_data::DataError| format!("{label}: {e}");
     let crs = ps(p, "crs").map(str::trim).filter(|c| !c.is_empty());
     let live = live.map_err(err)?;
     let mut tables = match ps(p, "layer").map(str::trim).filter(|l| !l.is_empty()) {
@@ -2175,15 +2175,15 @@ fn add_live(s: &mut Session, p: &Value, db: &rustgis_data::source::duckdb::Datab
             let (pg, my, ms);
             let origin = match live {
                 LiveDb::Postgis(_) => {
-                    pg = rustgis_map::source::PostgisOrigin { database, table, family, crs };
+                    pg = powergis_map::source::PostgisOrigin { database, table, family, crs };
                     Origin::Postgis(&pg)
                 }
                 LiveDb::Mysql(_) => {
-                    my = rustgis_map::source::MysqlOrigin { database, table, family, crs };
+                    my = powergis_map::source::MysqlOrigin { database, table, family, crs };
                     Origin::Mysql(&my)
                 }
                 LiveDb::Sqlserver(_) => {
-                    ms = rustgis_map::source::SqlServerOrigin { database, table, family, crs };
+                    ms = powergis_map::source::SqlServerOrigin { database, table, family, crs };
                     Origin::Sqlserver(&ms)
                 }
             };
@@ -2218,7 +2218,7 @@ fn add_live(s: &mut Session, p: &Value, db: &rustgis_data::source::duckdb::Datab
         });
     }
     if empty_before {
-        let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(rustgis_geom::Extent::EMPTY, |e, l| e.union(&l.extent()));
+        let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(powergis_geom::Extent::EMPTY, |e, l| e.union(&l.extent()));
         if !e.is_empty() {
             s.zoom_to(&e);
         }
@@ -2247,7 +2247,7 @@ fn add_sql(s: &mut Session, p: &Value) -> CmdResult {
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        use rustgis_data::source::duckdb;
+        use powergis_data::source::duckdb;
         let crs = ps(p, "crs").map(str::trim).filter(|c| !c.is_empty());
         let database = sql_database_param(p)?;
         let full = database.as_ref().map(|d| d.label());
@@ -2266,7 +2266,7 @@ fn add_sql(s: &mut Session, p: &Value) -> CmdResult {
             None => duckdb::run(&duckdb::Query { sql, database: database.as_ref(), crs }).map_err(|e| e.to_string())?,
         };
         let name = ps(p, "name").map(str::trim).filter(|n| !n.is_empty()).unwrap_or("Query");
-        let origin = |family| rustgis_map::source::DuckdbOrigin {
+        let origin = |family| powergis_map::source::DuckdbOrigin {
             sql: Some(sql.to_string()),
             database: full.clone(),
             table: None,
@@ -2294,8 +2294,8 @@ fn add_sql(s: &mut Session, p: &Value) -> CmdResult {
 fn duckdb_parts(
     s: &mut Session,
     name: &str,
-    out: rustgis_data::source::duckdb::Output,
-    origin: impl Fn(rustgis_data::source::Family) -> rustgis_map::source::DuckdbOrigin,
+    out: powergis_data::source::duckdb::Output,
+    origin: impl Fn(powergis_data::source::Family) -> powergis_map::source::DuckdbOrigin,
 ) -> Vec<Converted> {
     if out.skipped > 0 {
         s.notify(format!("{name}: {} rows without a geometry were left out", out.skipped), false);
@@ -2326,8 +2326,8 @@ struct Converted {
 
 #[cfg(not(target_arch = "wasm32"))]
 enum ConvertedOrigin {
-    Gdal(rustgis_map::source::GdalOrigin),
-    Duckdb(rustgis_map::source::DuckdbOrigin),
+    Gdal(powergis_map::source::GdalOrigin),
+    Duckdb(powergis_map::source::DuckdbOrigin),
 }
 
 /// Adds converted layers like the files they are (streamed when large), remembering where they came
@@ -2382,7 +2382,7 @@ fn add_converted(s: &mut Session, p: &Value, label: &str, original: &str, conver
         }
     }
     if empty_before {
-        let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(rustgis_geom::Extent::EMPTY, |e, l| e.union(&l.extent()));
+        let e = ids.iter().filter_map(|id| s.map().layer(*id)).fold(powergis_geom::Extent::EMPTY, |e, l| e.union(&l.extent()));
         if !e.is_empty() {
             s.zoom_to(&e);
         }
@@ -2416,14 +2416,14 @@ fn need_streamed(s: &Session) -> Option<&'static str> {
 /// replacement before mutating the layer; undo then restores geometry, metadata and caches.
 fn define_projection(s: &mut Session, p: &Value) -> CmdResult {
     let id = s.layer_id(p)?;
-    let crs = rustgis_data::raster::Crs::parse(s_req(p, "crs")?)?;
+    let crs = powergis_data::raster::Crs::parse(s_req(p, "crs")?)?;
     let l = s.map().layer(id).ok_or("no such layer")?;
     if l.is_raster() || l.is_streamed() {
         return Err(
             "Define Projection needs a vector layer loaded into memory; import a Shapefile with a crs override for a streamed layer".into(),
         );
     }
-    let ds = rustgis_data::io::define_projection(&l.dataset, crs).map_err(|e| e.to_string())?;
+    let ds = powergis_data::io::define_projection(&l.dataset, crs).map_err(|e| e.to_string())?;
     let l = s.map_mut().layer_mut(id).ok_or("no such layer")?;
     l.dataset = ds;
     l.touch_geometry();
@@ -2457,7 +2457,7 @@ fn add_layer_file(s: &mut Session, path: &str) -> CmdResult {
 
 /// Adds a layer from a layer file's JSON.
 pub(crate) fn add_layer_text(s: &mut Session, text: &str) -> CmdResult {
-    let mut layer: rustgis_map::Layer = serde_json::from_str(text).map_err(|e| format!("not a PowerGIS layer file: {e}"))?;
+    let mut layer: powergis_map::Layer = serde_json::from_str(text).map_err(|e| format!("not a PowerGIS layer file: {e}"))?;
     if layer.dataset.source.as_deref().is_some_and(|source| source.starts_with("geolibre-pending:")) {
         return Err("a layer file cannot contain runtime GeoLibre download reservations".into());
     }
@@ -2488,7 +2488,7 @@ const MAX_POLYLINES: usize = 10_000;
 
 /// Adds encoded polylines (routes from Google, OSRM or Valhalla) as a line layer.
 fn add_encoded_polyline(s: &mut Session, p: &Value) -> CmdResult {
-    use rustgis_data::{Dataset, Field, FieldType, Geometry, Value as V};
+    use powergis_data::{Dataset, Field, FieldType, Geometry, Value as V};
     let texts: Vec<&str> = match p.get("polyline") {
         Some(Value::String(t)) => vec![t.as_str()],
         Some(Value::Array(a)) => a.iter().filter_map(Value::as_str).take(MAX_POLYLINES + 1).collect(),
@@ -2506,14 +2506,14 @@ fn add_encoded_polyline(s: &mut Session, p: &Value) -> CmdResult {
     let mut ds =
         Dataset::new(name, GeometryType::Polyline, vec![Field::new("index", FieldType::Integer), Field::new("points", FieldType::Integer)]);
     for (i, t) in texts.iter().enumerate() {
-        let pts = rustgis_data::interop::decode_polyline(t, precision).map_err(|e| format!("polyline {}: {e}", i + 1))?;
+        let pts = powergis_data::interop::decode_polyline(t, precision).map_err(|e| format!("polyline {}: {e}", i + 1))?;
         if pts.len() < 2 {
             return Err(format!("polyline {}: a line needs at least two points", i + 1));
         }
         let n = pts.len() as i64;
         ds.push_next(Some(Geometry::Line(vec![pts])), vec![V::Int(i as i64 + 1), V::Int(n)]);
     }
-    add_read(s, p, (ds, rustgis_data::ReadReport::default()))
+    add_read(s, p, (ds, powergis_data::ReadReport::default()))
 }
 
 /// Adds a sheet of a spreadsheet (`"layer"` names it; the first by default), read like delimited
@@ -2523,24 +2523,24 @@ pub(crate) fn add_sheet(s: &mut Session, p: &Value, file_name: &str, bytes: &[u8
     add_read(s, p, read)
 }
 
-fn read_sheet(p: &Value, file_name: &str, bytes: &[u8]) -> Result<(rustgis_data::Dataset, rustgis_data::ReadReport), String> {
+fn read_sheet(p: &Value, file_name: &str, bytes: &[u8]) -> Result<(powergis_data::Dataset, powergis_data::ReadReport), String> {
     let stem = Path::new(file_name).file_stem().and_then(|s| s.to_str()).unwrap_or("sheet");
     let opts = csv_options(p)?.unwrap_or_default();
     let sheet = ps(p, "layer").map(str::trim).filter(|l| !l.is_empty());
-    rustgis_data::sheets::read(bytes, stem, sheet, &opts).map_err(|e| format!("{file_name}: {e}"))
+    powergis_data::sheets::read(bytes, stem, sheet, &opts).map_err(|e| format!("{file_name}: {e}"))
 }
 
 /// The `x`, `y`, `wkt`, `crs` and `delimiter` parameters for a delimited text file, when any is
 /// given.
-pub(crate) fn csv_options(p: &Value) -> Result<Option<rustgis_data::io::CsvOptions>, String> {
+pub(crate) fn csv_options(p: &Value) -> Result<Option<powergis_data::io::CsvOptions>, String> {
     let text = |k: &str| ps(p, k).map(str::trim).filter(|v| !v.is_empty()).map(str::to_string);
     let (x, y, wkt, crs, delimiter) = (text("x"), text("y"), text("wkt"), text("crs"), ps(p, "delimiter"));
     if x.is_none() && y.is_none() && wkt.is_none() && crs.is_none() && delimiter.is_none() {
         return Ok(None);
     }
-    let crs = crs.map(|c| rustgis_data::raster::Crs::parse(&c)).transpose()?;
+    let crs = crs.map(|c| powergis_data::raster::Crs::parse(&c)).transpose()?;
     let delimiter = parse_delimiter(delimiter)?;
-    Ok(Some(rustgis_data::io::CsvOptions { x, y, wkt, crs, delimiter }))
+    Ok(Some(powergis_data::io::CsvOptions { x, y, wkt, crs, delimiter }))
 }
 
 /// A `delimiter` parameter: one character, or `\t`/`tab`.
@@ -2564,8 +2564,8 @@ pub fn columns_in_file(path: &str, p: &Value) -> CmdResult {
         return Err(format!("{path}: no such file"));
     }
     // Add Data's limits: a spreadsheet is read whole, delimited text within the text readers' limit.
-    let sheet = rustgis_data::sheets::is_sheet_name(path);
-    let limit = if sheet { super::raster::MAX_UPLOAD_BYTES as u64 } else { rustgis_data::io::MAX_BYTES };
+    let sheet = powergis_data::sheets::is_sheet_name(path);
+    let limit = if sheet { super::raster::MAX_UPLOAD_BYTES as u64 } else { powergis_data::io::MAX_BYTES };
     let meta = std::fs::metadata(path).map_err(|e| format!("{path}: {e}"))?;
     if meta.len() > limit {
         return Err(format!("{path} is too large to open"));
@@ -2588,10 +2588,10 @@ const COLUMNS_PREFIX: usize = 8 << 20;
 /// `{"columns", "x", "y", "wkt", "delimiter"}`. `info.fileColumns` for a file's bytes (the web
 /// app's Add Delimited Text).
 pub fn columns_of(name: &str, bytes: &[u8], p: &Value) -> CmdResult {
-    let err = |e: rustgis_data::DataError| format!("{name}: {e}");
-    let c = if rustgis_data::sheets::is_sheet_name(name) {
+    let err = |e: powergis_data::DataError| format!("{name}: {e}");
+    let c = if powergis_data::sheets::is_sheet_name(name) {
         let sheet = ps(p, "layer").map(str::trim).filter(|l| !l.is_empty());
-        rustgis_data::sheets::columns(bytes, sheet).map_err(err)?
+        powergis_data::sheets::columns(bytes, sheet).map_err(err)?
     } else if is_delimited_name(name) {
         let bytes = bytes.get(..COLUMNS_PREFIX).unwrap_or(bytes);
         let text = match std::str::from_utf8(bytes) {
@@ -2600,7 +2600,7 @@ pub fn columns_of(name: &str, bytes: &[u8], p: &Value) -> CmdResult {
             Err(e) if e.error_len().is_none() => std::str::from_utf8(bytes.get(..e.valid_up_to()).unwrap_or_default()).unwrap_or_default(),
             Err(_) => return Err(format!("{name} is not UTF-8 text")),
         };
-        rustgis_data::io::csv_columns(text, parse_delimiter(ps(p, "delimiter"))?).map_err(err)?
+        powergis_data::io::csv_columns(text, parse_delimiter(ps(p, "delimiter"))?).map_err(err)?
     } else {
         return Err(format!("{name}: not delimited text (CSV, TSV, TXT) or a spreadsheet"));
     };
@@ -2625,7 +2625,7 @@ fn read_delimited(
     p: &Value,
     name: &str,
     bytes: impl FnOnce() -> Result<Vec<u8>, String>,
-) -> Result<Option<(rustgis_data::Dataset, rustgis_data::ReadReport)>, String> {
+) -> Result<Option<(powergis_data::Dataset, powergis_data::ReadReport)>, String> {
     if !is_delimited_name(name) {
         return Ok(None);
     }
@@ -2633,7 +2633,7 @@ fn read_delimited(
     let bytes = bytes()?;
     let text = std::str::from_utf8(&bytes).map_err(|_| format!("{name} is not UTF-8 text"))?;
     let stem = Path::new(name).file_stem().and_then(|s| s.to_str()).unwrap_or("layer");
-    rustgis_data::io::read_csv_with(text, stem, &opts).map(Some).map_err(|e| format!("{name}: {e}"))
+    powergis_data::io::read_csv_with(text, stem, &opts).map(Some).map_err(|e| format!("{name}: {e}"))
 }
 
 /// The file name for data downloaded from `url`: its last path segment when that has an extension
@@ -2656,18 +2656,18 @@ pub fn url_file_name(url: &str, bytes: &[u8]) -> Result<String, String> {
     let jpeg2000_only_on_desktop = |name: String| {
         if cfg!(target_arch = "wasm32") { Err(super::raster::JPEG2000_WEB_LIMITATION.to_string()) } else { Ok(name) }
     };
-    if rustgis_data::raster::is_jpeg2000_name(&last) {
+    if powergis_data::raster::is_jpeg2000_name(&last) {
         return jpeg2000_only_on_desktop(last);
     }
-    let known = rustgis_data::io::READ_EXTENSIONS.contains(&ext.as_str()) || rustgis_data::raster::is_raster_name(&last) || ext == "tsv";
+    let known = powergis_data::io::READ_EXTENSIONS.contains(&ext.as_str()) || powergis_data::raster::is_raster_name(&last) || ext == "tsv";
     if known && ext != "json" {
         return Ok(last);
     }
     let stem = Path::new(&last).file_stem().and_then(|s| s.to_str()).filter(|s| !s.is_empty()).unwrap_or("data");
-    match rustgis_data::io::sniff_extension(bytes) {
+    match powergis_data::io::sniff_extension(bytes) {
         Some(ext) => {
             let name = format!("{stem}.{ext}");
-            if rustgis_data::raster::is_jpeg2000_name(&name) { jpeg2000_only_on_desktop(name) } else { Ok(name) }
+            if powergis_data::raster::is_jpeg2000_name(&name) { jpeg2000_only_on_desktop(name) } else { Ok(name) }
         }
         None => {
             Err("not a data format PowerGIS reads (GeoJSON, CSV, GeoParquet, FlatGeobuf, GeoPackage, zipped Shapefiles, KML, GPX, GeoTIFF)"
@@ -2687,7 +2687,7 @@ pub(crate) fn add_url(s: &mut Session, p: &Value) -> CmdResult {
     let url = ps(p, "url").map(str::trim).filter(|u| !u.is_empty()).ok_or("url is required")?;
     // An address read through a saved S3 connection is judged by the address it wraps; the whole
     // address stays what is fetched and kept.
-    let lower = rustgis_data::s3_address::inner(url).to_ascii_lowercase();
+    let lower = powergis_data::s3_address::inner(url).to_ascii_lowercase();
     if !(lower.starts_with("https://") || lower.starts_with("http://") || lower.starts_with("s3://")) {
         return Err(format!("{url}: give an http://, https:// or s3:// address (Add Data opens files)"));
     }
@@ -2707,7 +2707,7 @@ pub(crate) fn add_url(s: &mut Session, p: &Value) -> CmdResult {
     }
     // A dated address (one file per date, `{date:YYYY}`) is read in place, following the time
     // slider: a GeoTIFF on the web, before anything fetches the address as it is.
-    if rustgis_data::time::is_template(url) {
+    if powergis_data::time::is_template(url) {
         if scan {
             return Err(format!("{url}: a dated address is read in place with its coordinates, so it can't be opened as a scan"));
         }
@@ -2722,7 +2722,7 @@ pub(crate) fn add_url(s: &mut Session, p: &Value) -> CmdResult {
     }
     // A FlatGeobuf or GeoParquet: read in place by range when it has a spatial index (or a bbox
     // covering), otherwise downloaded whole.
-    if rustgis_data::source::is_remote_name(url) && scan {
+    if powergis_data::source::is_remote_name(url) && scan {
         return Err(format!("{url}: \"as\": \"scan\" opens a TIFF, PNG or JPEG"));
     }
     // A plugin's command run by the app (the desktop): what would wait (reading a header, a
@@ -2732,15 +2732,15 @@ pub(crate) fn add_url(s: &mut Session, p: &Value) -> CmdResult {
         return s.request_url(p);
     }
     // An address the app found to be a GeoTIFF (`"cog"`) is one whatever its name says.
-    if rustgis_data::source::is_remote_name(url) && !super::b(p, "whole").unwrap_or(false) && !super::b(p, "cog").unwrap_or(false) {
+    if powergis_data::source::is_remote_name(url) && !super::b(p, "whole").unwrap_or(false) && !super::b(p, "cog").unwrap_or(false) {
         // In the browser nothing may wait: the app has fetched what opening needs already.
         #[cfg(target_arch = "wasm32")]
-        let opened = rustgis_data::source::open_url_now(url);
+        let opened = powergis_data::source::open_url_now(url);
         #[cfg(not(target_arch = "wasm32"))]
-        let opened = rustgis_data::source::open_url_blocking(url);
+        let opened = powergis_data::source::open_url_blocking(url);
         match opened {
             Ok(src) => return add_remote(s, p, url, src),
-            Err(e) if e.to_string().contains(rustgis_data::source::remote::READ_WHOLE) => {}
+            Err(e) if e.to_string().contains(powergis_data::source::remote::READ_WHOLE) => {}
             Err(e) => {
                 let e = e.to_string();
                 return Err(if e.starts_with(url) { e } else { format!("{url}: {e}") });
@@ -2767,7 +2767,7 @@ pub(crate) fn add_url(s: &mut Session, p: &Value) -> CmdResult {
         // and anything that doesn't answer as one is downloaded whole, as before.
         let unnamed = !tiff && is_unnamed_url(url);
         if (tiff || unnamed) && !scan && !super::b(p, "whole").unwrap_or(false) {
-            let cog = match crate::render::rustgis_tiles::cog::probe_blocking(url) {
+            let cog = match crate::render::powergis_tiles::cog::probe_blocking(url) {
                 Ok(cog) => cog,
                 Err(_) if unnamed => false,
                 Err(e) => return Err(named(e)),
@@ -2776,7 +2776,7 @@ pub(crate) fn add_url(s: &mut Session, p: &Value) -> CmdResult {
                 return add_cog(s, p, url);
             }
         }
-        let bytes = crate::render::rustgis_tiles::cache::download_blocking(url).map_err(named)?;
+        let bytes = crate::render::powergis_tiles::cache::download_blocking(url).map_err(named)?;
         let name = url_file_name(url, &bytes).map_err(named)?;
         super::raster::add_named_bytes(s, p, name, bytes).map_err(named)
     }
@@ -2784,11 +2784,11 @@ pub(crate) fn add_url(s: &mut Session, p: &Value) -> CmdResult {
 
 /// Adds a FlatGeobuf or GeoParquet by its address as a layer read in place: a view's features at
 /// a time, by range. The project keeps the address.
-fn add_remote(s: &mut Session, p: &Value, url: &str, src: Box<dyn rustgis_data::source::FeatureSource>) -> CmdResult {
+fn add_remote(s: &mut Session, p: &Value, url: &str, src: Box<dyn powergis_data::source::FeatureSource>) -> CmdResult {
     let info = src.info().clone();
     let name = ps(p, "name").map(str::trim).filter(|n| !n.is_empty()).map(str::to_string).unwrap_or_else(|| info.name.clone());
     let empty_before = s.map().layers.is_empty();
-    let layer = rustgis_map::source::SourceLayer::from_path(url.to_string(), None, src);
+    let layer = powergis_map::source::SourceLayer::from_path(url.to_string(), None, src);
     let unique = unique_name(s, &name);
     for n in &info.notes {
         s.notify(format!("{unique}: {n}"), false);
@@ -2807,7 +2807,7 @@ fn add_remote(s: &mut Session, p: &Value, url: &str, src: Box<dyn rustgis_data::
 
 /// Whether a web address names a GeoTIFF (by its path's extension).
 pub fn is_tiff_url(url: &str) -> bool {
-    let url = rustgis_data::s3_address::inner(url);
+    let url = powergis_data::s3_address::inner(url);
     let path = url.split(['?', '#']).next().unwrap_or(url).to_ascii_lowercase();
     path.ends_with(".tif") || path.ends_with(".tiff")
 }
@@ -2815,7 +2815,7 @@ pub fn is_tiff_url(url: &str) -> bool {
 /// Whether a web address's last path segment has no extension (an API answering with a file,
 /// such as Vantor's `…/geotiff?…`): its first bytes tell whether it is a GeoTIFF to read in place.
 pub fn is_unnamed_url(url: &str) -> bool {
-    let url = rustgis_data::s3_address::inner(url);
+    let url = powergis_data::s3_address::inner(url);
     let path = url.split(['?', '#']).next().unwrap_or(url);
     let Some((_, rest)) = path.split_once("://") else { return false };
     let Some((_, path)) = rest.split_once('/') else { return false };
@@ -2840,14 +2840,14 @@ pub(crate) fn add_cog(s: &mut Session, p: &Value, url: &str) -> CmdResult {
         Some(dated) => {
             // Its header read now (natively) as an undated address's is before it is added.
             #[cfg(not(target_arch = "wasm32"))]
-            let _ = crate::render::rustgis_tiles::cog::probe_blocking(dated);
+            let _ = crate::render::powergis_tiles::cog::probe_blocking(dated);
             dated.to_string()
         }
         None => url.to_string(),
     };
-    if let Ok(Some(info)) = crate::render::rustgis_tiles::cog::info(&url) {
+    if let Ok(Some(info)) = crate::render::powergis_tiles::cog::info(&url) {
         let [w, so, e, n] = info.bounds;
-        s.zoom_to(&rustgis_geom::Extent::new(w, so, e, n));
+        s.zoom_to(&powergis_geom::Extent::new(w, so, e, n));
         r["bounds"] = json!(info.bounds);
     } else if r.get("dated").is_some() {
         // Added, but its first date's file couldn't be read: the view stays where it was.
@@ -2865,7 +2865,7 @@ fn cog_name(url: &str) -> String {
     let mut parts = path.rsplit('/');
     let file = parts.next().unwrap_or("GeoTIFF");
     let file = file.rsplit_once('.').map(|(a, _)| a).unwrap_or(file);
-    if !rustgis_data::time::is_template(file) {
+    if !powergis_data::time::is_template(file) {
         return file.to_string();
     }
     let mut out = String::new();
@@ -2892,7 +2892,7 @@ fn add_download(s: &mut Session, p: &Value) -> CmdResult {
     let i = s.downloaded.iter().position(|(d, _)| *d == id).ok_or("no such download (it was dropped when another project opened)")?;
     let (_, bytes) = s.downloaded.remove(i);
     if p.get("geolibreProject").and_then(Value::as_bool) == Some(true) {
-        if bytes.len() > rustgis_map::geolibre::MAX_TEXT {
+        if bytes.len() > powergis_map::geolibre::MAX_TEXT {
             return Err("GeoLibre project exceeds 64 MiB".into());
         }
         let text = String::from_utf8(bytes).map_err(|_| "GeoLibre project must be UTF-8 JSON")?;
@@ -2938,7 +2938,7 @@ fn zoom_to_added(s: &mut Session, r: &Value) -> bool {
         .filter_map(|i| u32::try_from(i).ok())
         .filter_map(|id| s.map().layer(id).map(|l| l.extent()))
         .filter(|e| !e.is_empty())
-        .fold(rustgis_geom::Extent::EMPTY, |a, e| a.union(&e));
+        .fold(powergis_geom::Extent::EMPTY, |a, e| a.union(&e));
     if e.is_empty() {
         return false;
     }
@@ -2952,11 +2952,11 @@ pub(crate) fn add_data_text(s: &mut Session, p: &Value) -> CmdResult {
     if let Some(read) = read_delimited(p, name, || Ok(text.as_bytes().to_vec()))? {
         return add_read(s, p, read);
     }
-    let read = rustgis_data::io::read_bytes(name, text.as_bytes()).map_err(|e| format!("{name}: {e}"))?;
+    let read = powergis_data::io::read_bytes(name, text.as_bytes()).map_err(|e| format!("{name}: {e}"))?;
     add_read(s, p, read)
 }
 
-pub(crate) fn add_read(s: &mut Session, p: &Value, read: (rustgis_data::Dataset, rustgis_data::ReadReport)) -> CmdResult {
+pub(crate) fn add_read(s: &mut Session, p: &Value, read: (powergis_data::Dataset, powergis_data::ReadReport)) -> CmdResult {
     let (mut ds, report) = read;
     if let Some(n) = ps(p, "name").map(str::trim).filter(|n| !n.is_empty()) {
         ds.name = n.to_string();
@@ -2988,7 +2988,7 @@ fn add_sample(s: &mut Session, p: &Value) -> CmdResult {
         "lakes" => (LAKES, "Lakes"),
         _ => return Err(format!("no sample '{name}'")),
     };
-    let (ds, _) = rustgis_data::io::read_geojson(text, title).map_err(|e| e.to_string())?;
+    let (ds, _) = powergis_data::io::read_geojson(text, title).map_err(|e| e.to_string())?;
     let id = add_dataset(s, ds);
     Ok(json!({"layer": id}))
 }
@@ -3013,11 +3013,11 @@ pub(crate) fn legends_follow_layer(s: &mut Session, old: &str, new: Option<&str>
         let frames: Vec<u32> = layout
             .elements
             .iter()
-            .filter(|e| matches!(&e.kind, rustgis_map::layout::ElementKind::MapFrame { map: m, .. } if m.eq_ignore_ascii_case(&map)))
+            .filter(|e| matches!(&e.kind, powergis_map::layout::ElementKind::MapFrame { map: m, .. } if m.eq_ignore_ascii_case(&map)))
             .map(|e| e.id)
             .collect();
         for e in &mut layout.elements {
-            if let rustgis_map::layout::ElementKind::Legend { frame, exclude, .. } = &mut e.kind
+            if let powergis_map::layout::ElementKind::Legend { frame, exclude, .. } = &mut e.kind
                 && frames.contains(frame)
             {
                 match new {
@@ -3205,7 +3205,7 @@ fn move_to(s: &mut Session, p: &Value) -> CmdResult {
 }
 
 /// Moves a layer to index `t` of the drawing order, if it isn't there already.
-fn move_to_index(m: &mut rustgis_map::Map, id: u32, t: usize) -> Result<(), String> {
+fn move_to_index(m: &mut powergis_map::Map, id: u32, t: usize) -> Result<(), String> {
     let i = m.layer_index(id).ok_or("no such layer")?;
     if i != t {
         m.move_layer(i, t)?;
@@ -3257,7 +3257,7 @@ fn symbology(s: &mut Session, p: &Value) -> CmdResult {
     let g = l.geometry_type();
     let base = l.renderer.base_symbol();
     let base = if matches!(l.renderer, Renderer::Graduated { .. } | Renderer::Unique { .. }) {
-        rustgis_map::Symbol { ..rustgis_map::Symbol::default_for(g, id) }.with_fill(base.fill, g)
+        powergis_map::Symbol { ..powergis_map::Symbol::default_for(g, id) }.with_fill(base.fill, g)
     } else {
         base
     };
@@ -3333,8 +3333,8 @@ fn class_ref(p: &Value) -> Result<Option<ClassRef>, String> {
             Value::String(t) => t.clone(),
             // As the data prints it (the classes' own keys): `1000.0` is the class "1000".
             Value::Number(n) => match (n.as_i64(), n.as_f64()) {
-                (Some(i), _) => rustgis_data::Value::Int(i).to_string(),
-                (None, Some(x)) => rustgis_data::Value::Float(x).to_string(),
+                (Some(i), _) => powergis_data::Value::Int(i).to_string(),
+                (None, Some(x)) => powergis_data::Value::Float(x).to_string(),
                 _ => n.to_string(),
             },
             _ => return Err("value must be a text or a number".into()),

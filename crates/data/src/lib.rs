@@ -40,7 +40,7 @@ pub mod xml;
 pub mod zip;
 
 pub use geometry::{Geometry, GeometryType, VertexId};
-pub use rustgis_geom::{Coord, Extent};
+pub use powergis_geom::{Coord, Extent};
 pub use value::{Field, FieldType, Value};
 
 use serde::{Deserialize, Serialize};

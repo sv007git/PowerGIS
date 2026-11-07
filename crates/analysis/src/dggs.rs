@@ -7,8 +7,8 @@
 
 use std::collections::{HashMap, HashSet};
 
-use rustgis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
-use rustgis_geom::{Coord, Extent};
+use powergis_data::{Dataset, Field, FieldType, Geometry, GeometryType, Value};
+use powergis_geom::{Coord, Extent};
 use serde_json::Value as Json;
 
 use crate::{Inputs, Output, ToolResult};

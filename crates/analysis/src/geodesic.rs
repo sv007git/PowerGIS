@@ -23,8 +23,8 @@
 use geo::{
     BooleanOps, Buffer, Contains, Coord as GC, LineString, MultiLineString, MultiPolygon, Orient, Point, Polygon, orient::Direction,
 };
-use rustgis_data::{Coord, Geometry};
-use rustgis_geom::{Aeqd, geodesic_interpolate, haversine_m, lonlat_to_merc, merc_to_lonlat, spherical_centre};
+use powergis_data::{Coord, Geometry};
+use powergis_geom::{Aeqd, geodesic_interpolate, haversine_m, lonlat_to_merc, merc_to_lonlat, spherical_centre};
 
 /// A feature within this distance of its centre is buffered in one projection (the error is
 /// under 0.01%).
@@ -133,7 +133,7 @@ impl Plane {
         }
         let at = |t: f64| self.0.inverse(Coord::new(a.x + t * (b.x - a.x), a.y + t * (b.y - a.y)));
         let (la, lb) = (at(0.0), at(1.0));
-        let beyond = |c: Coord| c.y.abs() >= rustgis_geom::MAX_LAT;
+        let beyond = |c: Coord| c.y.abs() >= powergis_geom::MAX_LAT;
         let strays = match (beyond(la), beyond(lb)) {
             // Beyond Web Mercator's 85.05° there's no straight edge to compare with.
             (true, true) => false,
@@ -293,7 +293,7 @@ fn stretched(parts: &[Vec<Coord>], metres: f64) -> Vec<MultiPolygon<f64>> {
 /// A line with every edge split along its geodesic on WGS 84 into pieces of at most [`DENSIFY_M`], or
 /// longer ones for a line so long it would gain more than [`MAX_ADDED`] vertices.
 fn densify(pts: &[Coord]) -> Vec<Coord> {
-    let step = DENSIFY_M.max(rustgis_geom::geodesic_length_m(pts) / MAX_ADDED);
+    let step = DENSIFY_M.max(powergis_geom::geodesic_length_m(pts) / MAX_ADDED);
     let mut out: Vec<Coord> = pts.first().copied().into_iter().collect();
     for w in pts.windows(2) {
         let [a, b] = w else { continue };

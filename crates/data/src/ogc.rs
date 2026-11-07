@@ -3,7 +3,7 @@
 //! (as GeoJSON addresses) and OGC API Tiles tilesets (map and vector tiles in WebMercatorQuad) —
 //! and ArcGIS REST services (FeatureServer, MapServer, ImageServer,
 //! VectorTileServer). The documents are hostile input: no DTD is read, nodes are capped, and
-//! only layers RustGIS can draw are listed (the rest are counted in a note).
+//! only layers PowerGIS can draw are listed (the rest are counted in a note).
 
 use roxmltree::{Node, ParsingOptions};
 use serde::{Deserialize, Serialize};
@@ -415,7 +415,7 @@ pub fn legends_at(legends: &[Legend], scale: f64) -> impl Iterator<Item = &Legen
 /// The most legend pictures a layer keeps.
 pub const MAX_LEGENDS: usize = 16;
 
-/// Whether a legend picture's format is one RustGIS shows (PNG or JPEG); a legend that names
+/// Whether a legend picture's format is one PowerGIS shows (PNG or JPEG); a legend that names
 /// none is taken to be one.
 fn legend_format(format: Option<&str>) -> bool {
     format.is_none_or(|f| {
@@ -430,7 +430,7 @@ fn scale_attr(n: &Node, key: &str) -> Option<f64> {
 }
 
 /// A service's capabilities: its kind (`WMS`, `WMTS`, `WFS`, `OGC API Features`), title, the
-/// layers RustGIS can add, and notes on what it left out.
+/// layers PowerGIS can add, and notes on what it left out.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Service {
     pub kind: String,
@@ -440,7 +440,7 @@ pub struct Service {
     /// An OGC API landing page's advertised JSON collections document, resolved against it.
     pub collections_url: Option<String>,
     /// Some advertised collections were left out (past the listing limit, or with an items
-    /// address RustGIS doesn't fetch): the listing isn't the whole service.
+    /// address PowerGIS doesn't fetch): the listing isn't the whole service.
     pub incomplete: bool,
 }
 
@@ -807,7 +807,7 @@ fn wms(url: &str, root: &Node) -> Service {
     // Layers inherit their parents' coordinate systems, nearest valid geographic bounds, queryable
     // attribute and time dimension.
     // The SLD profile's GetLegendGraphic (WMS 1.3.0 with SLD 1.1, 1.1.1 with SLD 1.0), when the
-    // service offers it in a format RustGIS shows: a layer's legend, drawn from its default style.
+    // service offers it in a format PowerGIS shows: a layer's legend, drawn from its default style.
     let legend_graphic = wms_legend_graphic(root, url, &get_map, version);
     // (What a layer passes on is shared by its sublayers, not copied for each: a hostile document
     // may give one layer a great many.)
@@ -946,7 +946,7 @@ fn wms(url: &str, root: &Node) -> Service {
     }
     service.layers.reverse();
     if skipped > 0 {
-        service.notes.push(format!("{skipped} layers aren't offered in a coordinate system RustGIS can draw and are left out"));
+        service.notes.push(format!("{skipped} layers aren't offered in a coordinate system PowerGIS can draw and are left out"));
     }
     if too_long > 0 {
         service.notes.push(format!(
@@ -957,18 +957,18 @@ fn wms(url: &str, root: &Node) -> Service {
 }
 
 /// The coordinate systems a WMS layer is offered in, its own and those it inherits, and those of
-/// them RustGIS knows (worked out once, for the layers sharing the list).
+/// them PowerGIS knows (worked out once, for the layers sharing the list).
 #[derive(Default)]
 struct Systems {
     names: Vec<String>,
     candidates: std::cell::OnceCell<Vec<Candidate>>,
 }
 
-/// A system of a WMS layer's list that RustGIS knows: its name there, its EPSG code, it, and its
+/// A system of a WMS layer's list that PowerGIS knows: its name there, its EPSG code, it, and its
 /// place in the list.
 type Candidate = (String, u32, crate::raster::Crs, usize);
 
-/// The systems of a WMS layer's list that RustGIS knows, one name each, in order of preference:
+/// The systems of a WMS layer's list that PowerGIS knows, one name each, in order of preference:
 /// projected ones first (the service's own, as a rule), then CRS:84, then other
 /// longitude/latitude ones, each kind as listed. (A GeoServer lists some 5,000 systems by
 /// default, each layer inheriting them: only a system's definition is looked up here, once a
@@ -999,12 +999,12 @@ fn wms_candidates(crs: &[String]) -> Vec<Candidate> {
     listed
 }
 
-/// The systems a WMS layer is offered in that RustGIS can draw (#769), of its `listed`
+/// The systems a WMS layer is offered in that PowerGIS can draw (#769), of its `listed`
 /// candidates (see [`wms_candidates`]), and the one a Web Mercator map takes its pictures in: Web
 /// Mercator itself (`mercator`), else the first. `None` for a layer offered in Web Mercator
 /// alone (its address stays as it was) or in nothing usable. In WMS 1.3.0 a bounding box follows
 /// the system's axes as EPSG defines them ([`crate::raster::epsg_axes`]); for a system whose
-/// order RustGIS doesn't know, as the layer's own `BoundingBox` in it is written (else latitude
+/// order PowerGIS doesn't know, as the layer's own `BoundingBox` in it is written (else latitude
 /// first in a geographic system other than CRS:84).
 fn wms_native(layer: &Node, listed: &[Candidate], v13: bool, area: Option<[f64; 4]>, mercator: bool) -> Option<(String, warp::Warp)> {
     // Its boxes by system (its own, else the nearest it inherits: WMS 1.3.0 §7.2.4.6.8), read
@@ -1027,7 +1027,7 @@ fn wms_native(layer: &Node, listed: &[Candidate], v13: bool, area: Option<[f64; 
     let lat_first = |name: &str, system: crate::raster::Crs| {
         v13 && !warp::is_crs84(name) && {
             // In the order of the system's axes as EPSG defines them (WMS 1.3.0 §6.7.3.3); for a
-            // system newer than RustGIS's table, the layer's box in it, against its area there.
+            // system newer than PowerGIS's table, the layer's box in it, against its area there.
             if let Some(north) = epsg_north_first(system) {
                 return north;
             }
@@ -1059,7 +1059,7 @@ fn wms_native(layer: &Node, listed: &[Candidate], v13: bool, area: Option<[f64; 
 }
 
 /// Whether `system` is written north (or latitude) first as EPSG defines its axes, when
-/// RustGIS's table knows it ([`crate::raster::epsg_axes`]).
+/// PowerGIS's table knows it ([`crate::raster::epsg_axes`]).
 fn epsg_north_first(system: crate::raster::Crs) -> Option<bool> {
     match system {
         crate::raster::Crs::Custom(_) => None,
@@ -1074,7 +1074,7 @@ const MAX_ADDRESS: usize = 4096;
 const MAX_STYLES: usize = 64;
 
 /// A WMS layer's legend: its default style's (the one a GetMap with `STYLES=` draws: the one
-/// named `default`, else the first), the first of its `LegendURL`s in a format RustGIS shows.
+/// named `default`, else the first), the first of its `LegendURL`s in a format PowerGIS shows.
 fn wms_legend(url: &str, styles: &[Node]) -> Option<Legend> {
     let style =
         styles.iter().find(|s| child_text(s, "Name").is_some_and(|n| n.eq_ignore_ascii_case("default"))).or_else(|| styles.first())?;
@@ -1194,8 +1194,8 @@ struct RawMatrix {
 /// The most `TileMatrix` entries read of a tile matrix set in another system.
 const MAX_RAW_MATRICES: usize = 256;
 
-/// A tile matrix set in another system than Web Mercator that RustGIS can draw (#769): its EPSG
-/// code and its matrices RustGIS can draw, coarsest first.
+/// A tile matrix set in another system than Web Mercator that PowerGIS can draw (#769): its EPSG
+/// code and its matrices PowerGIS can draw, coarsest first.
 fn native_matrices(tms: &Node) -> Option<(u16, crate::raster::Crs, Vec<RawMatrix>)> {
     let name = child_text(tms, "SupportedCRS")?;
     let code = warp::epsg_of(&name)?;
@@ -1204,7 +1204,7 @@ fn native_matrices(tms: &Node) -> Option<(u16, crate::raster::Crs, Vec<RawMatrix
     let mut out = Vec::new();
     // (In any order, up to `MAX_RAW_MATRICES` read: a real set has a few dozen.)
     for m in children(tms, "TileMatrix").take(MAX_RAW_MATRICES) {
-        // One that can't be read or drawn is left out, not the set; only one RustGIS can draw
+        // One that can't be read or drawn is left out, not the set; only one PowerGIS can draw
         // counts towards `MAX_MATRICES`.
         if let Some(raw) = raw_matrix(&m)
             && warp::Matrix::from_scale(raw.id.clone(), raw.scale, unit, raw.corner, raw.tile, raw.size).is_some()
@@ -1249,7 +1249,7 @@ fn wmts(url: &str, root: &Node) -> Service {
     // Tile matrix sets that are Web Mercator pyramids, with a zoom per matrix identifier.
     let sets: Vec<(String, Vec<(String, u8)>)> =
         children(&contents, "TileMatrixSet").filter_map(|t| Some((child_text(&t, "Identifier")?, mercator_matrices(&t)?))).collect();
-    // Others in a system RustGIS can transform, drawn warped into the map's tiles (#769).
+    // Others in a system PowerGIS can transform, drawn warped into the map's tiles (#769).
     let natives: Vec<(String, u16, crate::raster::Crs, bool, Vec<RawMatrix>)> = children(&contents, "TileMatrixSet")
         .filter_map(|t| {
             let id = child_text(&t, "Identifier")?;
@@ -1312,7 +1312,7 @@ fn wmts(url: &str, root: &Node) -> Service {
                 // geographic corner is often written longitude first anyway: one whose first number
                 // can't be a latitude is so; one whose numbers could be either is read longitude
                 // first only when its matrix, read in EPSG's order, misses the layer and read the
-                // other way doesn't. For a system newer than RustGIS's table, the order whose
+                // other way doesn't. For a system newer than PowerGIS's table, the order whose
                 // matrix covers more of the layer, else latitude first in a geographic system.
                 let swap = !*crs84
                     && match epsg_north_first(*system) {
@@ -1424,7 +1424,7 @@ fn wmts(url: &str, root: &Node) -> Service {
         });
     }
     if skipped > 0 {
-        service.notes.push(format!("{skipped} layers have no tile matrix set RustGIS can draw and are left out"));
+        service.notes.push(format!("{skipped} layers have no tile matrix set PowerGIS can draw and are left out"));
     }
     if too_long > 0 {
         service.notes.push(format!(
@@ -1849,7 +1849,7 @@ pub fn coverage_area(info: &CoverageInfo, area: [f64; 4]) -> Option<[f64; 4]> {
 /// Records asked of a catalogue in one request.
 pub const RECORDS_PAGE: u32 = 20;
 
-/// A catalogue record's link: a service (`wms`, `wmts`, `wfs`, `wcs`, `ogcapi`, `arcgis`) RustGIS
+/// A catalogue record's link: a service (`wms`, `wmts`, `wfs`, `wcs`, `ogcapi`, `arcgis`) PowerGIS
 /// can open, a file to download, or another web page.
 #[derive(Clone, Debug, PartialEq)]
 pub struct RecordLink {
@@ -2051,7 +2051,7 @@ fn arcgis(url: &str, v: &serde_json::Value) -> Result<Service, String> {
         .to_string();
     let full = v.get("fullExtent").or_else(|| v.get("extent")).and_then(arcgis_extent);
     let mut service = Service { kind: "ArcGIS".into(), title: title.clone(), ..Service::default() };
-    // A directory of services: its folders and the services RustGIS can add, each to open. Known
+    // A directory of services: its folders and the services PowerGIS can add, each to open. Known
     // by its answer (services or folders, and no layers or capabilities of a service's own), not
     // its address: a folder may be named like a service.
     let service_answer = ["layers", "capabilities", "serviceDescription", "tileInfo"].iter().any(|k| v.get(k).is_some());
@@ -2203,7 +2203,7 @@ fn template_is_cache(service: &Service) -> bool {
     service.layers.first().is_some_and(|l| matches!(&l.offer, Offer::Tiles { template } if template.contains("/tile/{z}/")))
 }
 
-/// The ArcGIS service types a directory lists that RustGIS can add.
+/// The ArcGIS service types a directory lists that PowerGIS can add.
 const ARCGIS_TYPES: [&str; 4] = ["MapServer", "FeatureServer", "ImageServer", "VectorTileServer"];
 
 /// A name an ArcGIS directory gives a folder or service, checked: it goes into addresses, so only
@@ -2217,7 +2217,7 @@ fn arcgis_name(n: &str) -> Option<&str> {
 }
 
 /// An ArcGIS services directory (`…/rest/services`, or a folder of it): its folders and the
-/// services RustGIS can add, each offered to open. Services are named with their folder
+/// services PowerGIS can add, each offered to open. Services are named with their folder
 /// (`Folder/Name`), so their addresses start at the directory's root, not at the folder.
 fn arcgis_directory(b: &str, v: &serde_json::Value) -> Service {
     let lower = b.to_ascii_lowercase();
@@ -2230,7 +2230,7 @@ fn arcgis_directory(b: &str, v: &serde_json::Value) -> Service {
     let title = if here.is_empty() { "ArcGIS services".to_string() } else { here.to_string() };
     let mut service = Service { kind: "ArcGIS Services Directory".into(), title, ..Service::default() };
     let mut skipped = 0;
-    // Names RustGIS won't put into an address (spaces, `?`, `..`): counted in a note.
+    // Names PowerGIS won't put into an address (spaces, `?`, `..`): counted in a note.
     let mut unnamed = 0;
     // ArcGIS's own system folder holds geometry and printing tools, never maps.
     for f in v.get("folders").and_then(|f| f.as_array()).into_iter().flatten().take(MAX_LAYERS) {
@@ -2287,7 +2287,7 @@ fn arcgis_directory(b: &str, v: &serde_json::Value) -> Service {
         service.notes.push(format!("{skipped} services of other or unknown types (geoprocessing, geometry, …) are left out"));
     }
     if unnamed > 0 {
-        service.notes.push(format!("{unnamed} folders or services with names RustGIS can't put in an address are left out"));
+        service.notes.push(format!("{unnamed} folders or services with names PowerGIS can't put in an address are left out"));
     }
     service
 }
@@ -2422,7 +2422,7 @@ fn ogc_api(url: &str, v: &serde_json::Value) -> Result<Service, String> {
         });
     }
     if unreadable > 0 {
-        service.notes.push(format!("{unreadable} collections link to their items with an address RustGIS doesn't fetch and are left out"));
+        service.notes.push(format!("{unreadable} collections link to their items with an address PowerGIS doesn't fetch and are left out"));
     }
     if collections.len() > MAX_LAYERS {
         service.notes.push(format!("only the first {MAX_LAYERS} collections are listed"));
@@ -2661,7 +2661,7 @@ struct ArcgisPaging {
 
 /// How a layer's description (`…/FeatureServer/0?f=json`) lets it be read in pages: `None` unless it
 /// says it supports them (`advancedQueryCapabilities.supportsPagination`, from ArcGIS Server 10.3).
-/// Its `maxRecordCount` is the page size when it is a count RustGIS would ask for; its object id
+/// Its `maxRecordCount` is the page size when it is a count PowerGIS would ask for; its object id
 /// field, the order, when it is a plain field name (it goes into the address).
 fn arcgis_paging(layer: &serde_json::Value) -> Option<ArcgisPaging> {
     if layer.pointer("/advancedQueryCapabilities/supportsPagination").and_then(|p| p.as_bool()) != Some(true) {
@@ -3577,7 +3577,7 @@ mod tests {
         let brazil = Some([-71.99, -30.51, -34.12, 1.10]);
         assert!(fix_axes(ibge, brazil).is_none());
 
-        // Latitude first with no crs, as deegree answers when asked in the URN form (RustGIS asks
+        // Latitude first with no crs, as deegree answers when asked in the URN form (PowerGIS asks
         // EPSG:4326). Turned round, a GeometryCollection too; a null geometry and a property
         // holding numbers are no positions.
         let hamburg = Some([8.41, 53.40, 10.33, 53.96]);
@@ -4146,14 +4146,14 @@ mod tests {
         assert_eq!((w.epsg, &w.grid), (32633, &warp::Grid::Map { lat_first: false }));
         // Its identify asks in UTM too.
         assert_eq!(utm.feature_info.as_ref().map(|f| f.crs.as_str()), Some("EPSG:32633"));
-        // One in a system RustGIS can't draw is left out, and said so.
+        // One in a system PowerGIS can't draw is left out, and said so.
         assert!(s.notes.iter().any(|n| n.contains("1 layers")));
     }
 
     /// A WMS layer's legend: the one the service draws (GetLegendGraphic, when its capabilities
     /// offer it in PNG or JPEG), then its default style's `LegendURL` picture (the style named
     /// `default`, else the first, of its own and those it inherits; the first `LegendURL` in a
-    /// format RustGIS shows); WMS 1.1.1's alike, without the SLD version.
+    /// format PowerGIS shows); WMS 1.1.1's alike, without the SLD version.
     #[test]
     fn wms_legends_from_the_service_and_the_default_style() {
         let caps = |version: &str, request: &str| {
@@ -4184,7 +4184,7 @@ mod tests {
         assert_eq!(urls(&s, "inherits"), ["https://maps.example.org/legend/parent.png"]);
         assert_eq!(urls(&s, "own"), ["https://maps.example.org/legend/first.png"], "its own style first; the GIF passed over; resolved");
         assert_eq!(urls(&s, "named default"), ["https://maps.example.org/legend/default.png"]);
-        // A picture RustGIS doesn't show, or not on the web: the parent's, or none.
+        // A picture PowerGIS doesn't show, or not on the web: the parent's, or none.
         assert_eq!(urls(&s, "only svg"), Vec::<String>::new());
         assert_eq!(urls(&s, "not on the web"), Vec::<String>::new());
         assert!(s.layers.iter().flat_map(|l| &l.legends).all(|l| l.min_scale.is_none() && l.max_scale.is_none()));
@@ -4211,14 +4211,14 @@ mod tests {
             urls(&s, "inherits").first().map(String::as_str),
             Some("https://maps.example.org/wms?SERVICE=WMS&VERSION=1.1.1&REQUEST=GetLegendGraphic&LAYER=inherits&FORMAT=image%2Fjpeg")
         );
-        // Offered only in formats RustGIS doesn't show: not asked.
+        // Offered only in formats PowerGIS doesn't show: not asked.
         let glg = r#"<GetLegendGraphic><Format>image/gif</Format></GetLegendGraphic>"#;
         let s = parse("https://maps.example.org/wms", caps("1.3.0", glg).as_bytes()).unwrap();
         assert_eq!(urls(&s, "own"), ["https://maps.example.org/legend/first.png"]);
     }
 
     /// A WMTS layer's legends: its default style's (`isDefault`, else the first), each with the
-    /// scales it is for, in formats RustGIS shows.
+    /// scales it is for, in formats PowerGIS shows.
     #[test]
     fn wmts_legends_for_their_scales() {
         let xml = r#"<Capabilities xmlns="http://www.opengis.net/wmts/1.0" xmlns:ows="http://www.opengis.net/ows/1.1" xmlns:xlink="http://www.w3.org/1999/xlink" version="1.0.0"><Contents>

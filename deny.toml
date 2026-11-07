@@ -1,4 +1,4 @@
-# cargo-deny: the licences RustGIS accepts in its dependencies (`cargo deny check licenses`, run
+# cargo-deny: the licences PowerGIS accepts in its dependencies (`cargo deny check licenses`, run
 # by CI). Keep this in step with `accepted` in about.toml, which writes the third-party notices.
 
 [graph]
@@ -27,5 +27,5 @@ allow = [
 ]
 
 [licenses.private]
-# RustGIS's own apps and xtask (`publish = false`).
+# PowerGIS's own apps and xtask (`publish = false`).
 ignore = true

@@ -40,7 +40,7 @@ def test_diagnostics_preserve_results_and_errors_and_report_each_session_once(de
                 secretAccessKey="private-sentinel", remember=True,
             )
             assert result["loggedIn"] is True
-            with pytest.raises(rustgis.RustGISError):
+            with pytest.raises(rustgis.PowerGISError):
                 session.run("connection.login", id="c1")
             records = [record for record in caplog.records if record.name == "rustgis"]
             assert len(records) == 1 and records[0].levelno == logging.WARNING
@@ -88,7 +88,7 @@ def test_blocked_native_io_releases_the_gil_and_serializes_other_sessions(deskto
             resetter.join(60)
         assert not reader.is_alive() and not resetter.is_alive(), "a call deadlocked"
 
-    assert isinstance(outcomes["read"], rustgis.RustGISError), outcomes
+    assert isinstance(outcomes["read"], rustgis.PowerGISError), outcomes
     assert not isinstance(outcomes["reset"], BaseException), outcomes
     assert outcomes["reads_at_reset"] == 1
     assert second.run("info.project")["name"] == "After read"

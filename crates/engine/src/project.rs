@@ -756,7 +756,7 @@ impl Project {
     /// The file keeps no passwords, keys, tokens or signatures in layer addresses. The open project
     /// keeps them. This process remembers the 32 most recent distinct saved snapshots with stripped
     /// addresses: opening identical plain project text restores them until that snapshot is evicted
-    /// or RustGIS closes. Packages and imports never restore them.
+    /// or PowerGIS closes. Packages and imports never restore them.
     pub fn saved_text(&mut self, dir: Option<&Path>) -> Result<(String, usize), String> {
         self.ensure_imports_complete()?;
         let was = strip_addresses(self.addresses_mut());
@@ -874,19 +874,19 @@ impl Project {
             && let Some(format) = pf.format
             && format > FORMAT
         {
-            return Err(format!("this project was saved by a newer RustGIS (format {format}). Update RustGIS to open it."));
+            return Err(format!("this project was saved by a newer PowerGIS (format {format}). Update PowerGIS to open it."));
         }
         let mut p: Project = serde_json::from_str(text).map_err(|e| {
             let msg = e.to_string();
             if msg.contains("unknown variant") {
-                format!("this project may have been saved by a newer RustGIS: {msg}. Update RustGIS to open it.")
+                format!("this project may have been saved by a newer PowerGIS: {msg}. Update PowerGIS to open it.")
             } else {
-                format!("not a RustGIS project: {msg}")
+                format!("not a PowerGIS project: {msg}")
             }
         })?;
         p.ensure_imports_complete().map_err(|_| "a project file cannot contain runtime GeoLibre download reservations".to_string())?;
         if p.format > FORMAT {
-            return Err(format!("this project was saved by a newer RustGIS (format {}). Update RustGIS to open it.", p.format));
+            return Err(format!("this project was saved by a newer PowerGIS (format {}). Update PowerGIS to open it.", p.format));
         }
         if restore {
             p.restore_addresses(text);

@@ -1163,7 +1163,7 @@ fn add_url(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
 /// Add From Database: a PostgreSQL/PostGIS, MySQL/MariaDB or SQL Server connection (or a DuckDB
 /// file), its password (kept for the session only) and one table or all of them.
 fn add_database(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
-    ui.label(egui::RichText::new(tl!("A PostgreSQL/PostGIS connection (host=… port=… dbname=… user=…, or a postgresql:// address), a MySQL or MariaDB address (mysql://user@host:3306/database), a SQL Server address (mssql://user@host:1433/database) or a DuckDB file. PostGIS, MySQL, MariaDB and SQL Server tables are read live, large ones a view at a time; the password is kept until RustGIS closes, never in the project.")).weak());
+    ui.label(egui::RichText::new(tl!("A PostgreSQL/PostGIS connection (host=… port=… dbname=… user=…, or a postgresql:// address), a MySQL or MariaDB address (mysql://user@host:3306/database), a SQL Server address (mssql://user@host:1433/database) or a DuckDB file. PostGIS, MySQL, MariaDB and SQL Server tables are read live, large ones a view at a time; the password is kept until PowerGIS closes, never in the project.")).weak());
     // A bare connection string is a PostgreSQL one.
     let database = |a: &str| {
         let a = a.trim();
@@ -1244,7 +1244,7 @@ fn add_database(app: &mut RustGisApp, ui: &mut egui::Ui) -> bool {
             }
         }
     });
-    // The connection that layers loaded for editing save through, until RustGIS closes.
+    // The connection that layers loaded for editing save through, until PowerGIS closes.
     #[cfg(not(target_arch = "wasm32"))]
     if let Some(dsn) = app.session.postgis.clone() {
         ui.horizontal(|ui| {
@@ -1915,7 +1915,7 @@ pub(crate) fn format_degrees(deg: f64) -> String {
     if (deg - deg.round()).abs() < 1e-6 { format!("{:.0}°", deg) } else { format!("{deg}°") }
 }
 
-/// The chosen preset's parameters (opengeos/RustGIS#517): the central meridian, and a conic's
+/// The chosen preset's parameters (opengeos/PowerGIS#517): the central meridian, and a conic's
 /// standard parallels, each written back into the chosen code. Nothing for a preset without any.
 fn preset_fields(app: &mut RustGisApp, ui: &mut egui::Ui) {
     use rustgis_engine::map::projection::{VN2000_UI_PROVINCES, parse_preset, preset_code, preset_params, preset_value};
@@ -2095,7 +2095,7 @@ fn crs_details(ui: &mut egui::Ui, chosen: &str, current: &str, t: &Tokens) {
 mod tests {
     use super::*;
 
-    /// The Coordinate System dialog re-centres a preset (opengeos/RustGIS#517): the central
+    /// The Coordinate System dialog re-centres a preset (opengeos/PowerGIS#517): the central
     /// meridian, set as assistive technology does, goes into the code that Apply uses.
     #[test]
     fn the_coordinate_system_dialog_sets_a_central_meridian() {

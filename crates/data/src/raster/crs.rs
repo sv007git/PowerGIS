@@ -206,7 +206,7 @@ pub(crate) fn proj_key_refused(key: &str, val: &str) -> bool {
 
 impl Crs {
     /// A file's own coordinate system: checked (its PROJ definition must parse, or be a
-    /// sinusoidal one RustGIS computes) and added to the run's table, once per definition.
+    /// sinusoidal one PowerGIS computes) and added to the run's table, once per definition.
     pub fn custom(def: CustomCrs) -> Result<Crs, String> {
         Crs::register(def, false)
     }
@@ -494,7 +494,7 @@ mod tests {
         assert!((back.x - lonlat.0).abs() < 1e-7 && (back.y - lonlat.1).abs() < 1e-7, "EPSG:{code}: {back:?}");
     }
 
-    /// EPSG codes 9020–20003 come from the built-in gap table (opengeos/RustGIS#198); the
+    /// EPSG codes 9020–20003 come from the built-in gap table (opengeos/PowerGIS#198); the
     /// expected coordinates are pyproj's (PROJ 9.8, EPSG dataset v12.029).
     #[test]
     fn codes_crs_definitions_lacks() {
@@ -514,7 +514,7 @@ mod tests {
         check(9377, (-74.08, 4.65), (4_880_256.854, 2_071_911.388), 0.01);
         assert_eq!(Crs::parse("EPSG:9377"), Ok(Crs::Epsg(9377)));
         assert_eq!(Crs::parse("urn:ogc:def:crs:EPSG::9377"), Ok(Crs::Epsg(9377)));
-        // VN-2000 UTM zones 48N and 49N (opengeos/RustGIS#684)
+        // VN-2000 UTM zones 48N and 49N (opengeos/PowerGIS#684)
         assert_eq!(Crs::parse("EPSG:3405"), Ok(Crs::Epsg(3405)));
         assert_eq!(Crs::parse("EPSG:3406"), Ok(Crs::Epsg(3406)));
         for bare in ["VN-2000", "VN2000", "vn-2000", "vn2000", "  VN-2000  ", "VN 2000", "vn_2000"] {
@@ -713,7 +713,7 @@ mod tests {
         assert_eq!(unusable_epsg(28707), "the coordinate system EPSG:28707 isn't supported");
     }
 
-    /// The ESRI table (opengeos/RustGIS#213) is in order and holds only projected systems on Earth.
+    /// The ESRI table (opengeos/PowerGIS#213) is in order and holds only projected systems on Earth.
     #[test]
     fn esri_table_is_sound() {
         let defs = super::super::esri::DEFS;
@@ -728,7 +728,7 @@ mod tests {
         assert_eq!(esri_codes().count(), defs.len());
         // South America Albers Equal Area Conic, which opened the issue.
         assert!(esri_proj4(102033).is_some_and(|d| d.contains("+proj=aea") && d.contains("+lon_0=-60")));
-        // Left out: World Miller (RustGIS's sphere is kilometres from PROJ's), a lunar system, a
+        // Left out: World Miller (PowerGIS's sphere is kilometres from PROJ's), a lunar system, a
         // Hammer–Aitoff PROJ can't write as a string, and codes that don't exist.
         for code in [54003, 103877, 54044, 0, 4326, u32::MAX] {
             assert_eq!(esri_proj4(code), None, "ESRI:{code}");

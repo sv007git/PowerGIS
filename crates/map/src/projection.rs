@@ -151,7 +151,7 @@ pub const VN2000_UI_PROVINCES: &[(&str, f64)] = &[
     ("Đắk Lắk", 108.5),
 ];
 
-/// A parameter a preset takes (opengeos/RustGIS#517): its PROJ name and the range, in degrees,
+/// A parameter a preset takes (opengeos/PowerGIS#517): its PROJ name and the range, in degrees,
 /// it is checked against.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct PresetParam {
@@ -956,7 +956,7 @@ mod tests {
         assert!(flat.validate_selection_path(&[Coord::new(178.0, -10.0), Coord::new(178.0, 10.0)]).is_err());
     }
 
-    /// Presets with parameters (opengeos/RustGIS#517): read strictly, written one way, and drawn
+    /// Presets with parameters (opengeos/PowerGIS#517): read strictly, written one way, and drawn
     /// where they say, against pyproj 3.7.1 (PROJ 9.5.1).
     #[test]
     fn presets_take_parameters() {
@@ -1036,7 +1036,7 @@ mod tests {
         assert!(p.domain.contains(Coord::new(-50.0, -15.0)) && !p.domain.contains(Coord::new(-55.0, 60.0)));
     }
 
-    /// Sinusoidal (opengeos/RustGIS#563), which proj4rs lacks: Esri's systems draw, against
+    /// Sinusoidal (opengeos/PowerGIS#563), which proj4rs lacks: Esri's systems draw, against
     /// pyproj 3.7.1 (PROJ 9.5.1), and wrap opposite their central meridian.
     #[test]
     fn sinusoidal_codes_draw() {
@@ -1066,7 +1066,7 @@ mod tests {
         }
     }
 
-    /// ESRI codes (opengeos/RustGIS#213), against pyproj 3.7.2 (PROJ 9.7.1) given the table's
+    /// ESRI codes (opengeos/PowerGIS#213), against pyproj 3.7.2 (PROJ 9.7.1) given the table's
     /// definitions.
     #[test]
     fn esri_codes() {
@@ -1149,7 +1149,7 @@ mod tests {
         let ee = Projector::new("EPSG:8857").unwrap();
         assert!(format!("{ee:?}").contains("eqearth"));
         // Codes crs-definitions lacks (EPSG 9020–20003) come from the data crate's own table
-        // (opengeos/RustGIS#198): MAGNA-SIRGAS 2018 / Origen-Nacional, SIRGAS-Chile 2016 / UTM 19S.
+        // (opengeos/PowerGIS#198): MAGNA-SIRGAS 2018 / Origen-Nacional, SIRGAS-Chile 2016 / UTM 19S.
         let (bogota, santiago) = (Coord::new(-74.08, 4.65), Coord::new(-70.65, -33.45));
         for (ok, proj, city) in [("EPSG:9377", "tmerc", bogota), ("epsg:9155", "utm", santiago)] {
             let (def, label) = lookup(ok).unwrap_or_else(|e| panic!("{ok}: {e}"));
@@ -1165,7 +1165,7 @@ mod tests {
     fn codes_whose_method_cannot_be_drawn_are_refused() {
         // EPSG:5880 (SIRGAS 2000 / Brazil Polyconic) is in the EPSG table, but its method
         // (+proj=poly) has no implementation: refuse it rather than accept it and draw the map
-        // in Web Mercator while naming EPSG:5880 (opengeos/RustGIS#208).
+        // in Web Mercator while naming EPSG:5880 (opengeos/PowerGIS#208).
         assert!(lookup("EPSG:5880").is_ok(), "the code itself is known");
         let e = Projector::new("EPSG:5880").unwrap_err();
         assert!(e.contains("EPSG:5880") && e.contains("poly"), "{e}");

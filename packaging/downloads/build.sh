@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Builds the downloads.rustgis.app site for a RustGIS release: its assets up to 100 MB (checked
+# Builds the downloads.rustgis.app site for a PowerGIS release: its assets up to 100 MB (checked
 # against GitHub's SHA-256 digests), a manifest.json the page reads, SHA256SUMS.txt and the page.
 #
 #   packaging/downloads/build.sh <output-dir> [release-tag]
@@ -8,7 +8,7 @@
 # manifest.json, so a caller can tell whether anything changed before downloading.
 set -euo pipefail
 
-readonly SOURCE_REPOSITORY="opengeos/RustGIS"
+readonly SOURCE_REPOSITORY="opengeos/PowerGIS"
 readonly MIRROR_ORIGIN="https://downloads.rustgis.app"
 readonly MAX_MIRRORED_BYTES=$((100 * 1024 * 1024))
 readonly METADATA_ONLY="${DOWNLOAD_MIRROR_METADATA_ONLY:-false}"
@@ -57,7 +57,7 @@ jq \
   --argjson omitted_asset_patterns "$OMITTED_ASSET_PATTERNS_JSON" \
   '{
     schema_version: 1,
-    product: "RustGIS",
+    product: "PowerGIS",
     generated_at: $generated_at,
     max_mirrored_bytes: $max_mirrored_bytes,
     release: {

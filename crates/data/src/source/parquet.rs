@@ -1015,7 +1015,7 @@ pub(crate) fn write_features<W: std::io::Write + Send>(
     }
     let schema = Arc::new(Type::group_type_builder("schema").with_fields(cols).build().map_err(err)?);
 
-    let props = WriterProperties::builder().set_compression(Compression::SNAPPY).set_created_by("RustGIS".to_string()).build();
+    let props = WriterProperties::builder().set_compression(Compression::SNAPPY).set_created_by("PowerGIS".to_string()).build();
     let mut w = SerializedFileWriter::new(out, schema, Arc::new(props)).map_err(err)?;
 
     /// The row group's next column writer; an error should the schema end first.

@@ -1,4 +1,4 @@
-//! GeoTIFF rasters, through RustGIS's reader and the `tiff` crate beneath it.
+//! GeoTIFF rasters, through PowerGIS's reader and the `tiff` crate beneath it.
 #![no_main]
 
 use libfuzzer_sys::fuzz_target;

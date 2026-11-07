@@ -863,7 +863,7 @@ impl super::cube::TimeCube for StacCube {
     }
 }
 
-/// `stac.addCube` (opengeos/RustGIS#559): a STAC collection's band as a data cube on the time
+/// `stac.addCube` (opengeos/PowerGIS#559): a STAC collection's band as a data cube on the time
 /// slider. The items found are grouped by the grid tile they cover (the tile their properties
 /// name, else their bounding box) and by day; each tile becomes a tile layer that reads a file
 /// per date in place, the slider showing the last date in its window. A range, when given, is

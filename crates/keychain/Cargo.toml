@@ -3,7 +3,7 @@ name = "rustgis-keychain"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
-description = "RustGIS L2: the system's secret store (macOS Keychain, Windows Credential Manager, the Secret Service) behind rustgis-data's SecretStore"
+description = "PowerGIS L2: the system's secret store (macOS Keychain, Windows Credential Manager, the Secret Service) behind rustgis-data's SecretStore"
 
 [lints]
 workspace = true

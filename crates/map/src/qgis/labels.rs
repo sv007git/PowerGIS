@@ -1,4 +1,4 @@
-//! QGIS labels (`<labeling type="simple|rule-based">`) as RustGIS label classes: each rule a
+//! QGIS labels (`<labeling type="simple|rule-based">`) as PowerGIS label classes: each rule a
 //! class whose SQL clause is its filter (and its parents'), an else rule the features no other
 //! rule takes; the text's field, size, colour, weight, slant and letter spacing, its buffer as a
 //! halo of its colour and size, its background as a rectangle behind it, its wrapping and how its
@@ -57,7 +57,7 @@ pub(super) fn read(l: Node, geometry: Option<&str>, layer: &str, report: &mut Re
                     report.skipped(
                         layer,
                         format!(
-                            "the label rule \"{name}\", whose filter `{}` doesn't read as a RustGIS SQL clause",
+                            "the label rule \"{name}\", whose filter `{}` doesn't read as a PowerGIS SQL clause",
                             r.filters.join(" AND ")
                         ),
                     );
@@ -96,7 +96,7 @@ fn is_else(f: &str) -> bool {
 
 /// A rule-based labeling's rule with settings: its filter and its parents' (an else rule's own
 /// left out), for an else rule its siblings' filters (it takes what none of them does), and the
-/// scale range along the way (RustGIS's min and max scale).
+/// scale range along the way (PowerGIS's min and max scale).
 struct Rule<'a, 'i> {
     node: Node<'a, 'i>,
     filters: Vec<String>,
@@ -169,7 +169,7 @@ fn class(
         return None;
     }
     let num = |n: Node, k: &str| n.attribute(k).and_then(|v| v.trim().parse::<f64>().ok()).filter(|v| v.is_finite());
-    // The size in typographic points, as RustGIS's label sizes are; its letter spacing in the
+    // The size in typographic points, as PowerGIS's label sizes are; its letter spacing in the
     // size's unit.
     let size_unit = text.attribute("fontSizeUnit").unwrap_or("Point");
     let size = points(num(text, "fontSize").unwrap_or(10.0), size_unit, "label sizes", layer, report);
@@ -184,7 +184,7 @@ fn class(
         || weight >= 63.0
         || text.attribute("fontBold") == Some("1");
     let italic = style.contains("italic") || style.contains("oblique") || text.attribute("fontItalic") == Some("1");
-    // QGIS's font family: drawn in it where it is installed, else in RustGIS's label font.
+    // QGIS's font family: drawn in it where it is installed, else in PowerGIS's label font.
     let font = text.attribute("fontFamily").and_then(crate::symbology::font_name);
     let spacing =
         num(text, "fontLetterSpacing").filter(|s| *s != 0.0).map_or(0.0, |s| points(s, size_unit, "label letter spacing", layer, report));
@@ -291,7 +291,7 @@ fn follow_placement(placement: LabelPlacement) -> TextAlign {
 
 /// A label's repeat along its line, in points: QGIS's repeat distance in its units, for a label
 /// placed along a line. Round a polygon's outline (QGIS's placement along a polygon layer's lines,
-/// or round its perimeter) RustGIS labels it once, and says so.
+/// or round its perimeter) PowerGIS labels it once, and says so.
 fn repeat(p: Node, placement: LabelPlacement, geometry: Option<&str>, layer: &str, report: &mut Report) -> Option<f32> {
     let d = p.attribute("repeatDistance").and_then(|v| v.trim().parse::<f64>().ok()).filter(|v| v.is_finite() && *v > 0.0)?;
     // (QGIS repeats only along lines: a polygon's outline with Line or Curved, or round its
@@ -315,7 +315,7 @@ fn repeat(p: Node, placement: LabelPlacement, geometry: Option<&str>, layer: &st
     crate::symbology::label_repeat(points(d, unit, "label repeat distances", layer, report))
 }
 
-/// A label's background as RustGIS's rectangle: QGIS's rectangle (its square, ellipse and circle
+/// A label's background as PowerGIS's rectangle: QGIS's rectangle (its square, ellipse and circle
 /// drawn as one), padded by its size, filled and outlined as its fill symbol says (else its own
 /// colours), its corners rounded.
 fn background(text: Node, layer: &str, report: &mut Report) -> Option<LabelBackground> {
@@ -393,7 +393,7 @@ fn background(text: Node, layer: &str, report: &mut Report) -> Option<LabelBackg
 
 /// How far a label is moved from where its placement puts it (points, right and down): QGIS's
 /// offset from a point (or a polygon's centroid), and on a point layer its distance around the
-/// point, the label above it that far out (RustGIS's Auto puts it above).
+/// point, the label above it that far out (PowerGIS's Auto puts it above).
 fn offset(p: Node, geometry: Option<&str>, layer: &str, report: &mut Report) -> [f32; 2] {
     let num = |k: &str| p.attribute(k).and_then(|v| v.trim().parse::<f64>().ok()).filter(|v| v.is_finite());
     let within = |v: f64| v.clamp(*LABEL_OFFSET.start(), *LABEL_OFFSET.end()) as f32;
@@ -431,7 +431,7 @@ fn points(v: f64, unit: &str, what: &str, layer: &str, report: &mut Report) -> f
     }
 }
 
-/// Notes the label settings RustGIS has no place for, where they are set off QGIS's defaults.
+/// Notes the label settings PowerGIS has no place for, where they are set off QGIS's defaults.
 fn unread(settings: Node, geometry: Option<&str>, layer: &str, report: &mut Report) {
     let num =
         |n: Option<Node>, k: &str| n.and_then(|n| n.attribute(k)).and_then(|v| v.trim().parse::<f64>().ok()).filter(|v| v.is_finite());
@@ -458,7 +458,7 @@ fn unread(settings: Node, geometry: Option<&str>, layer: &str, report: &mut Repo
     }
 }
 
-/// QGIS's label placement, as RustGIS's.
+/// QGIS's label placement, as PowerGIS's.
 fn placement(p: Node, layer: &str, report: &mut Report) -> LabelPlacement {
     let quad = |q: Option<&str>| match q {
         Some("0") => LabelPlacement::AboveLeft,
@@ -472,7 +472,7 @@ fn placement(p: Node, layer: &str, report: &mut Report) -> LabelPlacement {
         _ => LabelPlacement::Center,
     };
     match p.attribute("placement").unwrap_or("0") {
-        // Around the point: QGIS picks the best spot, RustGIS's automatic is above it.
+        // Around the point: QGIS picks the best spot, PowerGIS's automatic is above it.
         "0" | "6" => LabelPlacement::Auto,
         "1" => quad(p.attribute("quadOffset")),
         "2" => LabelPlacement::Parallel,

@@ -1,6 +1,6 @@
-"""RustGIS from Python: the RustGIS engine in-process, headless.
+"""PowerGIS from Python: the PowerGIS engine in-process, headless.
 
-Every action in RustGIS is a command with an id and JSON parameters, the same ids the ribbon,
+Every action in PowerGIS is a command with an id and JSON parameters, the same ids the ribbon,
 the command line and the AI Assistant use. ``Session.run`` runs any of them; the other methods
 are shortcuts for the common ones, and ``Layer`` wraps one layer of the map.
 
@@ -11,7 +11,7 @@ are shortcuts for the common ones, and ``Layer`` wraps one layer of the map.
 >>> s.to_png("map.png")
 >>> s.save("atlas.rgis")
 
-In Jupyter, ``rustgis.Map`` shows the RustGIS app in the cell, in step with its session
+In Jupyter, ``rustgis.Map`` shows the PowerGIS app in the cell, in step with its session
 (``pip install "rustgis[jupyter]"``); in a Qt application, ``rustgis.qt.MapWidget`` does
 (``pip install "rustgis[qt]"``).
 """
@@ -23,10 +23,10 @@ import os
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Tuple, Union
 
 from ._rustgis import Engine as _Engine
-from ._rustgis import RustGISError, __version__
+from ._rustgis import PowerGISError, __version__
 from ._rustgis import load_plugins as _load_plugins
 
-__all__ = ["Layer", "Map", "RustGISError", "Session", "__version__", "load_plugins"]
+__all__ = ["Layer", "Map", "PowerGISError", "Session", "__version__", "load_plugins"]
 
 PathLike = Union[str, "os.PathLike[str]"]
 
@@ -79,7 +79,7 @@ class Layer:
             layer: The layer's name, or its id.
 
         Raises:
-            RustGISError: When the active map has no such layer.
+            PowerGISError: When the active map has no such layer.
         """
         self.session = session
         self.id: int = session._find_layer(layer)["id"]
@@ -103,7 +103,7 @@ class Layer:
         selection and visibility.
 
         Raises:
-            RustGISError: When the layer was removed.
+            PowerGISError: When the layer was removed.
         """
         return self.session._find_layer(self.id)
 
@@ -295,7 +295,7 @@ class Layer:
     def __repr__(self) -> str:
         try:
             return f"Layer({self.name!r}, id={self.id})"
-        except RustGISError:
+        except PowerGISError:
             return f"Layer(id={self.id}, removed)"
 
 
@@ -304,7 +304,7 @@ class _Api:
     made of :meth:`run`."""
 
     def run(self, command: str, params: Optional[Dict[str, Any]] = None, /, **kwargs: Any) -> Any:
-        """Runs a RustGIS command by id (see :meth:`Session.run`)."""
+        """Runs a PowerGIS command by id (see :meth:`Session.run`)."""
         raise NotImplementedError
 
     def _query(self, command: str, /, **params: Any) -> Any:
@@ -408,7 +408,7 @@ class _Api:
             tool's result as it is (``{"selected": n}`` for a selection, ``{"table": name}``).
 
         Raises:
-            RustGISError: When the tool fails.
+            PowerGISError: When the tool fails.
 
         Example:
             >>> buffers = s.run_tool("buffer", input=s["Cities"], distance=100)
@@ -464,7 +464,7 @@ class _Api:
             name: The layer's name, or its id.
 
         Raises:
-            RustGISError: When the map has no such layer.
+            PowerGISError: When the map has no such layer.
         """
         return Layer(self, name)
 
@@ -475,14 +475,14 @@ class _Api:
             layer: The layer's name, id, or the layer.
 
         Raises:
-            RustGISError: When the map has no such layer.
+            PowerGISError: When the map has no such layer.
         """
         if isinstance(layer, Layer):
             if layer.session._root() is not self._root():
-                raise RustGISError(f"{layer!r} belongs to another session")
+                raise PowerGISError(f"{layer!r} belongs to another session")
             layer = layer.id
         if isinstance(layer, bool) or not isinstance(layer, (int, str)):
-            raise RustGISError(f"a layer is a name or an id, not {layer!r}")
+            raise PowerGISError(f"a layer is a name or an id, not {layer!r}")
         layers = self.layers()
         if isinstance(layer, int):
             found = [entry for entry in layers if entry.get("id") == layer]
@@ -493,7 +493,7 @@ class _Api:
             found = found or [entry for entry in layers if str(entry.get("id")) == layer.strip()]
         if not found:
             what = f"with id {layer}" if isinstance(layer, int) else f"named '{layer}'"
-            raise RustGISError(f"no layer {what}")
+            raise PowerGISError(f"no layer {what}")
         return found[0]
 
     def __getitem__(self, name: Union[str, int]) -> Layer:
@@ -504,7 +504,7 @@ class _Api:
         """
         try:
             return Layer(self, name)
-        except RustGISError as e:
+        except PowerGISError as e:
             raise KeyError(name) from e
 
     def __contains__(self, name: object) -> bool:
@@ -513,7 +513,7 @@ class _Api:
             return False
         try:
             self._find_layer(name)
-        except RustGISError:
+        except PowerGISError:
             return False
         return True
 
@@ -676,7 +676,7 @@ class _Api:
                 them), or ``(west, south, east, north)`` in degrees.
 
         Raises:
-            RustGISError: When a layer isn't on the map, or the layers are all empty.
+            PowerGISError: When a layer isn't on the map, or the layers are all empty.
             TypeError: When ``target`` is none of these.
         """
         if isinstance(target, (str, int, Layer)) and not isinstance(target, bool):
@@ -689,7 +689,7 @@ class _Api:
             extents = (self._find_layer(item).get("extent") for item in items)
             boxes = [box for box in extents if box]
             if not boxes:
-                raise RustGISError("the layers have no features to zoom to")
+                raise PowerGISError("the layers have no features to zoom to")
             extent = [
                 min(b[0] for b in boxes),
                 min(b[1] for b in boxes),
@@ -707,7 +707,7 @@ class _Api:
 
 
 class Session(_Api):
-    """A RustGIS project open in memory: its maps, layers, symbology, layouts and undo history.
+    """A PowerGIS project open in memory: its maps, layers, symbology, layouts and undo history.
 
     Args:
         project: A project file (``.rgis``) to open.
@@ -753,7 +753,7 @@ class Session(_Api):
                 self.add_data(path)
 
     def run(self, command: str, params: Optional[Dict[str, Any]] = None, /, **kwargs: Any) -> Any:
-        """Runs a RustGIS command by id.
+        """Runs a PowerGIS command by id.
 
         Parameters can be given as a dict, as keyword arguments, or both (keyword arguments win).
         ``Session.commands()`` lists every command with its parameters, and
@@ -772,7 +772,7 @@ class Session(_Api):
             The command's result, decoded from JSON (``None`` for commands that return nothing).
 
         Raises:
-            RustGISError: When the command fails; the message says why.
+            PowerGISError: When the command fails; the message says why.
         """
         merged: Dict[str, Any] = dict(params or {})
         merged.update(kwargs)
@@ -863,7 +863,7 @@ class Session(_Api):
     def __repr__(self) -> str:
         try:
             names = self.layer_names()
-        except RustGISError:
+        except PowerGISError:
             names = []
         return f"Session(layers={names!r})"
 

@@ -1,4 +1,4 @@
-//! Writes the seed corpus into `corpus/<target>/`: well-formed files made by RustGIS's own writers
+//! Writes the seed corpus into `corpus/<target>/`: well-formed files made by PowerGIS's own writers
 //! from the sample project's layers, so fuzzing starts from real files rather than guessing each
 //! format's magic bytes. The repository commits no data files; run this before fuzzing:
 //!
@@ -15,7 +15,7 @@ use std::path::{Path, PathBuf};
 
 /// Features kept from each sample layer: seeds stay small, which libFuzzer mutates faster.
 const FEATURES: usize = 12;
-/// The formats RustGIS writes, as `write_bytes` names them, and the extension each is read back by.
+/// The formats PowerGIS writes, as `write_bytes` names them, and the extension each is read back by.
 const WRITTEN: &[(&str, &str)] = &[
     ("geojson", "geojson"),
     ("csv", "csv"),

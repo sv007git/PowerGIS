@@ -7,7 +7,7 @@
 # workflow that can build without publishing, waits for them all, and fails if
 # any of them fails.
 #
-#   gh workflow run release-dry-run.yml -R opengeos/RustGIS --ref main -f version=0.2.0
+#   gh workflow run release-dry-run.yml -R opengeos/PowerGIS --ref main -f version=0.2.0
 #
 # Each workflow it triggers withholds its own publishing on a non-release
 # event, so nothing here can write a release asset:

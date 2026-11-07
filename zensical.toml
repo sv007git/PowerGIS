@@ -1,10 +1,10 @@
 [project]
-site_name = "RustGIS"
+site_name = "PowerGIS"
 site_description = "A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data, on the desktop and in the browser"
 site_author = "opengeos"
 site_url = "https://rustgis.app"
-repo_url = "https://github.com/opengeos/RustGIS"
-repo_name = "opengeos/RustGIS"
+repo_url = "https://github.com/opengeos/PowerGIS"
+repo_name = "opengeos/PowerGIS"
 copyright = "Copyright &copy; 2026 Qiusheng Wu"
 extra_css = ["stylesheets/extra.css"]
 
@@ -45,7 +45,7 @@ nav = [
   { "How to Cite" = "citation.md" },
   { "Sponsor" = "sponsor.md" },
   { "Privacy" = "privacy.md" },
-  { "Report Issues" = "https://github.com/opengeos/RustGIS/issues" },
+  { "Report Issues" = "https://github.com/opengeos/PowerGIS/issues" },
 ]
 
 [project.theme]
@@ -95,13 +95,13 @@ permalink = true
 
 [[project.extra.social]]
 icon = "fontawesome/brands/github"
-link = "https://github.com/opengeos/RustGIS"
-name = "RustGIS on GitHub"
+link = "https://github.com/opengeos/PowerGIS"
+name = "PowerGIS on GitHub"
 
 [[project.extra.social]]
 icon = "fontawesome/solid/heart"
 link = "https://github.com/sponsors/giswqs"
-name = "Sponsor RustGIS on GitHub"
+name = "Sponsor PowerGIS on GitHub"
 
 [[project.extra.social]]
 icon = "fontawesome/solid/mug-hot"

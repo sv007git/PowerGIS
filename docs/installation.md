@@ -2,36 +2,36 @@
 
 ## Install with an agent
 
-Point your agent at the [RustGIS skill](https://github.com/opengeos/RustGIS/blob/main/skills/rustgis/SKILL.md)
-and ask it to install RustGIS. The skill picks the platform, installs the app and `rustgis-cli`,
+Point your agent at the [PowerGIS skill](https://github.com/opengeos/PowerGIS/blob/main/skills/rustgis/SKILL.md)
+and ask it to install PowerGIS. The skill picks the platform, installs the app and `rustgis-cli`,
 checks the release checksum, and registers the MCP server. The same skill is how an agent manages
 the desktop app that is already open.
 
 ## Microsoft Store
 
-On Windows 10 and 11, the easiest way to install RustGIS is from the Microsoft Store, which
+On Windows 10 and 11, the easiest way to install PowerGIS is from the Microsoft Store, which
 signs the app and keeps it up to date:
 
 [![Get it from Microsoft](https://get.microsoft.com/images/en-us%20dark.svg){ width="200" }](https://apps.microsoft.com/detail/9ppjw8h561lq?mode=direct)
 
 ## Download
 
-Each [GitHub release](https://github.com/opengeos/RustGIS/releases/latest) carries ready-to-run
+Each [GitHub release](https://github.com/opengeos/PowerGIS/releases/latest) carries ready-to-run
 builds of the desktop app and `rustgis-cli`. The same files, grouped by platform, are mirrored at
 **[downloads.rustgis.app](https://downloads.rustgis.app)**:
 
 | Platform | File |
 | --- | --- |
-| Windows x64 / arm64 (installer, no admin rights) | `RustGIS-<version>-windows-x86_64-setup.exe` / `RustGIS-<version>-windows-aarch64-setup.exe` |
-| Windows x64 / arm64 (installer for all users) | `RustGIS-<version>-windows-x86_64.msi` / `RustGIS-<version>-windows-aarch64.msi` |
-| Windows x64 / arm64 (no install) | `RustGIS-<version>-windows-x86_64-portable.zip` / `RustGIS-<version>-windows-aarch64-portable.zip` (unzip and run `rustgis.exe`) |
-| Windows x64 / arm64 (Microsoft Store package) | `RustGIS-<version>-windows-x86_64.msix` / `RustGIS-<version>-windows-aarch64.msix` |
-| macOS Apple Silicon | `RustGIS-<version>-macos-aarch64.dmg` |
-| macOS Intel | `RustGIS-<version>-macos-x86_64.dmg` |
+| Windows x64 / arm64 (installer, no admin rights) | `PowerGIS-<version>-windows-x86_64-setup.exe` / `PowerGIS-<version>-windows-aarch64-setup.exe` |
+| Windows x64 / arm64 (installer for all users) | `PowerGIS-<version>-windows-x86_64.msi` / `PowerGIS-<version>-windows-aarch64.msi` |
+| Windows x64 / arm64 (no install) | `PowerGIS-<version>-windows-x86_64-portable.zip` / `PowerGIS-<version>-windows-aarch64-portable.zip` (unzip and run `rustgis.exe`) |
+| Windows x64 / arm64 (Microsoft Store package) | `PowerGIS-<version>-windows-x86_64.msix` / `PowerGIS-<version>-windows-aarch64.msix` |
+| macOS Apple Silicon | `PowerGIS-<version>-macos-aarch64.dmg` |
+| macOS Intel | `PowerGIS-<version>-macos-x86_64.dmg` |
 | Linux x64 / arm64 (Debian, Ubuntu) | `rustgis_<version>_amd64.deb` / `rustgis_<version>_arm64.deb` |
 | Linux x64 / arm64 (Fedora, RHEL, openSUSE) | `rustgis-<version>-1.x86_64.rpm` / `rustgis-<version>-1.aarch64.rpm` |
-| Linux x64 / arm64 (any distribution, no install) | `RustGIS-<version>-linux-x86_64.AppImage` / `RustGIS-<version>-linux-aarch64.AppImage` |
-| Linux x64 / arm64 (other) | `RustGIS-<version>-linux-x86_64.tar.gz` / `RustGIS-<version>-linux-aarch64.tar.gz` |
+| Linux x64 / arm64 (any distribution, no install) | `PowerGIS-<version>-linux-x86_64.AppImage` / `PowerGIS-<version>-linux-aarch64.AppImage` |
+| Linux x64 / arm64 (other) | `PowerGIS-<version>-linux-x86_64.tar.gz` / `PowerGIS-<version>-linux-aarch64.tar.gz` |
 
 On macOS the command-line tool is a separate `rustgis-cli-<version>-macos-<arch>.tar.gz`;
 the other packages include it (the Windows installers and the MSIX add `rustgis-cli` to every
@@ -41,11 +41,11 @@ The AppImages carry update information, so tools such as Gear Lever can update t
 latest release. AppImageUpdate, and AppImageLauncher through the AppImageUpdate library, download
 only the parts that changed, with the `.zsync` file published beside each AppImage.
 
-On Windows, `setup.exe` installs for your account in `%LOCALAPPDATA%\Programs\RustGIS` and needs
+On Windows, `setup.exe` installs for your account in `%LOCALAPPDATA%\Programs\PowerGIS` and needs
 no admin rights; the `.msi` installs for every user in `Program Files` and suits managed
-deployment (`msiexec /i RustGIS-<version>-windows-<arch>.msi /qn`, where `<arch>` is `x86_64` or
+deployment (`msiexec /i PowerGIS-<version>-windows-<arch>.msi /qn`, where `<arch>` is `x86_64` or
 `aarch64`). Both add a Start menu
-entry, open `.rgis` projects, list RustGIS under **Open with** for `.geojson`, and
+entry, open `.rgis` projects, list PowerGIS under **Open with** for `.geojson`, and
 uninstall from **Settings › Apps**.
 
 The `.msix` is the package submitted to the Microsoft Store, which signs it. It is unsigned
@@ -60,11 +60,11 @@ publisher, choose **More info › Run anyway**.
 
 ## Package managers
 
-RustGIS is also published to these package managers, which keep it up to date:
+PowerGIS is also published to these package managers, which keep it up to date:
 
 | Platform | Command |
 | --- | --- |
-| Windows x64 ([winget](https://learn.microsoft.com/windows/package-manager/)) | `winget install OpenGeos.RustGIS` (x64 only for now: on ARM64, use the ARM64 setup.exe or .msi above) |
+| Windows x64 ([winget](https://learn.microsoft.com/windows/package-manager/)) | `winget install OpenGeos.PowerGIS` (x64 only for now: on ARM64, use the ARM64 setup.exe or .msi above) |
 | macOS ([Homebrew](https://brew.sh)) | `brew install --cask opengeos/rustgis/rustgis` |
 | macOS and Linux, command-line tool only (Homebrew) | `brew install opengeos/rustgis/rustgis-cli` |
 | Arch Linux ([AUR](https://aur.archlinux.org/packages/rustgis-bin)) | `yay -S rustgis-bin` (or any AUR helper) |
@@ -77,13 +77,13 @@ managers shortly after it is published (winget after Microsoft's review).
 
 ## From source
 
-RustGIS builds from source with a recent stable Rust toolchain (1.90 or later), a C compiler (for
+PowerGIS builds from source with a recent stable Rust toolchain (1.90 or later), a C compiler (for
 the C code some dependencies bundle; see [Architecture](architecture.md#pure-rust)) and `curl`
 (to download the sample data).
 
 ```sh
-git clone https://github.com/opengeos/RustGIS.git
-cd RustGIS
+git clone https://github.com/opengeos/PowerGIS.git
+cd PowerGIS
 cargo run --release -p rustgis            # the desktop app
 cargo build --release -p rustgis-cli      # the command-line tool
 ```
@@ -108,7 +108,7 @@ RUSTGIS_DATA_DIR=/path/to/data cargo build --release
 
 ## Web app
 
-RustGIS also runs in the browser, compiled to WebAssembly: open
+PowerGIS also runs in the browser, compiled to WebAssembly: open
 **[web.rustgis.app](https://web.rustgis.app)**. It is the same app, with these differences:
 
 - **Open** and **Add Data** use the browser's file picker, and you can drop files on the page.
@@ -210,8 +210,8 @@ stale cache.
 
 ### Self-host the static build
 
-Download `RustGIS-<version>-web.zip` from the
-[GitHub release](https://github.com/opengeos/RustGIS/releases) and unzip it into a directory of
+Download `PowerGIS-<version>-web.zip` from the
+[GitHub release](https://github.com/opengeos/PowerGIS/releases) and unzip it into a directory of
 its own (or the document root, if the server serves nothing else). Serve it over HTTP, rather
 than opening `index.html` as a local file. For a local preview, run `python3 -m http.server 8080`
 from the extracted directory and open `http://localhost:8080/`.
@@ -248,7 +248,7 @@ serves HTTPS: browsers install the app and start its service worker only over HT
 `localhost`). The app's addresses are relative, so the proxy can also serve it under a path,
 such as `https://example.com/rustgis/`, passing requests on without the path. Signing in to
 ArcGIS from your copy needs an OAuth app of your own whose redirect URLs list the copy's
-`oauth-callback.html`, as RustGIS's own app accepts only web.rustgis.app's (see
+`oauth-callback.html`, as PowerGIS's own app accepts only web.rustgis.app's (see
 [Secured ArcGIS services](user-guide/data-formats.md#secured-arcgis-services)).
 
 The image is for the platform of the machine that builds it. To build it for another, such as
@@ -277,7 +277,7 @@ GeoLibre programs aren't in the image. To build it yourself:
 
 ## Fonts
 
-RustGIS uses an installed sans-serif when it finds one (Segoe UI, San Francisco, Arial, Inter,
+PowerGIS uses an installed sans-serif when it finds one (Segoe UI, San Francisco, Arial, Inter,
 Noto Sans, Open Sans or DejaVu Sans) and falls back to a built-in face. Set
 `RUSTGIS_BUILTIN_FONTS=1` to always use the built-in face.
 
@@ -287,17 +287,17 @@ The desktop app and the command line keep their files in three folders:
 
 | Folder | Holds | Windows | macOS | Linux |
 | --- | --- | --- | --- | --- |
-| Settings | preferences (`prefs.json`), the crash log, AI Assistant sign-ins and skills | `%APPDATA%\RustGIS` | `~/Library/Application Support/RustGIS` | `$XDG_CONFIG_HOME/rustgis` (`~/.config/rustgis`) |
-| Data | installed plugins, the GeoLibre runner and recovery copies of unsaved work | `%LOCALAPPDATA%\RustGIS` | `~/Library/Application Support/RustGIS` | `$XDG_DATA_HOME/rustgis` (`~/.local/share/rustgis`) |
-| Cache | GDAL and DuckDB conversions | `%LOCALAPPDATA%\RustGIS\cache` | `~/Library/Caches/RustGIS` | `$XDG_CACHE_HOME/rustgis` (`~/.cache/rustgis`) |
+| Settings | preferences (`prefs.json`), the crash log, AI Assistant sign-ins and skills | `%APPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_CONFIG_HOME/rustgis` (`~/.config/rustgis`) |
+| Data | installed plugins, the GeoLibre runner and recovery copies of unsaved work | `%LOCALAPPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_DATA_HOME/rustgis` (`~/.local/share/rustgis`) |
+| Cache | GDAL and DuckDB conversions | `%LOCALAPPDATA%\PowerGIS\cache` | `~/Library/Caches/PowerGIS` | `$XDG_CACHE_HOME/rustgis` (`~/.cache/rustgis`) |
 
 Set `RUSTGIS_CONFIG_DIR`, `RUSTGIS_APP_DATA_DIR` or `RUSTGIS_CACHE_DIR` to use another folder
-instead, for a portable install on a USB drive, for example. The folder is used as is, and RustGIS
+instead, for a portable install on a USB drive, for example. The folder is used as is, and PowerGIS
 keeps the same files in it (`plugins/`, `geolibre/` and `recovery/` in the data folder, `gdal/` and `duckdb/`
 in the cache folder). `RUSTGIS_PLUGINS_DIR`, `RUSTGIS_GDAL_CACHE` and `RUSTGIS_DUCKDB_CACHE` name
 the plugins folder and the GDAL and DuckDB caches themselves, ahead of these.
 
-## If RustGIS closes unexpectedly
+## If PowerGIS closes unexpectedly
 
 The desktop app writes its internal errors to `crash.log` in its
 [settings folder](#settings-data-and-cache-folders): one that closed the app, and also one it
@@ -305,9 +305,9 @@ recovered from (an error in the AI Assistant, for example, stops the request and
 chat instead of closing the app). The next launch moves the log to `crash-last.log` and names the
 file in a notice.
 
-Attach it to a [bug report](https://github.com/opengeos/RustGIS/issues/new?template=bug_report.yml).
-It holds the version, the operating system, the error message and where in RustGIS it happened.
-An error message can quote what RustGIS was working on, such as a file path or a layer name, so
+Attach it to a [bug report](https://github.com/opengeos/PowerGIS/issues/new?template=bug_report.yml).
+It holds the version, the operating system, the error message and where in PowerGIS it happened.
+An error message can quote what PowerGIS was working on, such as a file path or a layer name, so
 read the log first and remove anything you don't want to share.
 
 Unsaved work isn't lost with it: the next launch offers the copy autosave kept (see
@@ -329,5 +329,5 @@ rustgis --backend metal    # Metal (macOS)
 ```
 
 The `WGPU_BACKEND` environment variable takes the same names, for every launch. On Windows,
-RustGIS uses Vulkan only when asked like this: some Vulkan drivers, such as Intel's for UHD 600
+PowerGIS uses Vulkan only when asked like this: some Vulkan drivers, such as Intel's for UHD 600
 series graphics, crash as the app starts. Updating the graphics driver may also help.

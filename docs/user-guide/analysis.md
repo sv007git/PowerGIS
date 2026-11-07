@@ -576,29 +576,29 @@ Whitebox and GeoLibre for terrain analysis (slope, aspect, hillshade, curvature)
 interpolation and vector work. They run on the map's layers and add their outputs as new
 layers.
 
-The suite is an optional download, so RustGIS itself stays small: the **GeoLibre runner**, a
+The suite is an optional download, so PowerGIS itself stays small: the **GeoLibre runner**, a
 single `geolibre` program (about 20 MB to download). In the Tools pane, click
-**Install Whitebox and GeoLibre tools** under *Whitebox and GeoLibre tools*: RustGIS downloads the latest runner for your
+**Install Whitebox and GeoLibre tools** under *Whitebox and GeoLibre tools*: PowerGIS downloads the latest runner for your
 platform from the [geolibre-rust releases](https://github.com/opengeos/geolibre-rust/releases/latest),
 checks it against its published SHA-256 checksum (which catches a corrupted download; the
 release itself is trusted as when you download it by hand) and installs it in its data folder
-(by default `~/.local/share/rustgis/geolibre` on Linux, `~/Library/Application Support/RustGIS/geolibre`
-on macOS, `%LOCALAPPDATA%\RustGIS\geolibre` on Windows). `RUSTGIS_APP_DATA_DIR` overrides the
+(by default `~/.local/share/rustgis/geolibre` on Linux, `~/Library/Application Support/PowerGIS/geolibre`
+on macOS, `%LOCALAPPDATA%\PowerGIS\geolibre` on Windows). `RUSTGIS_APP_DATA_DIR` overrides the
 data folder; Linux also honours `XDG_DATA_HOME`. From the command line, `gp.installGeolibre`
 does the same.
 
 To remove it, click **Uninstall** beside *GeoLibre* at the top of the Tools pane, then
-**Confirm uninstall** (`gp.uninstallGeolibre` from the command line): RustGIS deletes the runner
+**Confirm uninstall** (`gp.uninstallGeolibre` from the command line): PowerGIS deletes the runner
 it installed and removes the `geolibre` folder only if it is empty. Other files there, a runner
-you located yourself, and one on your `PATH` are left alone; RustGIS looks for a runner again.
+you located yourself, and one on your `PATH` are left alone; PowerGIS looks for a runner again.
 You can install the tools again at any time. In the browser,
-**Remove** unloads the tools and stops loading them when RustGIS starts.
+**Remove** unloads the tools and stops loading them when PowerGIS starts.
 
 To install it yourself instead, download the archive for your platform
 (`geolibre-<version>-<platform>.tar.gz`, or `.zip` on Windows), unpack it anywhere, and click
-**Locate…** to pick the `geolibre` program; RustGIS remembers it.
+**Locate…** to pick the `geolibre` program; PowerGIS remembers it.
 
-RustGIS also finds the runner without asking when it is next to the RustGIS program (or in a
+PowerGIS also finds the runner without asking when it is next to the PowerGIS program (or in a
 `geolibre` folder beside it), on your `PATH`, or named by the `RUSTGIS_GEOLIBRE` environment
 variable (the command line uses these). The tools then appear under **GeoLibre** in the Tools
 pane and the Browser's toolboxes, grouped by the category and subcategory the runner gives
@@ -615,14 +615,14 @@ them by category only. Find Tools searches them.
   a file not open as a layer can be added too: type its path below the list and press Enter.
 - Raster outputs are kept inside the project, so they save and reopen with it. Table outputs
   become standalone tables; text reports appear in the tool's messages.
-- LiDAR and other inputs RustGIS doesn't open as layers take a file path, read like Add Data
+- LiDAR and other inputs PowerGIS doesn't open as layers take a file path, read like Add Data
   reads one. Outputs are written to a fresh scratch folder and loaded from there.
-- Each run is a separate `geolibre` process, so a tool that fails can't take RustGIS down.
+- Each run is a separate `geolibre` process, so a tool that fails can't take PowerGIS down.
 - From the command line: `gp.run={"tool":"geolibre:slope","params":{"input":"dem"}}`;
   `gp.tools` lists every tool's parameters, `gp.geolibre` shows the runner in use and
   `gp.setGeolibre={"path":"…"}` picks one.
 
-In the web app, click **Load Whitebox and GeoLibre tools** in the Tools pane instead. RustGIS
+In the web app, click **Load Whitebox and GeoLibre tools** in the Tools pane instead. PowerGIS
 loads geolibre-rust's WebAssembly runner (the `geolibre-wasm` package, from jsDelivr, about
 25 MB the first time, then from the browser's cache) and the tools run in the page, in an
 in-memory folder: nothing is uploaded. The web app remembers this and loads them again on your
@@ -630,7 +630,7 @@ next visit. The runner's code comes from jsDelivr, pinned to one geolibre-wasm r
 same trust as installing that package. Tools that read files by path (LiDAR files, for instance) need the desktop app,
 since a web page has no file system.
 
-In the desktop app and on the command line, RustGIS waits while a tool runs, so a long run on
+In the desktop app and on the command line, PowerGIS waits while a tool runs, so a long run on
 a large raster or point cloud keeps the window busy until it finishes. In the web app the run
 is started in the background and the result is added when it ends, but the tool itself runs
 in the page, so the page is busy while it computes.
@@ -767,7 +767,7 @@ The Analyze tab's imagery groups open their tools in the Workflows pane:
 - **Ortho Mapping** and **Reality Mapping** workspaces mosaic georeferenced images into an
   orthomosaic, or elevation rasters into a surface model that exports as a 3D mesh (OBJ).
 - **Georeference** places a raster from control points (column, row, longitude, latitude) or
-  stretches it over the map view. Those only shift and scale a north-up grid, as RustGIS's
+  stretches it over the map view. Those only shift and scale a north-up grid, as PowerGIS's
   geotransform has no rotation. With `transform` (`raster.georeference`) the points are fitted by any
   of the Control Point Fit transforms and the raster is warped onto a new north-up grid covering the
   warped image: `{"layer": "scan", "transform": "spline", "points": [[column, row, x, y], …],
@@ -828,7 +828,7 @@ The Analyze tab's imagery groups open their tools in the Workflows pane:
   - Cells off the raster are its no-data value. A raster without one keeps its bands as they are,
     with NaN there in a floating-point type and 0 in a whole-number one, as GDAL leaves them; a
     colour image gains an alpha band instead, so they are see-through.
-  - Datums are shifted as everywhere in RustGIS, through each system's transformation to WGS 84
+  - Datums are shifted as everywhere in PowerGIS, through each system's transformation to WGS 84
     (a Helmert step for SAD69 or Córrego Alegre, a few metres from the IBGE's grid shifts).
   - The result has to fit in memory (120 million values, cells times bands; 32 million in the
     web app): a grid past that is refused, naming the limit. A raster read from its overview is

@@ -1,6 +1,6 @@
-"""The RustGIS app in a Jupyter notebook: an anywidget around a :class:`~rustgis.Session`.
+"""The PowerGIS app in a Jupyter notebook: an anywidget around a :class:`~rustgis.Session`.
 
-The widget shows the RustGIS web app (ribbon, panes, map) in the cell, kept in step with the
+The widget shows the PowerGIS web app (ribbon, panes, map) in the cell, kept in step with the
 Python session through the project: what Python adds or styles appears in the app, and what is
 done in the app (an edit, a new layer, a pan) is back in the session for Python to read.
 """
@@ -19,7 +19,7 @@ __all__ = ["DEFAULT_URL", "EMBED_LIMIT", "Map"]
 
 
 class Map(anywidget.AnyWidget, _Embedded):
-    """The RustGIS app in a notebook cell, driven from Python.
+    """The PowerGIS app in a notebook cell, driven from Python.
 
     It has the methods of :class:`~rustgis.Session` (``run``, ``run_tool``, ``add_data``,
     ``m["Cities"]``...); what they change shows in the app.

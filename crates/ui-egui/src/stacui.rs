@@ -897,7 +897,7 @@ pub fn dialog(app: &mut RustGisApp, ui: &mut egui::Ui) {
     results(app, ui);
 }
 
-/// Add as Time Series (opengeos/RustGIS#559): when an API's items span several dates, a band of
+/// Add as Time Series (opengeos/PowerGIS#559): when an API's items span several dates, a band of
 /// them as a data cube on the time slider (`stac.addCube`), with an optional fixed range.
 #[cfg(not(target_arch = "wasm32"))]
 fn cube_row(app: &mut RustGisApp, ui: &mut egui::Ui, busy: bool) {

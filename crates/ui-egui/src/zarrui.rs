@@ -55,7 +55,7 @@ pub struct State {
     /// without metadata.
     forbidden: usize,
     pub error: Option<String>,
-    /// Add the variable as a layer that follows the time slider (opengeos/RustGIS#554).
+    /// Add the variable as a layer that follows the time slider (opengeos/PowerGIS#554).
     pub follow: bool,
 }
 

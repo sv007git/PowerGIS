@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="https://assets.rustgis.app/images/logo.svg" alt="RustGIS logo: a rust-coloured cog framing a segmented globe with an orbit" width="160">
+  <img src="https://assets.rustgis.app/images/logo.svg" alt="PowerGIS logo: a rust-coloured cog framing a segmented globe with an orbit" width="160">
 </p>
 
-<h1 align="center">RustGIS</h1>
+<h1 align="center">PowerGIS</h1>
 
 <p align="center">
   <b>A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data.</b><br>
@@ -16,22 +16,22 @@
   <img alt="19 languages" src="https://img.shields.io/badge/languages-19-0e9384?style=flat-square">
   <a href="https://plugins.rustgis.app"><img alt="Plugins" src="https://img.shields.io/badge/plugins-registry-7c3aed?style=flat-square"></a>
   <a href="https://pypi.org/project/rustgis/"><img alt="PyPI" src="https://img.shields.io/pypi/v/rustgis?style=flat-square&logo=python&logoColor=white&label=pypi"></a>
-  <a href="https://colab.research.google.com/github/opengeos/RustGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg"></a>
+  <a href="https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb"><img alt="Open in Colab" src="https://colab.research.google.com/assets/colab-badge.svg"></a>
   <a href="https://doi.org/10.5281/zenodo.23633281"><img alt="DOI" src="https://img.shields.io/badge/DOI-10.5281%2Fzenodo.23633281-1682d4?style=flat-square"></a>
 </p>
 
 <p align="center">
-  <a href="https://web.rustgis.app"><img alt="Launch the RustGIS web app" src="https://img.shields.io/badge/Launch-web%20app-b84a2c?style=for-the-badge&logo=webassembly&logoColor=white" height="36"></a>
-  <a href="https://github.com/opengeos/RustGIS/releases/latest"><img alt="Download the desktop app" src="https://img.shields.io/badge/Download-desktop%20app-2563eb?style=for-the-badge&logo=github&logoColor=white" height="36"></a>
+  <a href="https://web.rustgis.app"><img alt="Launch the PowerGIS web app" src="https://img.shields.io/badge/Launch-web%20app-b84a2c?style=for-the-badge&logo=webassembly&logoColor=white" height="36"></a>
+  <a href="https://github.com/opengeos/PowerGIS/releases/latest"><img alt="Download the desktop app" src="https://img.shields.io/badge/Download-desktop%20app-2563eb?style=for-the-badge&logo=github&logoColor=white" height="36"></a>
   <a href="https://rustgis.app"><img alt="Read the documentation" src="https://img.shields.io/badge/Read-the%20docs-0e9384?style=for-the-badge&logo=materialformkdocs&logoColor=white" height="36"></a>
   <a href="https://apps.microsoft.com/detail/9ppjw8h561lq?mode=direct"><img alt="Get it from Microsoft" src="https://get.microsoft.com/images/en-us%20dark.svg" height="36"></a>
 </p>
 
 <p align="center">
-  <img src="https://assets.rustgis.app/images/hero.webp" alt="RustGIS with the Home tab of the ribbon open. The Layers pane lists Cities, Rivers, Lakes and Countries with their legends; the map shows the world in the Equal Earth projection, countries shaded by population, sized city dots and country labels." width="100%">
+  <img src="https://assets.rustgis.app/images/hero.webp" alt="PowerGIS with the Home tab of the ribbon open. The Layers pane lists Cities, Rivers, Lakes and Countries with their legends; the map shows the world in the Equal Earth projection, countries shaded by population, sized city dots and country labels." width="100%">
 </p>
 
-## Why RustGIS
+## Why PowerGIS
 
 - **Fast and small.** One native program, drawn on the GPU, with no runtime to install and no
   server to run.
@@ -66,7 +66,7 @@
 </tr>
 <tr>
 <td width="50%" valign="top"><img src="https://assets.rustgis.app/images/layout.webp" alt="A landscape A4 page layout with a map frame, title, legend, north arrow and scale bar, and the Publish tab open" width="100%"><p align="center"><sub><b>Layouts.</b> Map frames, legends, scale bars, map series and PDF export.</sub></p></td>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/plugins.webp" alt="The Plugin Manager browsing the plugin registry, listing Basemaps, Hello RustGIS, Map Explorer and Vector Toolkit with their permissions" width="100%"><p align="center"><sub><b>Plugins.</b> Install sandboxed plugins from <a href="https://plugins.rustgis.app">plugins.rustgis.app</a>.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/plugins.webp" alt="The Plugin Manager browsing the plugin registry, listing Basemaps, Hello PowerGIS, Map Explorer and Vector Toolkit with their permissions" width="100%"><p align="center"><sub><b>Plugins.</b> Install sandboxed plugins from <a href="https://plugins.rustgis.app">plugins.rustgis.app</a>.</sub></p></td>
 </tr>
 <tr>
 <td width="50%" valign="top"><img src="https://assets.rustgis.app/images/modelbuilder.webp" alt="ModelBuilder after a run: Cities buffered by 300 km clip the Rivers, and Countries are dissolved by continent; every node is ticked and the results are on the map" width="100%"><p align="center"><sub><b>ModelBuilder.</b> Chain tools on a node canvas and run them in one go.</sub></p></td>
@@ -81,12 +81,12 @@
 <td width="50%" valign="top"><img src="https://assets.rustgis.app/images/time-slider.webp" alt="The Time Slider under the map at 2018, showing a layer of dated events cumulatively, with a bar for each year" width="100%"><p align="center"><sub><b>Time Slider.</b> Step dated features and imagery through time.</sub></p></td>
 </tr>
 <tr>
-<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/dark.webp" alt="RustGIS in dark mode with the View tab open over a map of Europe on the Midnight basemap" width="100%"><p align="center"><sub><b>Dark mode</b> and the View tab's effects, panes and linked views.</sub></p></td>
+<td width="50%" valign="top"><img src="https://assets.rustgis.app/images/dark.webp" alt="PowerGIS in dark mode with the View tab open over a map of Europe on the Midnight basemap" width="100%"><p align="center"><sub><b>Dark mode</b> and the View tab's effects, panes and linked views.</sub></p></td>
 <td width="50%" valign="top"><img src="https://assets.rustgis.app/images/backstage.webp" alt="The Project backstage with cards to start a blank map, the World Atlas sample, or open a project" width="100%"><p align="center"><sub><b>Projects.</b> Start blank, from the World Atlas sample, or open a project.</sub></p></td>
 </tr>
 </table>
 
-Every screenshot is RustGIS itself, rendered offscreen by `cargo run -p rustgis-ui-egui --example ui_shot`.
+Every screenshot is PowerGIS itself, rendered offscreen by `cargo run -p rustgis-ui-egui --example ui_shot`.
 
 ## Features
 
@@ -108,21 +108,21 @@ Every screenshot is RustGIS itself, rendered offscreen by `cargo run -p rustgis-
 | **Interface** | Layers, Browser and Data Sources panes as tabs, command search (Ctrl+K), keyboard shortcuts, dark mode, a customizable ribbon and Quick Access Toolbar, linked side-by-side maps, 19 languages |
 
 The [user guide](https://rustgis.app/user-guide/) covers each area in detail,
-[Comparison](https://rustgis.app/comparison/) sets RustGIS beside GeoLibre, QGIS and ArcGIS, and
+[Comparison](https://rustgis.app/comparison/) sets PowerGIS beside GeoLibre, QGIS and ArcGIS, and
 [ROADMAP.md](ROADMAP.md) lists what's next.
 
-## Get RustGIS
+## Get PowerGIS
 
 - **Web app**: open **[web.rustgis.app](https://web.rustgis.app)**. The same ribbon and tools,
   with the browser's file picker for data and projects, and downloads for Save and Export.
 - **Desktop**: download the app for Windows, macOS or Linux from
   [downloads.rustgis.app](https://downloads.rustgis.app) or the
-  [latest release](https://github.com/opengeos/RustGIS/releases/latest) (see
+  [latest release](https://github.com/opengeos/PowerGIS/releases/latest) (see
   [Installation](docs/installation.md) for the files and first-run notes).
-- **Microsoft Store**: get RustGIS from the
+- **Microsoft Store**: get PowerGIS from the
   [Microsoft Store](https://apps.microsoft.com/detail/9ppjw8h561lq) on Windows 10 and 11, which
   installs it in one click and keeps it up to date.
-- **Package managers**: `winget install OpenGeos.RustGIS`,
+- **Package managers**: `winget install OpenGeos.PowerGIS`,
   `brew install --cask opengeos/rustgis/rustgis`, `yay -S rustgis-bin` (AUR), or
   `sudo dnf copr enable giswqs/rustgis && sudo dnf install rustgis` (Fedora).
 - **From source**: `cargo run --release -p rustgis` (Rust 1.90 or later).
@@ -144,7 +144,7 @@ rustgis-cli run --sample \
   --cmd 'layer.symbology={"layer":"Countries_Summarize","type":"graduated","field":"point_count"}' \
   --cmd 'share.exportMap={"path":"out.png","dpi":192}' --save atlas.rgis
 rustgis-cli ask --sample "Which 5 countries have the largest GDP?"
-claude mcp add rustgis -- rustgis-cli mcp --sample   # RustGIS as an MCP server for AI agents
+claude mcp add rustgis -- rustgis-cli mcp --sample   # PowerGIS as an MCP server for AI agents
 ```
 
 See [Command Line](docs/cli.md) for more.
@@ -161,7 +161,7 @@ gdf = s.layer("Cities_Buffer").to_geopandas()
 ```
 
 See [Python](docs/python.md) and the [getting-started notebook](apps/rustgis-python/examples/getting-started.ipynb)
-([open in Colab](https://colab.research.google.com/github/opengeos/RustGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb)).
+([open in Colab](https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb)).
 
 ## Architecture
 
@@ -186,7 +186,7 @@ agent notes: [AGENTS.md](AGENTS.md).
 
 ## Sponsor
 
-RustGIS is free and open source, and stays that way. If it is useful to you or your team, sponsorship is the most direct way to keep development, hosting and cross-platform distribution going.
+PowerGIS is free and open source, and stays that way. If it is useful to you or your team, sponsorship is the most direct way to keep development, hosting and cross-platform distribution going.
 
 - [**GitHub Sponsors**](https://github.com/sponsors/giswqs): monthly or one-time, billed through your GitHub account.
 - [**Buy Me a Coffee**](https://buymeacoffee.com/giswqs): a quick one-off contribution, no account required.
@@ -195,11 +195,11 @@ See the [Become a Sponsor](https://rustgis.app/sponsor/) page for what sponsorsh
 
 ## Citation
 
-If you use RustGIS in your work, please cite it. RustGIS is archived on [Zenodo](https://zenodo.org/), which mints a DOI for every release. The concept DOI below always resolves to the latest version.
+If you use PowerGIS in your work, please cite it. PowerGIS is archived on [Zenodo](https://zenodo.org/), which mints a DOI for every release. The concept DOI below always resolves to the latest version.
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.23633281.svg)](https://doi.org/10.5281/zenodo.23633281)
 
-> Wu, Q., Rincón Albarracín, J. G., Filho, E., Hofbauer, D., Fitzgerald, M., & Strebel, D. (2026). RustGIS: A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data. Zenodo. <https://doi.org/10.5281/zenodo.23633281>
+> Wu, Q., Rincón Albarracín, J. G., Filho, E., Hofbauer, D., Fitzgerald, M., & Strebel, D. (2026). PowerGIS: A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data. Zenodo. <https://doi.org/10.5281/zenodo.23633281>
 
 You can also use GitHub's **"Cite this repository"** button (which reads [`CITATION.cff`](CITATION.cff)) to copy a ready-made APA or BibTeX entry. See the [How to Cite](https://rustgis.app/citation/) page for more formats.
 
@@ -215,7 +215,7 @@ You can also use GitHub's **"Cite this repository"** button (which reads [`CITAT
 
 ## Acknowledgements
 
-RustGIS builds on the work of many projects and their authors: [QGIS](https://qgis.org), ArcGIS
+PowerGIS builds on the work of many projects and their authors: [QGIS](https://qgis.org), ArcGIS
 Pro and [GDAL](https://gdal.org), the GIS it is measured against; [MapLibre](https://maplibre.org)
 and [PROJ](https://proj.org); the GeoLibre tool suite, after John Lindsay's
 [WhiteboxTools](https://www.whiteboxgeo.com); [OpenFreeMap](https://openfreemap.org) for vector
@@ -231,9 +231,9 @@ See the [acknowledgements](https://rustgis.app/acknowledgements/) for the full l
 
 ## Disclaimer
 
-RustGIS is primarily built with [Claude Opus 5.5](https://www.anthropic.com/claude), an AI model by
+PowerGIS is primarily built with [Claude Opus 5.5](https://www.anthropic.com/claude), an AI model by
 Anthropic, working under human direction and review. Its results are tested, but check them for
-your own use, and please [report](https://github.com/opengeos/RustGIS/issues) anything that looks
+your own use, and please [report](https://github.com/opengeos/PowerGIS/issues) anything that looks
 wrong.
 
 ## License and credits

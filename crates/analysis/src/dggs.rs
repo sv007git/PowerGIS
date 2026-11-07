@@ -1,4 +1,4 @@
-//! A5 grids (opengeos/RustGIS#551): [A5](https://a5geo.org)'s pentagonal cells, which all have
+//! A5 grids (opengeos/PowerGIS#551): [A5](https://a5geo.org)'s pentagonal cells, which all have
 //! the same area at a given resolution, as a polygon layer, and points counted by cell.
 //!
 //! A count per cell is then a density with no per-cell normalisation, unlike a grid whose cells

@@ -301,7 +301,7 @@ fn write(s: &mut Session, path: PathBuf) -> CmdResult {
     s.edit_counts.clear();
     s.notify(format!("Saved {}", path.display()), false);
     if stripped > 0 {
-        s.notify(format!("{stripped} layer address(es) were saved without their keys, tokens or passwords: after RustGIS closes, add those layers again to give them"), false);
+        s.notify(format!("{stripped} layer address(es) were saved without their keys, tokens or passwords: after PowerGIS closes, add those layers again to give them"), false);
     }
     s.path = Some(destination);
     Ok(json!({"path": path.display().to_string(), "stripped": stripped}))

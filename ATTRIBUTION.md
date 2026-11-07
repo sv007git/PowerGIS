@@ -1,12 +1,12 @@
 # Attribution
 
 Every asset file in this repository, with its source and licence. The licences of the Rust
-crates RustGIS is built from, with their copyright notices, are in
+crates PowerGIS is built from, with their copyright notices, are in
 [THIRD-PARTY-LICENSES.txt](THIRD-PARTY-LICENSES.txt) (the Python package's in
 [apps/rustgis-python/THIRD-PARTY-LICENSES.txt](apps/rustgis-python/THIRD-PARTY-LICENSES.txt)),
 which every package ships next to LICENSE. They are generated from `Cargo.lock` by
 `cargo xtask notices` (it needs `cargo install --locked --features cli cargo-about@0.9.2`);
-`deny.toml` lists the licences a dependency may have. The code and data RustGIS's own crates
+`deny.toml` lists the licences a dependency may have. The code and data PowerGIS's own crates
 take from other projects (the colour maps, coordinate-system tables and borrowed code below) are
 listed in `INCLUDED` in [xtask/src/notices.rs](xtask/src/notices.rs), which adds them to the
 same files: each with its licence texts, kept in [third-party/](third-party/) as published, and
@@ -16,9 +16,9 @@ of use.
 | File | Author / source | Licence |
 |---|---|---|
 | Sample data (`countries`, `countries_chn`, `cities`, `rivers`, `lakes` GeoJSON), embedded at build time from [rustgis-assets](https://github.com/opengeos/rustgis-assets/tree/main/data) | Natural Earth 1:110m, attributes trimmed; `countries_chn` is Natural Earth's China point of view (1:10m, simplified) | Public domain |
-| QGIS screenshot (`qgis-world-atlas.webp` in [rustgis-assets](https://github.com/opengeos/rustgis-assets/tree/main/images)), on the [RustGIS and QGIS](docs/comparison/qgis.md) page | Taken by the RustGIS project: [QGIS](https://qgis.org) 4.2 showing the Natural Earth sample data above | QGIS is GPL-2.0-or-later; the data is public domain |
-| QGIS test corpus (`crates/map/testdata/qgis/generated/`: styles, projects and their sample data) | Dominik Strebel ([@pick2510](https://github.com/pick2510)) for the RustGIS project: written by [QGIS](https://qgis.org) 4.2.3 through its API, from `generate.py` there; the data is made up | Apache-2.0 |
-| Analysis reference corpus (`crates/analysis/tests/reference/`: layers and expected results) | Written for the RustGIS project from `generate.py` there: the layers are made up; the expected results were computed by [GEOS](https://libgeos.org) 3.13.1 through [Shapely](https://shapely.readthedocs.io) 2.1.2, and distances, buffers, areas and lengths by GeographicLib in [PROJ](https://proj.org) 9.5.1 through [pyproj](https://pyproj4.github.io/pyproj/) 3.7.2, run only to write them (GEOS is LGPL-2.1, Shapely BSD-3-Clause, PROJ and pyproj MIT; none is included in or linked into RustGIS) | Apache-2.0 |
+| QGIS screenshot (`qgis-world-atlas.webp` in [rustgis-assets](https://github.com/opengeos/rustgis-assets/tree/main/images)), on the [PowerGIS and QGIS](docs/comparison/qgis.md) page | Taken by the PowerGIS project: [QGIS](https://qgis.org) 4.2 showing the Natural Earth sample data above | QGIS is GPL-2.0-or-later; the data is public domain |
+| QGIS test corpus (`crates/map/testdata/qgis/generated/`: styles, projects and their sample data) | Dominik Strebel ([@pick2510](https://github.com/pick2510)) for the PowerGIS project: written by [QGIS](https://qgis.org) 4.2.3 through its API, from `generate.py` there; the data is made up | Apache-2.0 |
+| Analysis reference corpus (`crates/analysis/tests/reference/`: layers and expected results) | Written for the PowerGIS project from `generate.py` there: the layers are made up; the expected results were computed by [GEOS](https://libgeos.org) 3.13.1 through [Shapely](https://shapely.readthedocs.io) 2.1.2, and distances, buffers, areas and lengths by GeographicLib in [PROJ](https://proj.org) 9.5.1 through [pyproj](https://pyproj4.github.io/pyproj/) 3.7.2, run only to write them (GEOS is LGPL-2.1, Shapely BSD-3-Clause, PROJ and pyproj MIT; none is included in or linked into PowerGIS) | Apache-2.0 |
 
 Raster coordinate systems are looked up by EPSG code in the PROJ definitions of the
 [crs-definitions](https://crates.io/crates/crs-definitions) crate (CC0-1.0), compiled into the
@@ -46,7 +46,7 @@ reference coordinates use those same transformations.
 
 The GeoLibre tool suite ([geolibre-rust](https://github.com/opengeos/geolibre-rust), MIT, built
 on [whitebox-wasm](https://github.com/opengeos/whitebox-wasm), MIT OR Apache-2.0) is not part of
-RustGIS: the desktop app and command line run its separately downloaded `geolibre` runner, and
+PowerGIS: the desktop app and command line run its separately downloaded `geolibre` runner, and
 the web app loads its WebAssembly runner (the `geolibre-wasm` npm package, from jsDelivr, which
 carries its own licence and third-party notices) when asked. Its tool names, descriptions and
 categories come from the runner's manifests.

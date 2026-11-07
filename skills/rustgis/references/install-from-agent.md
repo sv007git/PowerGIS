@@ -1,4 +1,4 @@
-# Install RustGIS for the user and connect an agent
+# Install PowerGIS for the user and connect an agent
 
 Run these steps on the **user's desktop machine**, not an unrelated agent host.
 Install the desktop app and `rustgis-cli`; registering MCP alone installs neither.
@@ -45,7 +45,7 @@ Run the appropriate platform row, not every command:
 
 | Platform | Agent-runnable commands |
 | --- | --- |
-| Windows x64 | `winget install OpenGeos.RustGIS` |
+| Windows x64 | `winget install OpenGeos.PowerGIS` |
 | macOS | `brew install --cask opengeos/rustgis/rustgis` then `brew install opengeos/rustgis/rustgis-cli` |
 | Arch Linux with an AUR helper | `yay -S rustgis-bin` |
 | Fedora | `sudo dnf copr enable giswqs/rustgis && sudo dnf install rustgis` |
@@ -64,7 +64,7 @@ manifest; it is not an independent publisher signature.
 
 ### Checked release downloads: Linux and macOS
 
-Use the current release at <https://github.com/opengeos/RustGIS/releases/latest>,
+Use the current release at <https://github.com/opengeos/PowerGIS/releases/latest>,
 or its mirror <https://downloads.rustgis.app>. Discover the version instead of
 pinning an old release. The following Bash setup requires `curl` and `jq`; if
 those are unavailable, use the agent's HTTP/JSON tools to obtain the same
@@ -75,7 +75,7 @@ Run in a fresh download directory so unrelated files are not overwritten:
 set -euo pipefail
 work=$(mktemp -d)
 cd "$work"
-curl -fsSL https://api.github.com/repos/opengeos/RustGIS/releases/latest -o release.json
+curl -fsSL https://api.github.com/repos/opengeos/PowerGIS/releases/latest -o release.json
 version=$(jq -er '.tag_name | ltrimstr("v")' release.json)
 case "$(uname -m)" in
   x86_64) arch=x86_64 ;;
@@ -129,7 +129,7 @@ sudo dnf install "./$asset"
 includes both executables, unlike macOS's separate CLI archive.
 
 ```bash
-asset="RustGIS-${version}-linux-${arch}.tar.gz"
+asset="PowerGIS-${version}-linux-${arch}.tar.gz"
 fetch_checked "$asset"
 mkdir -p "$HOME/.local/opt/rustgis/$version" "$HOME/.local/bin"
 tar -xzf "$asset" -C "$HOME/.local/opt/rustgis/$version" --strip-components=1
@@ -145,7 +145,7 @@ an existing entry. GUI-launched MCP clients may not inherit shell configuration;
 a full executable path in MCP configuration avoids that problem.
 
 The alternative Linux AppImage is
-`RustGIS-${version}-linux-${arch}.AppImage`. Verify it with `fetch_checked`,
+`PowerGIS-${version}-linux-${arch}.AppImage`. Verify it with `fetch_checked`,
 then `chmod +x` and run it. For an agent needing a conventional `rustgis-cli`
 on PATH, prefer the package or tarball route above.
 
@@ -153,18 +153,18 @@ on PATH, prefer the package or tarball route above.
 for the current user without writing to system-wide `/Applications`:
 
 ```bash
-dmg="RustGIS-${version}-macos-${arch}.dmg"
+dmg="PowerGIS-${version}-macos-${arch}.dmg"
 cli="rustgis-cli-${version}-macos-${arch}.tar.gz"
 fetch_checked "$dmg"
 fetch_checked "$cli"
 mkdir -p "$work/mount" "$HOME/Applications" "$HOME/.local/bin" "$HOME/.local/opt/rustgis-cli/$version"
 hdiutil attach "$dmg" -nobrowse -mountpoint "$work/mount"
-ditto "$work/mount/RustGIS.app" "$HOME/Applications/RustGIS.app"
+ditto "$work/mount/PowerGIS.app" "$HOME/Applications/PowerGIS.app"
 hdiutil detach "$work/mount"
 tar -xzf "$cli" -C "$HOME/.local/opt/rustgis-cli/$version" --strip-components=1
 ln -sfn "$HOME/.local/opt/rustgis-cli/$version/rustgis-cli" "$HOME/.local/bin/rustgis-cli"
 export PATH="$HOME/.local/bin:$PATH"
-open "$HOME/Applications/RustGIS.app"
+open "$HOME/Applications/PowerGIS.app"
 ```
 
 Check for an existing app before copying over it. The macOS releases are
@@ -181,15 +181,15 @@ the x64 one. In PowerShell:
 
 ```powershell
 $ErrorActionPreference = 'Stop'
-$release = Invoke-RestMethod 'https://api.github.com/repos/opengeos/RustGIS/releases/latest'
+$release = Invoke-RestMethod 'https://api.github.com/repos/opengeos/PowerGIS/releases/latest'
 $version = $release.tag_name -replace '^v', ''
 $arch = 'x86_64'
-$arm = "RustGIS-$version-windows-aarch64-portable.zip"
+$arm = "PowerGIS-$version-windows-aarch64-portable.zip"
 $os = [System.Runtime.InteropServices.RuntimeInformation]::OSArchitecture
 if ($os -eq 'Arm64' -and ($release.assets.name -contains $arm)) {
   $arch = 'aarch64'
 }
-$name = "RustGIS-$version-windows-$arch-portable.zip"
+$name = "PowerGIS-$version-windows-$arch-portable.zip"
 $asset = $release.assets | Where-Object name -eq $name
 $manifest = $release.assets | Where-Object name -eq 'SHA256SUMS'
 if (!$asset -or !$manifest) { throw 'Release asset or SHA256SUMS is missing' }
@@ -204,23 +204,23 @@ $line = Get-Content $sums | Where-Object { $_ -match $pattern }
 if (@($line).Count -ne 1) { throw 'Expected exactly one checksum for the asset' }
 $expected = [regex]::Match($line, $pattern).Groups[1].Value
 if ((Get-FileHash $zip -Algorithm SHA256).Hash -ine $expected) { throw 'Checksum mismatch' }
-$destination = Join-Path $env:LOCALAPPDATA "Programs\RustGIS-portable\$version"
+$destination = Join-Path $env:LOCALAPPDATA "Programs\PowerGIS-portable\$version"
 if (Test-Path $destination) { throw 'Destination exists; inspect it before updating' }
 Expand-Archive $zip -DestinationPath $destination
-$bin = Join-Path $destination "RustGIS-$version-windows-$arch"
+$bin = Join-Path $destination "PowerGIS-$version-windows-$arch"
 $env:Path = "$bin;$env:Path"
 & (Join-Path $bin 'rustgis-cli.exe') commands
-if ($LASTEXITCODE -ne 0) { throw 'RustGIS CLI failed' }
+if ($LASTEXITCODE -ne 0) { throw 'PowerGIS CLI failed' }
 Start-Process (Join-Path $bin 'rustgis.exe')
 ```
 
 Use `$bin\rustgis-cli.exe` as the MCP command if the client does not inherit the
 updated PATH. For a permanent per-user PATH entry, preserve the existing value
 and avoid duplicates, or let the per-user installer manage it. The alternative
-`RustGIS-<version>-windows-<arch>-setup.exe` installs into
-`%LOCALAPPDATA%\Programs\RustGIS`. Verify its checksum before launching its
+`PowerGIS-<version>-windows-<arch>-setup.exe` installs into
+`%LOCALAPPDATA%\Programs\PowerGIS`. Verify its checksum before launching its
 installer. For authorized all-user deployment, the verified MSI uses
-`msiexec /i RustGIS-<version>-windows-<arch>.msi /qn` (`<arch>` is `x86_64` or
+`msiexec /i PowerGIS-<version>-windows-<arch>.msi /qn` (`<arch>` is `x86_64` or
 `aarch64`).
 Do not sideload the unsigned release-page MSIX; use the Microsoft Store for
 that package. Windows installers may show a SmartScreen unknown-publisher
@@ -234,8 +234,8 @@ is not present in the installed app/CLI. Use a checkout that includes the
 later. In a user-chosen source directory:
 
 ```sh
-git clone https://github.com/opengeos/RustGIS.git
-cd RustGIS
+git clone https://github.com/opengeos/PowerGIS.git
+cd PowerGIS
 cargo build --release -p rustgis-cli
 cargo run --release -p rustgis
 ```
@@ -332,10 +332,10 @@ MCP configuration or start a new session, as that client requires.
 
 ## 4. Manage the already-open desktop app
 
-1. Launch the installed RustGIS desktop app in the user's graphical session,
+1. Launch the installed PowerGIS desktop app in the user's graphical session,
    or keep the existing window and project. On Linux use `rustgis`; on macOS
-   open RustGIS.app; on Windows use its Start menu entry or `rustgis.exe`.
-2. In RustGIS, open **Command Search (Ctrl+K)** and run **MCP Relay**
+   open PowerGIS.app; on Windows use its Start menu entry or `rustgis.exe`.
+2. In PowerGIS, open **Command Search (Ctrl+K)** and run **MCP Relay**
    (`ui.mcpRelay`). If the agent cannot operate the UI, ask the user to perform
    this one action; an unattached MCP server cannot start the app's listener.
    Confirm the status bar says `MCP relay listening on 127.0.0.1:8767`.

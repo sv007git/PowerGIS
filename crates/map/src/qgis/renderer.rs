@@ -1,4 +1,4 @@
-//! QGIS renderers (`<renderer-v2>`) as RustGIS ones: single symbol, categorized (Unique Values),
+//! QGIS renderers (`<renderer-v2>`) as PowerGIS ones: single symbol, categorized (Unique Values),
 //! graduated (Graduated Colors), rule-based (Unique Values where every rule picks values of one
 //! field), the null renderer, and the renderers that wrap another (point cluster and
 //! displacement, inverted polygons, merged features) by the one inside.
@@ -244,7 +244,7 @@ fn graduated(r: Node, layer: &str, style: &mut Style, report: &mut Report, sym: 
         report.approximated(layer, "ranges with gaps or overlaps between them, drawn as if each began where the one before ends");
     }
     let min = ranges.first().map_or(0.0, |r| r.0);
-    // QGIS draws nothing for a value outside every range; a RustGIS graduated renderer gives it the
+    // QGIS draws nothing for a value outside every range; a PowerGIS graduated renderer gives it the
     // first or last class. The import doesn't read the data, so it can't tell whether any value
     // falls outside: the note is always given, on purpose.
     report.approximated(layer, "values below the first range or above the last, drawn in the first or last class (QGIS leaves them out)");

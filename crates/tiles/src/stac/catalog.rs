@@ -129,7 +129,7 @@ impl Filter {
                     if x == ".." {
                         return Ok(None);
                     }
-                    instant(x).map(Some).ok_or_else(|| format!("{x}: not a date and time RustGIS reads"))
+                    instant(x).map(Some).ok_or_else(|| format!("{x}: not a date and time PowerGIS reads"))
                 };
                 (bound(a)?, bound(b)?)
             }
@@ -397,7 +397,7 @@ fn collection_item(v: &Value, from: &str) -> Option<Value> {
         let t = a.get("type").and_then(Value::as_str).unwrap_or("").to_ascii_lowercase();
         let href = a.get("href").and_then(Value::as_str).unwrap_or("");
         let path = href.split(['?', '#']).next().unwrap_or("").to_ascii_lowercase();
-        // Data RustGIS can add (by its media type or extension), or an asset that says it is data.
+        // Data PowerGIS can add (by its media type or extension), or an asset that says it is data.
         const TYPES: [&str; 9] = ["geotiff", "image/tiff", "parquet", "pmtiles", "flatgeobuf", "geo+json", "vnd.las", "laszip", "zarr"];
         const EXTENSIONS: [&str; 11] =
             [".tif", ".tiff", ".parquet", ".geoparquet", ".pmtiles", ".fgb", ".geojson", ".laz", ".las", ".zarr", ".gpkg"];

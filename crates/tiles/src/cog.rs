@@ -1132,7 +1132,7 @@ pub const MAX_VALUE_TILES: usize = 4096;
 #[cfg(not(target_arch = "wasm32"))]
 pub const MAX_VALUES_READ: u64 = 64_000_000;
 
-/// A file's header, waiting for it: for an analysis that reads the values (opengeos/RustGIS#579).
+/// A file's header, waiting for it: for an analysis that reads the values (opengeos/PowerGIS#579).
 #[cfg(not(target_arch = "wasm32"))]
 pub fn info_blocking(url: &str) -> Result<Arc<Info>, String> {
     let url = split(url).0;

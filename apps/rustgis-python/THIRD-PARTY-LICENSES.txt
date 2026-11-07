@@ -1,9 +1,9 @@
 Third-party software notices for the rustgis Python package
 
-RustGIS is licensed under the Apache License 2.0 (see LICENSE). It is built with the
+PowerGIS is licensed under the Apache License 2.0 (see LICENSE). It is built with the
 open-source Rust crates below, each under its own licence, whose copyright notices and terms
 are reproduced here, followed by the NOTICE files the crates ship, then by the code and data
-from other projects in RustGIS's own crates. Generated from Cargo.lock and
+from other projects in PowerGIS's own crates. Generated from Cargo.lock and
 xtask/src/notices.rs by `cargo xtask notices`.
 
 ====================================================================================================

@@ -1,4 +1,4 @@
-# Builds RustGIS's Docker images and publishes them to the GitHub Container Registry, for
+# Builds PowerGIS's Docker images and publishes them to the GitHub Container Registry, for
 # linux/amd64 and linux/arm64 (see docs/installation.md › Self-host the web app with Docker, and
 # The command line in Docker):
 #
@@ -67,7 +67,7 @@ env:
 jobs:
   web:
     name: Web app image
-    if: github.repository == 'opengeos/RustGIS'
+    if: github.repository == 'opengeos/PowerGIS'
     runs-on: ubuntu-latest
     timeout-minutes: 60
     permissions:
@@ -93,12 +93,12 @@ jobs:
           tags: ${{ env.TAGS }}
           # The Dockerfile's own, ahead of the ones metadata-action takes from the repository.
           labels: |
-            org.opencontainers.image.title=RustGIS web app
-            org.opencontainers.image.description=The RustGIS web app (WebAssembly), served by nginx
+            org.opencontainers.image.title=PowerGIS web app
+            org.opencontainers.image.description=The PowerGIS web app (WebAssembly), served by nginx
             org.opencontainers.image.url=https://rustgis.app
           annotations: |
-            org.opencontainers.image.title=RustGIS web app
-            org.opencontainers.image.description=The RustGIS web app (WebAssembly), served by nginx
+            org.opencontainers.image.title=PowerGIS web app
+            org.opencontainers.image.description=The PowerGIS web app (WebAssembly), served by nginx
             org.opencontainers.image.url=https://rustgis.app
 
       # The image for the runner's platform, loaded into Docker to check that it serves the app.
@@ -153,7 +153,7 @@ jobs:
 
   cli:
     name: Command line image (${{ matrix.arch }})
-    if: github.repository == 'opengeos/RustGIS'
+    if: github.repository == 'opengeos/PowerGIS'
     runs-on: ${{ matrix.runner }}
     timeout-minutes: 60
     permissions:
@@ -184,8 +184,8 @@ jobs:
           tags: ${{ env.TAGS }}
           # The Dockerfile's own, ahead of the ones metadata-action takes from the repository.
           labels: |
-            org.opencontainers.image.title=RustGIS command line
-            org.opencontainers.image.description=The RustGIS command line: run commands and geoprocessing, render maps, inspect data
+            org.opencontainers.image.title=PowerGIS command line
+            org.opencontainers.image.description=The PowerGIS command line: run commands and geoprocessing, render maps, inspect data
             org.opencontainers.image.url=https://rustgis.app
 
       - name: Build for the smoke test
@@ -254,7 +254,7 @@ jobs:
   cli-manifest:
     name: Command line image (publish)
     needs: cli
-    if: github.repository == 'opengeos/RustGIS' && (github.event_name == 'release' || github.ref == 'refs/heads/main')
+    if: github.repository == 'opengeos/PowerGIS' && (github.event_name == 'release' || github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -296,9 +296,9 @@ jobs:
           sources=()
           for digest in *; do sources+=("$CLI_IMAGE@sha256:$digest"); done
           docker buildx imagetools create "${tags[@]}" \
-            --annotation "index:org.opencontainers.image.title=RustGIS command line" \
-            --annotation "index:org.opencontainers.image.description=The RustGIS command line: run commands and geoprocessing, render maps, inspect data" \
-            --annotation "index:org.opencontainers.image.source=https://github.com/opengeos/RustGIS" \
+            --annotation "index:org.opencontainers.image.title=PowerGIS command line" \
+            --annotation "index:org.opencontainers.image.description=The PowerGIS command line: run commands and geoprocessing, render maps, inspect data" \
+            --annotation "index:org.opencontainers.image.source=https://github.com/opengeos/PowerGIS" \
             --annotation "index:org.opencontainers.image.licenses=Apache-2.0" \
             "${sources[@]}"
           docker buildx imagetools inspect "$CLI_IMAGE:$DOCKER_METADATA_OUTPUT_VERSION"

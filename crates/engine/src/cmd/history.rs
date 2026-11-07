@@ -42,7 +42,7 @@ fn script(s: &mut Session, _: &Value) -> CmdResult {
     }
     let name = &s.project.name;
     let mut text = format!(
-        "# The geoprocessing history of the RustGIS project {}, run again in order.\n\
+        "# The geoprocessing history of the PowerGIS project {}, run again in order.\n\
          # Layers are named as they were then, so this opens the project they belong to.\n",
         quoted(name)
     );

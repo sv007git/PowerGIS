@@ -644,7 +644,7 @@ fn summarise(app: &mut RustGisApp, ui: &mut Ui) {
 /// The most series the Time Series pane keeps (one line each).
 const MAX_SERIES: usize = 6;
 
-/// A Zarr variable's time series at points clicked on the map (opengeos/RustGIS#555): a line a
+/// A Zarr variable's time series at points clicked on the map (opengeos/PowerGIS#555): a line a
 /// point, the time slider's step marked, and a click on the chart takes the slider there.
 pub fn time_series(app: &mut RustGisApp, ui: &mut Ui, t: &Tokens) {
     message(app, ui);

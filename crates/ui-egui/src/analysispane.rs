@@ -929,7 +929,7 @@ fn stac_cube(id: &str) -> bool {
     cubes::find(id).is_ok_and(|e| matches!(e.source, cubes::Source::Stac { .. }))
 }
 
-/// The Trend Analysis section (opengeos/RustGIS#579): a cube (raster layers a date each, a Zarr
+/// The Trend Analysis section (opengeos/PowerGIS#579): a cube (raster layers a date each, a Zarr
 /// variable, or a raster's bands), Sen's slope and the modified Mann–Kendall test, worked out on a
 /// thread with progress and Cancel, and added as four layers.
 fn trend(app: &mut RustGisApp, ui: &mut Ui, rasters: &[String]) {

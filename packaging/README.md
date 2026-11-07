@@ -21,7 +21,7 @@ with its tag.
 | Homebrew tap [opengeos/homebrew-rustgis](https://github.com/opengeos/homebrew-rustgis) | cask `rustgis` (the DMGs), formula `rustgis-cli` (macOS and Linux) | `brew install --cask opengeos/rustgis/rustgis` | `HOMEBREW_TAP_DEPLOY_KEY` |
 | [AUR](https://aur.archlinux.org/packages/rustgis-bin) | `rustgis-bin` (the .deb files, x86_64 and aarch64) | `yay -S rustgis-bin` | `AUR_SSH_PRIVATE_KEY` |
 | [Fedora COPR](https://copr.fedorainfracloud.org/coprs/giswqs/rustgis/) | `rustgis` (the .rpm files plus AppStream metainfo) | `sudo dnf copr enable giswqs/rustgis && sudo dnf install rustgis` | `COPR_CONFIG` |
-| [winget](https://github.com/microsoft/winget-pkgs/tree/master/manifests/o/OpenGeos/RustGIS) | `OpenGeos.RustGIS` (setup.exe per user, .msi per machine) | `winget install OpenGeos.RustGIS` | `WINGET_TOKEN` |
+| [winget](https://github.com/microsoft/winget-pkgs/tree/master/manifests/o/OpenGeos/PowerGIS) | `OpenGeos.PowerGIS` (setup.exe per user, .msi per machine) | `winget install OpenGeos.PowerGIS` | `WINGET_TOKEN` |
 
 Each folder has the script that writes the package for a version:
 
@@ -29,7 +29,7 @@ Each folder has the script that writes the package for a version:
   `Formula/rustgis-cli.rb`.
 - `aur/render.sh <version> <SHA256SUMS> > PKGBUILD`.
 - `copr/render.sh <version> <date> <folder>` writes `rustgis.spec` and
-  `org.rustgis.RustGIS.metainfo.xml`. Build the source RPM with both release `.rpm` files in
+  `org.rustgis.PowerGIS.metainfo.xml`. Build the source RPM with both release `.rpm` files in
   the same folder.
 - `winget/` holds reference copies of the manifests; winget-releaser writes each new version
   from the previous one in winget-pkgs.
@@ -37,7 +37,7 @@ Each folder has the script that writes the package for a version:
 ### Trying a package locally
 
 ```sh
-gh release download v0.1.0 -R opengeos/RustGIS -p SHA256SUMS
+gh release download v0.1.0 -R opengeos/PowerGIS -p SHA256SUMS
 packaging/aur/render.sh 0.1.0 SHA256SUMS > /tmp/aur/PKGBUILD && (cd /tmp/aur && makepkg -si)
 packaging/copr/render.sh 0.1.0 2026-10-12 /tmp/copr     # then rpmbuild -bs in Fedora
 packaging/homebrew/render.sh 0.1.0 SHA256SUMS /tmp/tap && brew style /tmp/tap/Casks/rustgis.rb

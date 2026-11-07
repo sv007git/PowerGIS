@@ -1,6 +1,6 @@
-//! Python bindings to the RustGIS engine: the native half of the `rustgis` package on PyPI.
+//! Python bindings to the PowerGIS engine: the native half of the `rustgis` package on PyPI.
 //!
-//! The surface is deliberately small. Everything RustGIS does is a command with an id and JSON
+//! The surface is deliberately small. Everything PowerGIS does is a command with an id and JSON
 //! parameters, so the module exposes `run(id, params_json) -> result_json` and leaves the Pythonic
 //! API (keyword arguments, `geopandas`, Jupyter display) to `python/rustgis/__init__.py`. The few
 //! things that aren't commands are here too: the map as PNG bytes, a layer as GeoJSON, and the
@@ -19,7 +19,7 @@ use std::sync::{Arc, Mutex};
 #[cfg(feature = "test-stores")]
 mod test_support;
 
-create_exception!(_rustgis, RustGISError, PyException, "A RustGIS command or file operation failed.");
+create_exception!(_rustgis, PowerGISError, PyException, "A PowerGIS command or file operation failed.");
 
 /// A layer as Python names it: by id (a `Layer` keeps its id), or by name.
 #[derive(FromPyObject)]
@@ -71,7 +71,7 @@ fn report(py: Python<'_>, messages: Vec<String>) {
     }
 }
 
-/// One RustGIS session: a project with its maps, layers, undo history and selection.
+/// One PowerGIS session: a project with its maps, layers, undo history and selection.
 ///
 /// Usable from any thread (Jupyter delivers a widget's messages on one of its own). Native calls
 /// take turns across all sessions because connection activations are process-global. The work
@@ -136,7 +136,7 @@ impl Engine {
         let result =
             self.with_session(py, |session| session.run(id, &params).map(|value| value.to_string()).map_err(|e| format!("{id}: {e}")));
         self.flush(py);
-        result.map_err(RustGISError::new_err)
+        result.map_err(PowerGISError::new_err)
     }
 
     /// The map as a PNG: `width` and `height` in pixels (the view's own size when left out) at
@@ -145,7 +145,7 @@ impl Engine {
     fn render_png<'py>(&self, py: Python<'py>, width: Option<f64>, height: Option<f64>, dpi: Option<f64>) -> PyResult<Bound<'py, PyBytes>> {
         let result = self.with_session(py, |session| rustgis_engine::cmd::share::map_png(session, width, height, dpi));
         self.flush(py);
-        result.map(|png| PyBytes::new(py, &png)).map_err(RustGISError::new_err)
+        result.map(|png| PyBytes::new(py, &png)).map_err(PowerGISError::new_err)
     }
 
     /// Layer `layer` of the active map as GeoJSON text: an id, or a name (a name that is a number
@@ -173,7 +173,7 @@ impl Engine {
             Ok::<String, String>(rustgis_engine::data::io::to_geojson(&ds).to_string())
         });
         self.flush(py);
-        result.map_err(RustGISError::new_err)
+        result.map_err(PowerGISError::new_err)
     }
 
     /// The project as `.rgis` JSON text, as `project.saveAs` writes it (what `project.openText`
@@ -181,7 +181,7 @@ impl Engine {
     fn project_json(&self, py: Python<'_>) -> PyResult<String> {
         let result = self.with_session(py, |session| serde_json::to_string(&session.project).map_err(|e| e.to_string()));
         self.flush(py);
-        result.map_err(RustGISError::new_err)
+        result.map_err(PowerGISError::new_err)
     }
 
     /// The notices commands have given since the last call (a file's warnings, a tool's
@@ -204,7 +204,7 @@ fn load_plugins(py: Python<'_>) -> Vec<String> {
 #[pymodule]
 fn _rustgis(m: &Bound<'_, PyModule>) -> PyResult<()> {
     m.add("__version__", env!("CARGO_PKG_VERSION"))?;
-    m.add("RustGISError", m.py().get_type::<RustGISError>())?;
+    m.add("PowerGISError", m.py().get_type::<PowerGISError>())?;
     m.add_class::<Engine>()?;
     m.add_function(wrap_pyfunction!(load_plugins, m)?)?;
     #[cfg(feature = "test-stores")]

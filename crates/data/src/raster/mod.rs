@@ -849,7 +849,7 @@ pub fn read_bytes(file_name: &str, bytes: &[u8]) -> Result<Raster> {
     }
 }
 
-/// The coordinate system in a `.prj` next to an ASCII grid, when it's one RustGIS understands.
+/// The coordinate system in a `.prj` next to an ASCII grid, when it's one PowerGIS understands.
 fn sidecar_crs(path: &Path) -> Option<Crs> {
     wkt::crs_from_wkt(&read_prj(path)?).ok()
 }
@@ -1155,7 +1155,7 @@ mod scan_tests {
         let r = read_scan_limited("big", Cursor::new(&png), 900).unwrap();
         assert_scan(&r, (20, 15), 3, ColorHint::Rgb { alpha: false });
         assert_eq!(r.overview, Some((40, 30)));
-        // Past the decoded-size allowance it is refused rather than allocated, in RustGIS's words.
+        // Past the decoded-size allowance it is refused rather than allocated, in PowerGIS's words.
         let e = read_scan_limited("big", Cursor::new(&png), 100).unwrap_err().to_string();
         assert!(e.contains("save it as a TIFF"), "{e}");
         // A file larger than the allowance is refused before it is read (whatever its extension).

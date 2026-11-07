@@ -29,5 +29,5 @@ allow = [
 ]
 
 [licenses.private]
-# RustGIS's own crates and this one (`publish = false`).
+# PowerGIS's own crates and this one (`publish = false`).
 ignore = true

@@ -1,4 +1,4 @@
-//! Home › Web Data › Data Cubes (opengeos/RustGIS#683): the catalog of data cubes, filtered by
+//! Home › Web Data › Data Cubes (opengeos/PowerGIS#683): the catalog of data cubes, filtered by
 //! theme, by where the map is and by words; each cube's provider, period, step, resolution and
 //! licence; and the cube added to the time slider (`cube.open`, so it is undoable like any other
 //! command) or taken to Trend Analysis. The list is the hosted one once read, else the built-in

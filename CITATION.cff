@@ -1,8 +1,8 @@
 cff-version: 1.2.0
-title: "RustGIS: A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data"
+title: "PowerGIS: A fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data"
 message: "If you use this software, please cite it using the metadata from this file."
 type: software
-abstract: "RustGIS is a fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data, native on Windows, macOS and Linux, and in the web browser."
+abstract: "PowerGIS is a fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing geospatial data, native on Windows, macOS and Linux, and in the web browser."
 authors:
   - given-names: Qiusheng
     family-names: Wu
@@ -23,7 +23,7 @@ authors:
 version: 0.5.0
 date-released: 2026-10-31
 doi: "10.5281/zenodo.23633281"
-repository-code: "https://github.com/opengeos/RustGIS"
+repository-code: "https://github.com/opengeos/PowerGIS"
 url: "https://rustgis.app"
 license: Apache-2.0
 keywords:

@@ -1590,7 +1590,7 @@ fn file_layers(_s: &mut Session, p: &Value) -> CmdResult {
     }
     let ext = Path::new(path).extension().and_then(|e| e.to_str()).unwrap_or("").to_ascii_lowercase();
     if !rustgis_data::io::READ_EXTENSIONS.contains(&ext.as_str()) && !rustgis_data::raster::is_raster_name(path) {
-        return Err(format!("{path}: not a data file RustGIS reads"));
+        return Err(format!("{path}: not a data file PowerGIS reads"));
     }
     let name = Path::new(path).file_stem().and_then(|n| n.to_str()).unwrap_or("layer");
     Ok(json!({"count": 1, "layers": [name]}))
@@ -2457,7 +2457,7 @@ fn add_layer_file(s: &mut Session, path: &str) -> CmdResult {
 
 /// Adds a layer from a layer file's JSON.
 pub(crate) fn add_layer_text(s: &mut Session, text: &str) -> CmdResult {
-    let mut layer: rustgis_map::Layer = serde_json::from_str(text).map_err(|e| format!("not a RustGIS layer file: {e}"))?;
+    let mut layer: rustgis_map::Layer = serde_json::from_str(text).map_err(|e| format!("not a PowerGIS layer file: {e}"))?;
     if layer.dataset.source.as_deref().is_some_and(|source| source.starts_with("geolibre-pending:")) {
         return Err("a layer file cannot contain runtime GeoLibre download reservations".into());
     }
@@ -2637,7 +2637,7 @@ fn read_delimited(
 }
 
 /// The file name for data downloaded from `url`: its last path segment when that has an extension
-/// RustGIS reads, else `<segment or "data">.<ext>` with the extension its contents suggest
+/// PowerGIS reads, else `<segment or "data">.<ext>` with the extension its contents suggest
 /// (an error when they suggest none). JPEG 2000 named or recognised by its contents is refused
 /// where GDAL can't run (the browser).
 pub fn url_file_name(url: &str, bytes: &[u8]) -> Result<String, String> {
@@ -2670,7 +2670,7 @@ pub fn url_file_name(url: &str, bytes: &[u8]) -> Result<String, String> {
             if rustgis_data::raster::is_jpeg2000_name(&name) { jpeg2000_only_on_desktop(name) } else { Ok(name) }
         }
         None => {
-            Err("not a data format RustGIS reads (GeoJSON, CSV, GeoParquet, FlatGeobuf, GeoPackage, zipped Shapefiles, KML, GPX, GeoTIFF)"
+            Err("not a data format PowerGIS reads (GeoJSON, CSV, GeoParquet, FlatGeobuf, GeoPackage, zipped Shapefiles, KML, GPX, GeoTIFF)"
                 .into())
         }
     }

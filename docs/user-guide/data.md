@@ -19,7 +19,7 @@ Formats](data-formats.md).
 | LiDAR point clouds: LAS, LAZ, COPC (an evenly spread sample) | Yes | No |
 | Geotagged photos (JPEG with EXIF GPS): points with their thumbnails | Yes | No |
 | Esri File Geodatabase (`.gdb` folder; 3D multipatches as footprints) | Yes (desktop) | No |
-| Through GDAL: AutoCAD DWG, MapInfo TAB, OpenStreetMap XML, File Geodatabases RustGIS can't read itself… | Yes (desktop, when GDAL is installed) | No |
+| Through GDAL: AutoCAD DWG, MapInfo TAB, OpenStreetMap XML, File Geodatabases PowerGIS can't read itself… | Yes (desktop, when GDAL is installed) | No |
 | PostgreSQL/PostGIS databases, read live (large tables a view at a time) | Yes (desktop) | No |
 | MySQL and MariaDB databases, read live (large tables a view at a time) | Yes (desktop) | No |
 | SQL Server and Azure SQL databases, read live (large tables a view at a time) | Yes (desktop) | No |
@@ -29,7 +29,7 @@ Formats](data-formats.md).
 | Unreferenced TIFF and PNG scans; JPEG with `"as": "scan"` | Yes | GeoTIFF after georeferencing |
 | Through GDAL: JPEG 2000, ERDAS Imagine, SRTM HGT, DTED, NetCDF, HDF, ENVI, SAGA… | Yes (desktop, when GDAL is installed) | No |
 | Web tiles: XYZ/TMS/WMS rasters, Mapbox Vector Tiles, MapLibre styles, PMTiles and MBTiles archives | Yes | Yes (Analyze › Create Hosted Imagery) |
-| RustGIS project (`.rgis`; older `.rgisx` files open too) | Yes | Yes |
+| PowerGIS project (`.rgis`; older `.rgisx` files open too) | Yes | Yes |
 
 Add data with **Home › Add › Add Data**: its main button opens the file picker, and its menu offers
 other ways to add data, including **Delimited Text…**, **From URL…** and **From Service…**. Files
@@ -100,12 +100,12 @@ Features**.
 
 When [GDAL](https://gdal.org) is installed (its `ogr2ogr` and `ogrinfo` programs on the `PATH`,
 or the folder holding them in `RUSTGIS_GDAL_BIN`; GDAL 3.7 or later), the desktop app also opens
-the vector formats GDAL reads: DWG, MapInfo TAB, OpenStreetMap XML, File Geodatabases RustGIS
+the vector formats GDAL reads: DWG, MapInfo TAB, OpenStreetMap XML, File Geodatabases PowerGIS
 can't read itself (compressed ones, or ones with raster fields)
-and more. RustGIS doesn't link to GDAL: each layer is converted once, by `ogr2ogr`, into a
+and more. PowerGIS doesn't link to GDAL: each layer is converted once, by `ogr2ogr`, into a
 FlatGeobuf with a spatial index in WGS 84 (GDAL reprojects it), kept in the cache folder
-(`~/.cache/rustgis/gdal` on Linux, `~/Library/Caches/RustGIS/gdal` on macOS,
-`%LOCALAPPDATA%\RustGIS\cache\gdal` on Windows, or `RUSTGIS_GDAL_CACHE`). Adding the file again
+(`~/.cache/rustgis/gdal` on Linux, `~/Library/Caches/PowerGIS/gdal` on macOS,
+`%LOCALAPPDATA%\PowerGIS\cache\gdal` on Windows, or `RUSTGIS_GDAL_CACHE`). Adding the file again
 reuses the conversion until the file changes, and large layers stream like any large FlatGeobuf
 (below). Every layer of the file is added; a layer mixing geometry types is
 added as one layer per type. Curves become straight segments, and 3D surfaces (an Esri
@@ -145,7 +145,7 @@ WHERE bbox.xmin BETWEEN -83.95 AND -83.89 AND bbox.ymin BETWEEN 35.94 AND 35.98
 ```
 
 The first geometry column becomes the layer's geometry; other columns become its attributes (types
-RustGIS doesn't read, such as dates and lists, as text). A geometry that says its coordinate system
+PowerGIS doesn't read, such as dates and lists, as text). A geometry that says its coordinate system
 is converted to longitude/latitude; give `"crs"` (such as `EPSG:2263`) for one that doesn't. A
 result mixing geometry types becomes a layer per type, and rows without a geometry are left out.
 `"database"` opens a DuckDB database (read only) so the query names its tables plainly; the
@@ -159,7 +159,7 @@ column becomes a layer (`"layer"` picks one).
 **Home › Add › Add Data › Database…** (`layer.addDatabase`, desktop) connects to a PostgreSQL database with
 PostGIS and reads its tables live. The dialog takes a saved connection or a typed one, a password,
 a table (**List Tables**, or all tables with geometry) and a coordinate system for geometry that
-doesn't say its own. RustGIS talks to the server itself (nothing else to install;
+doesn't say its own. PowerGIS talks to the server itself (nothing else to install;
 TLS as libpq does it). `sslmode=prefer` (the default) uses TLS only when the server offers it, and otherwise connects
 without encryption, so a server in the middle can force a plaintext connection. `require` always
 uses TLS but doesn't check the server's certificate. On networks you don't trust, use
@@ -184,7 +184,7 @@ views: the table's integer primary key, else the row's place in the table (the r
 a partitioned table without a key are numbered as read, so theirs can change between views).
 
 Passwords are never written to the project. By default, an entered password lasts until
-RustGIS closes. For a named desktop connection, **Remember on this computer** is an unchecked
+PowerGIS closes. For a named desktop connection, **Remember on this computer** is an unchecked
 opt-in to the operating system's password store; see [Named connections](#named-connections)
 for reconnect, selection and forgetting rules. Opening a project can use a remembered password
 only for a unique, exact saved-address match, or an explicit session selection. Otherwise a
@@ -203,9 +203,9 @@ reaches DuckDB in its environment (`PGPASSWORD`), never on its command line:
 rustgis-cli run --cmd 'layer.addSql={"sql":"SELECT name, geom FROM roads WHERE lanes > 2","database":"postgres:host=localhost dbname=gis user=postgres","password":"…"}'
 ```
 
-RustGIS doesn't link to DuckDB: it runs `duckdb`, which writes the result as GeoParquet in the
-cache folder (`~/.cache/rustgis/duckdb` on Linux, `~/Library/Caches/RustGIS/duckdb` on macOS,
-`%LOCALAPPDATA%\RustGIS\cache\duckdb` on Windows, or `RUSTGIS_DUCKDB_CACHE`), sorted along a
+PowerGIS doesn't link to DuckDB: it runs `duckdb`, which writes the result as GeoParquet in the
+cache folder (`~/.cache/rustgis/duckdb` on Linux, `~/Library/Caches/PowerGIS/duckdb` on macOS,
+`%LOCALAPPDATA%\PowerGIS\cache\duckdb` on Windows, or `RUSTGIS_DUCKDB_CACHE`), sorted along a
 Hilbert curve with a bounding-box covering, so large results stream like any large GeoParquet
 (below). DuckDB Spatial is installed the first time (a download from DuckDB's extension
 repository). A database table is converted once and reused until the file changes; a query runs
@@ -223,7 +223,7 @@ On the desktop, a PostgreSQL table with PostGIS can be loaded to be edited and i
 back to it. In **Home › Add › Add Data › Database…**, give a PostgreSQL connection, choose a table
 (**List Tables**) and tick **Load for editing**.
 
-- The connection (`pg.connect`) lasts until RustGIS closes, or until **Disconnect** in the same
+- The connection (`pg.connect`) lasts until PowerGIS closes, or until **Disconnect** in the same
   form (`pg.disconnect`). It isn't saved with the project, and neither is the password. Without a
   password, `PGPASSWORD` or libpq's password file serve.
 - The table (`pg.addLayer`; `pg.tables` lists those with a geometry or geography column) loads
@@ -274,7 +274,7 @@ On the desktop, **Home › Add › Add Data › Edit GeoPackage Table…** (`gpk
 feature table of an existing local `.gpkg` for editing. Choose its table with **List Tables**
 when the file has several. The table needs one `INTEGER PRIMARY KEY`. At most 100,000 rows
 are loaded; **Most rows** can lower that limit. Whole numbers may use comma-grouped thousands
-(for example, `1,000`); fractional values are rejected. RustGIS does not
+(for example, `1,000`); fractional values are rejected. PowerGIS does not
 directly edit rows outside that load, including rows with unreadable geometry. File-owned
 triggers can change other rows.
 
@@ -341,7 +341,7 @@ need file permission to load or discard rows and cannot save edits back to the t
 
 **Home › Add › Add Data › Database…** (`layer.addDatabase`) also connects to a MySQL (8 or later) or
 MariaDB (10.2 or later) database and reads its spatial columns live, as it does PostGIS tables:
-RustGIS talks to the server itself, with nothing else to install. The connection is an address,
+PowerGIS talks to the server itself, with nothing else to install. The connection is an address,
 `mysql://user@host:3306/database` (or `mariadb://…`); what it leaves out is, as with the
 `mysql` client, `localhost`, port 3306 and your login name. **List Tables**
 (`info.databaseTables`) shows the database's tables and views with a geometry column, and every
@@ -365,7 +365,7 @@ rustgis-cli run --cmd 'layer.addDatabase={"database":"mysql://gis@db.example:330
 
 Large tables are read a view at a time through the column's spatial index (`MBRIntersects`), and
 a capped view is an evenly spread sample numbered on the server; smaller ones are loaded whole.
-RustGIS converts the geometry to longitude/latitude itself (MariaDB has no `ST_Transform`), from
+PowerGIS converts the geometry to longitude/latitude itself (MariaDB has no `ST_Transform`), from
 the column's SRID (MySQL's per-column SRID, MariaDB's `REF_SYSTEM_ID`) or else its rows'; give
 `"crs"` (such as `EPSG:2263`) for a column whose SRID is 0. A `GEOMETRY` column of mixed types
 becomes a layer per type. Features keep their ids between views from the table's integer primary
@@ -446,7 +446,7 @@ without a point.
 
 The geocoder is OpenStreetMap's public [Nominatim](https://nominatim.org) by default, or
 [Photon](https://photon.komoot.io) (`"provider": "photon"`). Their usage policies allow light
-use, so RustGIS sends them at most one request a second and 100 addresses a run; give `"url"` of
+use, so PowerGIS sends them at most one request a second and 100 addresses a run; give `"url"` of
 a Nominatim or Photon server of your own for more (up to 10,000, with no wait between requests).
 In the app the requests go out in the background, one at a time, and the layer is added when the
 last answer lands; `layer.geocode` on the command line waits for them.
@@ -483,7 +483,7 @@ rustgis-cli run --cmd 's3.connect={"name":"minio","endpoint":"https://minio.exam
   --cmd 's3.list={"url":"s3://my-bucket/rasters/"}' --cmd 'layer.addUrl={"url":"s3://my-bucket/rasters/dem.tif"}'
 ```
 
-Keys are kept until RustGIS closes unless you ask otherwise: never in a project (which keeps the
+Keys are kept until PowerGIS closes unless you ask otherwise: never in a project (which keeps the
 address), a command's result, a notice or the log. After **Connect**, **Save as Connection** keeps
 its name, endpoint, region and credential source under **Data Sources › Connections**, never its
 keys. Use **Saved connection** to pick it again.
@@ -1006,7 +1006,7 @@ opens the dialog on a store.
 
 ## Project items
 
-RustGIS saves pieces of a project as files you can share and reuse:
+PowerGIS saves pieces of a project as files you can share and reuse:
 
 | Item | Extension | Made with | Opened with |
 | --- | --- | --- | --- |
@@ -1033,11 +1033,11 @@ also lists the project's layouts, styles and tasks. A task's steps each run a co
 From History turns the geoprocessing history into a task you can replay.
 
 Saved projects, map and layer files, and packages keep no password, key, token or signature in
-layer web addresses. The open project keeps them for this session. RustGIS remembers the 32 most
+layer web addresses. The open project keeps them for this session. PowerGIS remembers the 32 most
 recent distinct saved snapshots whose addresses needed stripping. Opening a plain `.rgis` file
 whose bytes exactly match one of those snapshots restores its secrets; saving more distinct
 snapshots evicts the oldest. Changed files, packages, imports and files saved by another process
-never restore secrets. After a snapshot is evicted or RustGIS closes, add those layers again with
+never restore secrets. After a snapshot is evicted or PowerGIS closes, add those layers again with
 their credentials.
 
 ### Complete streamed Shapefile rendering

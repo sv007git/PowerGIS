@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# The RustGIS web app, built from this checkout and served by nginx (see docs/installation.md ›
+# The PowerGIS web app, built from this checkout and served by nginx (see docs/installation.md ›
 # Self-host the web app with Docker):
 #
 #   docker build -t rustgis .
@@ -56,10 +56,10 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry \
 FROM nginxinc/nginx-unprivileged:1.31.7-alpine-slim@sha256:a8cb0f33d51fa107c96fd2bd3a71aaf564ec131e9d2bdf8700944f0ed8b170d7
 
 # The base image's labels describe nginx: the ones that apply are replaced, the rest cleared.
-LABEL org.opencontainers.image.title="RustGIS web app" \
-      org.opencontainers.image.description="The RustGIS web app (WebAssembly), served by nginx" \
+LABEL org.opencontainers.image.title="PowerGIS web app" \
+      org.opencontainers.image.description="The PowerGIS web app (WebAssembly), served by nginx" \
       org.opencontainers.image.url="https://rustgis.app" \
-      org.opencontainers.image.source="https://github.com/opengeos/RustGIS" \
+      org.opencontainers.image.source="https://github.com/opengeos/PowerGIS" \
       org.opencontainers.image.licenses="Apache-2.0" \
       org.opencontainers.image.version="" \
       org.opencontainers.image.revision="" \

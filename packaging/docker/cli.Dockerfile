@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# The RustGIS command line (rustgis-cli), built from this checkout, on a slim Debian (see
+# The PowerGIS command line (rustgis-cli), built from this checkout, on a slim Debian (see
 # docs/installation.md › The command line in Docker). Build it from the repository root:
 #
 #   docker build -f packaging/docker/cli.Dockerfile -t rustgis-cli .
@@ -38,10 +38,10 @@ RUN apt-get update \
     && useradd --create-home --uid 1000 rustgis \
     && install -d -o rustgis -g rustgis /data
 
-LABEL org.opencontainers.image.title="RustGIS command line" \
-      org.opencontainers.image.description="The RustGIS command line: run commands and geoprocessing, render maps, inspect data" \
+LABEL org.opencontainers.image.title="PowerGIS command line" \
+      org.opencontainers.image.description="The PowerGIS command line: run commands and geoprocessing, render maps, inspect data" \
       org.opencontainers.image.url="https://rustgis.app" \
-      org.opencontainers.image.source="https://github.com/opengeos/RustGIS" \
+      org.opencontainers.image.source="https://github.com/opengeos/PowerGIS" \
       org.opencontainers.image.licenses="Apache-2.0"
 
 COPY --from=build /usr/local/bin/rustgis-cli /usr/local/bin/rustgis-cli

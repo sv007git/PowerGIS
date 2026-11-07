@@ -1,4 +1,4 @@
-//! QGIS expressions as RustGIS SQL clauses: the part of QGIS's expression language a filter
+//! QGIS expressions as PowerGIS SQL clauses: the part of QGIS's expression language a filter
 //! mostly is (fields compared with values, `LIKE`, `IS NULL`, `IN`, joined by `AND`, `OR` and
 //! `NOT`) carried over as it is, and anything else (functions, arithmetic, `CASE`, variables)
 //! refused rather than guessed at, so the caller can note it.
@@ -16,7 +16,7 @@ enum Token {
     Word(String),
 }
 
-/// `expr` as a RustGIS SQL clause, or `None` when it uses more of QGIS's language than that has.
+/// `expr` as a PowerGIS SQL clause, or `None` when it uses more of QGIS's language than that has.
 /// The clause is checked against a layer's fields where it is used.
 pub fn to_sql(expr: &str) -> Option<String> {
     let expr = expr.trim();
@@ -57,7 +57,7 @@ pub(super) fn equality(expr: &str) -> Option<(String, Vec<String>)> {
     }
 }
 
-/// The words RustGIS's SQL has (`ILIKE` is its `LIKE`, which ignores case).
+/// The words PowerGIS's SQL has (`ILIKE` is its `LIKE`, which ignores case).
 fn keyword(w: &str) -> Option<&'static str> {
     Some(match w.to_ascii_uppercase().as_str() {
         "AND" => "AND",
@@ -124,7 +124,7 @@ fn tokenize(s: &str) -> Option<Vec<Token>> {
                 }
                 let n: String = chars.get(start..i).unwrap_or_default().iter().collect();
                 let v = n.parse::<f64>().ok()?;
-                // An exponent is written out (0.001 for 1e-3): RustGIS SQL reads plain decimals.
+                // An exponent is written out (0.001 for 1e-3): PowerGIS SQL reads plain decimals.
                 out.push(Token::Word(if n.contains(['e', 'E']) && v.is_finite() { format!("{v}") } else { n }));
             }
             c if c.is_alphabetic() || c == '_' => {
@@ -136,7 +136,7 @@ fn tokenize(s: &str) -> Option<Vec<Token>> {
                 // A word followed by a bracket is a function call.
                 let next = chars.get(i..).unwrap_or_default().iter().find(|c| !c.is_whitespace());
                 match keyword(&w) {
-                    // TRUE and FALSE are values, bare as RustGIS SQL has them, not fields.
+                    // TRUE and FALSE are values, bare as PowerGIS SQL has them, not fields.
                     _ if w.eq_ignore_ascii_case("true") || w.eq_ignore_ascii_case("false") => out.push(Token::Word(w.to_lowercase())),
                     Some(k) => out.push(Token::Word(k.into())),
                     None if next == Some(&'(') => return None,
@@ -186,7 +186,7 @@ mod tests {
             Some(r#""pop" >= 1000 AND ( "name" LIKE 'z%' OR "kind" IN ( 'a' , 'b''s' ) ) AND "note" IS NOT NULL"#)
         );
         assert_eq!(to_sql("a <> -2.5").as_deref(), Some(r#""a" <> -2.5"#));
-        // Exponents written out, and TRUE and FALSE as values, as RustGIS SQL reads them.
+        // Exponents written out, and TRUE and FALSE as values, as PowerGIS SQL reads them.
         assert_eq!(to_sql("d < 2.5E-4 OR d > -1e+2").as_deref(), Some(r#""d" < 0.00025 OR "d" > -100"#));
         assert_eq!(to_sql("flag = TRUE AND gone = false").as_deref(), Some(r#""flag" = true AND "gone" = false"#));
         for refused in ["upper(\"name\") = 'X'", "\"a\" + 1 > 2", "\"a\" || 'x' = 'y'", "@map_scale < 5000", "'unclosed", "", "a ! b"] {

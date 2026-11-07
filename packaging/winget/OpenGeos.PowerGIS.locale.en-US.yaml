@@ -1,21 +1,21 @@
 # yaml-language-server: $schema=https://aka.ms/winget-manifest.defaultLocale.1.12.0.schema.json
-# Reference copy of the manifests in microsoft/winget-pkgs (manifests/o/OpenGeos/RustGIS).
+# Reference copy of the manifests in microsoft/winget-pkgs (manifests/o/OpenGeos/PowerGIS).
 # The Package managers workflow submits each new version with winget-releaser; see README.md.
-PackageIdentifier: OpenGeos.RustGIS
+PackageIdentifier: OpenGeos.PowerGIS
 PackageVersion: 0.1.0
 PackageLocale: en-US
 Publisher: Open Geospatial Solutions
 PublisherUrl: https://github.com/opengeos
-PublisherSupportUrl: https://github.com/opengeos/RustGIS/issues
-Author: RustGIS contributors
-PackageName: RustGIS
+PublisherSupportUrl: https://github.com/opengeos/PowerGIS/issues
+Author: PowerGIS contributors
+PackageName: PowerGIS
 PackageUrl: https://rustgis.app
 License: Apache-2.0
-LicenseUrl: https://github.com/opengeos/RustGIS/blob/main/LICENSE
-Copyright: Copyright the RustGIS contributors
+LicenseUrl: https://github.com/opengeos/PowerGIS/blob/main/LICENSE
+Copyright: Copyright the PowerGIS contributors
 ShortDescription: Fast, free and open-source GIS for mapping, analyzing and sharing geospatial data
 Description: |-
-  RustGIS is a geographic information system in pure Rust: maps and layers, symbology, labels,
+  PowerGIS is a geographic information system in pure Rust: maps and layers, symbology, labels,
   editing, geoprocessing with over 1,000 GeoLibre and Whitebox tools, page layouts and export, an
   AI Assistant and sandboxed plugins. It includes rustgis-cli for scripting every command and an
   MCP server for AI agents.
@@ -28,7 +28,7 @@ Tags:
 - geojson
 - shapefile
 - geotiff
-ReleaseNotesUrl: https://github.com/opengeos/RustGIS/releases/tag/v0.1.0
+ReleaseNotesUrl: https://github.com/opengeos/PowerGIS/releases/tag/v0.1.0
 Documentations:
 - DocumentLabel: User guide
   DocumentUrl: https://rustgis.app/user-guide/

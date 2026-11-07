@@ -1,4 +1,4 @@
-//! Trends in a time series (opengeos/RustGIS#579): Sen's slope for the rate of change, and the
+//! Trends in a time series (opengeos/PowerGIS#579): Sen's slope for the rate of change, and the
 //! Mann–Kendall test for whether it is significant, in the variants used on autocorrelated
 //! series such as NDVI and temperature.
 //!

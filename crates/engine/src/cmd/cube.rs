@@ -1,4 +1,4 @@
-//! Data cubes (opengeos/RustGIS#579): rasters on one grid at a series of dates, whatever they come
+//! Data cubes (opengeos/PowerGIS#579): rasters on one grid at a series of dates, whatever they come
 //! from, and the trend of each cell over them.
 //!
 //! A [`TimeCube`] gives its dates and the slice at each one. The sources:

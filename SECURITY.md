@@ -3,9 +3,9 @@
 ## Reporting a vulnerability
 
 Report security problems privately through
-[GitHub's private vulnerability reporting](https://github.com/opengeos/RustGIS/security/advisories/new),
+[GitHub's private vulnerability reporting](https://github.com/opengeos/PowerGIS/security/advisories/new),
 not in a public issue, pull request or discussion. Include what you did, what happened, the
-RustGIS version and platform (desktop, browser, command line or Python), and a file, plugin or
+PowerGIS version and platform (desktop, browser, command line or Python), and a file, plugin or
 script that shows it if you have one. Leave out real passwords, keys and private data; a
 made-up example is enough.
 
@@ -15,13 +15,13 @@ give us a chance to release a fix before you disclose the problem publicly.
 
 ## Supported versions
 
-RustGIS is released often and fixes go into the next release; older releases don't get
+PowerGIS is released often and fixes go into the next release; older releases don't get
 patches. Check that the problem still happens with the
-[latest release](https://github.com/opengeos/RustGIS/releases/latest) or `main`.
+[latest release](https://github.com/opengeos/PowerGIS/releases/latest) or `main`.
 
 ## What counts as a security problem
 
-RustGIS makes promises about what untrusted plugins, files, agents and web pages can do. A way
+PowerGIS makes promises about what untrusted plugins, files, agents and web pages can do. A way
 around one of them is a security problem:
 
 - **Plugins**: a WebAssembly plugin reaching files, the network or the project beyond the
@@ -40,7 +40,7 @@ around one of them is a security problem:
 
 ## What doesn't
 
-Report these as ordinary [issues](https://github.com/opengeos/RustGIS/issues):
+Report these as ordinary [issues](https://github.com/opengeos/PowerGIS/issues):
 
 - A crash, hang or memory blow-up from a malformed file or parameters, unless it leads to more
   than that. These are bugs we fix, and the regression tests keep them fixed.

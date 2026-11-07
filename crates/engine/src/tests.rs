@@ -814,7 +814,7 @@ fn a_symbol_is_set_by_expressions() {
 #[test]
 fn a_qgis_styles_data_defined_settings_are_kept_where_they_read() {
     let mut s = world();
-    // Size by a field Cities has; fill by a QGIS function RustGIS lacks; outline by a field it hasn't.
+    // Size by a field Cities has; fill by a QGIS function PowerGIS lacks; outline by a field it hasn't.
     let dd = |name: &str, expr: &str| {
         format!(
             r#"<Option type="Map" name="{name}"><Option value="true" type="bool" name="active"/><Option value="{expr}" type="QString" name="expression"/><Option value="3" type="int" name="type"/></Option>"#
@@ -1527,7 +1527,7 @@ fn imported_tasks_name_outputs_and_steps_are_edited() {
     assert!(s.run("task.import", &json!({"text": to_a_file.to_string()})).is_err());
     assert!(crate::cmd::items::touches_files("gp.run", &json!({"tool": "buffer", "params": {"output": "../x.shp"}})));
     assert!(!crate::cmd::items::touches_files("gp.run", &json!({"tool": "buffer", "params": {"output": "Near cities"}})));
-    // Only a plain layer name, only gp.run's, only for RustGIS's own tools.
+    // Only a plain layer name, only gp.run's, only for PowerGIS's own tools.
     for (command, params) in [
         ("gp.run", json!({"tool": "buffer", "params": {"output": "x.shp"}})),
         ("gp.run", json!({"tool": "buffer", "params": {"output": "sub/x"}})),
@@ -1535,7 +1535,7 @@ fn imported_tasks_name_outputs_and_steps_are_edited() {
         ("gp.run", json!({"tool": "buffer", "params": {"output": ".bashrc"}})),
         ("gp.run", json!({"tool": "geolibre:slope", "params": {"output": "slope"}})),
         ("gp.run", json!({"tool": "plugin:kit/hex", "params": {"output": "hex"}})),
-        // Not one of RustGIS's own tools, even without a prefix.
+        // Not one of PowerGIS's own tools, even without a prefix.
         ("gp.run", json!({"tool": "someOtherTool", "params": {"output": "x"}})),
         ("gp.run", json!({"tool": "buffer", "params": {"input": "Cities", "nested": {"output": "x"}}})),
         ("layer.rename", json!({"layer": "Cities", "output": "x"})),
@@ -1999,7 +1999,7 @@ fn raster_masks_hide_values() {
 }
 
 /// Shards of `hostile_params_never_panic`: each takes every eighth command, so the parts run side by
-/// side (opengeos/RustGIS#1201).
+/// side (opengeos/PowerGIS#1201).
 const HOSTILE_SHARDS: usize = 8;
 const _: () = assert!(HOSTILE_SHARDS == 8, "add a hostile_params_never_panic_N test for each shard");
 
@@ -2150,7 +2150,7 @@ fn hostile_params_never_panic(shard: usize) {
                 | "boundaries.countries"
                 // Asks Source Cooperative for its featured products.
                 | "sourcecoop.products"
-                // Starts a sign-in's callback server (RustGIS's own app on ArcGIS Online).
+                // Starts a sign-in's callback server (PowerGIS's own app on ArcGIS Online).
                 | "arcgis.signIn"
                 // Signs every session out, which the process's other tests use (its junk is
                 // covered by an_arcgis_token_in_a_service_address_reaches_its_layers).
@@ -7649,11 +7649,11 @@ fn jupyter_python_notebooks_survive_open_and_save() {
         assert_eq!(opened.cells[0].output.as_deref(), Some("2\nab"));
         s.run("notebook.remove", &json!({"notebook": s.project.notebooks.len() - 1})).unwrap();
     }
-    // A notebook with more cells than RustGIS holds is refused rather than cut short.
+    // A notebook with more cells than PowerGIS holds is refused rather than cut short.
     let many = json!({"nbformat": 4, "cells": vec![json!({"cell_type": "markdown", "source": "x"}); 1001]});
     let e = s.run("notebook.open", &json!({"text": many.to_string()})).unwrap_err();
     assert!(e.contains("1001 cells"), "{e}");
-    // So is one too large in RustGIS's own format.
+    // So is one too large in PowerGIS's own format.
     let many = json!({"name": "Big", "cells": vec![json!({"kind": "markdown", "source": "x"}); 1001]});
     assert!(s.run("notebook.open", &json!({"text": many.to_string()})).unwrap_err().contains("1001 cells"));
     // Nor one with a cell that isn't an object.
@@ -7662,7 +7662,7 @@ fn jupyter_python_notebooks_survive_open_and_save() {
     // Nor is an nbformat 3 notebook, whose cells are in worksheets.
     let v3 = json!({"nbformat": 3, "worksheets": [{"cells": [{"cell_type": "code", "input": "1"}]}]});
     assert!(s.run("notebook.open", &json!({"text": v3.to_string()})).unwrap_err().contains("nbformat 3"));
-    // Nor is a cell longer than RustGIS keeps.
+    // Nor is a cell longer than PowerGIS keeps.
     let long = json!({"nbformat": 4, "cells": [{"cell_type": "code", "source": "x".repeat(200_001)}]});
     assert!(s.run("notebook.open", &json!({"text": long.to_string()})).unwrap_err().contains("cell 1"));
     let long = json!({"name": "Long", "cells": [{"kind": "code", "source": "x".repeat(200_001)}]});
@@ -7754,7 +7754,7 @@ fn jupyter_python_notebooks_survive_open_and_save() {
     let id = saved["cells"][4]["id"].as_str().unwrap();
     assert!(!id.is_empty() && !["intro", "load", "boom", "raw"].contains(&id), "{id}");
     assert_eq!(saved["cells"][4]["outputs"], json!([]));
-    // A RustGIS command notebook saved as Jupyter still opens as commands.
+    // A PowerGIS command notebook saved as Jupyter still opens as commands.
     s.run("notebook.new", &json!({"name": "Commands"})).unwrap();
     s.run("notebook.save", &json!({"path": path.to_str().unwrap()})).unwrap();
     s.run("notebook.open", &json!({"path": path.to_str().unwrap()})).unwrap();
@@ -10282,7 +10282,7 @@ fn services_list_and_add_layers() {
     let r = s.run("service.add", &json!({"url": api, "layer": "lakes", "text": collections})).unwrap();
     assert_eq!(r["features"], 1);
     assert!(s.map().layer_by_name("Lakes").is_some());
-    // A document on the web can't send RustGIS into the local network.
+    // A document on the web can't send PowerGIS into the local network.
     let inward = WMS.replace("https://maps.example.com/wms?", "http://127.0.0.1:8080/wms?");
     let v = s.run("service.layers", &json!({"url": url, "text": inward})).unwrap();
     assert_eq!(v["count"], 0);
@@ -10488,7 +10488,7 @@ fn wfs_axes_judged_against_the_type_bounds() {
     s.run("service.add", &json!({"url": format!("{}/wfs", ibge.base), "layer": "PNADC:uf", "text": text, "name": "UF"})).unwrap();
     let e = s.map().layer_by_name("UF").unwrap().extent();
     assert_eq!([e.min_x, e.min_y, e.max_x, e.max_y], [-63.3, -29.7, -36.5, -5.8]);
-    // RustGIS asked for EPSG:4326, as the type doesn't list CRS84.
+    // PowerGIS asked for EPSG:4326, as the type doesn't list CRS84.
     assert!(ibge.requests().iter().all(|r| r.query.iter().any(|(k, v)| k == "SRSNAME" && v == "EPSG:4326")));
 
     let text = caps(&hamburg.base, "app:bezirke", "urn:ogc:def:crs:EPSG::25832", "8.41 53.39", "10.34 53.97");
@@ -10518,7 +10518,7 @@ fn wfs_axes_judged_against_the_type_bounds() {
 }
 
 /// A WCS coverage (from a local server) becomes a raster of the view, asked for in EPSG:4326 within
-/// its bounds; an error answer is refused. A catalogue's records come with the links RustGIS can
+/// its bounds; an error answer is refused. A catalogue's records come with the links PowerGIS can
 /// follow, those pointing inward left out.
 #[test]
 fn wcs_coverages_and_catalogue_records() {
@@ -12001,7 +12001,7 @@ fn osm_and_boundaries() {
     }
 }
 
-/// Search Open Data against a local CKAN site: datasets with their resources (what RustGIS can't
+/// Search Open Data against a local CKAN site: datasets with their resources (what PowerGIS can't
 /// add dropped, the best format first), one added by its address; bad requests are refused.
 #[test]
 fn open_data_portal_search_and_add() {
@@ -19786,7 +19786,7 @@ fn postgis_edits_live() {
 }
 
 /// Edits go back to one local GeoPackage table atomically, without replacing the file or
-/// losing columns RustGIS doesn't edit. No external database or program is needed.
+/// losing columns PowerGIS doesn't edit. No external database or program is needed.
 #[cfg(not(target_arch = "wasm32"))]
 #[test]
 fn geopackage_edits_save_back() {

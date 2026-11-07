@@ -1,10 +1,10 @@
-"""Type stubs for the native RustGIS module."""
+"""Type stubs for the native PowerGIS module."""
 
 from typing import List, Optional, Tuple, Union
 
 __version__: str
 
-class RustGISError(Exception): ...
+class PowerGISError(Exception): ...
 
 class Engine:
     def __init__(self, use_saved_secrets: bool = False) -> None: ...

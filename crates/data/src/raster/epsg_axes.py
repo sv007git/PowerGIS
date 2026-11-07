@@ -1,4 +1,4 @@
-"""Regenerates the tables of `epsg_axes.rs`: which EPSG codes RustGIS knows are written north
+"""Regenerates the tables of `epsg_axes.rs`: which EPSG codes PowerGIS knows are written north
 (or latitude) first, and which it can't tell.
 
 Usage (pyproj installed, from the repository root):

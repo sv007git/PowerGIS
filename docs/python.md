@@ -1,9 +1,9 @@
 # Python
 
 [![PyPI](https://img.shields.io/pypi/v/rustgis.svg)](https://pypi.org/project/rustgis/)
-[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/opengeos/RustGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb)
+[![Open in Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb)
 
-The `rustgis` package runs the RustGIS engine inside Python, headless. It opens data and
+The `rustgis` package runs the PowerGIS engine inside Python, headless. It opens data and
 projects, runs engine commands and geoprocessing tools, styles layers, renders maps and saves
 projects that the desktop app opens as they are. There is no app to install and no server to run:
 the engine is a native module for Python 3.12 and later. Release wheels cover Windows x64 and
@@ -15,8 +15,8 @@ has no wheel for it.
 pip install rustgis               # pip install "rustgis[geopandas]" for GeoDataFrames
 ```
 
-A [getting-started notebook](https://github.com/opengeos/RustGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb) walks
-through what follows; [open it in Colab](https://colab.research.google.com/github/opengeos/RustGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb) to try it without installing anything.
+A [getting-started notebook](https://github.com/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb) walks
+through what follows; [open it in Colab](https://colab.research.google.com/github/opengeos/PowerGIS/blob/main/apps/rustgis-python/examples/getting-started.ipynb) to try it without installing anything.
 
 ## A first session
 
@@ -94,7 +94,7 @@ address accessible to the browser to show one there.
 
 ## The app in a notebook
 
-`rustgis.Map` shows the RustGIS app (ribbon, panes, map) in the cell, kept in step with its
+`rustgis.Map` shows the PowerGIS app (ribbon, panes, map) in the cell, kept in step with its
 session: what Python adds or styles appears in the app, and what you do in the app (an edit, a new
 layer, a pan) is back in the session for Python to read. It needs
 [anywidget](https://anywidget.dev), and works in JupyterLab, Notebook, VS Code and Colab.
@@ -179,12 +179,12 @@ Engine actions are commands with an id and JSON parameters: the same ids the rib
 [command line](cli.md) and the [AI Assistant](user-guide/assistant.md) use.
 `Session.run(id, ...)` runs them, with parameters as keyword arguments, a positional dict, or
 both (keyword arguments win). It returns the decoded command result and raises
-`rustgis.RustGISError` when the command fails. UI-only commands (`ui.*`) need
+`rustgis.PowerGISError` when the command fails. UI-only commands (`ui.*`) need
 `Map.run_in_app`, as in the notebook example above.
 
 A command runs to its end before `run` returns, but not holding Python's interpreter lock (the
 GIL): other Python threads keep running while it works, as do renders, layer reads and the
-keychain reads of `use_saved_secrets`. Native RustGIS calls, including calls on different
+keychain reads of `use_saved_secrets`. Native PowerGIS calls, including calls on different
 sessions, take turns because connection activations are shared by the process. Waiting for
 another native call also releases the GIL; unrelated Python threads remain free to run.
 Ctrl+C (`KeyboardInterrupt`) is raised only once the command has ended. So a trend over a data
@@ -246,13 +246,13 @@ logging configured, Python prints it to stderr. Unreadable or malformed desktop 
 produce a separate diagnostic during session construction; a missing preferences file is normal.
 
 These are log records, not Python warnings: warning filters cannot replace a successful result
-or hide the original `RustGISError`. Each session reports its own failure. A logging handler or
+or hide the original `PowerGISError`. Each session reports its own failure. A logging handler or
 filter that raises cannot change the operation's result; the diagnostic falls back to stderr.
 A command that doesn't need a secret neither touches the keychain nor emits a keychain
 diagnostic. On macOS, Keychain may ask once per item whether the Python executable may read it;
 **Always Allow** stops that question for that executable and item. Until such a question is
 answered (or a locked Secret Service on Linux responds), the command that asked waits, and so do
-other RustGIS calls in the process, even on other sessions; other Python threads keep running.
+other PowerGIS calls in the process, even on other sessions; other Python threads keep running.
 
 ## Data in and out
 
@@ -328,4 +328,4 @@ at that moment can crash the process (glibc's `setenv` may free the environment 
 `getenv` is reading). Qt tests create widgets with the `make_widget` fixture, which destroys
 each widget and its message bridge at test teardown.
 
-Its version is the RustGIS version, and each release publishes wheels to PyPI.
+Its version is the PowerGIS version, and each release publishes wheels to PyPI.

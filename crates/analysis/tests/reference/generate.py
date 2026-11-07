@@ -4,16 +4,16 @@
 # [tool.uv]
 # exclude-newer = "2026-10-25T00:00:00Z"
 # ///
-"""Writes the reference layers and the answers RustGIS's tools must give for them.
+"""Writes the reference layers and the answers PowerGIS's tools must give for them.
 
 The answers come from GEOS (through Shapely), the geometry engine of QGIS and PostGIS. Run it
 from this directory with `uv run generate.py`; the Rust test `reference.rs` reads what it writes.
 `uv run generate.py --check` writes nothing: it fails if the committed files differ from what it
 would write, so an answer can't be edited by hand (CI runs it when this folder changes).
 
-Overlays and spatial predicates are worked out in Web Mercator, the plane RustGIS's tools use, so
+Overlays and spatial predicates are worked out in Web Mercator, the plane PowerGIS's tools use, so
 the comparison tests the geometry engine rather than the choice of plane. Distances are on the
-WGS 84 ellipsoid, as RustGIS measures them: GeographicLib (through pyproj) gives the distance
+WGS 84 ellipsoid, as PowerGIS measures them: GeographicLib (through pyproj) gives the distance
 between two points, and the nearest point of an edge, the geodesic between its vertices, is found
 by searching along it (and checked against dense sampling). Areas, perimeters and lengths are
 GeographicLib's too. A buffer is worked out from its definition, every point within the distance

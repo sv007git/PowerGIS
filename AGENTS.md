@@ -1,6 +1,6 @@
-# RustGIS — instructions for agents
+# PowerGIS — instructions for agents
 
-RustGIS is a fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing
+PowerGIS is a fast, free and open-source GIS in pure Rust for mapping, analyzing and sharing
 geospatial data, on the desktop and in the browser. Its architecture: layered crates, everything
 is a command, a thin egui front end, headless screenshots for UI work.
 
@@ -62,7 +62,7 @@ Before picking work, read [ROADMAP.md](ROADMAP.md) (check Underway) and
 - No third-party vendor icons, images, styles, fonts, help text or code. Icons are drawn in
   code (`icons.rs`). Every asset file has a row in `ATTRIBUTION.md`.
 - Never copy or translate code from GPL, LGPL or other copyleft projects (such as GRASS, QGIS or
-  GEOS) into RustGIS, by hand or with an AI tool. Implementing a published algorithm is fine: cite
+  GEOS) into PowerGIS, by hand or with an AI tool. Implementing a published algorithm is fine: cite
   the paper or standard. Name in the pull request any project whose code you followed (see
   [CONTRIBUTING.md](CONTRIBUTING.md#where-code-comes-from)).
 - Screenshots and other images are not committed here: they live in

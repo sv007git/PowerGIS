@@ -6,13 +6,13 @@
 # A binary package: it unpacks the release's .deb (x86_64 and aarch64), which already carries
 # both programs, the desktop entry, the project file type and the icons, so installing it needs
 # no Rust toolchain. The checksums come from the release's SHA256SUMS. REPO defaults to
-# opengeos/RustGIS.
+# opengeos/PowerGIS.
 set -euo pipefail
 
 version="${1:?usage: render.sh <version> <SHA256SUMS>}"
 version="${version#v}"
 sums="${2:?usage: render.sh <version> <SHA256SUMS>}"
-repo="${REPO:-opengeos/RustGIS}"
+repo="${REPO:-opengeos/PowerGIS}"
 
 # pkgver may not contain a hyphen, so pre-releases are never published.
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not an X.Y.Z version: $version" >&2; exit 1; }

@@ -11,7 +11,7 @@ the QGIS API (run in the QGIS Flatpak). Output: OUT (argv[1]).
 
 The projects are then scrubbed of the user's name and absolute paths (scrub.py).
 
-By Dominik Strebel (@pick2510), for the RustGIS project. Apache-2.0.
+By Dominik Strebel (@pick2510), for the PowerGIS project. Apache-2.0.
 """
 import os
 import sys

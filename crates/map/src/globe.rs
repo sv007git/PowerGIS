@@ -69,7 +69,7 @@ impl Projection {
             return Ok(Projection::WebMercator);
         }
         // Build it, not just look it up: a known code whose method has no implementation would
-        // otherwise be accepted and drawn in Web Mercator under its own name (opengeos/RustGIS#208).
+        // otherwise be accepted and drawn in Web Mercator under its own name (opengeos/PowerGIS#208).
         crate::projection::Projector::new(s)?;
         // A local view keeps its centre.
         if s.starts_with("local:") {

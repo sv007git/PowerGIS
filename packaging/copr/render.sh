@@ -5,16 +5,16 @@
 #   packaging/copr/render.sh <version> <release date YYYY-MM-DD> <folder>
 #
 # A binary package: the spec repackages the release's own .rpm (x86_64 and aarch64, as Source0
-# and Source1) and adds the metainfo, which gives RustGIS a page in GNOME Software and KDE
+# and Source1) and adds the metainfo, which gives PowerGIS a page in GNOME Software and KDE
 # Discover. Build the source RPM with both release .rpm files and the metainfo in SOURCES.
-# REPO defaults to opengeos/RustGIS.
+# REPO defaults to opengeos/PowerGIS.
 set -euo pipefail
 
 version="${1:?usage: render.sh <version> <date> <folder>}"
 version="${version#v}"
 date="${2:?usage: render.sh <version> <date> <folder>}"
 out="${3:?usage: render.sh <version> <date> <folder>}"
-repo="${REPO:-opengeos/RustGIS}"
+repo="${REPO:-opengeos/PowerGIS}"
 
 [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo "not an X.Y.Z version: $version" >&2; exit 1; }
 [[ "$repo" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]] || { echo "REPO is not owner/name: $repo" >&2; exit 1; }
@@ -22,7 +22,7 @@ repo="${REPO:-opengeos/RustGIS}"
   || { echo "not a YYYY-MM-DD date: $date" >&2; exit 1; }
 # rpm wants "Mon Oct 12 2026" in %changelog.
 changelog_date="$(LC_ALL=C date -u -d "$date" +"%a %b %d %Y")"
-appid=org.rustgis.RustGIS
+appid=org.rustgis.PowerGIS
 mkdir -p "$out"
 
 cat > "$out/$appid.metainfo.xml" <<XML
@@ -32,11 +32,11 @@ cat > "$out/$appid.metainfo.xml" <<XML
   <id>$appid</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>Apache-2.0</project_license>
-  <name>RustGIS</name>
+  <name>PowerGIS</name>
   <summary>Fast, free and open-source GIS</summary>
   <description>
     <p>
-      RustGIS is a geographic information system for mapping, analyzing and sharing
+      PowerGIS is a geographic information system for mapping, analyzing and sharing
       geospatial data: one native program, drawn on the GPU, that also runs in the browser.
     </p>
     <ul>
@@ -52,7 +52,7 @@ cat > "$out/$appid.metainfo.xml" <<XML
   <url type="bugtracker">https://github.com/$repo/issues</url>
   <url type="vcs-browser">https://github.com/$repo</url>
   <developer id="app.rustgis">
-    <name>RustGIS</name>
+    <name>PowerGIS</name>
   </developer>
   <categories>
     <category>Science</category>
@@ -72,7 +72,7 @@ cat > "$out/$appid.metainfo.xml" <<XML
   <screenshots>
     <screenshot type="default">
       <image>https://assets.rustgis.app/images/hero.webp</image>
-      <caption>A map in RustGIS with the ribbon, Contents pane and attribute table</caption>
+      <caption>A map in PowerGIS with the ribbon, Contents pane and attribute table</caption>
     </screenshot>
   </screenshots>
   <content_rating type="oars-1.1"/>
@@ -121,7 +121,7 @@ Recommends:     libXrandr.so.2()(64bit)
 Recommends:     (libvulkan.so.1()(64bit) or libEGL.so.1()(64bit))
 
 %description
-RustGIS is a geographic information system for mapping, analyzing and sharing
+PowerGIS is a geographic information system for mapping, analyzing and sharing
 geospatial data: maps and layers, symbology, labels, editing, geoprocessing,
 page layouts and export. It includes rustgis-cli for scripting every command.
 
@@ -156,5 +156,5 @@ appstream-util validate-relax --nonet %{buildroot}%{_metainfodir}/%{appid}.metai
 
 %changelog
 * $changelog_date Qiusheng Wu <giswqs@gmail.com> - $version-1
-- RustGIS $version: https://github.com/$repo/releases/tag/v$version
+- PowerGIS $version: https://github.com/$repo/releases/tag/v$version
 SPEC

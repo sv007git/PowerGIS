@@ -1,7 +1,7 @@
-//! QGIS projects (`.qgs`) and layer styles (`.qml`) read into RustGIS: a project's layers (their
+//! QGIS projects (`.qgs`) and layer styles (`.qml`) read into PowerGIS: a project's layers (their
 //! data sources, order, visibility, scale ranges and opacity), its coordinate system and view,
 //! and each layer's style (renderer, symbols, labels, reference scale and symbol levels), as the
-//! map's own types. What RustGIS can't draw as QGIS does is carried over as near as it can, and
+//! map's own types. What PowerGIS can't draw as QGIS does is carried over as near as it can, and
 //! the [`Report`] says so, layer by layer: nothing is left out without a note.
 //!
 //! The XML is hostile input: it is read with a node limit and no DTD, every list is bounded, and
@@ -37,7 +37,7 @@ pub const MAX_LAYERS: usize = 1000;
 /// The most notes a report keeps.
 const MAX_NOTES: usize = 5000;
 
-/// RustGIS's scale takes a screen pixel to be 0.28 mm (OGC); QGIS works out its scale at the
+/// PowerGIS's scale takes a screen pixel to be 0.28 mm (OGC); QGIS works out its scale at the
 /// screen's 96 dots to the inch. The same view is a larger scale in QGIS by this much, so QGIS's
 /// scales (reference scales, visibility ranges) are multiplied by it.
 pub const QGIS_SCALE: f64 = (25.4 / 96.0) / 0.28;
@@ -95,7 +95,7 @@ impl Report {
     }
 }
 
-/// A layer's look as a QGIS style has it, in RustGIS's terms. Each part is `None` (or empty) when
+/// A layer's look as a QGIS style has it, in PowerGIS's terms. Each part is `None` (or empty) when
 /// the style doesn't set it, so applying it leaves the layer's own.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub struct Style {
@@ -118,7 +118,7 @@ pub struct Style {
     pub blend: Option<Blend>,
     /// A raster's colouring, stretch, resampling, brightness, contrast and mask.
     pub raster: Option<crate::raster::RasterStyle>,
-    /// Drawn between these scales (RustGIS's, see [`QGIS_SCALE`]): zoomed in beyond 1:`min_scale`
+    /// Drawn between these scales (PowerGIS's, see [`QGIS_SCALE`]): zoomed in beyond 1:`min_scale`
     /// and out beyond 1:`max_scale`. `Some(None)` clears a limit.
     pub min_scale: Option<Option<f64>>,
     pub max_scale: Option<Option<f64>>,
@@ -217,7 +217,7 @@ pub struct ProjectLayer {
     pub vector: bool,
     /// Checked in the layer tree, and every group holding it too.
     pub visible: bool,
-    /// Its subset string, as a RustGIS definition query when it reads as one.
+    /// Its subset string, as a PowerGIS definition query when it reads as one.
     pub definition_query: Option<String>,
     pub style: Style,
 }
@@ -275,7 +275,7 @@ pub fn read_project(text: &str, dir: &str, report: &mut Report) -> Result<Projec
             Source::File { subset: Some(q), .. } => match expr::to_sql(q) {
                 Some(sql) => Some(sql),
                 None => {
-                    report.skipped(&name, format!("its filter (subset string) `{q}`, which doesn't read as a RustGIS definition query"));
+                    report.skipped(&name, format!("its filter (subset string) `{q}`, which doesn't read as a PowerGIS definition query"));
                     None
                 }
             },
@@ -347,7 +347,7 @@ fn read_style_node(node: Node, layer: &str, report: &mut Report) -> Style {
     if let Some(r) = child(node, "renderer-v2") {
         renderer::read(r, layer, &mut style, report);
     }
-    // A raster's renderer: its opacity, and its colouring as RustGIS's raster style.
+    // A raster's renderer: its opacity, and its colouring as PowerGIS's raster style.
     if let Some(r) = child(node, "pipe").and_then(|p| child(p, "rasterrenderer")) {
         if let Some(o) = r.attribute("opacity").and_then(|o| o.trim().parse::<f32>().ok()).filter(|o| o.is_finite() && *o < 1.0) {
             style.transparency = Some(((1.0 - o.clamp(0.0, 1.0)) * 100.0).round());
@@ -377,7 +377,7 @@ fn old_labels(node: Node) -> bool {
     custom || child(node, "label").and_then(|n| n.text()).is_some_and(|t| t.trim() == "1")
 }
 
-/// Notes a layer's settings RustGIS has no place for (a project's `<maplayer>` or a style's root).
+/// Notes a layer's settings PowerGIS has no place for (a project's `<maplayer>` or a style's root).
 fn layer_notes(node: Node, layer: &str, report: &mut Report) {
     if child(node, "temporal").is_some_and(|t| t.attribute("enabled") == Some("1")) {
         report.skipped(layer, "its time settings");
@@ -410,11 +410,11 @@ fn layer_notes(node: Node, layer: &str, report: &mut Report) {
         report.skipped(layer, "its virtual fields (fields computed from an expression)");
     }
     if node.attribute("type") == Some("vector-tile") && child(node, "renderer").is_some() {
-        report.approximated(layer, "its vector tile style, drawn in RustGIS's own");
+        report.approximated(layer, "its vector tile style, drawn in PowerGIS's own");
     }
 }
 
-/// Notes the project's parts RustGIS has no place for: print layouts, annotations, bookmarks,
+/// Notes the project's parts PowerGIS has no place for: print layouts, annotations, bookmarks,
 /// map themes and relations.
 fn project_notes(root: Node, report: &mut Report) {
     let count = |list: &str, item: &str| child(root, list).map_or(0, |l| l.children().filter(|c| c.has_tag_name(item)).count());
@@ -501,7 +501,7 @@ fn legend_layers(group: Node, checked: bool, out: &mut Vec<(String, bool)>, dept
     }
 }
 
-/// QGIS's blending modes (`QPainter::CompositionMode`) RustGIS has.
+/// QGIS's blending modes (`QPainter::CompositionMode`) PowerGIS has.
 fn blend_of(mode: i32) -> Option<Blend> {
     Some(match mode {
         0 => Blend::Normal,
@@ -591,9 +591,9 @@ pub(crate) fn color(s: &str) -> Option<Rgba> {
     }
 }
 
-/// A size in QGIS's `unit` as RustGIS points (1/96 inch, a screen pixel at 1×). Map units have
+/// A size in QGIS's `unit` as PowerGIS points (1/96 inch, a screen pixel at 1×). Map units have
 /// no fixed size on screen: they are taken at the layer's reference scale when it has one
-/// (`reference`, RustGIS's), else as metres at 1:25,000, and noted.
+/// (`reference`, PowerGIS's), else as metres at 1:25,000, and noted.
 fn points(v: f64, unit: Option<&str>, reference: Option<f64>, layer: &str, report: &mut Report) -> f32 {
     let pt = in_points(v, unit, reference, layer, report);
     if pt.is_finite() { pt.clamp(0.0, 1000.0) as f32 } else { 0.0 }

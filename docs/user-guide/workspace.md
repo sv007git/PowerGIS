@@ -28,12 +28,12 @@ World Atlas sample, a template or a project dropped on the window would replace 
 Commands don't ask: `project.new`, `project.open` and the rest replace the project as they always
 have when a script, a task, the AI Assistant, the command line or an attached agent runs them.
 The browser app doesn't ask yet; it warns before you leave a page with unsaved changes. On macOS,
-**Quit RustGIS** (⌘Q) and the Dock's **Quit** don't ask yet either. With autosave on (the
-default), RustGIS keeps your changes as a [recovery copy](#autosave-and-recovery) and offers them
+**Quit PowerGIS** (⌘Q) and the Dock's **Quit** don't ask yet either. With autosave on (the
+default), PowerGIS keeps your changes as a [recovery copy](#autosave-and-recovery) and offers them
 back the next time it starts; with autosave off, they are lost, so save before you quit.
 
 Saved layer addresses omit passwords, access keys, tokens and signatures. The open session
-keeps them, but after restarting RustGIS a protected source may need you to sign in to its
+keeps them, but after restarting PowerGIS a protected source may need you to sign in to its
 connection again or add it again with credentials.
 
 ### Autosave and recovery
@@ -47,33 +47,33 @@ does. It is kept in the `recovery` folder of the app's
 [data folder](../installation.md#settings-data-and-cache-folders), not beside your project.
 Saving, opening or starting another project, and choosing **Don't Save** when you quit remove it.
 
-If RustGIS crashes, is closed by the system or loses power, the next launch asks **Recover unsaved
+If PowerGIS crashes, is closed by the system or loses power, the next launch asks **Recover unsaved
 work?** and says how old the copy is.
 
 - **Recover** opens the work unsaved, under its file's name, so **Save** writes it back to that
-  file. RustGIS warns you if the file was changed after the copy was made. A project that was never
+  file. PowerGIS warns you if the file was changed after the copy was made. A project that was never
   saved stays untitled, and **Save** asks where to write it.
 - **Discard** deletes the copy.
 - **Later** keeps the copy for the next launch.
 
-If RustGIS crashes again before you decide, neither copy replaces the other. Up to five are kept
+If PowerGIS crashes again before you decide, neither copy replaces the other. Up to five are kept
 and offered newest first, one per launch once you recover one. Recovering never replaces a project
 that has unsaved changes of its own: save it first.
 
 The same choices are commands: `ui.recover` opens the copy, and `ui.recover={"discard": true}`
 deletes it. `ui.autosave` reports the interval and any copy waiting.
 
-Quitting asks about unsaved changes first (see [Projects](#projects)). If RustGIS is quit without
+Quitting asks about unsaved changes first (see [Projects](#projects)). If PowerGIS is quit without
 that answer (on macOS, **Quit** doesn't ask yet), it keeps a last copy of the work instead, and
-the next launch offers it back, saying RustGIS was quit without saving. With autosave off, nothing
-is kept. A second copy of RustGIS running alongside the first doesn't autosave, so it can't
-replace the first one's copy; it says so as it starts. Nor does RustGIS autosave when its settings
+the next launch offers it back, saying PowerGIS was quit without saving. With autosave off, nothing
+is kept. A second copy of PowerGIS running alongside the first doesn't autosave, so it can't
+replace the first one's copy; it says so as it starts. Nor does PowerGIS autosave when its settings
 folder can't lock files (some network or synced folders), where it can't tell a second copy apart.
 The browser app doesn't autosave yet; it warns before you leave a page with unsaved changes.
 
 ### Session log
 
-RustGIS keeps a **log** of the commands run in the session: what was done, when, with what, and
+PowerGIS keeps a **log** of the commands run in the session: what was done, when, with what, and
 whether it worked. It is an audit trail of the session, for reviewing work or recalling what was
 run; it runs nothing again (History's Copy as code and recorded tasks do that). Every
 front end goes into it alike: the app, scripts, the AI Assistant, the command line, Python and MCP.
@@ -89,11 +89,11 @@ front end goes into it alike: the app, scripts, the AI Assistant, the command li
   that waited for its downloads, when its last run started), `command`, `params`, `ok`, `error`
   when it failed, and `millis`, how long it took.
 - **For the session only:** the log is kept in memory, across the projects opened or made in the
-  session, until RustGIS closes or the log is cleared. A saved project, its recovery copy, a
+  session, until PowerGIS closes or the log is cleared. A saved project, its recovery copy, a
   package or a template carries none of it, so sharing a project shares no log. Reading, writing
   out, clearing or switching the log doesn't change the project and is no undo step; undoing a
   command doesn't take its entry back. Steps that undo takes back as one (a held arrow key
-  nudging an element) are one entry, with the last one's parameters. Each copy of RustGIS (the
+  nudging an element) are one entry, with the last one's parameters. Each copy of PowerGIS (the
   desktop app, a browser tab, a Python program) keeps its own.
 - **No secrets:** the parameters lose passwords, keys and tokens as History's Copy as code does, and
   so does an error's text; a document given as text (a map, a project) or a file's contents in
@@ -141,7 +141,7 @@ with a note. Unsupported layer kinds and project sections are reported rather th
 
 Colour classes and proportional sizes are supported separately. Combined colour-and-size styles
 keep colour and use a fixed size; graduated colour class boundaries are retained; proportional
-sizes use RustGIS's area scaling. Label halos use RustGIS defaults. Tile overlays draw above feature
+sizes use PowerGIS's area scaling. Label halos use PowerGIS defaults. Tile overlays draw above feature
 layers, and nested groups become flat folders with inherited visibility and opacity retained.
 Local data paths require a locally opened project or an explicit `dir`; URL and pasted-text imports cannot read local files without that folder.
 URL data downloaded in the browser fills its reserved layer position when it arrives; wait for
@@ -160,7 +160,7 @@ A QGIS project (`.qgs`, or a `.qgz` archive) opens as a new map of the current p
 on the desktop, or **Project › New › QGIS Project…** (`project.importQgis={"path": "…/towns.qgs"}`).
 The QGIS Project picker filters for `.qgs` and `.qgz` files on both desktop and web.
 Its layers come in the layer tree's order, each from its file (GeoPackage, Shapefile, GeoJSON,
-GeoTIFF and the other formats RustGIS reads), a CSV of
+GeoTIFF and the other formats PowerGIS reads), a CSV of
 points, XYZ tiles or a WMS layer, unchecked layers and groups hidden. The map takes the project's
 coordinate system and its saved view (or its layers' extent, when that view shows none of them),
 with no basemap and no graticule, as QGIS draws it. A project in degrees (EPSG:4326 and other supported
@@ -198,7 +198,7 @@ Each layer keeps its look:
 - **Labels**: simple and rule-based, each rule a label class whose SQL clause is its filter and
   its parents' (an else rule's: none of its siblings'), with the text's field, size, colour,
   bold, italic and letter spacing, its font family (drawn in it where it is installed, else in
-  RustGIS's label font), its buffer as a halo of its colour, opacity and size, its background as
+  PowerGIS's label font), its buffer as a halo of its colour, opacity and size, its background as
   a rectangle (filled and outlined as its fill symbol says, padded by its size, its corners
   rounded), its wrapping (its wrap character and length, and how its lines line up, "follow
   placement", QGIS's default, as the side the label sits on: centred over a point, so a value
@@ -211,7 +211,7 @@ older names of the same settings are read.
 
 A symbol's data-defined size, fill and outline colours, outline width and marker angle carry over
 as the layer's [symbol expressions](cartography.md#symbols-by-expression), sizes turned from the
-symbol's unit (millimetres, points, pixels, inches; map units at the reference scale) into points, where RustGIS's [expression language](expressions.md) reads them. A marker of several layers
+symbol's unit (millimetres, points, pixels, inches; map units at the reference scale) into points, where PowerGIS's [expression language](expressions.md) reads them. A marker of several layers
 scales them all with the size one of its layers takes; a marker drawn as marks (several layers,
 or one shifted or turned) leaves its colours and outline widths by expression out, noted, and so
 does a line of several strokes. They apply to every feature, so a layer whose classes set different
@@ -219,17 +219,17 @@ ones (or one with a class switched off) leaves them out, noted. One using a
 function or variable it lacks, or a field the layer hasn't, is noted and left out.
 
 QGIS filter expressions carry over where they are SQL: fields compared with values, `LIKE`, `IN`,
-`IS NULL`, joined by `AND`, `OR` and `NOT`. What RustGIS doesn't draw as QGIS does is drawn as
+`IS NULL`, joined by `AND`, `OR` and `NOT`. What PowerGIS doesn't draw as QGIS does is drawn as
 near as it can, or left out, and said: the import's notes list, layer by layer, what was
 approximated (gradient and shapeburst fills' offsets left out and colour ramps other than gradients drawn from their first colour to their last, SVG, raster and random fills and dense brushes as a tint of their colour, SVG markers as circles,
 dashed polygon outlines solid, label halos with sharp corners drawn round and blended ones drawn
 over the map, label backgrounds of other shapes drawn as rectangles, label distances from lines
 and polygons, a distance around points moved straight up, labels wrapped at a shortest line
 length or justified, values outside a graduated renderer's ranges in its first or last class, file options
-such as `layerid` that RustGIS doesn't read) and what was skipped (arrow lines, other data-defined
+such as `layerid` that PowerGIS doesn't read) and what was skipped (arrow lines, other data-defined
 settings, draw effects, label callouts, labels from expressions, contours and other raster
-renderers RustGIS has no match for, PostGIS, WFS
-and other sources RustGIS doesn't read, diagrams, joins, virtual fields, a layer's other styles,
+renderers PowerGIS has no match for, PostGIS, WFS
+and other sources PowerGIS doesn't read, diagrams, joins, virtual fields, a layer's other styles,
 and the project's print layouts, annotations, bookmarks, map themes and relations). A database
 password in a project never reaches the notes.
 
@@ -239,7 +239,7 @@ A QGIS layer style (`.qml`) styles the selected layer the same way, a feature la
 raster as it was. On a raster still loading (a remote file), the bands can't be checked yet: the
 style is applied, noted as unchecked, and a band the file hasn't is drawn from its last band.
 
-RustGIS works out a map's scale with the OGC's 0.28 mm screen pixel, QGIS at 96 pixels to the
+PowerGIS works out a map's scale with the OGC's 0.28 mm screen pixel, QGIS at 96 pixels to the
 inch, so the same view is a larger scale in QGIS; scales from QGIS (reference scales, visibility
 ranges) are multiplied by 0.945 on the way in, so a layer shows at the same zoom in both.
 
@@ -424,13 +424,13 @@ duplication and nudging have their own [layout shortcuts](layouts.md#layouts).
   borders.
 - **Autosave**: **Settings › Autosave** sets how often the desktop app keeps a
   [recovery copy](#autosave-and-recovery) of unsaved work, or turns it off.
-- **Start-up**: **Settings › Start-up** sets what RustGIS opens with: **Start With** the World Atlas
+- **Start-up**: **Settings › Start-up** sets what PowerGIS opens with: **Start With** the World Atlas
   sample or a blank map, or, in the desktop app, **Last Project** (the `.rgis` project last opened
   or saved) or **Choose Project…** (one you pick once), the **Projection** the map opens in (a
   preset or a supported projected EPSG or ESRI code, such as `3010` or `ESRI:102033`), and the **Extent** it opens on (the
   full extent, or **Use Current View** to keep the view you are looking at). A project opened at
   start keeps its own projection and view; the Projection and Extent settings apply to the sample
-  and a blank map. If the project no longer opens (moved or deleted), RustGIS starts with the sample
+  and a blank map. If the project no longer opens (moved or deleted), PowerGIS starts with the sample
   and says why. After a crash it starts with the sample too, in case the project is what crashed, and offers
   back the [recovery copy](#autosave-and-recovery) autosave kept of unsaved work, if any;
   starting `rustgis --sample` also skips the start-up project. The choices are remembered on this

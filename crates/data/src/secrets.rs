@@ -6,8 +6,8 @@ use std::{
     sync::{Mutex, OnceLock},
 };
 
-/// The service name used by every RustGIS secret store.
-pub const SERVICE: &str = "RustGIS";
+/// The service name used by every PowerGIS secret store.
+pub const SERVICE: &str = "PowerGIS";
 
 /// A secret whose debug output never reveals its value.
 #[derive(Clone, PartialEq, Eq)]

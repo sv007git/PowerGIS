@@ -78,8 +78,8 @@ fn project_from_newer_rustgis_reports_update_message() {
     })
     .to_string();
     let err = Project::from_json(&json).unwrap_err();
-    assert!(err.contains("saved by a newer RustGIS"));
-    assert!(err.contains("Update RustGIS to open it"));
+    assert!(err.contains("saved by a newer PowerGIS"));
+    assert!(err.contains("Update PowerGIS to open it"));
 }
 
 #[test]
@@ -94,5 +94,5 @@ fn project_with_unknown_variant_suggests_newer_version() {
     })
     .to_string();
     let err = Project::from_json(&json).unwrap_err();
-    assert!(err.contains("may have been saved by a newer RustGIS") || err.contains("Update RustGIS to open it"));
+    assert!(err.contains("may have been saved by a newer PowerGIS") || err.contains("Update PowerGIS to open it"));
 }

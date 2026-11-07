@@ -1,6 +1,6 @@
 # Supported Data Formats
 
-This page lists the data formats RustGIS reads and writes, how to add each one, and the main
+This page lists the data formats PowerGIS reads and writes, how to add each one, and the main
 limits. [Data](data.md) covers adding data, large files and rasters in more detail; [Maps and
 Basemaps](maps.md#basemaps) covers web tile layers.
 
@@ -8,7 +8,7 @@ Most native readers work in the desktop app and the [web app](https://web.rustgi
 Formats read through external GDAL or DuckDB programs need the desktop app or `rustgis-cli`;
 they aren't available in the web app. Database connections and folder-based File Geodatabases
 are desktop-only too. Browser files are uploaded rather than opened by path; GeoPackages use a
-pure-Rust SQLite file reader there. Reprojection supports the coordinate systems RustGIS knows,
+pure-Rust SQLite file reader there. Reprojection supports the coordinate systems PowerGIS knows,
 not every EPSG code; azimuthal equidistant systems such as Equi7 need the desktop app.
 
 ## Vector and tabular files
@@ -139,7 +139,7 @@ its capabilities. For OGC API feature collections, enter a group name (initially
 and choose **Import All**. The group expands into ordinary point, line and polygon layers with
 the same legends, styling and attribute tables as file imports. Other offerings have individual
 **Add** buttons (`service.layers` and `service.add` from scripts, the command line and MCP).
-An OGC API landing page works directly: RustGIS follows its advertised
+An OGC API landing page works directly: PowerGIS follows its advertised
 JSON collections link, so you don't need to append `/collections`. If the landing page also
 offers map tiles, they remain listed alongside the collections. A failed collections request
 leaves any available map layers usable and shows the error.
@@ -148,12 +148,12 @@ When a service can't be reached or refuses the request, the dialog says what hap
 words and what to try next: a sign-in or token it needs (401), access refused (403), nothing at
 that address (404), too many requests (429), a problem on the server (5xx), or a server that
 couldn't be reached or took too long. When a firewall in front of the server (Cloudflare,
-Akamai, Imperva, Sucuri or AWS WAF) blocked or challenged RustGIS itself, told by its own block
+Akamai, Imperva, Sucuri or AWS WAF) blocked or challenged PowerGIS itself, told by its own block
 page or a header it sends only then, it says so: only the service's administrator can let
-RustGIS through. A firewall that only passed on the service's own refusal (a private service
+PowerGIS through. A firewall that only passed on the service's own refusal (a private service
 wanting a token) isn't blamed for it. **Details**, folded below, lists
 what the server said for an expert or the administrator: the address (without keys or tokens),
-the status, the server, the firewall and the request's id, the `User-Agent` RustGIS sent, and
+the status, the server, the firewall and the request's id, the `User-Agent` PowerGIS sent, and
 the title or first words of the server's answer (as text). **Copy details** copies them to send.
 In the web app the browser hides most of a refused answer, so it tells the status only.
 
@@ -173,8 +173,8 @@ Scripts use `service.import {"url":"…","name":"My OGC Layer"}` and
 
 | Service | What it lists | How a layer is added |
 | --- | --- | --- |
-| WMS 1.1.1 / 1.3.0 | Named layers offered in Web Mercator or in a coordinate system RustGIS can transform (an EPSG code, CRS:84) | A layer of GetMap images (PNG when the service offers it, else JPEG): one picture of the view, or tiles; see [One picture of the view, or tiles](#one-picture-of-the-view-or-tiles) and [Services in other coordinate systems](#services-in-other-coordinate-systems) |
-| WMTS | Layers whose tile matrix set is Web Mercator's pyramid, or a tile matrix set in a coordinate system RustGIS can transform | A tile layer from the tile template (or KVP GetTile) |
+| WMS 1.1.1 / 1.3.0 | Named layers offered in Web Mercator or in a coordinate system PowerGIS can transform (an EPSG code, CRS:84) | A layer of GetMap images (PNG when the service offers it, else JPEG): one picture of the view, or tiles; see [One picture of the view, or tiles](#one-picture-of-the-view-or-tiles) and [Services in other coordinate systems](#services-in-other-coordinate-systems) |
+| WMTS | Layers whose tile matrix set is Web Mercator's pyramid, or a tile matrix set in a coordinate system PowerGIS can transform | A tile layer from the tile template (or KVP GetTile) |
 | WFS 1.1 / 2.0 | Feature types | Their features downloaded as GeoJSON, in the output format the service names (up to 50,000) |
 | OGC API Features | Collections | Their items downloaded as GeoJSON, following the service's `next` pages up to 100,000 features (a command such as `service.add` waits a minute at most) |
 | OGC API Tiles | Collections' map and vector tiles; a landing page's dataset map tiles | A tile layer in WebMercatorQuad, from the tile template the tileset advertises (its `item` link; `…/tiles/WebMercatorQuad/{z}/{y}/{x}`, the usual path, when that can't be read), keeping the tiles link's query (a token), map tiles in the server's image format, vector tiles drawn layer by layer in colours of their own |
@@ -281,7 +281,7 @@ before keeps its tiles until you switch it.
 
 National and regional services often draw their maps in a coordinate system of their own
 (Switzerland's LV95, EPSG:2056; Austria's EPSG:31287) and sometimes not in Web Mercator at all. A
-WMS layer offered in any system with an EPSG code that RustGIS can transform (or in CRS:84), and a
+WMS layer offered in any system with an EPSG code that PowerGIS can transform (or in CRS:84), and a
 WMTS layer whose tile matrix set is in one, is listed and added like any other (#769):
 
 - **On a Web Mercator map**, a layer the service offers in Web Mercator is asked for in it, as
@@ -300,7 +300,7 @@ WMTS layer whose tile matrix set is in one, is listed and added like any other (
   layer is drawn so on a map in its tile matrix set's system. Change the map's projection and the
   layer follows: in Web Mercator again, it is asked for in Web Mercator (or warped), and in a
   projection the layer isn't offered in, it is drawn warped as before. A WMS layer is drawn so in
-  up to 64 of the systems it lists that RustGIS can transform (projected ones first, then
+  up to 64 of the systems it lists that PowerGIS can transform (projected ones first, then
   CRS:84, then other longitude/latitude ones, each kind in the order listed), and warped in the
   rest. A tilted map draws every layer warped.
 - **Identify** asks a WMS layer drawn in a system of its own (GetFeatureInfo) in that system.
@@ -309,14 +309,14 @@ WMTS layer whose tile matrix set is in one, is listed and added like any other (
   longitude/latitude systems (not in CRS:84), north first in EPSG:3035 (LAEA Europe), the German
   Gauss-Krüger zones, SWEREF99 TM, Poland's CS92, Austria's Lambert and the ETRS89 "UTM (N-E)"
   codes (EPSG:3040 and its neighbours), east first in Web Mercator, the other UTM codes and LV95.
-  RustGIS carries that order for the systems it knows (from the EPSG dataset); for a system newer
+  PowerGIS carries that order for the systems it knows (from the EPSG dataset); for a system newer
   than its table, the layer's own `BoundingBox` is read the way that holds the layer, and a WMTS
   corner the way its matrix covers the layer. A longitude/latitude WMTS corner, which services
   often write longitude first, is read longitude first when its first number can't be a
   latitude, or when its matrix read in EPSG's order misses the layer and read the other way
   doesn't; otherwise in EPSG's order.
 
-A layer offered in no system RustGIS can transform (an `AUTO:` system, a planet's) is still left
+A layer offered in no system PowerGIS can transform (an `AUTO:` system, a planet's) is still left
 out, and the dialog says how many were.
 
 ```sh
@@ -330,10 +330,10 @@ A secured ArcGIS service answers error 499, "Token Required". There are two ways
 - **Sign in to ArcGIS** (in Add From Service, shown for ArcGIS addresses; `arcgis.signIn`) signs in
   to ArcGIS Online, an ArcGIS Online organization (`https://myorg.maps.arcgis.com`) or an ArcGIS
   Enterprise portal (`https://gis.example.org/portal`) on the portal's own page, with its single
-  sign-on and multi-factor checks: RustGIS never sees the password. It uses OAuth 2.0 with PKCE.
-  ArcGIS Online needs no setup: leave **Client ID** blank and RustGIS's own app is used. An
+  sign-on and multi-factor checks: PowerGIS never sees the password. It uses OAuth 2.0 with PKCE.
+  ArcGIS Online needs no setup: leave **Client ID** blank and PowerGIS's own app is used. An
   Enterprise portal needs the client ID of an app registered on it (**Content › New item ›
-  Developer credentials › OAuth 2.0 credentials**) whose redirect URLs list RustGIS's callback:
+  Developer credentials › OAuth 2.0 credentials**) whose redirect URLs list PowerGIS's callback:
   `http://127.0.0.1:7290/arcgis/callback` for the desktop app and the command line (give
   `"port"` to `arcgis.signIn` for another port, and register that address instead), and
   `oauth-callback.html` next to the web app's page for the browser (for example
@@ -360,9 +360,9 @@ the sessions.
 The same dialog's **Catalogue search (CSW)** type searches a CSW 2.0.2 catalogue (GeoNetwork,
 pycsw, geocat.ch…) by words anywhere in its records and, if you like, the map's area
 (`catalog.search`). Its records are listed 20 at a time (**More** asks for the next), with their
-titles, abstracts (on hover) and bounds (**Zoom**), and a button per link RustGIS can follow: a WMS,
+titles, abstracts (on hover) and bounds (**Zoom**), and a button per link PowerGIS can follow: a WMS,
 WMTS, WFS, WCS, OGC API or ArcGIS service connects in the dialog, a download is added as From URL…
-does. Links pointing where a document on the web may not send RustGIS (the local network) are left
+does. Links pointing where a document on the web may not send PowerGIS (the local network) are left
 out.
 
 ## PostgreSQL and PostGIS
@@ -381,7 +381,7 @@ database live, talking to the server itself: see [MySQL and MariaDB](data.md#mys
 
 | Source | How to add it | Notes |
 | --- | --- | --- |
-| MySQL or MariaDB table or view | Home › Add › Add Data › Database… (`layer.addDatabase`) with a `mysql://user@host:3306/database` or `mariadb://…` address | Large tables read a view at a time by their spatial index, others loaded whole. Converted to longitude/latitude by RustGIS from the column's SRID; `"crs"` for an SRID of 0. A column of mixed types becomes a layer per type. `ssl-mode` sets the encryption. The password is kept for the session only. |
+| MySQL or MariaDB table or view | Home › Add › Add Data › Database… (`layer.addDatabase`) with a `mysql://user@host:3306/database` or `mariadb://…` address | Large tables read a view at a time by their spatial index, others loaded whole. Converted to longitude/latitude by PowerGIS from the column's SRID; `"crs"` for an SRID of 0. A column of mixed types becomes a layer per type. `ssl-mode` sets the encryption. The password is kept for the session only. |
 
 ## SQL Server and Azure SQL
 
@@ -445,7 +445,7 @@ databases](data.md#sql-queries-and-duckdb-databases).
 
 GeoPackage, Shapefile and FlatGeobuf exports default to the layer's original coordinate system
 when it has an EPSG code. Shapefiles can also retain a custom WKT system; GeoPackage and FlatGeobuf
-need an EPSG code and otherwise default to WGS 84. A layer made in RustGIS defaults to WGS 84.
+need an EPSG code and otherwise default to WGS 84. A layer made in PowerGIS defaults to WGS 84.
 `share.exportLayer` takes `"crs"` to choose
 another, such as `{"layer": "Parcels", "path": "parcels.gpkg", "crs": "EPSG:4647"}`. GeoJSON, KML,
 GPX, GeoParquet and CSV are always written in WGS 84.
@@ -463,7 +463,7 @@ definitions without an EPSG code can be exported in their native coordinates as 
 
 This differs from changing the map's coordinate system, which only changes the display, or
 exporting to another CRS, which converts coordinate numbers while preserving locations.
-RustGIS stores geometry in longitude/latitude, so Define Projection first reconstructs native
+PowerGIS stores geometry in longitude/latitude, so Define Projection first reconstructs native
 numbers through the previous CRS; small floating-point rounding differences are possible.
 Edits already made to the layer are reinterpreted too. If the wrong CRS already discarded or
 clamped coordinates, import the original file again to recover them accurately.
@@ -489,7 +489,7 @@ The same operations are available to scripts and the CLI:
 `layer.addDataBytes`, `layer.addUrl` and `layer.addDownload` also accept `crs` for zipped
 Shapefiles. The source files and their `.prj` sidecars are never rewritten by either operation.
 
-## RustGIS files
+## PowerGIS files
 
 | File | Extension | Notes |
 | --- | --- | --- |

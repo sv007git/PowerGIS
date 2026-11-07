@@ -193,7 +193,7 @@ Ocean, Atlas, Blank), which need no network, and web tile layers over them:
   window); in the web app added with Add Data and held in memory for the session (a project keeps
   the layer, and asks for the file again).
 - **Map styles**: a MapLibre style document (`style.json`), with its vector and raster sources.
-  RustGIS draws background, fill, line, circle and raster layers, labels with their icons from
+  PowerGIS draws background, fill, line, circle and raster layers, labels with their icons from
   the style's sprite (SDF icons in their `icon-color`), and fill patterns; it evaluates the
   style's expressions and zoom functions. Labels are placed as MapLibre places them: at points,
   in the middle of areas, and along lines (street names every `symbol-spacing`, turned to the
@@ -313,7 +313,7 @@ taking other bodies' basemaps off) and `map.bodies`.
 
 The world outline and the World Atlas sample's countries come in two worldviews: Natural
 Earth's default borders, and China's (Natural Earth's China point of view: Taiwan, Aksai Chin
-and South Tibet are part of China). RustGIS picks China's when the system's time zone is
+and South Tibet are part of China). PowerGIS picks China's when the system's time zone is
 mainland China's (such as `Asia/Shanghai`) or its first locale is `zh-CN`; nothing is looked up
 over the network. Choose one in **Settings › Language › Worldview**, set `RUSTGIS_WORLDVIEW`
 (`default` or `china`), or pass `--worldview` to `rustgis-cli`. An untouched sample project
@@ -326,9 +326,9 @@ projection, and clicking the coordinate system in the status bar opens the **Coo
 System** dialog, which also takes a projected EPSG code (such as `3035`, `32633` for UTM zone
 33N or `2056` for Switzerland) or an ESRI code, the one `.prj` files and ArcGIS name (such as
 `ESRI:102033` for South America Albers Equal Area Conic, or `ESRI:54030` for World Robinson). A
-code whose projection method or datum grid RustGIS can't use (Polyconic such as `5880`, Cassini,
+code whose projection method or datum grid PowerGIS can't use (Polyconic such as `5880`, Cassini,
 oblique Mercator, or a NAD27 code that needs a grid) is refused with the reason, rather than drawn
-in another projection. RustGIS supports a subset of Esri's projected systems, checked against
+in another projection. PowerGIS supports a subset of Esri's projected systems, checked against
 PROJ at representative points; unsupported codes such as World Miller (`ESRI:54003`) are refused
 as unknown codes. The presets:
 
@@ -371,7 +371,7 @@ their hemisphere poleward of 30°, regional ones their region, transverse Mercat
 and scale, and the choice is saved with the map (`map.projection` from the command line). A
 raster already in the map's coordinate system draws without being reprojected. To open every new
 session in a projection, set it in **Settings › Start-up › Projection**. Robinson, Equal
-Earth, Natural Earth, Winkel Tripel and Eckert IV are computed by RustGIS itself on a sphere,
+Earth, Natural Earth, Winkel Tripel and Eckert IV are computed by PowerGIS itself on a sphere,
 so EPSG:8857 (Equal Earth) works too. So is the sinusoidal projection, on a sphere or an
 ellipsoid: MODIS rasters, whose GeoTIFFs give it as their own projection, open and draw, and
 World, Sphere and Africa Sinusoidal (`ESRI:54008`, `53008`, `102011`) can be the map's.

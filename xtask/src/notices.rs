@@ -1,6 +1,6 @@
-//! `cargo xtask notices [--check]`: the third-party licence notices shipped with RustGIS.
+//! `cargo xtask notices [--check]`: the third-party licence notices shipped with PowerGIS.
 //!
-//! The crates RustGIS is built from are MIT, BSD, ISC, Apache and so on, and those licences ask
+//! The crates PowerGIS is built from are MIT, BSD, ISC, Apache and so on, and those licences ask
 //! for their copyright and licence text to go with every copy, binaries included. This writes
 //! them, from `cargo about` (see [`INSTALL`], configured by `about.toml`),
 //! into a plain-text file next to each LICENSE the packages ship:
@@ -11,7 +11,7 @@
 //!
 //! Each distinct licence text appears once, with the crates under it (by name, not version, so a
 //! routine version bump leaves the files alone), followed by the crates' NOTICE files (Apache-2.0
-//! section 4(d)), then the code and data RustGIS's own crates take from other projects
+//! section 4(d)), then the code and data PowerGIS's own crates take from other projects
 //! ([`INCLUDED`]), with their licence texts from `third-party/`. `--check` fails when a file is out
 //! of date instead of writing it.
 
@@ -29,17 +29,17 @@ pub const STALE: u8 = 2;
 
 /// (output file, package manifest or "" for the whole workspace, what it covers).
 const FILES: &[(&str, &str, &str)] = &[
-    ("THIRD-PARTY-LICENSES.txt", "", "RustGIS (the desktop app, the command line and the web app)"),
+    ("THIRD-PARTY-LICENSES.txt", "", "PowerGIS (the desktop app, the command line and the web app)"),
     ("apps/rustgis-python/THIRD-PARTY-LICENSES.txt", "apps/rustgis-python/Cargo.toml", "the rustgis Python package"),
 ];
 
-/// Code or data that one of RustGIS's own crates takes from another project. Cargo doesn't see
+/// Code or data that one of PowerGIS's own crates takes from another project. Cargo doesn't see
 /// these, so they are listed here, and their notices go in the files of every package that
 /// compiles the crate in.
 struct Included {
     /// What it is, where it comes from and what was done to it.
     what: &'static str,
-    /// The RustGIS crate it is compiled into.
+    /// The PowerGIS crate it is compiled into.
     krate: &'static str,
     /// The files it is in, from the repository root.
     paths: &'static [&'static str],
@@ -50,7 +50,7 @@ struct Included {
     notices: &'static [&'static str],
 }
 
-/// Everything RustGIS's own crates take from other projects. Code or data adapted from another
+/// Everything PowerGIS's own crates take from other projects. Code or data adapted from another
 /// project gets an entry here, with its licence text in `third-party/`; a test checks the files
 /// are there.
 const INCLUDED: &[Included] = &[
@@ -168,7 +168,7 @@ fn fill(text: &str) -> String {
     out
 }
 
-/// The [`INCLUDED`] entries, as (RustGIS crate, heading, licence texts) for [`render`], with the
+/// The [`INCLUDED`] entries, as (PowerGIS crate, heading, licence texts) for [`render`], with the
 /// texts read from `third-party/` under `root`. An error names a listed file that isn't there.
 fn included(root: &Path) -> Result<Vec<(String, String, Vec<String>)>, String> {
     let mut out = Vec::new();
@@ -193,7 +193,7 @@ fn included(root: &Path) -> Result<Vec<(String, String, Vec<String>)>, String> {
 
 /// The notices file for `cargo about`'s JSON report `about`; `what` names what it covers.
 /// `notice` reads a crate's NOTICE files from its manifest path, as (file name, contents).
-/// `included` is code and data from other projects in RustGIS's crates, as (RustGIS crate,
+/// `included` is code and data from other projects in PowerGIS's crates, as (PowerGIS crate,
 /// heading, licence texts): those of the crates in the report go at the end.
 pub fn render(
     about: &Value,
@@ -211,7 +211,7 @@ pub fn render(
         let entry = texts.entry(key).or_insert_with(|| (text(lic, "name").to_string(), body, Vec::new()));
         for used in lic.get("used_by").and_then(Value::as_array).unwrap_or(&empty) {
             let krate = used.get("crate").unwrap_or(&Value::Null);
-            // Path crates (`source` null) are RustGIS's own.
+            // Path crates (`source` null) are PowerGIS's own.
             if !krate.get("source").is_some_and(Value::is_null) {
                 entry.2.push(text(krate, "name").to_string());
             }
@@ -225,7 +225,7 @@ pub fn render(
     texts.sort_by(|a, b| (&a.0, &a.2).cmp(&(&b.0, &b.2)));
 
     let mut notices: BTreeMap<String, Vec<(String, String)>> = BTreeMap::new();
-    // RustGIS's own crates in this package.
+    // PowerGIS's own crates in this package.
     let mut own = Vec::new();
     for c in about.get("crates").and_then(Value::as_array).unwrap_or(&empty) {
         let p = c.get("package").unwrap_or(&Value::Null);
@@ -242,10 +242,10 @@ pub fn render(
     let rule = "=".repeat(100);
     let mut out = format!(
         "Third-party software notices for {what}\n\n\
-         RustGIS is licensed under the Apache License 2.0 (see LICENSE). It is built with the\n\
+         PowerGIS is licensed under the Apache License 2.0 (see LICENSE). It is built with the\n\
          open-source Rust crates below, each under its own licence, whose copyright notices and terms\n\
          are reproduced here, followed by the NOTICE files the crates ship, then by the code and data\n\
-         from other projects in RustGIS's own crates. Generated from Cargo.lock and\n\
+         from other projects in PowerGIS's own crates. Generated from Cargo.lock and\n\
          xtask/src/notices.rs by `cargo xtask notices`.\n"
     );
     for (name, body, names) in &texts {
@@ -349,16 +349,16 @@ mod tests {
             ],
         });
         let notice = |m: &str| if m == "/a/Cargo.toml" { vec![("NOTICE".to_string(), "Notice of a\n".to_string())] } else { Vec::new() };
-        let out = render(&about, "RustGIS", &notice, &[]);
-        assert!(out.starts_with("Third-party software notices for RustGIS\n\nRustGIS is licensed"));
+        let out = render(&about, "PowerGIS", &notice, &[]);
+        assert!(out.starts_with("Third-party software notices for PowerGIS\n\nPowerGIS is licensed"));
         assert_eq!(out.matches("MIT License\nUsed by: a, b, c\n").count(), 1);
         assert!(out.contains("Copyright A\n\nPermission is granted.\n"));
-        // Only RustGIS's own crates use that Apache text, so it is left out.
+        // Only PowerGIS's own crates use that Apache text, so it is left out.
         assert!(!out.contains("Apache text") && !out.contains("rustgis-geom"));
         assert!(out.ends_with(&format!("NOTICE of a\n{}\n\nNotice of a\n", "=".repeat(100))));
     }
 
-    /// Code and data from other projects go in the files of the packages whose RustGIS crates
+    /// Code and data from other projects go in the files of the packages whose PowerGIS crates
     /// hold them, after the crates' notices, with each licence text tidied.
     #[test]
     fn render_adds_included_material_of_the_package_crates() {
@@ -373,7 +373,7 @@ mod tests {
             inc("rustgis-map", "Colour maps\nIn rustgis-map: a.rs", &["MIT text  \r\n", "BSD text"]),
             inc("rustgis-tiles", "Labels", &["ISC text"]),
         ];
-        let out = render(&about, "RustGIS", &|_| Vec::new(), &included);
+        let out = render(&about, "PowerGIS", &|_| Vec::new(), &included);
         let rule = "=".repeat(100);
         let dashes = "-".repeat(100);
         assert!(out.ends_with(&format!("{rule}\nColour maps\nIn rustgis-map: a.rs\n{rule}\n\nMIT text\n\n{dashes}\n\nBSD text\n")));

@@ -35,7 +35,7 @@ pub struct RasterLayer {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub crs: Option<String>,
     /// A Zarr variable that follows the time slider: its slice is the step the slider shows,
-    /// read by the engine as the slider moves (opengeos/RustGIS#554).
+    /// read by the engine as the slider moves (opengeos/PowerGIS#554).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub time_zarr: Option<ZarrTime>,
     /// For a scan with no coordinates: the longitude/latitude box (west, south, east, north) it

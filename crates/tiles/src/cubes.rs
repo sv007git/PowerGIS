@@ -1,4 +1,4 @@
-//! A catalog of data cubes (opengeos/RustGIS#683): entries ready to open, each a STAC collection's
+//! A catalog of data cubes (opengeos/PowerGIS#683): entries ready to open, each a STAC collection's
 //! band or a Zarr store's variable, with its provider, themes, area, period, step, resolution and
 //! licence. Finding a cube then needs no reading of a provider's catalog for the collection, band
 //! and range. The list is read and checked here; opening an entry is the engine's (`cube.open`,

@@ -1,4 +1,4 @@
-# cargo-about: the third-party notices shipped with RustGIS (`cargo xtask notices`).
+# cargo-about: the third-party notices shipped with PowerGIS (`cargo xtask notices`).
 accepted = [
     "0BSD",
     "Apache-2.0",
@@ -30,7 +30,7 @@ ignore-build-dependencies = false
 ignore-dev-dependencies = true
 ignore-transitive-dependencies = false
 
-# The apps and xtask (`publish = false`) are RustGIS itself.
+# The apps and xtask (`publish = false`) are PowerGIS itself.
 [private]
 ignore = true
 

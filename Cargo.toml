@@ -8,7 +8,7 @@ version = "0.5.0"
 edition = "2024"
 license = "Apache-2.0"
 rust-version = "1.90"
-repository = "https://github.com/opengeos/RustGIS"
+repository = "https://github.com/opengeos/PowerGIS"
 
 [workspace.dependencies]
 # internal
@@ -38,9 +38,9 @@ web-time = "1"
 
 # geo / formats / rendering
 geo = "0.33"
-# Geodesics on the WGS 84 ellipsoid (already in the tree through geo; opengeos/RustGIS#888)
+# Geodesics on the WGS 84 ellipsoid (already in the tree through geo; opengeos/PowerGIS#888)
 geographiclib-rs = { version = "0.2", default-features = false }
-# A5, the equal-area pentagonal DGGS (opengeos/RustGIS#551)
+# A5, the equal-area pentagonal DGGS (opengeos/PowerGIS#551)
 a5 = "1"
 shapefile = { version = "0.9", features = ["encoding_rs", "yore"] }
 encoding_rs = "0.8"

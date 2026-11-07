@@ -1,4 +1,4 @@
-//! RustGIS desktop app.
+//! PowerGIS desktop app.
 //!
 //! `rustgis [project.rgis | data.geojson|csv|shp …] [--sample] [--backend dx12|vulkan|gl|metal]`
 #![deny(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
@@ -97,7 +97,7 @@ mod crash {
         let used = std::fs::metadata(&path).map_or(0, |m| m.len());
         let thread = std::thread::current();
         let entry = format!(
-            "--- RustGIS {} on {} {}, {} UTC, thread {}\n{info}\n{}\n\n",
+            "--- PowerGIS {} on {} {}, {} UTC, thread {}\n{info}\n{}\n\n",
             env!("CARGO_PKG_VERSION"),
             std::env::consts::OS,
             std::env::consts::ARCH,
@@ -176,7 +176,7 @@ mod running {
     /// Takes `<dir>/running` for this run: the marker, or why there is none (another copy holds
     /// it, or the folder can't be written), and whether the previous run didn't close cleanly.
     pub fn start(dir: Option<&Path>) -> (Result<Marker, String>, bool) {
-        let Some(dir) = dir else { return (Err("this computer has no settings folder for RustGIS".into()), false) };
+        let Some(dir) = dir else { return (Err("this computer has no settings folder for PowerGIS".into()), false) };
         let file = std::fs::create_dir_all(dir)
             .and_then(|_| OpenOptions::new().read(true).write(true).create(true).truncate(false).open(dir.join("running")));
         let mut file = match file {
@@ -189,8 +189,8 @@ mod running {
         let locked = match file.try_lock() {
             Ok(()) => true,
             Err(std::fs::TryLockError::WouldBlock) => {
-                log::info!("the run marker is held: another copy of RustGIS is running");
-                return (Err("another copy of RustGIS is running, and only the first keeps a recovery copy".into()), false);
+                log::info!("the run marker is held: another copy of PowerGIS is running");
+                return (Err("another copy of PowerGIS is running, and only the first keeps a recovery copy".into()), false);
             }
             // The folder can't lock files (some network or FUSE folders): keep the marker unlocked,
             // so unclean exits are still noticed. Without a lock, copies running side by side share
@@ -382,7 +382,7 @@ impl App {
 /// This run's recovery folder, `recovery` in the app-data folder `data` (see
 /// `docs/installation.md`), or why there is none: the app then starts without autosave and says so.
 fn recovery_store(data: Option<std::path::PathBuf>) -> Result<Box<dyn rustgis_ui_egui::RecoveryStore>, String> {
-    let dir = data.ok_or("this computer has no folder for RustGIS's app data")?.join("recovery");
+    let dir = data.ok_or("this computer has no folder for PowerGIS's app data")?.join("recovery");
     let store = rustgis_ui_egui::FolderStore::open(&dir)?;
     Ok(Box::new(store))
 }
@@ -466,7 +466,7 @@ fn main() -> eframe::Result {
             }
             Err(e) => Some(e),
         },
-        Ok(_) => Some("the settings folder can't lock files, so a second copy of RustGIS couldn't be told apart".into()),
+        Ok(_) => Some("the settings folder can't lock files, so a second copy of PowerGIS couldn't be told apart".into()),
         Err(why) => Some(why.clone()),
     };
     // The keys the macOS menu bar keeps, before the stored shortcuts load: the keymap leaves them
@@ -487,7 +487,7 @@ fn main() -> eframe::Result {
         // Notices are shown as written: translate this one now that the language is known.
         rustgis_ui_egui::i18n::set_current(app.chosen_lang());
         let text = rustgis_ui_egui::i18n::fmt(
-            "RustGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.",
+            "PowerGIS ran into an internal error last time. The details are in {path}; please attach them to a bug report.",
             &[("path", &log.display().to_string())],
         );
         app.session.notify(text, true);
@@ -507,8 +507,8 @@ fn main() -> eframe::Result {
     }
     app.session.mark_saved();
     let mut viewport = egui::ViewportBuilder::default()
-        .with_title("RustGIS")
-        .with_app_id("org.rustgis.RustGIS")
+        .with_title("PowerGIS")
+        .with_app_id("org.rustgis.PowerGIS")
         .with_inner_size([1480.0, 920.0])
         .with_min_inner_size([900.0, 560.0])
         .with_drag_and_drop(true);
@@ -547,7 +547,7 @@ fn main() -> eframe::Result {
     let held = marker.clone();
     let menus = Menus::default();
     let result = eframe::run_native(
-        "RustGIS",
+        "PowerGIS",
         options,
         Box::new(move |_cc| {
             // The menu's choices wake the app: egui draws only on events.

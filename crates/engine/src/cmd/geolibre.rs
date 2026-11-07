@@ -240,7 +240,7 @@ enum Added {
 }
 
 /// Adds data or tiles, retaining the original layer's presentation. Tile layers have their own
-/// order in RustGIS, so mixing them with features is explicitly reported.
+/// order in PowerGIS, so mixing them with features is explicitly reported.
 fn add_layer(s: &mut Session, r: &Value, dir: Option<&str>, report: &mut Report, folder: (bool, f64)) -> Result<Added, String> {
     #[cfg(not(target_arch = "wasm32"))]
     let _ = folder;
@@ -294,7 +294,7 @@ fn add_layer(s: &mut Session, r: &Value, dir: Option<&str>, report: &mut Report,
                 s.request_url(&json!({"url":address,"whole":true,"name":name,"geolibreLayer":{"token":token,"record":saved}}))?;
                 report.approximated(name, "MBTiles archive is downloading; wait before saving");
             }
-            report.approximated(name, "tile overlays draw above feature layers; tile vector styling uses RustGIS defaults");
+            report.approximated(name, "tile overlays draw above feature layers; tile vector styling uses PowerGIS defaults");
             return Ok(Added::Tile(index));
         }
         if matches!(kind, "xyz" | "wms" | "wmts" | "vector-tiles" | "pmtiles" | "mbtiles")
@@ -329,7 +329,7 @@ fn add_layer(s: &mut Session, r: &Value, dir: Option<&str>, report: &mut Report,
             }
             report.approximated(name, "tile overlays draw above feature layers; feature/tile interleaving is not retained");
             if matches!(kind, "vector-tiles" | "pmtiles" | "mbtiles") {
-                report.approximated(name, "tile vector styling uses RustGIS defaults");
+                report.approximated(name, "tile vector styling uses PowerGIS defaults");
             }
             return Ok(Added::Tile(index));
         }

@@ -1,4 +1,4 @@
-//! Conversions between RustGIS geometry and `geo` types (in Web Mercator metres).
+//! Conversions between PowerGIS geometry and `geo` types (in Web Mercator metres).
 
 use geo::{Coord as GC, LineString, MultiLineString, MultiPoint, MultiPolygon, Point, Polygon};
 use rustgis_data::Geometry;

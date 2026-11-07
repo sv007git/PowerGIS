@@ -35,7 +35,7 @@ jobs:
     name: Resolve the release
     # A workflow_run fires for trial runs too; only a published release's build counts.
     if: >-
-      github.repository == 'opengeos/RustGIS' &&
+      github.repository == 'opengeos/PowerGIS' &&
       (github.event_name != 'workflow_run' ||
        (github.event.workflow_run.event == 'release' &&
         github.event.workflow_run.conclusion == 'success'))
@@ -193,7 +193,7 @@ jobs:
 
           src="$HOME/rpmbuild/SOURCES"
           packaging/copr/render.sh "$VERSION" "$DATE" "$src"
-          appstreamcli validate --no-net "$src/org.rustgis.RustGIS.metainfo.xml"
+          appstreamcli validate --no-net "$src/org.rustgis.PowerGIS.metainfo.xml"
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --dir "$src" \
             --pattern "rustgis-$VERSION-1.x86_64.rpm" --pattern "rustgis-$VERSION-1.aarch64.rpm" \
             --pattern SHA256SUMS
@@ -219,7 +219,7 @@ jobs:
         # Pinned to a commit: this step receives a token with access to the winget-pkgs fork.
         uses: vedantmgoyal9/winget-releaser@b7370d4d152efdce803a26cc6ca9eee58cb2ad54 # v2
         with:
-          identifier: OpenGeos.RustGIS
+          identifier: OpenGeos.PowerGIS
           release-tag: ${{ needs.release.outputs.tag }}
           installers-regex: 'windows-x86_64(-setup\.exe|\.msi)$'
           fork-user: giswqs

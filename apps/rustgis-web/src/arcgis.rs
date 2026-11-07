@@ -110,7 +110,7 @@ async fn request(url: &str, form: Option<&str>) -> Result<Vec<u8>, String> {
     result
 }
 
-/// Signs in to `portal` (blank: ArcGIS Online) with `client_id` (blank: RustGIS's own app on
+/// Signs in to `portal` (blank: ArcGIS Online) with `client_id` (blank: PowerGIS's own app on
 /// ArcGIS Online): opens the portal's page in a pop-up and, when it comes back, keeps the session.
 /// The slot gets who signed in, or why not. Called from a click (the pop-up must open right away).
 pub fn sign_in(portal: String, client_id: String, slot: Slot<Result<String, String>>, ctx: egui::Context) {

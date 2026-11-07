@@ -807,7 +807,7 @@ mod tests {
         assert_eq!(fi.answered(&ask(&gml)), Some(gml.clone()));
         assert!(fi.answered(&ask(&fi)).is_none());
         assert!(gml.answered(&ask(&fi)).is_none());
-        // Formats RustGIS doesn't read don't count as left.
+        // Formats PowerGIS doesn't read don't count as left.
         let odd = FeatureInfo { formats: vec!["text/xml".into(), "image/png".into()], ..fi.clone() };
         assert!(odd.retry_after(&ask(&odd)).is_none());
     }

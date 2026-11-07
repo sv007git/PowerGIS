@@ -58,9 +58,9 @@ def test_run_takes_keywords_including_a_params_keyword(sample):
 
 
 def test_errors_raise_rustgis_error(sample):
-    with pytest.raises(rustgis.RustGISError, match="unknown command"):
+    with pytest.raises(rustgis.PowerGISError, match="unknown command"):
         sample.run("no.such.command")
-    with pytest.raises(rustgis.RustGISError):
+    with pytest.raises(rustgis.PowerGISError):
         sample.layer("No such layer").to_geojson()
 
 
@@ -144,7 +144,7 @@ def test_pmtiles_local_path_defaults_and_undo(tmp_path):
 def test_pmtiles_keeps_the_engines_style_validation(style):
     """Bad styles raise the usual command error and leave the project unchanged."""
     s = rustgis.Session()
-    with pytest.raises(rustgis.RustGISError, match="style"):
+    with pytest.raises(rustgis.PowerGISError, match="style"):
         s.add_pmtiles("http://127.0.0.1:9/archive", style=style)
     assert s.run("map.tiles") == []
 
@@ -196,7 +196,7 @@ def test_a_layer_is_the_same_after_a_rename(sample):
     assert not cities.visible and not sample["Towns"].info["visible"]
     cities.remove()
     assert "Towns" not in sample
-    with pytest.raises(rustgis.RustGISError):
+    with pytest.raises(rustgis.PowerGISError):
         cities.name
     assert "removed" in repr(cities)
 
@@ -276,6 +276,6 @@ def test_a_layer_of_another_session_is_refused(sample):
     other = rustgis.Session(sample=True)
     stranger = other["Cities"]
     assert stranger not in sample
-    with pytest.raises(rustgis.RustGISError, match="another session"):
+    with pytest.raises(rustgis.PowerGISError, match="another session"):
         sample.remove_layer(stranger)
     assert "Cities" in sample

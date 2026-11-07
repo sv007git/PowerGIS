@@ -1,6 +1,6 @@
-"""The RustGIS app in a Qt application: a widget around a :class:`~rustgis.Session`.
+"""The PowerGIS app in a Qt application: a widget around a :class:`~rustgis.Session`.
 
-``MapWidget`` shows the RustGIS web app (ribbon, panes, map) in a Qt WebEngine view, kept in step
+``MapWidget`` shows the PowerGIS web app (ribbon, panes, map) in a Qt WebEngine view, kept in step
 with the Python session through the project, as :class:`rustgis.Map` does in a notebook. It needs
 PySide6 or PyQt6 with Qt WebEngine (``pip install "rustgis[qt]"``); import this module before the
 ``QApplication`` is created.
@@ -100,7 +100,7 @@ class _Bridge(QObject):
 
 
 class MapWidget(QWidget, _Embedded):
-    """The RustGIS app in a Qt widget, driven from Python.
+    """The PowerGIS app in a Qt widget, driven from Python.
 
     It has the methods of :class:`~rustgis.Session` (``run``, ``run_tool``, ``add_data``,
     ``w["Cities"]``...); what they change shows in the app, and what is done in the app is back

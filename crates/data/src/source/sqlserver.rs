@@ -202,7 +202,7 @@ async fn open_client(config: &Config, password: Option<&str>) -> std::result::Re
     if let Some(d) = &config.database {
         cfg.database(d);
     }
-    cfg.application_name("RustGIS");
+    cfg.application_name("PowerGIS");
     cfg.readonly(true);
     cfg.encryption(match config.encrypt {
         Encrypt::Required => tiberius::EncryptionLevel::Required,

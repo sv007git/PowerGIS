@@ -1,5 +1,5 @@
 """What the app's hosts share: the Jupyter widget (:mod:`rustgis.widget`) and the Qt widget
-(:mod:`rustgis.qt`) both frame the RustGIS web app (``?embed``) and keep it in step with a
+(:mod:`rustgis.qt`) both frame the PowerGIS web app (``?embed``) and keep it in step with a
 :class:`~rustgis.Session` through the project.
 
 A host's page runs ``_widget.js``, which passes the project between the app and Python. Python
@@ -18,7 +18,7 @@ import threading
 from typing import Any, Dict, Iterable, List, Optional, Tuple, Union
 from urllib.parse import quote
 
-from . import PathLike, RustGISError, Session, _Api
+from . import PathLike, PowerGISError, Session, _Api
 
 #: The web app the widgets show; ``RUSTGIS_WEB_URL`` points them at another build (a local
 #: ``trunk serve``, a self-hosted copy).
@@ -99,7 +99,7 @@ class _Embedded(_Api):
     # Commands ------------------------------------------------------------------------------
 
     def run(self, command: str, params: Optional[Dict[str, Any]] = None, /, **kwargs: Any) -> Any:
-        """Runs a RustGIS command by id, then shows the result in the app.
+        """Runs a PowerGIS command by id, then shows the result in the app.
 
         Args:
             command: The command id, e.g. ``"layer.symbology"``.
@@ -110,7 +110,7 @@ class _Embedded(_Api):
             The command's result, decoded from JSON.
 
         Raises:
-            RustGISError: When the command fails.
+            PowerGISError: When the command fails.
         """
         try:
             return self._session.run(command, params, **kwargs)
@@ -202,7 +202,7 @@ class _Embedded(_Api):
         """Sends the session's project to the app, when it changed."""
         try:
             text = self._session.project_json()
-        except RustGISError as e:
+        except PowerGISError as e:
             self._hold([(f"couldn't show the project in the app: {e}", True)])
             return
         if text != self._project:
@@ -237,7 +237,7 @@ class _Embedded(_Api):
             self._hold(self._session.notices())
             try:
                 self._session.run("project.openText", text=text)
-            except RustGISError as e:
+            except PowerGISError as e:
                 self._hold([(f"the app's project couldn't be read: {e}", True)])
                 return
             finally:

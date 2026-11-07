@@ -1,4 +1,4 @@
-# Fuzz targets for RustGIS's file readers (see README.md). This crate is not a member of the
+# Fuzz targets for PowerGIS's file readers (see README.md). This crate is not a member of the
 # workspace: `cargo build`, `cargo xtask ci`, the wasm build and `cargo deny` never see it. It needs
 # nightly Rust and cargo-fuzz, which only the fuzz workflow installs.
 [package]

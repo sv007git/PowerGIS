@@ -67,7 +67,7 @@ pub fn port_kind(k: ParamKind) -> Option<(PortKind, bool)> {
     }
 }
 
-/// A tool node's tool, if RustGIS has it.
+/// A tool node's tool, if PowerGIS has it.
 pub fn tool_of(node: &ModelNode) -> Option<&'static ToolSpec> {
     node.tool.as_deref().and_then(crate::cmd::gp::tool_id).and_then(rustgis_analysis::tool)
 }

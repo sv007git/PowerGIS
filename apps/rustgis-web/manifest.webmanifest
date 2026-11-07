@@ -1,7 +1,7 @@
 {
   "id": "./",
-  "name": "RustGIS",
-  "short_name": "RustGIS",
+  "name": "PowerGIS",
+  "short_name": "PowerGIS",
   "description": "A fast, free and open-source GIS for mapping, analyzing and sharing geospatial data.",
   "lang": "en",
   "start_url": "./",

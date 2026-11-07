@@ -101,7 +101,7 @@ pub fn read_layers(file_name: &str, bytes: &[u8]) -> Result<Vec<LayerRead>> {
                     .collect()
             } else {
                 return Err(DataError::Format(format!(
-                    "{file_name}: an XML file RustGIS doesn't read (it reads GeoRSS, LandXML, KML and GPX)"
+                    "{file_name}: an XML file PowerGIS doesn't read (it reads GeoRSS, LandXML, KML and GPX)"
                 )));
             }
         }
@@ -322,7 +322,7 @@ pub const PROJECTED_FORMATS: [&str; 4] = ["gpkg", "shp", "zip", "fgb"];
 /// The coordinate system an export to extension `ext` is written in when none is asked for: the
 /// one the dataset was read in, for a format that can say it, else WGS 84. A system without an
 /// EPSG code goes only into a Shapefile, whose `.prj` gives it in full; GeoPackage and FlatGeobuf
-/// readers (RustGIS's among them) go by the code.
+/// readers (PowerGIS's among them) go by the code.
 pub fn default_export_crs(ds: &Dataset, ext: &str) -> Crs {
     let ext = ext.to_ascii_lowercase();
     ds.crs
@@ -390,7 +390,7 @@ pub fn define_projection(ds: &Dataset, crs: Crs) -> Result<Dataset> {
     Ok(out)
 }
 
-/// Refuses a system without an EPSG code for a GeoPackage or FlatGeobuf: their readers (RustGIS's
+/// Refuses a system without an EPSG code for a GeoPackage or FlatGeobuf: their readers (PowerGIS's
 /// among them) go by the code, and would read the file as longitude/latitude.
 pub(crate) fn check_projected(ext: &str, crs: Crs) -> Result<()> {
     if crs.epsg() == 0 && matches!(ext, "gpkg" | "fgb") {
@@ -716,7 +716,7 @@ fn clip(s: &str) -> String {
 /// read as longitude/latitude, but never without saying so.
 ///
 /// Only named EPSG codes and CRS84 are honoured (not links, WKT or PROJ strings in the name, nor
-/// codes RustGIS doesn't know). The coordinates are x/y (easting/northing, longitude/latitude)
+/// codes PowerGIS doesn't know). The coordinates are x/y (easting/northing, longitude/latitude)
 /// whatever the axis order of the EPSG definition, as the legacy GeoJSON text says.
 pub(crate) fn declared_crs(root: &Map<String, Json>, messages: &mut Vec<String>) -> Option<(Crs, crate::raster::Transformer)> {
     let decl = root.get("crs").filter(|v| !v.is_null())?;
@@ -1920,7 +1920,7 @@ fn read_shapefile_parts(parts: ShapefileParts, name: &str, crs: Option<Crs>) -> 
     integral_numeric_to_integer(&mut ds);
     let e = ds.extent();
     if !e.is_empty() && (e.min_x < -180.5 || e.max_x > 180.5 || e.min_y < -90.5 || e.max_y > 90.5) {
-        report.messages.push("coordinates are not longitude/latitude; RustGIS reads them as WGS 84 and they may draw out of place".into());
+        report.messages.push("coordinates are not longitude/latitude; PowerGIS reads them as WGS 84 and they may draw out of place".into());
     }
     if report.skipped > 0 {
         report.messages.push(format!("{} shapes were unreadable or unsupported", report.skipped));

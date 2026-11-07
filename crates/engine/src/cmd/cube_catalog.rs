@@ -1,4 +1,4 @@
-//! The catalog of data cubes (opengeos/RustGIS#683): `cube.catalog` lists its entries by theme,
+//! The catalog of data cubes (opengeos/PowerGIS#683): `cube.catalog` lists its entries by theme,
 //! area and words, and `cube.open` adds one to the map through the command that reads it
 //! (`stac.addCube`, or `layer.addZarr` following the time slider), with the entry's collection,
 //! band, range and cloud cap. `cube.trend` and `cube.reduce` take an entry by `"cube"` too

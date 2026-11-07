@@ -270,7 +270,7 @@ pub(crate) fn add(s: &mut Session, p: &Value) -> CmdResult {
     }
 }
 
-// --- Following the time slider (opengeos/RustGIS#554) --------------------------------------------
+// --- Following the time slider (opengeos/PowerGIS#554) --------------------------------------------
 
 /// Slices kept for layers that follow the time slider, by store and selection: the last few, so
 /// stepping back and forth or looping doesn't read them again.
@@ -711,7 +711,7 @@ fn add_following(s: &mut Session, p: &Value) -> CmdResult {
     }
 }
 
-// --- A point's time series (opengeos/RustGIS#555) -------------------------------------------------
+// --- A point's time series (opengeos/PowerGIS#555) -------------------------------------------------
 
 /// The store a series reads, and what of it: from a Zarr layer (one that follows the time slider,
 /// or a slice: its store, variable and steps), or from the parameters.
@@ -890,7 +890,7 @@ fn series(s: &mut Session, p: &Value) -> CmdResult {
     }
 }
 
-// --- A summary over time (opengeos/RustGIS#556) ----------------------------------------------------
+// --- A summary over time (opengeos/PowerGIS#556) ----------------------------------------------------
 
 #[cfg(not(target_arch = "wasm32"))]
 pub use super::cube::Stat;

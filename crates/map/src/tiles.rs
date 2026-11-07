@@ -155,7 +155,7 @@ pub struct TileLayer {
     /// The date `url` was last filled with.
     #[serde(default, skip_serializing_if = "is_zero")]
     pub time_at: f64,
-    /// A file per date, as a STAC data cube's tile lists them (opengeos/RustGIS#559): (date,
+    /// A file per date, as a STAC data cube's tile lists them (opengeos/PowerGIS#559): (date,
     /// address), in order. The time slider shows the last date in its window; `url` is it.
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub time_urls: Vec<(f64, String)>,

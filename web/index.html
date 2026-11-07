@@ -408,6 +408,7 @@
 
       <!-- Action Buttons -->
       <a href="../" class="btn btn-secondary" title="Switch to Full WebAssembly GIS Desktop View">⚡ WebAssembly GIS</a>
+      <button class="btn btn-secondary" id="usersDirectoryBtn" title="View Registered Users & Credentials">👥 Users (6)</button>
       <button class="btn btn-secondary" id="backendConfigBtn">⚙️ Backend</button>
       <button class="btn btn-primary" id="reportFaultBtn">➕ Report Fault</button>
       <a href="https://github.com/sv007git/PowerGIS/releases" target="_blank" class="btn btn-secondary">⬇️ Desktop App</a>
@@ -559,6 +560,106 @@
           <div class="role-desc">Public viewer access: views online basemaps, public grid boundaries, and active public outage notices.</div>
         </div>
 
+      </div>
+    </div>
+  </div>
+
+  
+  <!-- Users Directory Modal -->
+  <div class="modal-overlay" id="usersModal">
+    <div class="modal" style="max-width: 680px;">
+      <div class="modal-header">
+        <div class="modal-title">👥 Engineering Users & Profile Directory (6 Roles)</div>
+        <button class="modal-close" id="closeUsersModal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size: 13px; color: var(--text-muted); margin-bottom: 14px;">
+          All 6 engineer profiles are provisioned with Role-Based Access Control (RBAC). Default password for Supabase & In-House logins: <code style="background: rgba(255,255,255,0.1); padding: 2px 6px; border-radius: 4px; color: var(--accent);">PowerGIS@2026</code>.
+        </p>
+        
+        <div style="display: flex; flex-direction: column; gap: 10px;" id="usersListContainer">
+          <!-- User 1: Admin -->
+          <div style="background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 600; font-size: 14px;">Harish Vyas</span>
+                <span class="brand-badge" style="background: #3B82F6; color: #fff;">Admin</span>
+              </div>
+              <div style="font-size: 12px; color: var(--accent); margin-top: 2px;">admin@powergis.gov.in &bull; +91 94430 11001</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">IT &amp; GIS Center of Excellence &bull; Full System Control</div>
+            </div>
+            <button class="btn btn-secondary switch-user-btn" data-role="admin" style="font-size: 12px; padding: 6px 12px;">Switch User</button>
+          </div>
+
+          <!-- User 2: SE -->
+          <div style="background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 600; font-size: 14px;">Er. R. Sundararajan</span>
+                <span class="brand-badge" style="background: #8B5CF6; color: #fff;">SE (Circle)</span>
+              </div>
+              <div style="font-size: 12px; color: var(--accent); margin-top: 2px;">se.pondicherry@powergis.gov.in &bull; +91 94430 11002</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Planning &amp; Monitoring &bull; Capital Works &amp; Audit Oversight</div>
+            </div>
+            <button class="btn btn-secondary switch-user-btn" data-role="superintendent_engineer" style="font-size: 12px; padding: 6px 12px;">Switch User</button>
+          </div>
+
+          <!-- User 3: EE -->
+          <div style="background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 600; font-size: 14px;">Er. M. Sivakumar</span>
+                <span class="brand-badge" style="background: #0284C7; color: #fff;">EE (Division)</span>
+              </div>
+              <div style="font-size: 12px; color: var(--accent); margin-top: 2px;">ee.distribution@powergis.gov.in &bull; +91 94430 11003</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Urban Distribution Division &bull; Feeder Operations &amp; Work Orders</div>
+            </div>
+            <button class="btn btn-secondary switch-user-btn" data-role="executive_engineer" style="font-size: 12px; padding: 6px 12px;">Switch User</button>
+          </div>
+
+          <!-- User 4: AE -->
+          <div style="background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 600; font-size: 14px;">Er. K. Anand</span>
+                <span class="brand-badge" style="background: #10B981; color: #fff;">AE (Substation)</span>
+              </div>
+              <div style="font-size: 12px; color: var(--accent); margin-top: 2px;">ae.substation@powergis.gov.in &bull; +91 94430 11004</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Marapalam 110kV Substation &bull; Crew Dispatch &amp; Switching</div>
+            </div>
+            <button class="btn btn-secondary switch-user-btn" data-role="assistant_engineer" style="font-size: 12px; padding: 6px 12px;">Switch User</button>
+          </div>
+
+          <!-- User 5: JE -->
+          <div style="background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 600; font-size: 14px;">Er. V. Murugan</span>
+                <span class="brand-badge" style="background: #F59E0B; color: #fff;">JE (Field)</span>
+              </div>
+              <div style="font-size: 12px; color: var(--accent); margin-top: 2px;">je.field@powergis.gov.in &bull; +91 94430 11005</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Field Maintenance &bull; Breakdown Inspection &amp; Fault Logging</div>
+            </div>
+            <button class="btn btn-secondary switch-user-btn" data-role="junior_engineer" style="font-size: 12px; padding: 6px 12px;">Switch User</button>
+          </div>
+
+          <!-- User 6: Guest -->
+          <div style="background: var(--card-dark); border: 1px solid var(--border-dark); border-radius: 8px; padding: 12px; display: flex; justify-content: space-between; align-items: center;">
+            <div>
+              <div style="display: flex; align-items: center; gap: 8px;">
+                <span style="font-weight: 600; font-size: 14px;">Public Citizen Viewer</span>
+                <span class="brand-badge" style="background: #64748B; color: #fff;">Guest</span>
+              </div>
+              <div style="font-size: 12px; color: var(--accent); margin-top: 2px;">guest@powergis.gov.in &bull; Read-Only</div>
+              <div style="font-size: 11px; color: var(--text-dim); margin-top: 2px;">Public Portal &bull; Real-time Outage and Feeder Viewer</div>
+            </div>
+            <button class="btn btn-secondary switch-user-btn" data-role="guest" style="font-size: 12px; padding: 6px 12px;">Switch User</button>
+          </div>
+        </div>
+
+        <div style="display: flex; justify-content: flex-end; margin-top: 18px;">
+          <button class="btn btn-primary" id="doneUsersBtn">Done</button>
+        </div>
       </div>
     </div>
   </div>
@@ -833,6 +934,32 @@
         opt.classList.add("selected");
         currentRole = opt.getAttribute("data-role");
         updateCapabilities();
+
+    // Users Directory Modal handlers
+    const usersModal = document.getElementById("usersModal");
+    const usersDirectoryBtn = document.getElementById("usersDirectoryBtn");
+    const closeUsersModal = document.getElementById("closeUsersModal");
+    const doneUsersBtn = document.getElementById("doneUsersBtn");
+
+    if (usersDirectoryBtn) {
+      usersDirectoryBtn.onclick = () => { usersModal.classList.add("active"); };
+    }
+    if (closeUsersModal) {
+      closeUsersModal.onclick = () => { usersModal.classList.remove("active"); };
+    }
+    if (doneUsersBtn) {
+      doneUsersBtn.onclick = () => { usersModal.classList.remove("active"); };
+    }
+    document.querySelectorAll(".switch-user-btn").forEach(btn => {
+      btn.onclick = () => {
+        const role = btn.getAttribute("data-role");
+        if (role) {
+          switchRole(role);
+          usersModal.classList.remove("active");
+        }
+      };
+    });
+
         roleModal.classList.remove("open");
       };
     });
@@ -884,6 +1011,32 @@
 
     // Initialize display
     updateCapabilities();
+
+    // Users Directory Modal handlers
+    const usersModal = document.getElementById("usersModal");
+    const usersDirectoryBtn = document.getElementById("usersDirectoryBtn");
+    const closeUsersModal = document.getElementById("closeUsersModal");
+    const doneUsersBtn = document.getElementById("doneUsersBtn");
+
+    if (usersDirectoryBtn) {
+      usersDirectoryBtn.onclick = () => { usersModal.classList.add("active"); };
+    }
+    if (closeUsersModal) {
+      closeUsersModal.onclick = () => { usersModal.classList.remove("active"); };
+    }
+    if (doneUsersBtn) {
+      doneUsersBtn.onclick = () => { usersModal.classList.remove("active"); };
+    }
+    document.querySelectorAll(".switch-user-btn").forEach(btn => {
+      btn.onclick = () => {
+        const role = btn.getAttribute("data-role");
+        if (role) {
+          switchRole(role);
+          usersModal.classList.remove("active");
+        }
+      };
+    });
+
   </script>
 </body>
 </html>

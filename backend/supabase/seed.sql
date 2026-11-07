@@ -1,12 +1,136 @@
 -- ============================================================================
 -- PowerGIS — Seed Data for Supabase & In-House Server
 -- Seeds:
---   1. Demo Profiles for all 6 Roles
+--   1. Supabase Auth Users & Demo Profiles for all 6 Roles
 --   2. Pondicherry Grid Substations (110kV/66kV/33kV)
 --   3. Pondicherry Distribution Feeders (11kV)
 --   4. Distribution Transformers (100kVA - 500kVA)
 --   5. Active Grid Fault Tickets & Dispatches
 -- ============================================================================
+
+-- Ensure pgcrypto extension is available for password encryption
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+-- 1. Create Supabase Auth Users (so they appear in Supabase Authentication Dashboard)
+-- Default password for all 6 accounts: PowerGIS@2026
+DO $$
+BEGIN
+    IF EXISTS (SELECT 1 FROM information_schema.schemata WHERE schema_name = 'auth') THEN
+        INSERT INTO auth.users (
+            instance_id,
+            id,
+            aud,
+            role,
+            email,
+            encrypted_password,
+            email_confirmed_at,
+            raw_app_meta_data,
+            raw_user_meta_data,
+            created_at,
+            updated_at
+        ) VALUES 
+        (
+            '00000000-0000-0000-0000-000000000000',
+            '00000000-0000-0000-0000-000000000001',
+            'authenticated',
+            'authenticated',
+            'admin@powergis.gov.in',
+            crypt('PowerGIS@2026', gen_salt('bf')),
+            NOW(),
+            '{"provider":"email","providers":["email"]}',
+            '{"full_name":"Harish Vyas (Admin)","role":"admin"}',
+            NOW(),
+            NOW()
+        ),
+        (
+            '00000000-0000-0000-0000-000000000000',
+            '00000000-0000-0000-0000-000000000002',
+            'authenticated',
+            'authenticated',
+            'se.pondicherry@powergis.gov.in',
+            crypt('PowerGIS@2026', gen_salt('bf')),
+            NOW(),
+            '{"provider":"email","providers":["email"]}',
+            '{"full_name":"Er. R. Sundararajan (SE)","role":"superintendent_engineer"}',
+            NOW(),
+            NOW()
+        ),
+        (
+            '00000000-0000-0000-0000-000000000000',
+            '00000000-0000-0000-0000-000000000003',
+            'authenticated',
+            'authenticated',
+            'ee.distribution@powergis.gov.in',
+            crypt('PowerGIS@2026', gen_salt('bf')),
+            NOW(),
+            '{"provider":"email","providers":["email"]}',
+            '{"full_name":"Er. M. Sivakumar (EE)","role":"executive_engineer"}',
+            NOW(),
+            NOW()
+        ),
+        (
+            '00000000-0000-0000-0000-000000000000',
+            '00000000-0000-0000-0000-000000000004',
+            'authenticated',
+            'authenticated',
+            'ae.substation@powergis.gov.in',
+            crypt('PowerGIS@2026', gen_salt('bf')),
+            NOW(),
+            '{"provider":"email","providers":["email"]}',
+            '{"full_name":"Er. K. Anand (AE)","role":"assistant_engineer"}',
+            NOW(),
+            NOW()
+        ),
+        (
+            '00000000-0000-0000-0000-000000000000',
+            '00000000-0000-0000-0000-000000000005',
+            'authenticated',
+            'authenticated',
+            'je.field@powergis.gov.in',
+            crypt('PowerGIS@2026', gen_salt('bf')),
+            NOW(),
+            '{"provider":"email","providers":["email"]}',
+            '{"full_name":"Er. V. Murugan (JE)","role":"junior_engineer"}',
+            NOW(),
+            NOW()
+        ),
+        (
+            '00000000-0000-0000-0000-000000000000',
+            '00000000-0000-0000-0000-000000000006',
+            'authenticated',
+            'authenticated',
+            'guest@powergis.gov.in',
+            crypt('PowerGIS@2026', gen_salt('bf')),
+            NOW(),
+            '{"provider":"email","providers":["email"]}',
+            '{"full_name":"Public Guest Viewer","role":"guest"}',
+            NOW(),
+            NOW()
+        )
+        ON CONFLICT (id) DO UPDATE SET
+            encrypted_password = EXCLUDED.encrypted_password,
+            email = EXCLUDED.email;
+
+        -- Create Supabase identities for email login provider
+        INSERT INTO auth.identities (
+            id,
+            user_id,
+            identity_data,
+            provider,
+            last_sign_in_at,
+            created_at,
+            updated_at
+        ) VALUES 
+        ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000001', 'email', 'admin@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000002', 'email', 'se.pondicherry@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000003', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000003', 'email', 'ee.distribution@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000004', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000004', 'email', 'ae.substation@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000005', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000005', 'email', 'je.field@powergis.gov.in'), 'email', NOW(), NOW(), NOW()),
+        ('00000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000006', jsonb_build_object('sub', '00000000-0000-0000-0000-000000000006', 'email', 'guest@powergis.gov.in'), 'email', NOW(), NOW(), NOW())
+        ON CONFLICT (provider, id) DO NOTHING;
+    END IF;
+END $$;
+
 
 -- 1. Demo User Profiles (All 6 Roles)
 INSERT INTO public.profiles (

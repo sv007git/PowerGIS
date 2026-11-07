@@ -34,7 +34,7 @@ VIAddVersionKey "LegalCopyright" "Copyright the PowerGIS contributors. Apache-2.
 !define MUI_WELCOMEFINISHPAGE_BITMAP "${SIDEBAR}"
 !define MUI_UNWELCOMEFINISHPAGE_BITMAP "${SIDEBAR}"
 !define MUI_ABORTWARNING
-!define MUI_FINISHPAGE_RUN "$INSTDIR\rustgis.exe"
+!define MUI_FINISHPAGE_RUN "$INSTDIR\powergis.exe"
 !define MUI_FINISHPAGE_RUN_TEXT "Start ${APP}"
 
 !insertmacro MUI_PAGE_WELCOME
@@ -60,27 +60,31 @@ VIAddVersionKey "LegalCopyright" "Copyright the PowerGIS contributors. Apache-2.
 
 Section "Install"
   SetOutPath "$INSTDIR"
-  File "${STAGE}\rustgis.exe"
-  File "${STAGE}\rustgis-cli.exe"
+  File /oname=powergis.exe "${STAGE}\rustgis.exe"
+  File /oname=powergis-cli.exe "${STAGE}\rustgis-cli.exe"
+  File /nonfatal "${STAGE}\powergis.exe"
+  File /nonfatal "${STAGE}\powergis-cli.exe"
+  File /nonfatal "${STAGE}\rustgis.exe"
+  File /nonfatal "${STAGE}\rustgis-cli.exe"
   File /oname=LICENSE.txt "${STAGE}\LICENSE"
   File "${STAGE}\THIRD-PARTY-LICENSES.txt"
   WriteUninstaller "$INSTDIR\uninstall.exe"
 
-  CreateShortcut "$SMPROGRAMS\${APP}.lnk" "$INSTDIR\rustgis.exe"
+  CreateShortcut "$SMPROGRAMS\${APP}.lnk" "$INSTDIR\powergis.exe"
 
-  ; rustgis-cli from any new terminal.
+  ; powergis-cli from any new terminal.
   InitPluginsDir
   File /oname=$PLUGINSDIR\path.ps1 "${STAGE}\path.ps1"
   nsExec::ExecToLog 'powershell.exe -NoProfile -NonInteractive -ExecutionPolicy Bypass -File "$PLUGINSDIR\path.ps1" add "$INSTDIR"'
   Pop $0
   StrCmp $0 0 +2
-    MessageBox MB_OK|MB_ICONEXCLAMATION "${APP} is installed, but rustgis-cli could not be added to your PATH ($0). Run it from $INSTDIR instead." /SD IDOK
+    MessageBox MB_OK|MB_ICONEXCLAMATION "${APP} is installed, but powergis-cli could not be added to your PATH ($0). Run it from $INSTDIR instead." /SD IDOK
   !insertmacro RefreshEnvironment
 
   ; Projects open in PowerGIS; GeoJSON lists it under Open with.
   WriteRegStr HKCU "Software\Classes\PowerGIS.Project" "" "PowerGIS project"
-  WriteRegStr HKCU "Software\Classes\PowerGIS.Project\DefaultIcon" "" '"$INSTDIR\rustgis.exe",0'
-  WriteRegStr HKCU "Software\Classes\PowerGIS.Project\shell\open\command" "" '"$INSTDIR\rustgis.exe" "%1"'
+  WriteRegStr HKCU "Software\Classes\PowerGIS.Project\DefaultIcon" "" '"$INSTDIR\powergis.exe",0'
+  WriteRegStr HKCU "Software\Classes\PowerGIS.Project\shell\open\command" "" '"$INSTDIR\powergis.exe" "%1"'
   WriteRegStr HKCU "Software\Classes\.rgis" "" "PowerGIS.Project"
   WriteRegStr HKCU "Software\Classes\.rgisx" "" "PowerGIS.Project"
   WriteRegStr HKCU "Software\Classes\.geojson\OpenWithProgids" "PowerGIS.Project" ""
@@ -91,7 +95,7 @@ Section "Install"
   WriteRegStr HKCU "${UNINST_KEY}" "DisplayName" "${APP}"
   WriteRegStr HKCU "${UNINST_KEY}" "DisplayVersion" "${VERSION}"
   WriteRegStr HKCU "${UNINST_KEY}" "Publisher" "${PUBLISHER}"
-  WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" '"$INSTDIR\rustgis.exe",0'
+  WriteRegStr HKCU "${UNINST_KEY}" "DisplayIcon" '"$INSTDIR\powergis.exe",0'
   WriteRegStr HKCU "${UNINST_KEY}" "InstallLocation" "$INSTDIR"
   WriteRegStr HKCU "${UNINST_KEY}" "URLInfoAbout" "https://rustgis.app"
   WriteRegStr HKCU "${UNINST_KEY}" "UninstallString" '"$INSTDIR\uninstall.exe"'
@@ -124,6 +128,8 @@ Section "Uninstall"
   DeleteRegKey HKCU "Software\Classes\PowerGIS.Project"
   !insertmacro RefreshShell
 
+  Delete "$INSTDIR\powergis.exe"
+  Delete "$INSTDIR\powergis-cli.exe"
   Delete "$INSTDIR\rustgis.exe"
   Delete "$INSTDIR\rustgis-cli.exe"
   Delete "$INSTDIR\LICENSE.txt"

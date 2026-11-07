@@ -16,7 +16,20 @@ use crate::widgets::{
 };
 use crate::{RightPane, RustGisApp, icons};
 
-pub const TABS: [&str; 11] = ["Home", "Data", "Style", "Labeling", "Edit", "Analyze", "View", "Publish", "Plugins", "Settings", "Help"];
+pub const TABS: [&str; 12] = [
+    "Home",
+    "Data",
+    "Style",
+    "Grid Intelligence",
+    "Labeling",
+    "Edit",
+    "Analyze",
+    "View",
+    "Publish",
+    "Plugins",
+    "Settings",
+    "Help",
+];
 
 /// Tabs that always show: Settings holds Customize › Ribbon, the way to show hidden tabs again.
 pub const FIXED_TABS: [&str; 2] = ["Settings", "Help"];
@@ -26,6 +39,7 @@ pub const FIXED_TABS: [&str; 2] = ["Settings", "Help"];
 pub fn current_tab(name: &str) -> &str {
     let tab = match name {
         "Map" => "Home",
+        "Grid" => "Grid Intelligence",
         "Insert" | "Raster Data" => "Data",
         "Feature Layer" | "Raster Layer" => "Style",
         "Analysis" | "Imagery" => "Analyze",
@@ -104,6 +118,7 @@ pub fn show(app: &mut RustGisApp, ui: &mut Ui) {
                         t if t.starts_with("plugin:") => plugin_tab(app, ui, t.trim_start_matches("plugin:")),
                         "Data" => data_tab(app, ui),
                         "Style" => style_tab(app, ui),
+                        "Grid Intelligence" | "Grid" => grid_intelligence_tab(app, ui),
                         "Labeling" => labeling_tab(app, ui),
                         "Edit" => edit_tab(app, ui),
                         "Analyze" => analyze_tab(app, ui),
@@ -765,10 +780,12 @@ fn planet_basemaps(ui: &mut Ui, app: &mut RustGisApp) {
 }
 
 const OPENFREEMAP: &str = "OpenFreeMap © OpenMapTiles Data from OpenStreetMap";
+const GOOGLE_MAPS: &str = "Google Maps © Google";
 
 /// Web basemaps that need no API key, offered next to the built-in ones:
 /// (id, name, kind, url, attribution, max zoom).
-const WEB_BASEMAPS: [(&str, &str, &str, &str, &str, u8); 6] = [
+const WEB_BASEMAPS: [(&str, &str, &str, &str, &str, u8); 7] = [
+    ("google-maps", "Google Maps", "raster", "http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}", GOOGLE_MAPS, 20),
     ("openfreemap-liberty", "OpenFreeMap Liberty", "style", "https://tiles.openfreemap.org/styles/liberty", OPENFREEMAP, 14),
     ("openfreemap-bright", "OpenFreeMap Bright", "style", "https://tiles.openfreemap.org/styles/bright", OPENFREEMAP, 14),
     ("openfreemap-positron", "OpenFreeMap Positron", "style", "https://tiles.openfreemap.org/styles/positron", OPENFREEMAP, 14),
@@ -2335,6 +2352,169 @@ fn layer_hint(ui: &mut Ui, text: &str) {
     group(ui, "Layer", |ui| {
         let t = Tokens::get(ui.ctx());
         ui.add_sized(vec2(220.0, CONTENT_H), egui::Label::new(egui::RichText::new(tl!(text)).color(t.text_dim)).wrap());
+    });
+}
+
+/// The Grid Intelligence tab: electrical distribution network topology, fault management,
+/// power flow simulation, predictive risk hotspots, and crew dispatch.
+fn grid_intelligence_tab(app: &mut RustGisApp, ui: &mut Ui) {
+    // 1. Distribution Network Data & Topology
+    group(ui, "Topology & Assets", |ui| {
+        big(
+            ui,
+            app,
+            "symbology",
+            "Grid\nLayers",
+            "Generate 8 vector layers for substations, feeders, lines, transformers, poles, meters and crews.",
+            "grid.createLayers",
+            serde_json::json!({"role": "DISPATCHER"}),
+            false,
+            false,
+        );
+        big(
+            ui,
+            app,
+            "open",
+            "Sample\nGrid",
+            "Load the reference Juru/Goromonzi 132kV/33kV distribution network digital twin.",
+            "grid.sample",
+            serde_json::json!({}),
+            false,
+            false,
+        );
+        col(ui, |ui| {
+            small(
+                ui,
+                app,
+                "modelbuilder",
+                "Network Tree",
+                "Hierarchical graph digital twin from substation down to customer meters.",
+                "grid.networkTree",
+                serde_json::json!({}),
+                false,
+            );
+            small(
+                ui,
+                app,
+                "export",
+                "Masked Layers",
+                "Generate vector layers with customer personally identifiable information masked for field engineers.",
+                "grid.createLayers",
+                serde_json::json!({"role": "FIELD_ENGINEER"}),
+                false,
+            );
+        });
+    });
+
+    // 2. Control Room Operations & Outages
+    group(ui, "Fault & Outages", |ui| {
+        big(
+            ui,
+            app,
+            "history",
+            "Grid\nStatus",
+            "Control room KPI dashboard: active faults, impacted meters, available crews, and revenue loss.",
+            "grid.status",
+            serde_json::json!({}),
+            false,
+            false,
+        );
+        big(
+            ui,
+            app,
+            "search",
+            "Analyze\nImpact",
+            "What-if outage simulation: evaluate affected customer categories, critical facilities, and priority score (0-100).",
+            "grid.analyzeImpact",
+            serde_json::json!({"assetId": "T-104", "faultType": "TRANSFORMER_FAILURE"}),
+            false,
+            false,
+        );
+        col(ui, |ui| {
+            small(
+                ui,
+                app,
+                "delete",
+                "Trigger Fault",
+                "Simulate transformer or feeder outage; disconnects downstream meters.",
+                "grid.triggerFault",
+                serde_json::json!({"assetId": "T-104", "faultType": "TRANSFORMER_FAILURE"}),
+                false,
+            );
+            small(
+                ui,
+                app,
+                "select",
+                "Restore Fault",
+                "Re-energize asset, reconnect customer meters and clear outage.",
+                "grid.restoreFault",
+                serde_json::json!({"faultNumber": "FLT-0001"}),
+                false,
+            );
+        });
+    });
+
+    // 3. Engineering & Power Flow
+    group(ui, "Power Flow & Risk", |ui| {
+        big(
+            ui,
+            app,
+            "run",
+            "Power\nFlow",
+            "Radial load flow simulation: feeder voltage drops, transformer loading %, and line losses.",
+            "grid.powerFlow",
+            serde_json::json!({}),
+            false,
+            false,
+        );
+        big(
+            ui,
+            app,
+            "search",
+            "Risk\nHotspots",
+            "Spatial density clustering of predictive asset risk and customer exposure.",
+            "grid.hotspots",
+            serde_json::json!({"metric": "customer_impact"}),
+            false,
+            false,
+        );
+        col(ui, |ui| {
+            small(
+                ui,
+                app,
+                "about",
+                "Asset Risk",
+                "Multi-factor predictive failure probability and engineering recommendations.",
+                "grid.assessRisk",
+                serde_json::json!({"assetId": "T-104"}),
+                false,
+            );
+            small(
+                ui,
+                app,
+                "explore",
+                "SCADA Alerts",
+                "Evaluate live telemetry readings against ANSI/IEC limits for voltage/current anomalies.",
+                "grid.ingestTelemetry",
+                serde_json::json!({"readings": []}),
+                false,
+            );
+        });
+    });
+
+    // 4. Response Crew Dispatch
+    group(ui, "Crew Dispatch", |ui| {
+        big(
+            ui,
+            app,
+            "bookmark",
+            "Dispatch\nCrew",
+            "Automated crew dispatch: proximity routing (Haversine), skill qualification matching, travel ETA and repair time.",
+            "grid.assignCrew",
+            serde_json::json!({"faultNumber": "FLT-0001"}),
+            false,
+            false,
+        );
     });
 }
 

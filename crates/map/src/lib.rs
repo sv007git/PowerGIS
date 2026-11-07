@@ -1303,7 +1303,17 @@ impl Map {
             service_groups: Vec::new(),
             groups: Vec::new(),
             basemap: Basemap::Paper,
-            tiles: Vec::new(),
+            tiles: vec![{
+                let mut t = tiles::TileLayer::new(
+                    "Google Maps",
+                    tiles::TileKind::Raster,
+                    "http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}",
+                );
+                t.id = "google-maps".to_string();
+                t.attribution = "Google Maps © Google".to_string();
+                t.max_zoom = 20;
+                t
+            }],
             camera: Camera::world(),
             bookmarks: Vec::new(),
             graticule: true,

@@ -129,13 +129,25 @@ pub fn world_project() -> Project {
         l.labels.default.color = Rgba::rgb(0x5A, 0x2A, 0x14);
         l.max_scale = None;
     }
+    let mut google_tiles = rustgis_map::tiles::TileLayer::new(
+        "Google Maps",
+        rustgis_map::tiles::TileKind::Raster,
+        "http://mt0.google.com/vt/lyrs=m&hl=en&x={x}&y={y}&z={z}",
+    );
+    google_tiles.id = "google-maps".to_string();
+    google_tiles.attribution = "Google Maps © Google".to_string();
+    google_tiles.max_zoom = 20;
+    map.tiles.push(google_tiles);
+
     map.bookmarks = vec![
+        Bookmark::new("Pondicherry, India", cam(79.8083, 11.9416, 250.0)),
         Bookmark::new("World", cam(10.0, 15.0, 26_000.0)),
         Bookmark::new("Europe", cam(12.0, 50.0, 5_200.0)),
         Bookmark::new("Africa", cam(19.0, 2.0, 8_500.0)),
         Bookmark::new("Americas", cam(-80.0, 12.0, 15_000.0)),
         Bookmark::new("East Asia", cam(118.0, 32.0, 6_500.0)),
     ];
-    map.camera = cam(10.0, 18.0, 26_000.0);
+    // Default camera points to Pondicherry, India region
+    map.camera = cam(79.8083, 11.9416, 250.0);
     p
 }

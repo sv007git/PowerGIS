@@ -195,7 +195,8 @@ impl Camera {
     }
 
     pub fn world() -> Self {
-        Camera::new(Coord::new(0.0, 2_000_000.0), 30_000.0)
+        // Default camera centered on Pondicherry, India (lat 11.9416, lon 79.8083)
+        Camera::new(Coord::new(8_884_217.43, 1_338_573.19), 250.0)
     }
 
     /// The bearing's cosine and sine (exactly 1 and 0 when the map faces north).

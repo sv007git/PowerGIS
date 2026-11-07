@@ -44,22 +44,121 @@
     }
 
     [data-theme="light"] {
-      --bg-body: #F1F5F9;
+      --bg-body: #F8FAFC;
       --bg-surface: #FFFFFF;
-      --bg-card: #F8FAFC;
-      --bg-card-hover: #EDF2F7;
+      --bg-card: #FFFFFF;
+      --bg-card-hover: #F1F5F9;
       --border-color: #E2E8F0;
       --border-accent: #CBD5E1;
       --primary: #0284C7;
       --primary-hover: #0369A1;
       --primary-dark: #075985;
       --primary-rgb: 2, 132, 199;
+      --accent: #D97706;
+      --success: #059669;
+      --warning: #D97706;
+      --danger: #DC2626;
+      --critical: #B91C1C;
       --text-main: #0F172A;
       --text-muted: #475569;
-      --text-dim: #94A3B8;
-      --shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.05);
+      --text-dim: #64748B;
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.08);
       --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
-      --shadow-lg: 0 8px 24px rgba(0, 0, 0, 0.12);
+      --shadow-lg: 0 10px 30px rgba(0, 0, 0, 0.12);
+    }
+
+    /* Light Theme Dedicated Refinements */
+    [data-theme="light"] .btn-primary {
+      background: #0284C7;
+      color: #FFFFFF;
+    }
+    [data-theme="light"] .btn-primary:hover {
+      background: #0369A1;
+      color: #FFFFFF;
+    }
+    [data-theme="light"] .btn-secondary {
+      background: #FFFFFF;
+      color: #0F172A;
+      border-color: #CBD5E1;
+    }
+    [data-theme="light"] .btn-secondary:hover {
+      background: #F1F5F9;
+      border-color: #0284C7;
+    }
+    [data-theme="light"] .map-card {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: #CBD5E1;
+      color: #0F172A;
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.1);
+    }
+    [data-theme="light"] .map-tool-btn {
+      background: rgba(255, 255, 255, 0.95);
+      border-color: #CBD5E1;
+      color: #0F172A;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    }
+    [data-theme="light"] .map-tool-btn:hover,
+    [data-theme="light"] .map-tool-btn.active {
+      background: #0284C7;
+      color: #FFFFFF;
+      border-color: #0284C7;
+    }
+    [data-theme="light"] .coordinate-display {
+      background: rgba(255, 255, 255, 0.92);
+      border-color: #CBD5E1;
+      color: #475569;
+    }
+    [data-theme="light"] .sld-container {
+      background: #F8FAFC;
+      border-color: #E2E8F0;
+    }
+    [data-theme="light"] #sldSvg text {
+      fill: #1E293B !important;
+    }
+    [data-theme="light"] .telemetry-pill,
+    [data-theme="light"] .user-profile-badge {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+    [data-theme="light"] .global-search input {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+    [data-theme="light"] .nav-sidebar {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+    [data-theme="light"] .nav-item:hover {
+      background: #F1F5F9;
+      color: #0284C7;
+    }
+    [data-theme="light"] .modal-overlay {
+      background: rgba(15, 23, 42, 0.5);
+    }
+    [data-theme="light"] .modal-box {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+    [data-theme="light"] .form-control {
+      background: #FFFFFF;
+      border-color: #CBD5E1;
+      color: #0F172A;
+    }
+    [data-theme="light"] .layer-item {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+    [data-theme="light"] .kanban-card {
+      background: #FFFFFF;
+      border-color: #E2E8F0;
+    }
+    [data-theme="light"] #traceTreeDisplay {
+      background: #F8FAFC;
+      color: #0F172A;
+      border-color: #E2E8F0;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -844,7 +943,7 @@
     }
   </style>
 </head>
-<body data-theme="dark">
+<body data-theme="light">
 
   <!-- Header -->
   <header>
@@ -887,6 +986,8 @@
       <button class="btn btn-secondary btn-sm" id="themeToggleBtn" title="Toggle Light / Dark Mode">🌓</button>
 
       <!-- User Profile Switcher -->
+      <a href="./login.html" class="btn btn-secondary btn-sm" id="headerLoginBtn" style="display: none;" title="Go to Sign In Page">🔑 Sign In</a>
+      <button class="btn btn-danger btn-sm" id="headerLogoutBtn" title="Sign out of engineering session">🚪 Logout</button>
       <div class="user-profile-badge" id="openUserModalBtn" title="Switch User Role & Profile">
         <div class="user-avatar" id="headerAvatar">EE</div>
         <div style="text-align: left;">
@@ -989,6 +1090,13 @@
           </div>
           <span class="badge-count">16 Roles</span>
         </div>
+        <a href="./login.html" class="nav-item" style="text-decoration: none; color: var(--text-muted);">
+          <div class="nav-left">
+            <span class="nav-icon">🔑</span>
+            <span class="nav-text">Login Page</span>
+          </div>
+          <span class="badge-count" style="color: var(--primary);">Auth</span>
+        </a>
         <div class="nav-item" data-view="settings-view">
           <div class="nav-left">
             <span class="nav-icon">⚙️</span>
@@ -2032,6 +2140,69 @@
     </div>
   </div>
 
+  <!-- Integrated Enterprise Login Screen Gate Overlay -->
+  <div class="modal-overlay" id="loginGateOverlay" style="z-index: 5000; background: rgba(7, 11, 18, 0.95); backdrop-filter: blur(12px);">
+    <div class="modal-box" style="max-width: 900px; width: 95vw; background: var(--bg-surface); border: 1px solid var(--border-accent); box-shadow: 0 25px 60px rgba(0,0,0,0.8); display: grid; grid-template-columns: 400px 1fr; padding: 0; max-height: 90vh;">
+      
+      <!-- Left: Standard Sign In Form -->
+      <div style="padding: 28px; border-right: 1px solid var(--border-color); display: flex; flex-direction: column; justify-content: center;">
+        <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+          <div style="width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #0284C7, #38BDF8); display: flex; align-items: center; justify-content: center; font-size: 16px;">⚡</div>
+          <div>
+            <div style="font-weight: 700; font-size: 16px;">PowerGIS Portal</div>
+            <div style="font-size: 10px; color: var(--primary); text-transform: uppercase; font-weight: 600;">Govt of Puducherry</div>
+          </div>
+        </div>
+        <div style="font-size: 18px; font-weight: 700; margin-bottom: 4px;">Sign In to PowerGIS</div>
+        <div style="font-size: 12px; color: var(--text-muted); margin-bottom: 18px;">Puducherry Electricity Department Operations</div>
+
+        <div id="gateAlert" style="display: none; padding: 8px 12px; border-radius: 6px; font-size: 12px; margin-bottom: 14px; background: rgba(239, 68, 68, 0.15); color: #FCA5A5; border: 1px solid rgba(239, 68, 68, 0.3);"></div>
+
+        <form id="gateLoginForm" onsubmit="handleGateLogin(event)">
+          <div class="form-group" style="margin-bottom: 12px;">
+            <label class="form-label" style="margin-bottom: 4px;">Official Email or Username</label>
+            <input type="text" class="form-control" id="gateUserInput" value="ee.distribution@powergis.gov.in" placeholder="name@powergis.gov.in" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 14px;">
+            <label class="form-label" style="margin-bottom: 4px;">Password</label>
+            <input type="password" class="form-control" id="gatePassInput" value="PowerGIS@2026" required>
+          </div>
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; font-size: 12px;">
+            <label style="display: flex; align-items: center; gap: 6px; cursor: pointer; color: var(--text-muted);">
+              <input type="checkbox" id="gateRememberMe" checked>
+              <span>Remember me</span>
+            </label>
+            <a href="./login.html" style="color: var(--primary); text-decoration: none;">Forgot password?</a>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%; padding: 10px; font-weight: 700;">Sign In ➔</button>
+        </form>
+
+        <div style="margin-top: 14px; text-align: center;">
+          <button type="button" class="btn btn-secondary btn-sm" id="gateGuestBtn" style="width: 100%;">Continue as Guest (Read-Only Viewer)</button>
+        </div>
+      </div>
+
+      <!-- Right: Quick 1-Click Role Logins -->
+      <div style="padding: 24px; background: var(--bg-card); display: flex; flex-direction: column; overflow-y: auto; max-height: 520px;">
+        <div style="font-weight: 700; font-size: 13px; display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+          <span>⚡ Instant 1-Click Role Logins</span>
+          <span class="badge badge-primary">16 Roles</span>
+        </div>
+        <div style="font-size: 11px; color: var(--text-muted); margin-bottom: 12px;">Select any engineering designation below to log in immediately:</div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px;" id="gateRoleGrid">
+          <!-- Populated by JS -->
+        </div>
+
+        <div style="margin-top: 14px; padding: 10px; border-radius: 6px; background: rgba(7, 11, 18, 0.6); border: 1px solid var(--border-color); font-size: 11px; color: var(--text-muted);">
+          <b>Universal Demo Password:</b> <code style="color: var(--primary);">PowerGIS@2026</code><br>
+          PostgreSQL 16 + PostGIS 3.4 &bull; Full RBAC Enabled
+        </div>
+      </div>
+
+    </div>
+  </div>
+
   <!-- Leaflet Library -->
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
 
@@ -2142,12 +2313,21 @@
       setTimeout(() => { if (map) map.invalidateSize(); }, 250);
     };
 
-    // Dark / Light Theme Toggle
+    // White / Dark Theme Toggle with persistence
     const themeToggleBtn = document.getElementById("themeToggleBtn");
+    function applyTheme(theme) {
+      document.body.setAttribute("data-theme", theme);
+      localStorage.setItem("powergis_theme", theme);
+      themeToggleBtn.innerText = theme === "light" ? "🌙" : "☀️";
+      themeToggleBtn.title = theme === "light" ? "Switch to Dark Mode" : "Switch to White Theme";
+    }
+
+    const savedTheme = localStorage.getItem("powergis_theme") || "light"; // Default to White Theme!
+    applyTheme(savedTheme);
+
     themeToggleBtn.onclick = () => {
       const current = document.body.getAttribute("data-theme");
-      const next = current === "dark" ? "light" : "dark";
-      document.body.setAttribute("data-theme", next);
+      applyTheme(current === "light" ? "dark" : "light");
     };
 
     // =========================================================================
@@ -2950,6 +3130,122 @@
     };
 
     // Initial log
+    
+    // =========================================================================
+    // 15. AUTHENTICATION, LOGIN GATE & SESSION MANAGEMENT
+    // =========================================================================
+    const loginGateOverlay = document.getElementById("loginGateOverlay");
+    const gateRoleGrid = document.getElementById("gateRoleGrid");
+    const headerLoginBtn = document.getElementById("headerLoginBtn");
+    const headerLogoutBtn = document.getElementById("headerLogoutBtn");
+
+    // Populate the 16 1-Click login buttons on the login gate
+    ALL_16_ROLES.forEach(r => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.style.background = "var(--bg-surface)";
+      btn.style.border = "1px solid var(--border-color)";
+      btn.style.borderRadius = "5px";
+      btn.style.padding = "6px 8px";
+      btn.style.textAlign = "left";
+      btn.style.cursor = "pointer";
+      btn.style.display = "flex";
+      btn.style.flexDirection = "column";
+      btn.style.gap = "2px";
+      btn.innerHTML = `
+        <div style="font-size: 11px; font-weight: 600; color: var(--text-main); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.name}</div>
+        <div style="font-size: 10px; color: var(--primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">${r.officer}</div>
+      `;
+      btn.onclick = () => {
+        completeSessionLogin(r);
+      };
+      gateRoleGrid.appendChild(btn);
+    });
+
+    function completeSessionLogin(roleObj) {
+      currentRoleObj = roleObj;
+      const session = {
+        token: "jwt_powergis_" + btoa(roleObj.id + ":" + Date.now()),
+        user: roleObj,
+        loginTime: new Date().toISOString()
+      };
+      localStorage.setItem("powergis_session", JSON.stringify(session));
+      updateSessionUI(roleObj);
+      loginGateOverlay.classList.remove("active");
+    }
+
+    function updateSessionUI(roleObj) {
+      document.getElementById("headerUserName").innerText = roleObj.officer;
+      document.getElementById("headerRoleName").innerText = roleObj.name;
+      document.getElementById("headerAvatar").innerText = roleObj.name.split(" ").map(w => w[0]).slice(0, 2).join("");
+      headerLogoutBtn.style.display = "inline-flex";
+      headerLoginBtn.style.display = "none";
+      render16RolesDirectory();
+    }
+
+    window.handleGateLogin = function(e) {
+      e.preventDefault();
+      const userVal = document.getElementById("gateUserInput").value.trim().toLowerCase();
+      const passVal = document.getElementById("gatePassInput").value;
+      const alertBox = document.getElementById("gateAlert");
+
+      const match = ALL_16_ROLES.find(r => 
+        r.id.toLowerCase() === userVal || 
+        r.email.toLowerCase() === userVal ||
+        r.officer.toLowerCase().includes(userVal)
+      );
+
+      if (!match) {
+        alertBox.innerText = "Invalid user account. Use 1-click login or check credentials.";
+        alertBox.style.display = "block";
+        return;
+      }
+
+      if (passVal !== "PowerGIS@2026") {
+        alertBox.innerText = "Incorrect password. Default demo password is 'PowerGIS@2026'.";
+        alertBox.style.display = "block";
+        return;
+      }
+
+      alertBox.style.display = "none";
+      completeSessionLogin(match);
+    };
+
+    document.getElementById("gateGuestBtn").onclick = () => {
+      const guestRole = ALL_16_ROLES.find(r => r.id === "readonly_viewer") || ALL_16_ROLES[ALL_16_ROLES.length - 1];
+      currentRoleObj = guestRole;
+      updateSessionUI(guestRole);
+      headerLogoutBtn.style.display = "none";
+      headerLoginBtn.style.display = "inline-flex";
+      loginGateOverlay.classList.remove("active");
+    };
+
+    headerLogoutBtn.onclick = () => {
+      localStorage.removeItem("powergis_session");
+      loginGateOverlay.classList.add("active");
+      headerLogoutBtn.style.display = "none";
+      headerLoginBtn.style.display = "inline-flex";
+    };
+
+    // Check existing session on load
+    const savedSession = localStorage.getItem("powergis_session");
+    if (savedSession) {
+      try {
+        const parsed = JSON.parse(savedSession);
+        if (parsed && parsed.user) {
+          const match = ALL_16_ROLES.find(r => r.id === parsed.user.id) || parsed.user;
+          currentRoleObj = match;
+          updateSessionUI(match);
+          loginGateOverlay.classList.remove("active");
+        }
+      } catch (err) {
+        loginGateOverlay.classList.add("active");
+      }
+    } else {
+      // First visit: Show Login Gate Screen!
+      loginGateOverlay.classList.add("active");
+    }
+
     console.log("⚡ PowerGIS Enterprise GIS Portal Initialized (16 Roles, SCADA, PostGIS 16 ready).");
   </script>
 </body>

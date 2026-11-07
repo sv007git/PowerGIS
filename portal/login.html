@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>PowerGIS Portal — Secure Engineering Login</title>
+  <link rel="icon" href="https://assets.powergis.app/images/favicon.png">
+  
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+
+  <style>
+    :root {
+      --bg-dark: #070B12;
+      --surface-dark: #0F1626;
+      --card-dark: #151F34;
+      --card-hover: #1A2742;
+      --border-dark: #1F2D48;
+      --border-accent: #2C3E63;
+      --primary: #0284C7;
+      --primary-hover: #0369A1;
+      --primary-glow: rgba(2, 132, 199, 0.25);
+      --success: #059669;
+      --warning: #D97706;
+      --danger: #DC2626;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --text-dim: #64748B;
+      --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: 'JetBrains Mono', monospace;
+    }
+
+    /* White Theme (Default) */
+    [data-theme="light"] {
+      --bg-body: #F8FAFC;
+      --surface: #FFFFFF;
+      --card: #FFFFFF;
+      --card-alt: #F1F5F9;
+      --card-hover: #EDF2F7;
+      --border: #E2E8F0;
+      --border-strong: #CBD5E1;
+      --primary: #0284C7;
+      --primary-hover: #0369A1;
+      --text-main: #0F172A;
+      --text-muted: #475569;
+      --text-dim: #64748B;
+      --grid-line: rgba(203, 213, 225, 0.4);
+      --grid-radial: rgba(2, 132, 199, 0.08);
+      --shadow-box: 0 16px 40px rgba(0, 0, 0, 0.08);
+    }
+
+    /* Dark Theme */
+    [data-theme="dark"] {
+      --bg-body: #070B12;
+      --surface: #0F1626;
+      --card: #151F34;
+      --card-alt: #0D1424;
+      --card-hover: #1A2742;
+      --border: #1F2D48;
+      --border-strong: #2C3E63;
+      --primary: #38BDF8;
+      --primary-hover: #0EA5E9;
+      --text-main: #F8FAFC;
+      --text-muted: #94A3B8;
+      --text-dim: #64748B;
+      --grid-line: rgba(31, 45, 72, 0.3);
+      --grid-radial: rgba(56, 189, 248, 0.12);
+      --shadow-box: 0 24px 60px rgba(0, 0, 0, 0.6);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font-sans);
+      background-color: var(--bg-body);
+      color: var(--text-main);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      overflow-x: hidden;
+      transition: background-color 0.2s ease, color 0.2s ease;
+    }
+
+    /* Ambient Circuit Background */
+    .grid-bg {
+      position: fixed;
+      inset: 0;
+      background-image: 
+        radial-gradient(circle at 50% 15%, var(--grid-radial), transparent 45%),
+        linear-gradient(var(--grid-line) 1px, transparent 1px),
+        linear-gradient(90deg, var(--grid-line) 1px, transparent 1px);
+      background-size: 100% 100%, 36px 36px, 36px 36px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Top Utility Header */
+    header {
+      position: relative;
+      z-index: 10;
+      height: 60px;
+      padding: 0 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: var(--surface);
+      backdrop-filter: blur(12px);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+      color: var(--text-main);
+    }
+    .brand-logo {
+      width: 32px;
+      height: 32px;
+      background: linear-gradient(135deg, #0284C7, #38BDF8);
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 17px;
+      box-shadow: 0 0 16px var(--primary-glow);
+      color: #FFFFFF;
+    }
+    .brand-title {
+      font-weight: 700;
+      font-size: 17px;
+      letter-spacing: -0.02em;
+    }
+    .brand-badge {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 4px;
+      background: rgba(2, 132, 199, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(2, 132, 199, 0.25);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .header-links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .header-link {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 12px;
+      font-weight: 500;
+      transition: color 0.15s ease;
+    }
+    .header-link:hover { color: var(--text-main); }
+
+    .theme-toggle-btn {
+      background: var(--card-alt);
+      border: 1px solid var(--border);
+      color: var(--text-main);
+      padding: 5px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
+    }
+
+    /* Main Container */
+    main {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 16px;
+    }
+
+    .login-wrapper {
+      width: 100%;
+      max-width: 980px;
+      display: grid;
+      grid-template-columns: 460px 1fr;
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 14px;
+      box-shadow: var(--shadow-box);
+      overflow: hidden;
+    }
+
+    /* Left Form Column */
+    .login-form-pane {
+      padding: 36px 32px;
+      display: flex;
+      flex-direction: column;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+    }
+
+    .pane-title {
+      font-size: 20px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+    .pane-subtitle {
+      font-size: 13px;
+      color: var(--text-muted);
+      margin-bottom: 24px;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+    .form-label {
+      display: block;
+      font-size: 12px;
+      font-weight: 600;
+      margin-bottom: 6px;
+      color: var(--text-muted);
+    }
+    .input-wrapper {
+      position: relative;
+    }
+    .form-input {
+      width: 100%;
+      background: var(--card);
+      border: 1px solid var(--border-strong);
+      border-radius: 6px;
+      padding: 10px 12px;
+      color: var(--text-main);
+      font-size: 13px;
+      font-family: var(--font-sans);
+      outline: none;
+      transition: all 0.2s ease;
+    }
+    .form-input:focus {
+      border-color: var(--primary);
+      box-shadow: 0 0 0 2px rgba(2, 132, 199, 0.2);
+    }
+    .input-toggle-pw {
+      position: absolute;
+      right: 10px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: transparent;
+      border: none;
+      color: var(--text-dim);
+      font-size: 14px;
+      cursor: pointer;
+    }
+
+    .form-row-between {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+      font-size: 12px;
+    }
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      color: var(--text-muted);
+      cursor: pointer;
+      user-select: none;
+    }
+    .forgot-link {
+      color: var(--primary);
+      text-decoration: none;
+      font-weight: 500;
+    }
+    .forgot-link:hover { text-decoration: underline; }
+
+    .btn-submit {
+      width: 100%;
+      padding: 10px;
+      border-radius: 6px;
+      border: none;
+      background: #0284C7;
+      color: #FFFFFF;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.3);
+      transition: all 0.2s ease;
+    }
+    .btn-submit:hover {
+      background: #0369A1;
+      transform: translateY(-1px);
+    }
+    .btn-submit:active { transform: translateY(0); }
+
+    .alert-banner {
+      display: none;
+      padding: 10px 12px;
+      border-radius: 6px;
+      margin-bottom: 16px;
+      font-size: 12px;
+      align-items: center;
+      gap: 8px;
+    }
+    .alert-banner.error {
+      display: flex;
+      background: rgba(220, 38, 38, 0.1);
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      color: #B91C1C;
+    }
+    .alert-banner.success {
+      display: flex;
+      background: rgba(5, 150, 105, 0.1);
+      border: 1px solid rgba(5, 150, 105, 0.3);
+      color: #047857;
+    }
+
+    /* Right Quick-Login & Directory Pane */
+    .quick-login-pane {
+      padding: 32px;
+      background: var(--card-alt);
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+      max-height: 560px;
+    }
+
+    .quick-title {
+      font-size: 14px;
+      font-weight: 700;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 6px;
+    }
+    .quick-subtitle {
+      font-size: 12px;
+      color: var(--text-muted);
+      margin-bottom: 16px;
+      line-height: 1.4;
+    }
+
+    .role-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+    .role-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 9px 12px;
+      text-align: left;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+    .role-btn:hover {
+      border-color: var(--primary);
+      background: var(--card-hover);
+      transform: translateY(-1px);
+    }
+    .role-btn-title {
+      font-weight: 600;
+      font-size: 12px;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .role-btn-user {
+      font-size: 11px;
+      color: var(--primary);
+    }
+
+    .credentials-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px 14px;
+      font-size: 12px;
+      color: var(--text-muted);
+      line-height: 1.5;
+    }
+    .credentials-box code {
+      font-family: var(--font-mono);
+      color: var(--primary);
+      background: rgba(2, 132, 199, 0.08);
+      padding: 2px 6px;
+      border-radius: 4px;
+      border: 1px solid rgba(2, 132, 199, 0.2);
+    }
+
+    /* Modal */
+    .modal-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(15, 23, 42, 0.5);
+      backdrop-filter: blur(6px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-overlay.active {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal-box {
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      width: 440px;
+      max-width: 90vw;
+      padding: 24px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
+    }
+    .modal-title { font-size: 16px; font-weight: 700; margin-bottom: 8px; }
+    .modal-desc { font-size: 12px; color: var(--text-muted); margin-bottom: 16px; line-height: 1.4; }
+
+    /* Footer */
+    footer {
+      position: relative;
+      z-index: 10;
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+
+    @media (max-width: 860px) {
+      .login-wrapper {
+        grid-template-columns: 1fr;
+        max-width: 480px;
+      }
+      .login-form-pane { border-right: none; border-bottom: 1px solid var(--border); }
+      .quick-login-pane { max-height: 340px; }
+    }
+  </style>
+</head>
+<body data-theme="light">
+
+  <div class="grid-bg"></div>
+
+  <!-- Header -->
+  <header>
+    <a href="./index.html" class="brand">
+      <div class="brand-logo">⚡</div>
+      <div class="brand-title">PowerGIS</div>
+      <span class="brand-badge">Govt of Puducherry</span>
+    </a>
+    <div class="header-links">
+      <a href="../" class="header-link">⚡ Pure Rust WASM Desktop</a>
+      <span style="color: var(--border);">|</span>
+      <a href="./index.html" class="header-link">🗺️ Open Live Portal</a>
+      <span style="color: var(--border);">|</span>
+      <button class="theme-toggle-btn" id="themeToggleBtn">🌓 Theme</button>
+    </div>
+  </header>
+
+  <!-- Login Main -->
+  <main>
+    <div class="login-wrapper">
+      
+      <!-- Left: Standard Sign In Form -->
+      <div class="login-form-pane">
+        <div class="pane-title">Engineer Portal Sign In</div>
+        <div class="pane-subtitle">Access utility planning, SCADA telemetry, and network operations</div>
+
+        <!-- Alert Notification -->
+        <div class="alert-banner" id="alertBanner"></div>
+
+        <form id="loginForm" onsubmit="handleLoginSubmit(event)">
+          <div class="form-group">
+            <label class="form-label" for="usernameInput">Government Email or Username</label>
+            <div class="input-wrapper">
+              <input type="text" class="form-input" id="usernameInput" value="ee.distribution@powergis.gov.in" placeholder="e.g. ee.distribution@powergis.gov.in" required autocomplete="username">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="passwordInput">Password</label>
+            <div class="input-wrapper">
+              <input type="password" class="form-input" id="passwordInput" value="PowerGIS@2026" required autocomplete="current-password">
+              <button type="button" class="input-toggle-pw" id="togglePasswordBtn" title="Show/Hide Password">👁️</button>
+            </div>
+          </div>
+
+          <div class="form-row-between">
+            <label class="checkbox-label">
+              <input type="checkbox" id="rememberMe" checked>
+              <span>Keep me signed in</span>
+            </label>
+            <a href="#" class="forgot-link" id="forgotPasswordBtn">Forgot password?</a>
+          </div>
+
+          <button type="submit" class="btn-submit" id="submitBtn">
+            <span>Sign In to PowerGIS</span>
+            <span>➔</span>
+          </button>
+        </form>
+
+        <div style="margin-top: 24px; padding-top: 16px; border-top: 1px solid var(--border); text-align: center;">
+          <a href="./index.html" style="font-size: 12px; color: var(--text-muted); text-decoration: none;">
+            or <b style="color: var(--primary);">Continue as Guest / Read-only Viewer</b> ➔
+          </a>
+        </div>
+      </div>
+
+      <!-- Right: Quick 1-Click Role Logins for Demonstrations -->
+      <div class="quick-login-pane">
+        <div class="quick-title">
+          <span>⚡ Instant 1-Click Role Logins</span>
+          <span class="brand-badge">16 Roles</span>
+        </div>
+        <div class="quick-subtitle">
+          Select any engineering profile below to instantly sign in and test RBAC permissions:
+        </div>
+
+        <div class="role-grid" id="roleGrid">
+          <!-- Populated by JS -->
+        </div>
+
+        <div class="credentials-box">
+          <div style="font-weight: 600; color: var(--text-main); margin-bottom: 4px;">🔐 Universal Demo Credentials</div>
+          <div>All seeded departmental accounts share the password: <code>PowerGIS@2026</code>.</div>
+          <div style="margin-top: 4px; font-size: 11px; color: var(--text-dim);">PostgreSQL 16 + PostGIS 3.4 &bull; IEC 60870-5-104 Telemetry</div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- Forgot Password Modal -->
+  <div class="modal-overlay" id="forgotModal">
+    <div class="modal-box">
+      <div class="modal-title">Reset Your Engineering Credentials</div>
+      <div class="modal-desc">Enter your registered departmental email address. A secure recovery link will be dispatched to your divisional head for authorization.</div>
+      <div class="form-group">
+        <label class="form-label">Official Email ID</label>
+        <input type="email" class="form-input" id="forgotEmailInput" placeholder="name@powergis.gov.in">
+      </div>
+      <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 18px;">
+        <button type="button" class="form-input" style="width: auto; cursor: pointer;" id="cancelForgotBtn">Cancel</button>
+        <button type="button" class="btn-submit" style="width: auto; padding: 8px 16px;" id="sendResetBtn">Send Recovery Link</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <div>Puducherry Electricity Department &bull; PowerGIS Grid Operations Portal 2026</div>
+    <div>Secure TLS 1.3 Encryption &bull; Pure Rust WebAssembly Engine</div>
+  </footer>
+
+  <script>
+    // =========================================================================
+    // 1. ALL 16 SEEDED PROFILES (From backend/database/seed_data.sql)
+    // =========================================================================
+    const ACCOUNTS = [
+      {
+        id: "super_admin",
+        title: "Super Administrator",
+        name: "Harish Vyas",
+        username: "superadmin",
+        email: "superadmin@powergis.gov.in",
+        role: "super_admin",
+        dept: "Chief IT & Architecture",
+        icon: "🛡️"
+      },
+      {
+        id: "state_admin",
+        title: "State Administrator",
+        name: "Er. P. Rajasekharan",
+        username: "state_admin",
+        email: "stateadmin@powergis.gov.in",
+        role: "state_admin",
+        dept: "Directorate of Electricity",
+        icon: "🏛️"
+      },
+      {
+        id: "circle_admin",
+        title: "Circle Administrator",
+        name: "Er. N. Balamurugan",
+        username: "circle_admin",
+        email: "circleadmin@powergis.gov.in",
+        role: "circle_admin",
+        dept: "Puducherry Circle Head",
+        icon: "⚡"
+      },
+      {
+        id: "superintending_engineer",
+        title: "Superintending Engineer",
+        name: "Er. R. Sundararajan",
+        username: "se_pondicherry",
+        email: "se.pondicherry@powergis.gov.in",
+        role: "superintending_engineer",
+        dept: "Planning & Capital Works",
+        icon: "🏢"
+      },
+      {
+        id: "executive_engineer",
+        title: "Executive Engineer (EE)",
+        name: "Er. M. Sivakumar",
+        username: "ee_urban",
+        email: "ee.distribution@powergis.gov.in",
+        role: "executive_engineer",
+        dept: "Urban Distribution Division",
+        icon: "⚡"
+      },
+      {
+        id: "assistant_executive_engineer",
+        title: "Asst. Executive Engineer",
+        name: "Er. T. Senthil Kumar",
+        username: "aee_marapalam",
+        email: "aee.marapalam@powergis.gov.in",
+        role: "assistant_executive_engineer",
+        dept: "Marapalam Sub-Division",
+        icon: "🔧"
+      },
+      {
+        id: "junior_engineer",
+        title: "Junior Engineer (JE)",
+        name: "Er. V. Murugan",
+        username: "je_town",
+        email: "je.town@powergis.gov.in",
+        role: "junior_engineer",
+        dept: "Breakdown Gang & Patrol",
+        icon: "👷"
+      },
+      {
+        id: "gis_admin",
+        title: "GIS Administrator",
+        name: "Er. K. Deepalakshmi",
+        username: "gis_admin",
+        email: "gisadmin@powergis.gov.in",
+        role: "gis_admin",
+        dept: "Geospatial Center of Excellence",
+        icon: "🗺️"
+      },
+      {
+        id: "gis_operator",
+        title: "GIS Operator",
+        name: "S. Ananthi",
+        username: "gis_operator",
+        email: "gisoperator@powergis.gov.in",
+        role: "gis_operator",
+        dept: "Grid Digitization & Cartography",
+        icon: "📍"
+      },
+      {
+        id: "section_engineer",
+        title: "Section Engineer",
+        name: "Er. G. Ilangovan",
+        username: "section_eng",
+        email: "seceng@powergis.gov.in",
+        role: "section_engineer",
+        dept: "Town Section In-charge",
+        icon: "🔌"
+      },
+      {
+        id: "om_supervisor",
+        title: "O&M Supervisor",
+        name: "R. Krishnan",
+        username: "om_supervisor",
+        email: "omsupervisor@powergis.gov.in",
+        role: "om_supervisor",
+        dept: "Marapalam 110kV Yard",
+        icon: "⚙️"
+      },
+      {
+        id: "field_engineer",
+        title: "Field Engineer",
+        name: "K. Vijayakumar",
+        username: "field_engineer",
+        email: "fieldeng@powergis.gov.in",
+        role: "field_engineer",
+        dept: "Substation Protection Specialist",
+        icon: "🧰"
+      },
+      {
+        id: "surveyor",
+        title: "Surveyor",
+        name: "A. Karthik",
+        username: "surveyor_user",
+        email: "surveyor@powergis.gov.in",
+        role: "surveyor",
+        dept: "DGPS Asset Survey Wing",
+        icon: "🛰️"
+      },
+      {
+        id: "contractor",
+        title: "Contractor (EPC)",
+        name: "Larsen & Toubro Ltd",
+        username: "contractor_user",
+        email: "contractor@powergis.gov.in",
+        role: "contractor",
+        dept: "RDSS Underground Cabling",
+        icon: "🏗️"
+      },
+      {
+        id: "auditor",
+        title: "Grid Compliance Auditor",
+        name: "Dr. S. Ramachandran",
+        username: "auditor_user",
+        email: "auditor@powergis.gov.in",
+        role: "auditor",
+        dept: "Regulatory & Audit Wing",
+        icon: "📊"
+      },
+      {
+        id: "readonly_viewer",
+        title: "Read-only Viewer",
+        name: "Public Citizen Viewer",
+        username: "guest_user",
+        email: "guest@powergis.gov.in",
+        role: "readonly_viewer",
+        dept: "Public Power Portal Guest",
+        icon: "👁️"
+      }
+    ];
+
+    // =========================================================================
+    // 2. RENDER QUICK LOGIN ROLE BUTTONS
+    // =========================================================================
+    const roleGrid = document.getElementById("roleGrid");
+    ACCOUNTS.forEach(acc => {
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className = "role-btn";
+      btn.innerHTML = `
+        <div class="role-btn-title">
+          <span>${acc.icon}</span>
+          <span>${acc.title}</span>
+        </div>
+        <div class="role-btn-user">${acc.name}</div>
+      `;
+      btn.onclick = () => {
+        document.getElementById("usernameInput").value = acc.email;
+        document.getElementById("passwordInput").value = "PowerGIS@2026";
+        authenticateAndRedirect(acc);
+      };
+      roleGrid.appendChild(btn);
+    });
+
+    // Toggle Password Visibility
+    const togglePasswordBtn = document.getElementById("togglePasswordBtn");
+    const passwordInput = document.getElementById("passwordInput");
+    togglePasswordBtn.onclick = () => {
+      const isPw = passwordInput.type === "password";
+      passwordInput.type = isPw ? "text" : "password";
+      togglePasswordBtn.innerText = isPw ? "🙈" : "👁️";
+    };
+
+    // =========================================================================
+    // 3. WHITE / DARK THEME TOGGLE
+    // =========================================================================
+    const themeToggleBtn = document.getElementById("themeToggleBtn");
+    function applyTheme(theme) {
+      document.body.setAttribute("data-theme", theme);
+      localStorage.setItem("powergis_theme", theme);
+      themeToggleBtn.innerText = theme === "light" ? "🌙 Dark Mode" : "☀️ White Theme";
+    }
+
+    const savedTheme = localStorage.getItem("powergis_theme") || "light"; // White Theme by default!
+    applyTheme(savedTheme);
+
+    themeToggleBtn.onclick = () => {
+      const current = document.body.getAttribute("data-theme");
+      applyTheme(current === "light" ? "dark" : "light");
+    };
+
+    // =========================================================================
+    // 4. AUTHENTICATION HANDLERS
+    // =========================================================================
+    function showAlert(msg, isError = true) {
+      const banner = document.getElementById("alertBanner");
+      banner.className = `alert-banner ${isError ? 'error' : 'success'}`;
+      banner.innerHTML = `<span>${isError ? '⚠️' : '✓'}</span> <span>${msg}</span>`;
+      banner.style.display = "flex";
+    }
+
+    function authenticateAndRedirect(account) {
+      const session = {
+        token: "jwt_powergis_demo_" + btoa(account.username + ":" + Date.now()),
+        user: account,
+        loginTime: new Date().toISOString(),
+        expiresAt: new Date(Date.now() + 86400000).toISOString()
+      };
+      localStorage.setItem("powergis_session", JSON.stringify(session));
+      showAlert(`Authenticated as ${account.name} (${account.title})! Redirecting...`, false);
+      setTimeout(() => {
+        window.location.href = "./index.html";
+      }, 500);
+    }
+
+    function handleLoginSubmit(e) {
+      e.preventDefault();
+      const input = document.getElementById("usernameInput").value.trim().toLowerCase();
+      const pass = document.getElementById("passwordInput").value;
+
+      const match = ACCOUNTS.find(a => 
+        a.username.toLowerCase() === input || 
+        a.email.toLowerCase() === input
+      );
+
+      if (!match) {
+        showAlert("Invalid username or government email ID. Please check or use 1-click login.");
+        return;
+      }
+
+      if (pass !== "PowerGIS@2026") {
+        showAlert("Incorrect password. Default demo password is 'PowerGIS@2026'.");
+        return;
+      }
+
+      authenticateAndRedirect(match);
+    }
+
+    // Forgot Password Modal Handlers
+    const forgotModal = document.getElementById("forgotModal");
+    document.getElementById("forgotPasswordBtn").onclick = (e) => {
+      e.preventDefault();
+      forgotModal.classList.add("active");
+    };
+    document.getElementById("cancelForgotBtn").onclick = () => {
+      forgotModal.classList.remove("active");
+    };
+    document.getElementById("sendResetBtn").onclick = () => {
+      const email = document.getElementById("forgotEmailInput").value;
+      if (!email) { alert("Please enter your official email address."); return; }
+      forgotModal.classList.remove("active");
+      showAlert(`Password reset instructions have been dispatched to ${email}.`, false);
+    };
+  </script>
+</body>
+</html>

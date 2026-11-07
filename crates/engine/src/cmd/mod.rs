@@ -16,6 +16,7 @@ pub mod embeddings;
 pub mod geocode;
 pub mod geolibre;
 pub mod gp;
+pub mod grid;
 pub mod gpkg;
 pub mod graphics;
 pub mod group;
@@ -100,6 +101,7 @@ pub fn all() -> Vec<CommandSpec> {
     v.extend(view::commands());
     v.extend(workspace::commands());
     v.extend(gp::commands());
+    v.extend(grid::commands());
     v.extend(history::commands());
     v.extend(share::commands());
     v.extend(sql::commands());

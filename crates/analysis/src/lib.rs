@@ -16,6 +16,7 @@ pub mod density;
 pub mod dggs;
 pub mod geodesic;
 pub mod georef;
+pub mod grid;
 mod join;
 pub mod kriging;
 mod merge;
@@ -32,6 +33,7 @@ pub mod trend;
 pub mod warp;
 
 pub use attribute_join::{DuplicateStrategy, JoinFieldOptions, JoinFieldReport, join_field};
+pub use grid::ElectricalNetwork;
 pub use density::{
     KernelType, MAX_DENSITY_CELLS, MAX_DENSITY_WORK, auto_cell_size, kernel_density, points_extent, resolve_grid_extent,
     silverman_bandwidth,

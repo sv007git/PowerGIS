@@ -17,6 +17,9 @@ __pycache__/
 .env.*
 !.env.example
 
+# Local reference materials
+/Reference/
+
 # Editors and operating systems.
 .vscode/
 .idea/

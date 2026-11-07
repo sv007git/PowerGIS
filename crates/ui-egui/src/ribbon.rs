@@ -2341,8 +2341,68 @@ fn layer_hint(ui: &mut Ui, text: &str) {
 /// The Analyze tab: geoprocessing, workflows, imagery and notebooks.
 fn analyze_tab(app: &mut RustGisApp, ui: &mut Ui) {
     analysis_groups(app, ui);
+    grid_groups(app, ui);
     notebook_group(app, ui);
     imagery_groups(app, ui);
+}
+
+fn grid_groups(app: &mut RustGisApp, ui: &mut Ui) {
+    group(ui, "Grid Intelligence", |ui| {
+        big(
+            ui,
+            app,
+            "symbology",
+            "Grid\nLayers",
+            "Create electrical grid layers (substations, lines, transformers, meters, crews).",
+            "grid.createLayers",
+            serde_json::json!({}),
+            false,
+            false,
+        );
+        big(
+            ui,
+            app,
+            "run",
+            "Power\nFlow",
+            "Simulate radial distribution power flow, voltage drop and transformer loadings.",
+            "grid.powerFlow",
+            serde_json::json!({}),
+            false,
+            false,
+        );
+        col(ui, |ui| {
+            small(
+                ui,
+                app,
+                "history",
+                "Grid Status",
+                "Control room dashboard: active faults, impacted meters, available crews.",
+                "grid.status",
+                serde_json::json!({}),
+                false,
+            );
+            small(
+                ui,
+                app,
+                "search",
+                "Hotspots",
+                "Identify predictive asset risk and customer impact hotspots.",
+                "grid.hotspots",
+                serde_json::json!({"metric": "customer_impact"}),
+                false,
+            );
+            small(
+                ui,
+                app,
+                "open",
+                "Reset Sample",
+                "Reload the reference Juru/Goromonzi electrical distribution sample network.",
+                "grid.sample",
+                serde_json::json!({}),
+                false,
+            );
+        });
+    });
 }
 
 /// The Publish tab: the open layout's groups first, then reports, presentations, export and

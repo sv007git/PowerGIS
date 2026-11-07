@@ -599,6 +599,8 @@ pub struct Session {
     /// The presentation and notebook open in their panes, if any.
     pub active_presentation: Option<usize>,
     pub active_notebook: Option<usize>,
+    /// Electrical distribution grid state in memory (GridSense).
+    pub grid: Option<rustgis_analysis::grid::ElectricalNetwork>,
     /// Drawing tools stay active after a graphic is drawn (Edit › Graphics).
     pub keep_tool: bool,
     /// Copied features (Edit › Clipboard).
@@ -833,6 +835,7 @@ impl Session {
             active_report: None,
             active_presentation: None,
             active_notebook: None,
+            grid: None,
             edit_counts: std::collections::HashMap::new(),
             topology_errors: Vec::new(),
             measurements: Vec::new(),
@@ -873,6 +876,16 @@ impl Session {
             trend_results: Vec::new(),
             long_runs: None,
         }
+    }
+
+    /// The electrical distribution network, if loaded.
+    pub fn grid(&self) -> Option<&rustgis_analysis::grid::ElectricalNetwork> {
+        self.grid.as_ref()
+    }
+
+    /// The mutable electrical distribution network, initializing the reference sample if not present.
+    pub fn grid_mut(&mut self) -> &mut rustgis_analysis::grid::ElectricalNetwork {
+        self.grid.get_or_insert_with(rustgis_analysis::grid::create_sample_network)
     }
 
     /// Keeps a query's result the app ran off the frame, for `layer.addSql {"ran": id}`, with the

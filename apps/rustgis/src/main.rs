@@ -429,7 +429,7 @@ fn backends(flag: Option<&str>, env: Option<&str>, windows: bool) -> wgpu::Backe
 fn main() -> eframe::Result {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|a| a == "--version" || a == "-V") {
-        println!("rustgis {}", env!("CARGO_PKG_VERSION"));
+        println!("powergis {}", env!("CARGO_PKG_VERSION"));
         return Ok(());
     }
     // What an earlier session left, before this one can write a new log.
@@ -503,12 +503,12 @@ fn main() -> eframe::Result {
         app.session.notify(e, true);
     }
     for e in open_files(&mut app, &files) {
-        eprintln!("rustgis: {e}");
+        eprintln!("powergis: {e}");
     }
     app.session.mark_saved();
     let mut viewport = egui::ViewportBuilder::default()
         .with_title("PowerGIS")
-        .with_app_id("org.rustgis.PowerGIS")
+        .with_app_id("org.powergis.PowerGIS")
         .with_inner_size([1480.0, 920.0])
         .with_min_inner_size([900.0, 560.0])
         .with_drag_and_drop(true);

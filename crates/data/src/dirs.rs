@@ -3,9 +3,9 @@
 //!
 //! | Folder | Override | Windows | macOS | Linux |
 //! |---|---|---|---|---|
-//! | [`config_dir`] | `RUSTGIS_CONFIG_DIR` | `%APPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_CONFIG_HOME/rustgis` (`~/.config/rustgis`) |
-//! | [`app_data_dir`] | `RUSTGIS_APP_DATA_DIR` | `%LOCALAPPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_DATA_HOME/rustgis` (`~/.local/share/rustgis`) |
-//! | [`cache_dir`] | `RUSTGIS_CACHE_DIR` | `%LOCALAPPDATA%\PowerGIS\cache` | `~/Library/Caches/PowerGIS` | `$XDG_CACHE_HOME/rustgis` (`~/.cache/rustgis`) |
+//! | [`config_dir`] | `POWERGIS_CONFIG_DIR` | `%APPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_CONFIG_HOME/powergis` (`~/.config/powergis`) |
+//! | [`app_data_dir`] | `POWERGIS_APP_DATA_DIR` | `%LOCALAPPDATA%\PowerGIS` | `~/Library/Application Support/PowerGIS` | `$XDG_DATA_HOME/powergis` (`~/.local/share/powergis`) |
+//! | [`cache_dir`] | `POWERGIS_CACHE_DIR` | `%LOCALAPPDATA%\PowerGIS\cache` | `~/Library/Caches/PowerGIS` | `$XDG_CACHE_HOME/powergis` (`~/.cache/powergis`) |
 //!
 //! An override is used as is. There are none in the browser, where these give `None`.
 
@@ -13,11 +13,14 @@ use std::ffi::OsString;
 use std::path::PathBuf;
 
 /// The environment variable that names the settings folder.
-pub const CONFIG_ENV: &str = "RUSTGIS_CONFIG_DIR";
+pub const CONFIG_ENV: &str = "POWERGIS_CONFIG_DIR";
+pub const LEGACY_CONFIG_ENV: &str = "RUSTGIS_CONFIG_DIR";
 /// The environment variable that names the app-data folder.
-pub const APP_DATA_ENV: &str = "RUSTGIS_APP_DATA_DIR";
+pub const APP_DATA_ENV: &str = "POWERGIS_APP_DATA_DIR";
+pub const LEGACY_APP_DATA_ENV: &str = "RUSTGIS_APP_DATA_DIR";
 /// The environment variable that names the cache folder.
-pub const CACHE_ENV: &str = "RUSTGIS_CACHE_DIR";
+pub const CACHE_ENV: &str = "POWERGIS_CACHE_DIR";
+pub const LEGACY_CACHE_ENV: &str = "RUSTGIS_CACHE_DIR";
 
 /// One of the app's folders.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -65,12 +68,12 @@ fn env(name: &str) -> Option<OsString> {
 
 /// The folder `kind` on `os`, reading the environment through `env`.
 fn resolve(kind: Kind, os: Os, env: &dyn Fn(&str) -> Option<OsString>) -> Option<PathBuf> {
-    let over = match kind {
-        Kind::Config => CONFIG_ENV,
-        Kind::AppData => APP_DATA_ENV,
-        Kind::Cache => CACHE_ENV,
+    let (over, legacy_over) = match kind {
+        Kind::Config => (CONFIG_ENV, LEGACY_CONFIG_ENV),
+        Kind::AppData => (APP_DATA_ENV, LEGACY_APP_DATA_ENV),
+        Kind::Cache => (CACHE_ENV, LEGACY_CACHE_ENV),
     };
-    if let Some(d) = env(over) {
+    if let Some(d) = env(over).or_else(|| env(legacy_over)) {
         return Some(PathBuf::from(d));
     }
     let var = |name: &str| env(name).map(PathBuf::from);
@@ -91,7 +94,7 @@ fn resolve(kind: Kind, os: Os, env: &dyn Fn(&str) -> Option<OsString>) -> Option
                 Kind::AppData => ("XDG_DATA_HOME", ".local/share"),
                 Kind::Cache => ("XDG_CACHE_HOME", ".cache"),
             };
-            var(xdg).or_else(|| home().map(|h| h.join(fallback))).map(|d| d.join("rustgis"))
+            var(xdg).or_else(|| home().map(|h| h.join(fallback))).map(|d| d.join("powergis"))
         }
     }
 }

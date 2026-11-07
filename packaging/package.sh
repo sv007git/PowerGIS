@@ -36,10 +36,13 @@ case "$arch" in
 esac
 exe=""
 [ "$os" = windows ] && exe=".exe"
-for b in rustgis rustgis-cli; do
-  [ -f "$bin/$b$exe" ] || { echo "missing $bin/$b$exe: build it first" >&2; exit 1; }
-done
-logo() { "$bin/rustgis-cli$exe" logo "$1" --size "$2"; }
+gui_exe="$bin/powergis$exe"
+[ -f "$gui_exe" ] || gui_exe="$bin/rustgis$exe"
+cli_exe="$bin/powergis-cli$exe"
+[ -f "$cli_exe" ] || cli_exe="$bin/rustgis-cli$exe"
+[ -f "$gui_exe" ] || { echo "missing $bin/powergis$exe: build it first" >&2; exit 1; }
+[ -f "$cli_exe" ] || { echo "missing $bin/powergis-cli$exe: build it first" >&2; exit 1; }
+logo() { "$cli_exe" logo "$1" --size "$2"; }
 # The licence notices of the crates in the binaries (`cargo xtask notices`), shipped with LICENSE.
 notices="$root/THIRD-PARTY-LICENSES.txt"
 [ -f "$notices" ] || { echo "missing $notices: run cargo xtask notices" >&2; exit 1; }
@@ -280,21 +283,29 @@ SPEC
     # Portable zip: unzip anywhere and run, no installer or admin rights.
     d="$work/$name"
     mkdir -p "$d"
-    cp "$bin/rustgis.exe" "$bin/rustgis-cli.exe" "$root/LICENSE" "$notices" "$root/README.md" "$d/"
+    cp "$gui_exe" "$d/powergis.exe"
+    cp "$cli_exe" "$d/powergis-cli.exe"
+    cp "$gui_exe" "$d/rustgis.exe"
+    cp "$cli_exe" "$d/rustgis-cli.exe"
+    cp "$root/LICENSE" "$notices" "$root/README.md" "$d/"
     sed "s/@VERSION@/$version/g" "$root/packaging/windows/README-portable.txt" > "$d/README.txt"
     (cd "$work" && 7z a -tzip -bso0 "$dist/$name-portable.zip" "$name")
 
     # Installers, as GeoLibre ships: setup.exe (NSIS) installs for the current user without admin
-    # rights, the .msi (WiX) for all users. Both add a Start menu shortcut, put rustgis-cli on the
-    # PATH and open .rgis projects. Wizard images are the logo on white, drawn by rustgis-cli.
+    # rights, the .msi (WiX) for all users. Both add a Start menu shortcut, put powergis-cli on the
+    # PATH and open .rgis projects. Wizard images are the logo on white, drawn by powergis-cli.
     case "$arch" in x86_64) instarch=x64 ;; aarch64) instarch=arm64 ;; *) instarch="$arch" ;; esac
     s="$work/installer"
     mkdir -p "$s"
-    cp "$bin/rustgis.exe" "$bin/rustgis-cli.exe" "$root/LICENSE" "$notices" "$root/packaging/windows/path.ps1" "$s/"
-    "$bin/rustgis-cli.exe" logo "$s/rustgis.ico"
-    "$bin/rustgis-cli.exe" logo "$s/sidebar.bmp" --size 128 --canvas 164x314
-    "$bin/rustgis-cli.exe" logo "$s/banner.bmp" --size 44 --canvas 493x58 --at 440,7
-    "$bin/rustgis-cli.exe" logo "$s/dialog.bmp" --size 120 --canvas 493x312 --at 22,96
+    cp "$gui_exe" "$s/powergis.exe"
+    cp "$cli_exe" "$s/powergis-cli.exe"
+    cp "$gui_exe" "$s/rustgis.exe"
+    cp "$cli_exe" "$s/rustgis-cli.exe"
+    cp "$root/LICENSE" "$notices" "$root/packaging/windows/path.ps1" "$root/packaging/windows/install-powergis.ps1" "$s/"
+    "$cli_exe" logo "$s/rustgis.ico"
+    "$cli_exe" logo "$s/sidebar.bmp" --size 128 --canvas 164x314
+    "$cli_exe" logo "$s/banner.bmp" --size 44 --canvas 493x58 --at 440,7
+    "$cli_exe" logo "$s/dialog.bmp" --size 120 --canvas 493x312 --at 22,96
     w() { cygpath -w "$1"; }
     # A missing tool fails a CI build (the release must carry every package) and is skipped
     # locally.

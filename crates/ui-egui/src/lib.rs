@@ -878,6 +878,9 @@ pub struct RustGisApp {
     pub gp: panes::GpForm,
     pub table: table::TableState,
     pub layout: layoutview::LayoutView,
+}
+
+pub type PowerGisApp = RustGisApp;
     /// The text graphic the Format pane edits (#516).
     pub(crate) graphic_format: graphicformat::GraphicFormat,
     pub forms: editpanes::Forms,

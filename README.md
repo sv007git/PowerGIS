@@ -125,26 +125,26 @@ The [user guide](https://rustgis.app/user-guide/) covers each area in detail,
 - **Package managers**: `winget install OpenGeos.PowerGIS`,
   `brew install --cask opengeos/rustgis/rustgis`, `yay -S rustgis-bin` (AUR), or
   `sudo dnf copr enable giswqs/rustgis && sudo dnf install rustgis` (Fedora).
-- **From source**: `cargo run --release -p rustgis` (Rust 1.90 or later).
+- **From source**: `cargo run --release -p powergis` (Rust 1.90 or later).
 
 ## Quick start
 
 ```sh
-cargo run --release -p rustgis                       # the desktop app with the World Atlas sample
-cargo run --release -p rustgis -- data.geojson       # open data (or a .rgis project)
+cargo run --release -p powergis                       # the desktop app with the World Atlas sample
+cargo run --release -p powergis -- data.geojson       # open data (or a .rgis project)
 ```
 
 Command line: every ribbon action is a command with an id.
 
 ```sh
-rustgis-cli commands                                 # all command ids and parameters
-rustgis-cli render countries.geojson map.png --basemap ocean
-rustgis-cli run --sample \
+powergis-cli commands                                 # all command ids and parameters
+powergis-cli render countries.geojson map.png --basemap ocean
+powergis-cli run --sample \
   --cmd 'gp.run={"tool":"countPoints","params":{"polygons":"Countries","points":"Cities"}}' \
   --cmd 'layer.symbology={"layer":"Countries_Summarize","type":"graduated","field":"point_count"}' \
   --cmd 'share.exportMap={"path":"out.png","dpi":192}' --save atlas.rgis
-rustgis-cli ask --sample "Which 5 countries have the largest GDP?"
-claude mcp add rustgis -- rustgis-cli mcp --sample   # PowerGIS as an MCP server for AI agents
+powergis-cli ask --sample "Which 5 countries have the largest GDP?"
+claude mcp add powergis -- powergis-cli mcp --sample   # PowerGIS as an MCP server for AI agents
 ```
 
 See [Command Line](docs/cli.md) for more.

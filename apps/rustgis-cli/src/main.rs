@@ -205,8 +205,8 @@ struct Environment {
 impl Environment {
     fn process() -> Self {
         Environment {
-            provider: std::env::var("RUSTGIS_ASSISTANT_PROVIDER").ok(),
-            model: std::env::var("RUSTGIS_ASSISTANT_MODEL").ok(),
+            provider: std::env::var("POWERGIS_ASSISTANT_PROVIDER").or_else(|_| std::env::var("RUSTGIS_ASSISTANT_PROVIDER")).ok(),
+            model: std::env::var("POWERGIS_ASSISTANT_MODEL").or_else(|_| std::env::var("RUSTGIS_ASSISTANT_MODEL")).ok(),
             config: Config::from_env,
         }
     }

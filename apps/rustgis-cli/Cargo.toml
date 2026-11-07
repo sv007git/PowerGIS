@@ -11,10 +11,6 @@ description = "PowerGIS command line: run commands and geoprocessing, render map
 name = "powergis-cli"
 path = "src/main.rs"
 
-[[bin]]
-name = "rustgis-cli"
-path = "src/main.rs"
-
 [lints]
 workspace = true
 
